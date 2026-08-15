@@ -1,0 +1,76 @@
+# 1. Existing Prototype Repo Inventory
+
+**Status: BLOCKED — cannot complete.**
+
+The Phase 0 prompt says:
+
+> There's also an existing prototype repo at **[REPO URL / PATH]** built in a
+> web-based AI app builder.
+
+The placeholder was never filled in. I searched the working directory
+(`/Users/benjaminkylebranson/Documents/Bookkeeping APP`) — it contains only
+`CLAUDE.md` and `docs/VOICE_LEDGER_SPEC.md`. There is no prototype checkout here,
+and the working directory is not a git repository.
+
+I did not go looking for it elsewhere on your filesystem. Guessing at which
+directory or GitHub repo you meant, and then producing an inventory of the wrong
+codebase, is worse than reporting the gap.
+
+**To unblock:** give me the path or URL and I'll produce this deliverable
+against the actual repo. Everything else in Phase 0 is complete and does not
+depend on it.
+
+---
+
+## What this deliverable will contain when unblocked
+
+So you know what you're getting, and so the shape is agreed before I do it:
+
+### A. Inventory
+- File/module tree with LOC and last-modified, grouped by apparent purpose
+- Framework and platform inventory (which builder, what it generated, what
+  runtime it assumed)
+- Data model as the prototype defined it — tables, entities, field names
+- Every QBO endpoint the prototype called, extracted from source, cross-checked
+  against §2's capability matrix
+- Every place an LLM call sits in a decision path
+
+### B. Findings logic worth carrying forward *conceptually*
+Extracted as **rule specifications, not code**: for each detection the prototype
+performed, what triggered it, what thresholds it used, what it classified as
+severity/confidence, and whether it satisfies `CLAUDE.md` rule 1 (deterministic).
+Output format is the `Rule` spec template in §8, so it drops straight into the
+rule registry backlog.
+
+### C. Discard list, with reasons
+Expected categories, based on what web-app-builder output typically looks like:
+- Anything where an LLM produced a number, a severity, or a pass/fail — violates
+  `CLAUDE.md` rule 1 regardless of how well it worked
+- Any direct QBO call from client code — violates rule 3
+- Any "current client" global — violates rule 9
+- Green-on-empty-data rendering — violates rule 5
+- Web UI, routing, state management, styling — near-zero reuse per your own
+  framing
+
+### D. Capability claims to re-verify
+Anything the prototype *appeared* to do successfully against QBO becomes a
+high-priority row in the §2 matrix marked `ASSUMED (prototype-observed)` — which
+is stronger evidence than documentation but still not sandbox proof under rule 6.
+This is the single most valuable output of the inventory: the prototype is a
+record of which endpoints actually returned useful data in practice.
+
+---
+
+## Interim assumption used elsewhere in Phase 0
+
+Where other documents needed to know what the prototype checked for, I used the
+**Reference Findings Library** at the end of `VOICE_LEDGER_SPEC.md` (duplicate
+expenses/bills/invoices/payments, reconciliation differences, uncategorized or
+miscoded transactions, unusual vendor names/amounts/timing, negative balances and
+abnormal clearing accounts, changed or unused recurring subscriptions, avoidable
+fees and interest, vendor price increases and duplicate services, possible
+personal expenses in business accounts) as the stand-in list of detections. §8's
+rule backlog is seeded from that list, not from the prototype.
+
+If the prototype's logic differs materially, the rule backlog is what changes —
+no other Phase 0 document is affected.

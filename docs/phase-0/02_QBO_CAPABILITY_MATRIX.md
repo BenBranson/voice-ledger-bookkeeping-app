@@ -1,0 +1,663 @@
+# 2. QBO Capability Matrix
+
+**Verification status of this document: every row is `ASSUMED`.**
+
+I have no QBO sandbox access in this session. Nothing here has been executed
+against a live API. Per `CLAUDE.md` rule 6, that means nothing here may be used
+to label a feature "Automatic," and nothing here may be designed against as fact.
+
+Each row carries a **confidence** value describing why it's assumed:
+
+| Confidence | Means |
+|---|---|
+| `DOC-HIGH` | Intuit's published API surface makes this near-certain; I'd be surprised if the spike disproved it |
+| `DOC-MED` | Documented but with known inconsistencies between entities, minor versions, or locales |
+| `INFERRED` | Not documented as such; deduced from how adjacent entities behave |
+| `NEGATIVE-HIGH` | Confident the capability does **not** exist — no endpoint, no entity. Still needs a spike to record the absence. |
+
+Confidence is not verification. `DOC-HIGH` rows still block features under rule 6.
+
+---
+
+## 2.1 How to read a row
+
+Sixteen fields per capability is unreadable as a wide table, so common values are
+factored into **profiles**. Each row states its profile and only its deviations.
+
+### Profile `TXN` — transaction entity
+Purchase, Bill, BillPayment, JournalEntry, Deposit, Transfer, Payment, Invoice,
+SalesReceipt, VendorCredit, CreditMemo, RefundReceipt.
+
+| Field | Profile value |
+|---|---|
+| Access | Query endpoint `GET /v3/company/{realmId}/query?query=…`; single-read `GET /v3/company/{realmId}/{entity}/{id}` |
+| Pagination | `STARTPOSITION` (1-based) + `MAXRESULTS`; default 100, **cap 1000**. No cursor — offset paging over a mutating set can skip or repeat rows. Mitigation in §2.6. |
+| CDC | Supported (subset — verify per entity) |
+| Webhook | Supported (subset — verify per entity) |
+| Sparse update | `POST /v3/company/{realmId}/{entity}` with `"sparse": true`, `Id`, `SyncToken`. **Not universal — per-entity and per-field.** |
+| Full update | Default when `sparse` absent. **Omitted fields are cleared.** Never issue a full update built from a partial object. |
+| SyncToken | Required on every update/delete/void. Mismatch → error `5010` (stale object). Increments on every successful write, *including writes made in the QBO UI by someone else*. |
+| Closed period | Write rejected with a `6xxx` business validation error when `TxnDate` ≤ `BookCloseDate` and no closing-date password is supplied. Exact code per §2.7. |
+| Delete | `POST …/{entity}?operation=delete` — **hard delete, permanent, not recoverable.** |
+| Void | `POST …/{entity}?operation=void` — availability is **per entity**, not universal. Verify individually. |
+| Manual QBO step | None for the read path |
+
+### Profile `NAME` — name-list entity
+Account, Vendor, Customer, Item, Class, Department, Term, PaymentMethod, Employee.
+
+Same as `TXN` except:
+
+| Field | Profile value |
+|---|---|
+| Delete | **No delete operation exists.** Deactivate via sparse update `Active: false`. |
+| Void | Not applicable |
+| Closed period | Not applicable (no `TxnDate`) |
+| Merge | Not exposed. QBO's UI merge (rename-to-match) has no API equivalent. |
+
+### Profile `RPT` — report
+All `/v3/company/{realmId}/reports/{ReportName}` endpoints.
+
+| Field | Profile value |
+|---|---|
+| Access | `GET /v3/company/{realmId}/reports/{Name}?start_date=…&end_date=…&…` |
+| Write | **None.** Reports are read-only, always. |
+| Pagination | **None.** The full report returns in one response. Large general ledgers can be very large; size and timeout behavior is a spike item. |
+| CDC | **Not applicable.** Reports are not CDC entities. |
+| Webhook | **Not applicable.** No report-changed event exists. |
+| Sparse / SyncToken | Not applicable |
+| Closed period | Not applicable (read) |
+| Delete/void | Not applicable |
+| Staleness model | **Time-based, not event-based.** A report is stale when any underlying entity in its date range changed since generation — which we detect via CDC on entities, not via the report. See §6. |
+| Structural risk | Column set and row nesting vary by minor version, locale, and company preferences. **Never index report columns positionally.** Bind by `ColTitle`/`ColType` metadata. |
+
+### Profile `NONE` — no API surface
+No endpoint, no entity, no field. Detection and resolution must route through
+import, screenshot, or manual QBO action.
+
+---
+
+## 2.2 Summary index
+
+`Det.` = detection capability · `Res.` = resolution capability
+(values per the Universal Finding schema, §5).
+
+| ID | Page | Capability | Endpoint / entity | Read | Write | Det. | Res. | Conf. |
+|---|---|---|---|---|---|---|---|---|
+| **C1** | Conn | Health check | `CompanyInfo` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **C2** | Conn | OAuth exchange + refresh | Intuit OAuth2 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **C3** | Conn | Preferences read | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **C4** | Conn | Webhooks | Intuit webhooks | ASSUMED | n/a | assisted | n/a | DOC-MED |
+| **C5** | Conn | Change Data Capture | `/cdc` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **C6** | Conn | Batch | `/batch` | ASSUMED | ASSUMED | n/a | staged_api | DOC-HIGH |
+| **C7** | Conn | Attachments | `Attachable` + `/upload` | ASSUMED | ASSUMED | assisted | staged_api | DOC-MED |
+| **1.1** | 1 | Company identity + realmId | `CompanyInfo` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **1.2** | 1 | Chart of accounts snapshot | `Account` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **1.3** | 1 | Baseline reports | `RPT` ×5 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **1.4** | 1 | Attachment inventory | `Attachable` | ASSUMED | n/a | assisted | n/a | DOC-MED |
+| **1.5** | 1 | QBOA accountant access | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
+| **2.1** | 2 | Read QBO closing date | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **2.2** | 2 | Set QBO closing date | `Preferences` | n/a | **UNLIKELY** | n/a | manual_qbo | INFERRED |
+| **2.3** | 2 | Closed-period rejection codes | error envelope | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **2.4** | 2 | Filing status / return submitted | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
+| **3.1** | 3 | Posted transaction sweep | `TXN` ×8 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **3.2** | 3 | Transaction detail report | `RPT TransactionList` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **3.3** | 3 | General ledger | `RPT GeneralLedger` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **3.4** | 3 | QBO Books Review findings | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
+| **3.5** | 3 | Transaction Review anomalies | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
+| **3.6** | 3 | Books Close progress | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **4.1** | 4 | Posted bank/CC activity | `TXN` ×4 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **4.2** | 4 | "For Review" queue | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
+| **4.3** | 4 | Bank rules | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
+| **4.4** | 4 | Excluded bank-feed items | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **4.5** | 4 | QBO match suggestions/confidence | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **4.6** | 4 | Create missing statement item | `Purchase` | n/a | ASSUMED | automatic | **manual_qbo** ⚠ | DOC-HIGH |
+| **5.1** | 5 | Cleared/uncleared status | `RPT TransactionList` | ASSUMED | n/a | assisted | n/a | DOC-MED |
+| **5.2** | 5 | Statement begin/end balance | — | **NONE** | **NONE** | import_required | n/a | NEGATIVE-HIGH |
+| **5.3** | 5 | Reconciliation history | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
+| **5.4** | 5 | Finish / Undo reconciliation | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **6.1** | 6 | Read accounts | `Account` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **6.2** | 6 | Create account | `Account` | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
+| **6.3** | 6 | Rename / edit account | `Account` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **6.4** | 6 | Deactivate account | `Account` `Active:false` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **6.5** | 6 | Merge accounts | — | **NONE** | **NONE** | automatic | **manual_qbo** | NEGATIVE-HIGH |
+| **7.1** | 7 | Reclassify expense account | `Purchase` sparse | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **7.2** | 7 | Reclassify bill line | `Bill` sparse | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **7.3** | 7 | Change Class / Department | `ClassRef`/`DepartmentRef` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **7.4** | 7 | Change vendor on a txn | `Purchase`/`Bill` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **7.5** | 7 | Batched updates | `/batch` (30 max) | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
+| **7.6** | 7 | QBOA Reclassify Transactions tool | — | **NONE** | **NONE** | automatic | **manual_qbo** | NEGATIVE-HIGH |
+| **7.7** | 7 | Payroll transaction correction | — | **NONE** | **NONE** | assisted | **manual_qbo** | NEGATIVE-HIGH |
+| **8.1** | 8 | Balance Sheet | `RPT BalanceSheet` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **8.2** | 8 | Trial Balance | `RPT TrialBalance` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **8.3** | 8 | General Ledger | `RPT GeneralLedger` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **8.4** | 8 | Journal entries | `JournalEntry` | ASSUMED | ASSUMED | automatic | staged_api | DOC-HIGH |
+| **8.5** | 8 | Undeposited funds aging | `Deposit`+`Payment` | ASSUMED | n/a | automatic | staged_api | DOC-MED |
+| **8.6** | 8 | Transfers | `Transfer` | ASSUMED | ASSUMED | automatic | staged_api | DOC-MED |
+| **9.1** | 9 | Tax codes / rates / agencies | `TaxCode`,`TaxRate`,`TaxAgency` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **9.2** | 9 | Create tax rate | `TaxService` | n/a | ASSUMED | n/a | staged_api | DOC-MED |
+| **9.3** | 9 | Taxable treatment per txn | `TXN` line fields | ASSUMED | ASSUMED | automatic | staged_api | DOC-MED |
+| **9.4** | 9 | Liability balance | `RPT` / `Account` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **9.5** | 9 | Filing / payment / notices | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **9.6** | 9 | Tax Center adjustments | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **10.1** | 10 | Income/expense basis for estimate | `RPT P&L` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **10.2** | 10 | Actual tax liability | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
+| **11.1** | 11 | Read close date at close | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **11.2** | 11 | Execute Books Close | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
+| **12.1** | 12 | P&L | `RPT ProfitAndLoss` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **12.2** | 12 | Balance Sheet | `RPT BalanceSheet` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **12.3** | 12 | Cash Flow | `RPT CashFlow` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **12.4** | 12 | Aging reports | `RPT AgedReceivables`/`AgedPayables` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **12.5** | 12 | Report → QBO parity | — | n/a | n/a | assisted | n/a | INFERRED |
+
+Count: 61 rows. **VERIFIED: 0. ASSUMED: 61.**
+
+---
+
+## 2.3 Detail cards — rows with a write path or a non-obvious behavior
+
+Only rows where the profile is insufficient. Read-only report rows inherit `RPT`
+entirely and are not repeated.
+
+---
+
+### C1 — Connection health check
+**Endpoint** `GET /v3/company/{realmId}/companyinfo/{realmId}`
+**Profile** `NAME` (read only) · **Minor version** pin at spike; use highest
+version the spike passes on · **Subscription/locale** none
+
+**Why this row exists:** the Connection Page's green state requires a *live*
+call, not a structurally-valid token (spec, Connection Pages). This is that call.
+Chosen because it is cheap, non-mutating, and returns the legal name we need to
+confirm we're pointed at the right company.
+
+**Spike must record:** latency distribution, whether it counts against the
+metered CorePlus allowance, and the exact error shape when the refresh token has
+been revoked on Intuit's side (the failure mode this page exists to catch).
+
+**Det/Res:** automatic / n/a. **Status: ASSUMED (DOC-HIGH).**
+
+---
+
+### C4 — Webhooks
+**Profile** custom · **Minor version** n/a
+
+**Assumed behavior:** entity-change notifications POSTed to a registered HTTPS
+endpoint, signed with HMAC-SHA256 over the raw body using a verifier token, in an
+`intuit-signature` header. Only a **subset of entities** emits events. Intuit is
+migrating the envelope toward CloudEvents (spec, Sync architecture).
+
+**Design consequence:** webhooks are a *latency optimization*, never a
+correctness mechanism. The architecture must be correct with webhooks entirely
+disabled — CDC polling plus the periodic checksum sweep is the correctness path.
+Build the receiver to accept both the legacy envelope and CloudEvents from day
+one, discriminating on content type rather than on a config flag.
+
+**Spike must record:** the exact per-entity supported list (not the doc list —
+the observed list), signature verification against a real payload, replay/
+duplicate delivery behavior, and whether notifications arrive for changes made by
+our own writes (self-echo — if yes, we must suppress them by `intentId` or we'll
+mark our own writes as third-party ledger mutations and cascade staleness).
+
+**Det/Res:** assisted / n/a. **Status: ASSUMED (DOC-MED).**
+
+---
+
+### C5 — Change Data Capture
+**Endpoint** `GET /v3/company/{realmId}/cdc?entities=…&changedSince=…`
+
+**Assumed behavior:** returns entities changed since a timestamp, for a
+**subset** of entity types. **Lookback is limited to ~30 days** (spec) — CDC is
+not a permanent history feed. Deleted entities appear as tombstones.
+
+**Design consequence — this is the important one:** because lookback is bounded,
+a client not opened for >30 days **cannot be incrementally caught up**. That
+client requires a full resync, and the app must know that rather than silently
+producing a partial view. The sync engine therefore tracks `lastCdcCursor` and,
+if `now - lastCdcCursor > cdcLookbackWindow - safetyMargin`, forces a full sync
+and marks all derived pages stale. This interacts with the ~100-day refresh-token
+expiry: a client dormant long enough to need re-auth is also long past the CDC
+window, so re-authorization must always trigger a full resync.
+
+**Spike must record:** exact supported entity list, exact lookback boundary
+(test at 29/30/31 days), tombstone shape, whether `changedSince` is inclusive,
+and behavior when the window is exceeded (error vs. silent truncation — silent
+truncation is the dangerous answer and must be assumed until disproven).
+
+**Det/Res:** automatic / n/a. **Status: ASSUMED (DOC-MED).**
+
+---
+
+### C6 — Batch
+**Endpoint** `POST /v3/company/{realmId}/batch`
+
+**Assumed behavior:** up to **30 operations** per request; each item carries a
+caller-supplied `bId`; the response returns per-item success or fault. **Batch is
+not transactional** — partial success is normal and must be the assumed outcome.
+
+**Design consequence:** the staging journal (§10) records per-operation state,
+never per-batch. A batch of 30 that returns 22 successes and 8 faults produces 22
+`confirmed` and 8 `failed` journal rows, and the UI reports it that way. A batch
+that times out produces 30 `unknown` rows, each requiring an individual
+resolution probe — which is why batch size is capped well below 30 in practice
+(see §10 for the chosen ceiling).
+
+**Spike must record:** whether faults on one item affect others, whether a batch
+counts as 1 or N against rate limits, and behavior when two items in one batch
+touch the same entity.
+
+**Det/Res:** n/a / staged_api. **Status: ASSUMED (DOC-HIGH).**
+
+---
+
+### 1.5 — QBOA accountant access attestation
+**Profile** `NONE`
+
+No documented endpoint returns whether you hold accountant-level QBOA access to a
+company, and no endpoint returns an accountant's client list (spec, Multi-client
+reality). This is not a gap to work around — it is a permanent property.
+
+**Resolution:** Page 1 asks *you* to attest, records the attestation with
+timestamp and user, and surfaces it in the Close Package as an attestation rather
+than a verification. The UI must not style it like a passed check.
+
+**Det/Res:** unavailable / unsupported. **Status: ASSUMED (NEGATIVE-HIGH).**
+
+---
+
+### 2.1 / 2.2 — QBO closing date
+**Endpoint** `GET …/query?query=select * from Preferences`
+**Field** `AccountingInfoPrefs.BookCloseDate`
+
+**Read (2.1): ASSUMED, DOC-MED.** The field is documented on `Preferences`.
+Uncertainty is whether it is populated when a closing date is set *with* a
+password versus without, and whether it reflects promptly after a UI change.
+
+**Write (2.2): ASSUMED UNLIKELY, INFERRED.** `Preferences` supports update, but I
+have no basis to claim `BookCloseDate` is settable through it, and there is
+certainly no API surface for the closing-date *password*. **Treat as
+`manual_qbo` until the spike proves otherwise.** Page 2 and Page 11 are designed
+around you setting it in QBO; if the spike shows it is settable, that is an
+upgrade, not a redesign.
+
+⚠ **Do not design Page 11's completion criteria around API-settable close dates.**
+
+**Spike must record:** read fidelity after a UI change (with and without
+password), and an explicit write attempt with the result recorded either way.
+
+---
+
+### 2.3 — Closed-period rejection
+**Profile** error envelope, all `TXN` writes
+
+**Assumed behavior:** attempting to create or modify a transaction dated on or
+before `BookCloseDate` returns HTTP 400 with a `Fault` of type
+`ValidationFault`, code in the **6xxx** range. The spec names 6200/6210. I
+cannot confirm which code corresponds to which condition, and the two are
+plausibly "closed period" vs. "closing date password required."
+
+**Design consequence:** we do not rely on the code. `CLAUDE.md` and the spec both
+require closed-period writes to be **blocked client-side before reaching QBO**.
+The error handling is a backstop for the race where the close date changed
+between our read and our write, not the primary control. The backstop must
+distinguish "rejected for closed period" (expected, recoverable, present to user
+as a period-lock conflict) from other 6xxx validation faults (unexpected, log as
+error) — so the spike must capture the exact codes.
+
+**Spike must record:** exact code + message for a write dated inside a closed
+period, with and without a closing-date password set; and whether the code
+differs by entity.
+
+---
+
+### 4.6 — Creating a missing statement item ⚠ POLICY-CONSTRAINED
+**Endpoint** `POST /v3/company/{realmId}/purchase`
+**Read** n/a · **Write** ASSUMED, DOC-HIGH — the API almost certainly permits it.
+
+**This is the one row where the capability exists and we deliberately do not use
+it.** Per spec §Page 4 safety rule: if the same item later arrives in the bank
+feed, an API-created Purchase may sit unmatched or be added twice.
+
+**Classification is therefore `detection: import_required`, `resolution:
+manual_qbo`** — not because the API can't, but because doing so would create a
+reconciliation hazard the app cannot see (it cannot read the For Review queue,
+row 4.2, so it cannot know whether the item is about to arrive).
+
+This distinction — *capable but prohibited* — needs to be first-class in the
+matrix, because a future reader will otherwise "fix" this by enabling the write.
+The Finding schema (§5) carries `resolutionConstraint: .policyProhibited(reason:)`
+for exactly this, so the reason travels with the finding rather than living only
+in a doc.
+
+---
+
+### 5.1 — Cleared / uncleared status
+**Endpoint** `GET …/reports/TransactionList?…`
+**Profile** `RPT`
+
+**Assumed behavior:** `TransactionList` accepts a filter selecting cleared status
+(values along the lines of Reconciled / Cleared / Uncleared / Deposited /
+NotDeposited / Void). This is the *only* assumed route to reconciliation state,
+since individual transaction entities do not reliably expose a cleared flag.
+
+**Design consequence:** Page 5 can compare an imported statement against the
+posted ledger and can partially inspect cleared state — but it cannot obtain the
+statement beginning/ending balance (5.2), the reconciliation completion date, the
+saved history, or the attached statement (5.3), and cannot execute Finish or Undo
+Reconciliation (5.4). Page 5 **never goes green without imported statement
+evidence or your explicit confirmation that you completed it in QBO.**
+
+**Spike must record:** the exact parameter name and accepted values, whether the
+filter is honored for credit-card accounts, and whether "Reconciled" is
+distinguishable from "Cleared."
+
+**Status: ASSUMED (DOC-MED)** — this one is a genuine coin-flip and Page 5's
+design should not deepen its dependence on it before the spike.
+
+---
+
+### 6.3 / 6.4 — Account edit and deactivate
+**Profile** `NAME`
+
+**6.3 rename/edit — ASSUMED, DOC-MED.** Sparse update on `Account` is expected to
+work for `Name`, `AcctNum`, `Description`. The uncertainty: whether
+`AccountType` / `AccountSubType` are mutable after creation and after the account
+has transactions. Assume **not** mutable once posted to.
+
+**6.4 deactivate — ASSUMED, DOC-MED.** `Active: false` via sparse update.
+**Deactivation is not deletion** — QBO retains the account and its history, and
+the UI presents this differently from a merge. The important unknown is behavior
+when the account has a non-zero balance; QBO's UI creates an adjusting entry in
+that case, and whether the API does the same, refuses, or silently strands the
+balance is a material difference. **Do not build the deactivate path until this
+is verified.**
+
+**Spike must record:** deactivate with zero balance, with non-zero balance, and
+with child accounts; capture whether any adjusting entry is auto-created.
+
+---
+
+### 6.5 — Merge accounts
+**Profile** `NONE` — **NEGATIVE-HIGH**
+
+QBO merges accounts by renaming one to exactly match another through the UI.
+There is no merge endpoint. Attempting to replicate it by renaming via API is
+**not** a supported path and must not be attempted — an API rename that collides
+with an existing name has undefined merge semantics.
+
+Per spec §Page 6 this stays manual **on purpose**: merges are permanent, can
+silently lose reconciliation history, and require matching account and detail
+types. The app's job is to detect merge candidates (automatic), prepare the merge
+plan, and **preserve reconciliation reports first** (via §9 ingestion, since
+reconciliation history is API-invisible per 5.3).
+
+**Det/Res:** automatic / manual_qbo.
+
+---
+
+### 7.1 / 7.2 — Reclassification via sparse update
+**Profile** `TXN`
+
+**The single highest-risk write path in the app.** Constraints from the spec,
+each of which is a spike item:
+
+1. **Sparse updates are not universal.** Per-entity and per-field. A sparse update
+   that silently isn't sparse becomes a full update that **clears every field you
+   didn't send.**
+2. **Line-level updates may require sending the full `Line` array.** Changing one
+   line's `AccountRef` may require resubmitting all lines — meaning a "sparse"
+   update at the entity level is a full replacement at the line level. If so, any
+   line field we do not model is data loss.
+3. **Linked transactions complicate edits.** A `Purchase` linked to a
+   `BillPayment`, or a `Bill` with applied `VendorCredit`, may reject the update
+   or cascade.
+4. **`Id` + `SyncToken` required; stale tokens fail** with `5010`.
+5. **Closed periods reject writes** (2.3).
+6. **Payroll-originated entries** generally require Payroll APIs or manual
+   correction (7.7) and must be excluded from batch reclassification by rule, not
+   by hope.
+
+**Design consequence:** §10's preflight does not merely compare `SyncToken`. It
+re-reads the full entity, verifies our stored representation round-trips
+losslessly (`decode → encode → byte-compare against the fresh read`), and refuses
+the write if it does not. That check is what protects against unknown-field data
+loss under constraint 2. It is cheap and it should be non-optional.
+
+**Before any batch runs**, the preview shows: transactions affected · total
+dollars · old and new category · tax-period consequences · before/after report
+impact · reversal plan (spec, Page 7).
+
+**Status: ASSUMED (DOC-MED).** Verify per entity, per field, in that order.
+
+---
+
+### 7.3 — Class / Department
+**Profile** `TXN` · **Subscription** `Class` and `Department` require **QBO Plus
+or Advanced**, and must additionally be *enabled* in company Preferences.
+
+A client on Essentials will have these refs absent entirely. The rules engine
+must treat "no Class on any transaction" as *not applicable* rather than as a
+finding — otherwise every Essentials client generates a page of false positives.
+Read `Preferences` (C3) to determine applicability and drive
+`.cannotEvaluate(.featureNotEnabled)` (§8) rather than `.pass`.
+
+---
+
+### 7.6 — QBOA Reclassify Transactions tool
+**Profile** `NONE` — **NEGATIVE-HIGH**
+
+No API equivalent exists. Row 7.1–7.5 approximates it via sparse updates, but the
+QBOA tool handles cases ours will not (it is aware of linkages and can operate at
+a scale our 30-per-batch ceiling makes tedious).
+
+**This stays a documented manual alternative you may prefer for large jobs**
+(spec, Page 7). The UI should say so at a threshold — e.g. above N transactions,
+Page 7 recommends the QBOA tool rather than staging N/30 batches. Choosing N is a
+Phase 2 decision informed by observed batch reliability.
+
+---
+
+### 8.4 — Journal entries
+**Profile** `TXN` · **Status: ASSUMED (DOC-HIGH)** for both read and write.
+
+Create/read/update are well supported. The constraint is editorial, not
+technical: **Intuit recommends using journal entries sparingly — prefer the
+native transaction type where practical** (spec, Page 8). A JE that should have
+been a `Transfer` or a `Deposit` is technically valid and practically wrong.
+
+The rules engine therefore treats "correction expressible as a native
+transaction" as preferred, and any staged JE correction must record why a native
+type was not used. That justification belongs in the Close Package.
+
+---
+
+### 9.1 / 9.3 — Sales tax
+**Profile** `NAME` / `TXN` · **Subscription/locale — significant.**
+
+QBO has (at least) two sales-tax modes: **Automated Sales Tax (AST)** and legacy
+manual tax. Field semantics, which `TaxCode`s exist, whether rates are editable,
+and whether `TaxService` can create rates all differ between them. Non-US locales
+differ again (VAT/GST reporting, different agencies, and in some locales
+entities that do not exist in the US edition at all).
+
+**Design consequence:** Page 9 is `skippable per client` (spec) and must first
+determine the tax mode from `Preferences`, then select a rule set. Writing tax
+rules that assume AST and running them on a legacy-mode company produces
+confidently wrong findings — the worst category.
+
+**Spike must record:** mode detection from `Preferences`, and the `TaxCode`/
+`TaxRate` shape under each mode.
+
+**Scope, owner decision (2026-08): US-only, Automated Sales Tax only.** All
+clients are US-based and legacy manual-tax companies are out of scope for v1.
+Page 9's rule set is written against AST exclusively. **Legacy mode is
+classified `.unsupported` and gated, not merely untested:** the mode-detection
+read against `Preferences` runs first, and if it resolves to legacy tax, Page 9
+returns `MissingRequirement.featureNotEnabled("Automated Sales Tax")` →
+`.cannotEvaluate` → gray, with the reason stated. It never attempts AST-shaped
+rules against a legacy-mode file. Non-US locales are `.unsupported` for the same
+reason — no client, no rule set.
+
+---
+
+### 12.5 — Report parity with QBO's rendered reports
+**Profile** `RPT` · **INFERRED**
+
+Report API responses need normalization and **will not be pixel-identical to
+QBO's rendered reports** (spec, Page 12). Row grouping, subtotal placement, and
+which columns appear differ.
+
+**Design consequence:** the Close Package must not imply it reproduces QBO's
+report. Numbers should tie; layout will not. Any place we show a total next to a
+QBO screenshot, the tie-out must be a computed comparison, not visual similarity.
+A tie-out mismatch is a finding, not a rendering bug — and the first suspect is
+report parameters (accounting method, date basis) rather than QBO being wrong.
+
+---
+
+## 2.4 What has no API at all — consolidated
+
+Because this list is what actually shapes the product, here it is in one place.
+All `NEGATIVE-HIGH`. Every one of these is a Type B or Type C page in the spec,
+and each has a named fallback.
+
+| Missing capability | Fallback | Page |
+|---|---|---|
+| QBOA client list / accountant access | Manual per-company OAuth + your attestation | 1 |
+| Books Review findings | Screenshot → OCR | 3 |
+| Transaction Review anomalies | Screenshot → OCR | 3 |
+| Books Close progress / execution | Guided manual + your confirmation | 3, 11 |
+| "For Review" bank-feed queue | Screenshot → OCR | 4 |
+| Bank rules | QBO's own rules export, or screenshot | 4 |
+| Excluded bank-feed items | Screenshot | 4 |
+| QBO match suggestions / confidence | None — out of reach, documented as such | 4 |
+| Statement beginning/ending balance | Bank statement import (CSV/OFX/QFX/PDF) | 5 |
+| Reconciliation history & saved reports | PDF export or screenshot | 5 |
+| Finish / Undo Reconciliation | Guided manual | 5 |
+| Account merge | Guided manual (with pre-merge evidence capture) | 6 |
+| Reclassify Transactions tool | Guided manual, or our staged batches | 7 |
+| Payroll transaction correction | Guided manual | 7 |
+| Sales tax filing status / payments / notices | Your confirmation | 9 |
+| Tax Center adjustments | Guided manual | 9 |
+| Actual tax liability | Out of scope — estimate only, always labeled | 10 |
+| **QBO Audit Log** | CSV *or* PDF export → ingestion | Activity Log |
+
+**The last row is why Universal Ingestion is scheduled early** (Build Order §4).
+It is the difference between an activity log that covers Voice Ledger's own
+actions and one that can also account for changes made directly in QBO.
+
+---
+
+## 2.5 Cross-cutting: rate limits and metering
+
+**ASSUMED, DOC-MED.** Per-realm request throttling with 429 responses; a
+concurrency ceiling; and most reads metered as "CorePlus" calls under Intuit's
+usage-based pricing with a large free monthly allowance (spec, Sync
+architecture).
+
+Design responses, all of which are architecture, not optimization:
+- **Cache locally and prefer CDC over full syncs.** Non-negotiable, not a tuning
+  knob.
+- **Paginate at the cap** (~1000) to minimize request count.
+- **Batch carefully** (30 max, and we will use less).
+- **Exponential backoff with jitter on 429**, with a per-realm token bucket in
+  the *backend* so that the ceiling is enforced across all desktop clients for
+  that realm, not per-process.
+- **Meter and attribute cost per client** — the Claude Connection Page already
+  requires per-client spend tracking; QBO call cost belongs beside it so the true
+  cost of a close is visible.
+
+**Spike must record:** the actual 429 threshold, the `Retry-After` behavior, and
+which endpoints are metered.
+
+---
+
+## 2.6 Cross-cutting: pagination correctness ⚠
+
+**This is a correctness bug waiting to happen and I want it flagged now.**
+
+`STARTPOSITION`/`MAXRESULTS` is **offset pagination over a live, mutating set**.
+If a transaction is created or deleted between page 3 and page 4 of a sync, rows
+shift — and a row can be **skipped entirely** or **returned twice**. A skipped
+duplicate expense is a false green.
+
+Mitigations, in order of preference:
+1. **Order by a stable key and paginate by key range** rather than offset, if the
+   query language permits `ORDER BY Id` with a `WHERE Id > lastId` predicate.
+   *Spike item — this is the clean fix if it works.*
+2. **Bound the query by a closed time window** (`TxnDate` within the period) so
+   the result set is not growing at the tail during the sweep.
+3. **Checksum the sweep**: after paginating, re-query `COUNT` and compare to rows
+   collected. Mismatch → mark the sync `partial`, which by §8's rules means
+   `.cannotEvaluate` and a gray page, not a green one.
+
+Mitigation 3 is mandatory regardless of whether 1 or 2 works, because it converts
+a silent correctness failure into an honest gray. The spec's "periodic checksum
+catches missed events" is the same idea; this applies it per-sweep.
+
+---
+
+## 2.7 Cross-cutting: minor version pinning
+
+**ASSUMED.** Minor version is a query parameter (`minorversion=NN`) that changes
+field availability and, for reports, column composition.
+
+**Decision:** pin one minor version app-wide, recorded in config, asserted in
+every request, and stored on every cached response and every Finding. A finding
+detected under minor version N is not automatically valid under N+1 — column
+semantics may have shifted. Bumping the pinned version is a deliberate operation
+that reruns the capability spike suite and marks affected findings for
+revalidation, exactly like a rule version bump (§8).
+
+I am deliberately not naming a version number here. The spike selects the highest
+version that passes the full suite, and that number goes in config — not in prose
+in this document where it will rot.
+
+---
+
+## 2.8 Sandbox verification plan
+
+The plan that turns `ASSUMED` into `VERIFIED`. Mechanics are in §12; this is the
+sequencing.
+
+### Wave 0 — prerequisites (blocking everything)
+Intuit developer account · sandbox company · OAuth round trip · backend able to
+refresh a token · **environment badge proven visually distinct** before any other
+work, per `CLAUDE.md` rule 7.
+
+### Wave 1 — read surface (unblocks the read-only sync)
+Rows C1, C3, C5, 1.1, 1.2, 1.3, 3.1, 4.1, 8.1, 8.2, 8.3, 12.1–12.4.
+Plus §2.6 pagination correctness and §2.5 rate-limit measurement.
+**Exit:** a full read-only sync of a seeded sandbox that is reproducible and
+checksum-clean.
+
+### Wave 2 — the negatives (unblocks honest UI)
+Rows 1.5, 2.4, 3.4–3.6, 4.2–4.5, 5.2–5.4, 6.5, 7.6, 7.7, 9.5, 9.6, 10.2, 11.2.
+Each requires a recorded attempt and a recorded absence — "I looked for this
+endpoint and it does not exist" with the search documented.
+**Exit:** every Type B/C page's fallback is justified by a recorded negative,
+not by my assertion in this document.
+
+### Wave 3 — the writes (unblocks the vertical slice)
+Row **11.x-void** (Purchase void — see §11, this is the gate) first, then 6.2,
+6.3, 6.4, 7.1, 7.2, 7.5, 8.4, C6, C7.
+Each write test must run **twice**: once normally, once with an injected timeout
+after send, to exercise the `unknown` path in §10.
+**Exit:** the §11 vertical slice write path is proven, including recovery.
+
+### Wave 4 — the awkward ones
+Rows 2.1, 2.2, 2.3 (closed period), 5.1 (cleared status), 9.1–9.4 (tax mode),
+C4 (webhooks, needs a public endpoint), 12.5 (report parity).
+These need special sandbox setup (a closing date, a completed reconciliation, a
+configured tax mode, a reachable webhook URL) and will be slower.
+**Exit:** Pages 2, 5, 9, 11 have honest completion criteria.
+
+### Per-row evidence required for VERIFIED
+1. The exact request (URL, method, minor version, headers with secrets redacted)
+2. The sanitized response, committed as a test fixture
+3. An assertion in the test suite that fails if behavior changes
+4. The verification date
+5. For negatives: the attempt made and the absence recorded
+
+A row's `VERIFIED` status **expires**. See §12 for the staleness window and the
+scheduled re-verification job — an API that changed under us must show up as a
+matrix regression, not as a production surprise.

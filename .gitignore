@@ -1,0 +1,46 @@
+# Credentials and secrets — never committed, by design (CLAUDE.md rule 3)
+*.env
+.env*
+*secret*
+*Secret*
+*SECRET*
+*credential*
+*Credential*
+*token*
+*Token*
+!docs/**/*token*        # doc prose mentioning "token" conceptually is fine
+*.pem
+*.p12
+*.key
+*.cer
+*.mobileprovision
+*apikey*
+*api_key*
+*.keychain
+*.keychain-db
+
+# QBO / Claude client secrets and OAuth artifacts
+oauth_client_secret*
+qbo_client_secret*
+claude_api_key*
+*.jwt
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode / Swift (Phase 1)
+.build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+.swiftpm/
+
+# Sandbox capture artifacts that may embed tokens before sanitization
+Tests/**/*.raw.json
+Tests/**/unsanitized/
+
+# Local scratch
+*.local
+.DS_Store
