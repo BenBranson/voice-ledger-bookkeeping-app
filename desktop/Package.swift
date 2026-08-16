@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "Staging", targets: ["Staging"]),
         .library(name: "Voice", targets: ["Voice"]),
         .library(name: "DB", targets: ["DB"]),
+        .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"])
     ],
     targets: [
@@ -43,6 +44,15 @@ let package = Package(
 
         // /db — deferred; stub only.
         .target(name: "DB", dependencies: ["Core"], path: "Sources/DB"),
+
+        // Design tokens and the smallest primitives that enforce them.
+        // Deliberately has NO dependency on Core: these are pure presentation
+        // constants, and Core must stay platform-agnostic (it cannot import
+        // SwiftUI). The mapping from domain types (Severity, Coverage) to
+        // VLStatus belongs in the UI layer, once those domain types exist.
+        // See docs/design/DESIGN_SYSTEM.md.
+        .target(name: "DesignSystem", dependencies: [], path: "Sources/DesignSystem",
+                exclude: ["README.md"]),
 
         // CLI used ONLY to verify Phase 1 step 1.2's exit gate: a live health
         // check reachable from something running on the desktop, with no
