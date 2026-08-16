@@ -22,6 +22,43 @@ idempotency test → Wave 1 (reads) → **Wave 3 (writes)** → **Wave 2
 
 ---
 
+## ✅ Run 2026-08-16 — Wave 0, the gate, and Wave 1 complete
+
+Approved and run against the connected sandbox (realm `9341456442848752`).
+11/11 tests produced a definitive result — 10 `VERIFIED` (3 partial-coverage,
+noted below), 1 `DISPROVEN`. Full detail in `docs/phase-0/02_QBO_CAPABILITY_MATRIX.md`
+(regenerated) and `docs/phase-0/VERIFICATION_LEDGER.json` (the mechanical
+source of every status change). Fixtures:
+`backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json` (final clean
+run) plus two earlier runs in the same directory that surfaced and fixed
+real bugs before this one.
+
+**The headline result: item 1 (`testPurchaseVoid`) came back DISPROVEN.**
+QBO: `"Message": "Unsupported Operation", "Detail": "Operation void is not
+supported."` — unambiguous, not a malformed-request issue. Per §11.1's
+pre-written branch logic this selects **Branch B**. Not acted on beyond
+recording the fact in the matrix — see the owner's "report before acting"
+instruction.
+
+**Four real findings surfaced fixing the run itself**, all now documented
+in the matrix's `TXN` profile section (§2.1): `Purchase` requires
+`PaymentType` on create (undocumented); `DocNumber` must be unique per
+company by default (affects `VL-DUP-EXP-001`'s T2 tier); `DocNumber` has a
+21-char max; `PrivateNote` is not a queryable field (a bug in this repo's
+own `seed.ts`, now fixed with incremental manifest saves + a `DocNumber`-
+based lookup).
+
+**One test needed a same-session correction, recorded rather than hidden:**
+the first pagination-integrity run assumed QBO's default order was
+Id-ascending; it's actually descending, which meant the intended "delete an
+earlier record" scenario accidentally deleted what would be fetched *last*,
+producing an invalid "no skip" result. Fixed by adding an explicit
+`ORDER BY Id` (confirmed supported) to the real page queries; the corrected
+run reproduces the skip cleanly. Both versions are in the fixtures
+directory for the record.
+
+---
+
 ## Wave 0 — prerequisites
 
 Nothing below runs without this. Not capability tests themselves — this is
@@ -41,12 +78,14 @@ what makes the capability tests possible and reproducible.
 Everything downstream of the vertical slice branches on this one test
 (§11.1).
 
-| # | Test | Matrix row | Asserts |
-|---|---|---|---|
-| **1** | `testPurchaseVoid` | 11.x (slice gate) | Create a `Purchase` in sandbox, void it via `?operation=void`. Record: HTTP status, response body, whether the record survives, whether `TotalAmt` becomes 0, whether `SyncToken` increments, whether it still appears in `TransactionList`, whether it can be un-voided, Balance Sheet before/after. **Output determines Branch A vs. Branch B for the entire vertical slice (§11.1).** |
-| **2** | `testIdempotencyKeySupport` | §10.5 | Determine whether QBO accepts a caller-supplied idempotency key on the write operations in our catalog. If so: record the header/parameter name, the retention window, and behavior on a repeated key (returns the original result vs. errors vs. silently duplicates). If not: record as a negative, with what was searched. **This sits underneath the entire `UNKNOWN`-state recovery design** (§10.6) — the resolution probe works either way, but the answer determines whether the probe is the primary mechanism or a fallback behind QBO's own idempotency guarantee. |
+| # | Test | Matrix row | Asserts | Result (2026-08-16) |
+|---|---|---|---|---|
+| **1** | `testPurchaseVoid` | 11.x (slice gate) | Create a `Purchase` in sandbox, void it via `?operation=void`. Record: HTTP status, response body, whether the record survives, whether `TotalAmt` becomes 0, whether `SyncToken` increments, whether it still appears in `TransactionList`, whether it can be un-voided, Balance Sheet before/after. **Output determines Branch A vs. Branch B for the entire vertical slice (§11.1).** | ❌ **DISPROVEN** — HTTP 400 "Operation void is not supported." → **Branch B** |
+| **2** | `testIdempotencyKeySupport` | §10.5 | Determine whether QBO accepts a caller-supplied idempotency key on the write operations in our catalog. If so: record the header/parameter name, the retention window, and behavior on a repeated key (returns the original result vs. errors vs. silently duplicates). If not: record as a negative, with what was searched. **This sits underneath the entire `UNKNOWN`-state recovery design** (§10.6) — the resolution probe works either way, but the answer determines whether the probe is the primary mechanism or a fallback behind QBO's own idempotency guarantee. | ✅ **VERIFIED** — `requestid` param works; repeated request returned the same entity, no duplicate created (tested on Purchase create only) |
 
-Do not proceed to slice-adjacent design work until item 1 returns.
+Do not proceed to slice-adjacent design work until item 1 returns. **It has
+— see Result column. Branch B is selected; what to build is the owner's
+decision, not yet made.**
 
 ---
 
@@ -55,17 +94,17 @@ Do not proceed to slice-adjacent design work until item 1 returns.
 Exit condition: a full read-only sync of a seeded sandbox, reproducible and
 checksum-clean.
 
-| # | Test | Matrix row | Asserts |
-|---|---|---|---|
-| 3 | `testCompanyInfoHealthCheck` | C1 | Live, timestamped, non-cached. Latency distribution. Whether it counts against CorePlus metering. Exact error shape on a revoked token. |
-| 4 | `testPreferencesRead` | C3 | `Preferences` read succeeds; shape of `AccountingInfoPrefs`, tax-mode fields, `BookCloseDate` presence. |
-| 5 | `testAccountsRead` | 1.2 | Full COA read; classification/type/subtype fidelity against §4.6's enum. |
-| 6 | `testPurchasesRead` | 3.1 (subset) | Read `Purchase` for a bounded window; field completeness against §4.7's `LedgerTransaction`. Needs `baseline.json` seeded. |
-| 7 | `testPaginationOffsetIntegrity` | §2.6 | Seed >2 pages of `Purchase` (needs the seeding harness); mutate the set mid-sweep (insert/delete); assert whether rows are skipped or duplicated. **This is the correctness bug, not a formality — run it, don't skip it.** |
-| 8 | `testPaginationChecksum` | §2.6 | `COUNT` query vs. rows collected; confirm mismatch is detectable and drives `Coverage.partial`. |
-| 9 | `testCDCSince` | C5 | Supported entity list (observed, not documented); lookback boundary at 29/30/31 days; tombstone shape; behavior past the window (error vs. silent truncation — assume the dangerous one until disproven). |
-| 10 | `testRateLimitThreshold` | §2.5 | Drive to 429; record threshold, `Retry-After` behavior, which endpoints are metered. |
-| 11 | `testBaselineReports` | 1.3, 8.1–8.3, 12.1–12.4 | BS, P&L, TB, GL, Transaction List — read succeeds; column binding by `ColTitle`/`ColType` (§4.9), never index. |
+| # | Test | Matrix row | Asserts | Result (2026-08-16) |
+|---|---|---|---|---|
+| 3 | `testCompanyInfoHealthCheck` | C1 | Live, timestamped, non-cached. Latency distribution. Whether it counts against CorePlus metering. Exact error shape on a revoked token. | ✅ VERIFIED — 3 live reads OK, latencies 268-332ms; error shape captured (malformed-token proxy, not a genuinely revoked one) |
+| 4 | `testPreferencesRead` | C3 | `Preferences` read succeeds; shape of `AccountingInfoPrefs`, tax-mode fields, `BookCloseDate` presence. | ✅ VERIFIED — read OK; `BookCloseDate` absent (no close date set yet, expected); AST tax mode confirmed on |
+| 5 | `testAccountsRead` | 1.2 | Full COA read; classification/type/subtype fidelity against §4.6's enum. | ✅ VERIFIED — 92 accounts, all `AccountType` values map cleanly to our enum |
+| 6 | `testPurchasesRead` | 3.1 (subset) | Read `Purchase` for a bounded window; field completeness against §4.7's `LedgerTransaction`. Needs `baseline.json` seeded. | ✅ VERIFIED (Purchase only, of the ×8 TXN profile) — 15 read, no missing fields, no `cleared` field found (confirms §4.7's `.unknown` default) |
+| 7 | `testPaginationOffsetIntegrity` | §2.6 | Seed >2 pages of `Purchase` (needs the seeding harness); mutate the set mid-sweep (insert/delete); assert whether rows are skipped or duplicated. **This is the correctness bug, not a formality — run it, don't skip it.** | ✅ VERIFIED — **the bug reproduces.** A never-deleted record was silently skipped after deleting an earlier one mid-sweep. See §2.6 in the matrix. |
+| 8 | `testPaginationChecksum` | §2.6 | `COUNT` query vs. rows collected; confirm mismatch is detectable and drives `Coverage.partial`. | ✅ VERIFIED — `COUNT` supported, matched full sweep exactly (50=50) |
+| 9 | `testCDCSince` | C5 | Supported entity list (observed, not documented); lookback boundary at 29/30/31 days; tombstone shape; behavior past the window (error vs. silent truncation — assume the dangerous one until disproven). | ⚠️ VERIFIED-PARTIAL — endpoint reachable, correct shape, near-term only. 30-day boundary/tombstone/overflow behavior still ASSUMED (needs real elapsed time) |
+| 10 | `testRateLimitThreshold` | §2.5 | Drive to 429; record threshold, `Retry-After` behavior, which endpoints are metered. | ⚠️ Inconclusive by design — no 429 in 40 requests; deliberately didn't push a sandbox further to find the ceiling |
+| 11 | `testBaselineReports` | 1.3, 8.1–8.3, 12.1–12.4 | BS, P&L, TB, GL, Transaction List — read succeeds; column binding by `ColTitle`/`ColType` (§4.9), never index. | ✅ VERIFIED — all 5 reports read OK with complete `ColTitle`/`ColType` on every column (CashFlow, Aged* reports not in this test — still ASSUMED) |
 
 ---
 

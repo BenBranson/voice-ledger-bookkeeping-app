@@ -36,6 +36,10 @@ export async function run(): Promise<void> {
         EntityRef: { value: vendorId, type: "Vendor" },
         TxnDate: "2026-08-01",
         PrivateNote: "VL-SPIKE-VOID-TEST",
+        // Discovered 2026-08-16 via seed.ts failing with QBO fault 2020:
+        // Purchase requires PaymentType, undocumented in the original
+        // design. "Check" matches §11.2's in-scope description.
+        PaymentType: "Check",
         Line: [
           {
             Amount: 100,
@@ -45,6 +49,10 @@ export async function run(): Promise<void> {
         ]
       };
       const created = await client.post("purchase", createRequest);
+      if (created.status !== 200) {
+        capture({ createRequest }, { created: created.body });
+        return fail(`Purchase create failed before void could be tested: HTTP ${created.status} ${JSON.stringify(created.body)}`);
+      }
       const purchase = (created.body as any).Purchase;
 
       const balanceSheetBefore = await client.get("reports/BalanceSheet");
@@ -95,6 +103,7 @@ export async function run(): Promise<void> {
         EntityRef: { value: vendorId, type: "Vendor" },
         TxnDate: "2026-08-01",
         PrivateNote: "VL-SPIKE-IDEMPOTENCY-TEST",
+        PaymentType: "Check",
         Line: [
           {
             Amount: 1,

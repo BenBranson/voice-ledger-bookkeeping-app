@@ -13,14 +13,15 @@
       "note": "VL-SPIKE-DUP-A"
     },
     {
-      "case": "exact-duplicate-pair (the duplicate)",
+      "case": "exact-duplicate-pair (the duplicate) — docNumber intentionally differs, see note below",
       "vendor": "VL Spike Permian Supply",
       "account": "VL Spike Checking",
       "expenseAccount": "VL Spike Office Supplies",
       "amountMinorUnits": 48620,
       "date": "2026-07-14",
-      "docNumber": "4471",
-      "note": "VL-SPIKE-DUP-B"
+      "docNumber": "4471-DUP",
+      "note": "VL-SPIKE-DUP-B",
+      "_finding": "Capability-spike finding, 2026-08-16: QBO enforces unique DocNumber per company by default (fault 6140, 'Duplicate Document Number Error') -- attempting the spec's literal worked example (both postings sharing DocNumber 4471) fails seed creation outright. This is genuinely useful: it means VL-DUP-EXP-001's T2 tier (same vendor/amount/non-empty DocNumber) can only fire in practice for a client with 'Custom transaction numbers' enabled in company settings -- otherwise QBO itself already prevents the shared-DocNumber case from existing. T1 (same vendor/date/amount/account, docNumber not compared) still exercises correctly with this adjustment."
     },
     {
       "case": "near-miss — same amount, different vendor — must NOT match (§11.5 item 2)",

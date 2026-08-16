@@ -29,6 +29,8 @@ import { resolveApiBaseUrl } from "../src/qbo/environment.js";
 export interface QboRawResponse {
   readonly status: number;
   readonly body: unknown;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly latencyMs: number;
 }
 
 export class QboRawClient {
@@ -60,14 +62,21 @@ export class QboRawClient {
     return result.accessToken;
   }
 
-  private async request(method: string, path: string, body?: unknown, extraParams: Record<string, string> = {}): Promise<QboRawResponse> {
-    const token = await this.accessToken();
+  private async request(
+    method: string,
+    path: string,
+    body?: unknown,
+    extraParams: Record<string, string> = {},
+    overrideAccessToken?: string
+  ): Promise<QboRawResponse> {
+    const token = overrideAccessToken ?? (await this.accessToken());
     const base = resolveApiBaseUrl(this.credentials.environment);
     const url = new URL(`${base}/v3/company/${this.realmId}/${path}`);
     url.searchParams.set("minorversion", String(this.credentials.minorVersion));
     for (const [key, value] of Object.entries(extraParams)) {
       url.searchParams.set(key, value);
     }
+    const startedAt = Date.now();
     const response = await fetch(url, {
       method,
       headers: {
@@ -79,8 +88,13 @@ export class QboRawClient {
       // the key at all when there's a body to send.
       ...(body ? { body: JSON.stringify(body) } : {})
     });
+    const latencyMs = Date.now() - startedAt;
     const responseBody = await response.json().catch(() => null);
-    return { status: response.status, body: responseBody };
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    return { status: response.status, body: responseBody, headers, latencyMs };
   }
 
   get(path: string, extraParams: Record<string, string> = {}): Promise<QboRawResponse> {
@@ -93,5 +107,10 @@ export class QboRawClient {
 
   query(sql: string): Promise<QboRawResponse> {
     return this.get("query", { query: sql });
+  }
+
+  /** For testCompanyInfoHealthCheck's "error shape on an invalid token" probe only. */
+  getWithOverrideToken(path: string, accessToken: string): Promise<QboRawResponse> {
+    return this.request("GET", path, undefined, {}, accessToken);
   }
 }

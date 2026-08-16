@@ -10,16 +10,22 @@
 
 import "dotenv/config";
 import { emitResults } from "./capabilityTest.js";
-import { run as runPurchaseVoidTests } from "./tests/00-purchase-void.spike.js";
+import { run as runGateTests } from "./tests/00-purchase-void.spike.js";
+import { run as runConnectionReads } from "./tests/01-connection-reads.spike.js";
+import { run as runEntityReads } from "./tests/02-entity-reads.spike.js";
+import { run as runPagination } from "./tests/03-pagination.spike.js";
+import { run as runCdcAndLimits } from "./tests/04-cdc-and-limits.spike.js";
+import { run as runReports } from "./tests/05-reports.spike.js";
 
 async function main(): Promise<void> {
   // Deliberately sequential, matching docs/phase-0/SPIKE_QUEUE.md's ordering
   // ("later items assume earlier ones passed") — not run in parallel.
-  await runPurchaseVoidTests();
-
-  // Additional spike/tests/NN-*.spike.ts files land here as later
-  // SPIKE_QUEUE.md items get implemented — each import + one call, in queue
-  // order.
+  await runGateTests(); // items 1-2, "the gate"
+  await runConnectionReads(); // Wave 1, items 3-4
+  await runEntityReads(); // Wave 1, items 5-6
+  await runPagination(); // Wave 1, items 7-8
+  await runCdcAndLimits(); // Wave 1, items 9-10
+  await runReports(); // Wave 1, item 11
 
   emitResults();
 }

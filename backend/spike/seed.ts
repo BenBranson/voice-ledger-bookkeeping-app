@@ -10,11 +10,14 @@
  *   npx tsx spike/seed.ts teardown duplicates
  *   npx tsx spike/seed.ts teardown all
  *
- * Idempotency mechanism: every entity this script creates gets a `note`
- * (Purchase.PrivateNote) or a name prefixed `VL-SPIKE-`. Before creating
- * anything, `apply` queries for an existing entity with that marker and
- * reuses it instead of creating a duplicate — so re-running `apply` on a
- * seed file that already ran is a no-op, not an accumulating mess.
+ * Idempotency mechanism: a local manifest (spike/fixtures/seed-manifest.json)
+ * saved after EVERY entity created, plus a DocNumber-based existing-check for
+ * purchases as a secondary safety net if the manifest is ever deleted.
+ * Accounts/vendors are matched by Name/DisplayName (both queryable). Every
+ * purchase still carries a `note` (Purchase.PrivateNote) for human
+ * readability in the QBO UI, but PrivateNote is NOT used for lookups — it
+ * is not a queryable field in QBO's query language (confirmed 2026-08-16;
+ * see the comment in ensurePurchase for how that was discovered).
  */
 
 import "dotenv/config";
@@ -111,12 +114,28 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
     return;
   }
 
-  const existing = await client.query(`select Id, SyncToken from Purchase where PrivateNote = '${spec.note}'`);
-  const found = (existing.body as any)?.QueryResponse?.Purchase?.[0];
-  if (found) {
-    manifest.purchases[spec.note] = { id: found.Id, syncToken: found.SyncToken };
-    process.stdout.write(`  [found existing] ${spec.case}\n`);
-    return;
+  // Capability-spike finding (2026-08-16): this used to query by PrivateNote,
+  // which QBO rejects outright — "property 'PrivateNote' is not queryable"
+  // (fault 4001). The original code used `?.` optional chaining on the
+  // result, which silently turned that query ERROR into "no existing match
+  // found" and fell through to re-creating the purchase, colliding with
+  // QBO's duplicate-DocNumber constraint on the ALREADY-created one. Two
+  // compounding bugs: an unqueryable field, and an error path that looked
+  // like an empty-result path. Fixed by querying DocNumber instead (verified
+  // queryable) when the spec provides one; manifest tracking (now saved
+  // incrementally — see apply()) is the primary idempotency mechanism for
+  // specs without a DocNumber.
+  if (spec.docNumber) {
+    const existing = await client.query(`select Id, SyncToken from Purchase where DocNumber = '${spec.docNumber}'`);
+    if (existing.status !== 200) {
+      throw new Error(`Existing-purchase lookup failed for "${spec.case}": HTTP ${existing.status} ${JSON.stringify(existing.body)}`);
+    }
+    const found = (existing.body as any)?.QueryResponse?.Purchase?.[0];
+    if (found) {
+      manifest.purchases[spec.note] = { id: found.Id, syncToken: found.SyncToken };
+      process.stdout.write(`  [found existing] ${spec.case}\n`);
+      return;
+    }
   }
 
   const accountId = manifest.accounts[spec.account];
@@ -134,6 +153,13 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
     TxnDate: spec.date,
     DocNumber: spec.docNumber,
     PrivateNote: spec.note,
+    // Capability-spike finding (2026-08-16): Purchase requires PaymentType
+    // and rejects creation without it — undocumented in our original design,
+    // discovered by this seeding run failing with QBO fault code 2020
+    // ("Required parameter PaymentType is missing"). "Check" matches
+    // docs/phase-0/11_VERTICAL_SLICE.md §11.2's in-scope description
+    // ("a Purchase with PaymentType == Check is in scope").
+    PaymentType: "Check",
     Line: [
       {
         Amount: spec.amountMinorUnits / 100,
@@ -143,6 +169,9 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
       }
     ]
   });
+  if (created.status !== 200) {
+    throw new Error(`Purchase create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
   const purchase = (created.body as any).Purchase;
   manifest.purchases[spec.note] = { id: purchase.Id, syncToken: purchase.SyncToken };
   process.stdout.write(`  [created] ${spec.case} -> Purchase ${purchase.Id}\n`);
@@ -156,17 +185,27 @@ async function apply(seedName: string): Promise<void> {
 
   process.stdout.write(`Applying seed "${seedName}": ${seed.description}\n`);
 
+  // Saved after EVERY entity, not once at the end. Capability-spike finding
+  // (2026-08-16): a mid-run failure (e.g. the 4th of 5 purchases hits a
+  // validation fault) used to lose track of the 3 that succeeded, because
+  // the manifest was only written on a clean exit. Re-running `apply` after
+  // such a failure then tried to re-create already-existing entities and
+  // collided with QBO's own constraints (duplicate DocNumber) — the
+  // idempotency mechanism this file's own doc comment promises didn't
+  // survive a partial failure, which is exactly when it's needed most.
   for (const account of seed.accounts ?? []) {
     await ensureAccount(client, manifest, account);
+    saveManifest(manifest);
   }
   for (const vendor of seed.vendors ?? []) {
     await ensureVendor(client, manifest, vendor);
+    saveManifest(manifest);
   }
   for (const purchase of seed.purchases ?? []) {
     await ensurePurchase(client, manifest, purchase);
+    saveManifest(manifest);
   }
 
-  saveManifest(manifest);
   process.stdout.write(`Done. Manifest at ${MANIFEST_PATH}\n`);
 }
 

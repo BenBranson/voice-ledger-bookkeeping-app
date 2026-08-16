@@ -1,0 +1,286 @@
+[
+  {
+    "matrixRow": "11.x (slice gate)",
+    "claim": "Purchase supports ?operation=void, and voiding preserves the record rather than destroying it",
+    "status": "DISPROVEN",
+    "verifiedAt": "2026-08-16T17:26:34.928Z",
+    "detail": "Void returned HTTP 400 — Branch B: no API write, resolution stays manual_qbo.",
+    "request": {
+      "createRequest": {
+        "AccountRef": {
+          "value": "1150040000"
+        },
+        "EntityRef": {
+          "value": "58",
+          "type": "Vendor"
+        },
+        "TxnDate": "2026-08-01",
+        "PrivateNote": "VL-SPIKE-VOID-TEST",
+        "PaymentType": "Check",
+        "Line": [
+          {
+            "Amount": 100,
+            "DetailType": "AccountBasedExpenseLineDetail",
+            "AccountBasedExpenseLineDetail": {
+              "AccountRef": {
+                "value": "1150040001"
+              }
+            }
+          }
+        ]
+      },
+      "voidRequest": {
+        "Id": "155",
+        "SyncToken": "0"
+      }
+    },
+    "response": {
+      "created": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply",
+            "type": "Vendor"
+          },
+          "TotalAmt": 100,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "155",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T10:26:34-07:00",
+            "LastUpdatedTime": "2026-08-16T10:26:34-07:00"
+          },
+          "CustomField": [],
+          "TxnDate": "2026-08-01",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "VL-SPIKE-VOID-TEST",
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 100,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T10:26:33.924-07:00"
+      },
+      "voided": {
+        "Fault": {
+          "Error": [
+            {
+              "Message": "Unsupported Operation",
+              "Detail": "Operation void is not supported.",
+              "code": "500",
+              "element": "Operation"
+            }
+          ],
+          "type": "ValidationFault"
+        },
+        "time": "2026-08-16T10:26:34.911-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "§10.5 (idempotency)",
+    "claim": "QBO accepts a caller-supplied idempotency key on write operations, and repeating it doesn't double-write",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T17:26:36.692Z",
+    "detail": "requestid parameter works as expected: repeated request returned the SAME entity (Id 156) rather than creating a duplicate.",
+    "request": {
+      "idempotentRequest": {
+        "AccountRef": {
+          "value": "1150040000"
+        },
+        "EntityRef": {
+          "value": "59",
+          "type": "Vendor"
+        },
+        "TxnDate": "2026-08-01",
+        "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+        "PaymentType": "Check",
+        "Line": [
+          {
+            "Amount": 1,
+            "DetailType": "AccountBasedExpenseLineDetail",
+            "AccountBasedExpenseLineDetail": {
+              "AccountRef": {
+                "value": "1150040002"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "response": {
+      "first": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "59",
+            "name": "VL Spike Odessa Water",
+            "type": "Vendor"
+          },
+          "TotalAmt": 1,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "156",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T10:26:36-07:00",
+            "LastUpdatedTime": "2026-08-16T10:26:36-07:00"
+          },
+          "CustomField": [],
+          "TxnDate": "2026-08-01",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 1,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040002",
+                  "name": "VL Spike Utilities"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T10:26:36.345-07:00"
+      },
+      "second": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "59",
+            "name": "VL Spike Odessa Water",
+            "type": "Vendor"
+          },
+          "TotalAmt": 1,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "156",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T10:26:36-07:00",
+            "LastUpdatedTime": "2026-08-16T10:26:36-07:00"
+          },
+          "CustomField": [],
+          "TxnDate": "2026-08-01",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 1,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040002",
+                  "name": "VL Spike Utilities"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T10:26:36.345-07:00"
+      }
+    }
+  }
+]

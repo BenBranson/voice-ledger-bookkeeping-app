@@ -39,8 +39,36 @@ SalesReceipt, VendorCredit, CreditMemo, RefundReceipt.
 | SyncToken | Required on every update/delete/void. Mismatch → error `5010` (stale object). Increments on every successful write, *including writes made in the QBO UI by someone else*. |
 | Closed period | Write rejected with a `6xxx` business validation error when `TxnDate` ≤ `BookCloseDate` and no closing-date password is supplied. Exact code per §2.7. |
 | Delete | `POST …/{entity}?operation=delete` — **hard delete, permanent, not recoverable.** |
-| Void | `POST …/{entity}?operation=void` — availability is **per entity**, not universal. Verify individually. |
+| Void | `POST …/{entity}?operation=void` — availability is **per entity**, not universal. Verify individually. **`Purchase`: DISPROVEN, 2026-08-16 — see row 11.x.** |
 | Manual QBO step | None for the read path |
+
+**Verified findings for `Purchase` specifically, 2026-08-16** — discovered
+running the capability spike, not documented anywhere in advance:
+
+- **`PaymentType` is required on create**, undocumented in our original
+  design. Omitting it fails with fault code `2020` ("Required parameter
+  PaymentType is missing"). We use `"Check"`, consistent with
+  `docs/phase-0/11_VERTICAL_SLICE.md` §11.2's in-scope description.
+- **`DocNumber` must be unique per company by default.** Attempting to
+  reuse one fails with fault code `6140` ("Duplicate Document Number
+  Error"). This directly affects `VL-DUP-EXP-001`'s T2 tier
+  (`docs/phase-0/11_VERTICAL_SLICE.md` §11.2) — a same-vendor/amount/
+  DocNumber duplicate can only exist in a client's real data if they have
+  "Custom transaction numbers" enabled in company settings; otherwise QBO
+  itself already prevents the shared-DocNumber case the T2 tier looks for.
+- **`DocNumber` has a 21-character maximum.** Fault code `2050` if
+  exceeded.
+- **`PrivateNote` is NOT a queryable field.** `select ... where PrivateNote
+  = '...'` fails with fault code `4001` ("property 'PrivateNote' is not
+  queryable"). Relevant beyond this spike: any future rule or UI code that
+  expects to filter/search by PrivateNote needs a different approach
+  (`DocNumber`, or client-side filtering after a broader read).
+
+Not yet verified whether these four hold for the other 11 `TXN`-profile
+entities — discovered and confirmed for `Purchase` only. Fixture:
+`backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json` plus the
+seeding-run failures that surfaced them (`backend/spike/seed.ts`'s git
+history for 2026-08-16).
 
 ### Profile `NAME` — name-list entity
 Account, Vendor, Customer, Item, Class, Department, Term, PaymentMethod, Employee.
@@ -83,29 +111,29 @@ import, screenshot, or manual QBO action.
 
 | ID | Page | Capability | Endpoint / entity | Read | Write | Det. | Res. | Conf. |
 |---|---|---|---|---|---|---|---|---|
-| **C1** | Conn | Health check | `CompanyInfo` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **C1** | Conn | Health check | `CompanyInfo` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **C2** | Conn | OAuth exchange + refresh | Intuit OAuth2 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **C3** | Conn | Preferences read | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **C3** | Conn | Preferences read | `Preferences` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **C4** | Conn | Webhooks | Intuit webhooks | ASSUMED | n/a | assisted | n/a | DOC-MED |
-| **C5** | Conn | Change Data Capture | `/cdc` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **C5** | Conn | Change Data Capture | `/cdc` | VERIFIED* | n/a | automatic | n/a | VERIFIED-PARTIAL (2026-08-16) |
 | **C6** | Conn | Batch | `/batch` | ASSUMED | ASSUMED | n/a | staged_api | DOC-HIGH |
 | **C7** | Conn | Attachments | `Attachable` + `/upload` | ASSUMED | ASSUMED | assisted | staged_api | DOC-MED |
 | **1.1** | 1 | Company identity + realmId | `CompanyInfo` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **1.2** | 1 | Chart of accounts snapshot | `Account` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **1.3** | 1 | Baseline reports | `RPT` ×5 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **1.2** | 1 | Chart of accounts snapshot | `Account` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
+| **1.3** | 1 | Baseline reports | `RPT` ×5 | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **1.4** | 1 | Attachment inventory | `Attachable` | ASSUMED | n/a | assisted | n/a | DOC-MED |
 | **1.5** | 1 | QBOA accountant access | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
 | **2.1** | 2 | Read QBO closing date | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **2.2** | 2 | Set QBO closing date | `Preferences` | n/a | **UNLIKELY** | n/a | manual_qbo | INFERRED |
 | **2.3** | 2 | Closed-period rejection codes | error envelope | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **2.4** | 2 | Filing status / return submitted | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
-| **3.1** | 3 | Posted transaction sweep | `TXN` ×8 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **3.2** | 3 | Transaction detail report | `RPT TransactionList` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **3.1** | 3 | Posted transaction sweep | `TXN` ×8 | VERIFIED* | n/a | automatic | n/a | VERIFIED-PARTIAL (2026-08-16) |
+| **3.2** | 3 | Transaction detail report | `RPT TransactionList` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **3.3** | 3 | General ledger | `RPT GeneralLedger` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **3.4** | 3 | QBO Books Review findings | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **3.5** | 3 | Transaction Review anomalies | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **3.6** | 3 | Books Close progress | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
-| **4.1** | 4 | Posted bank/CC activity | `TXN` ×4 | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **4.1** | 4 | Posted bank/CC activity | `TXN` ×4 | VERIFIED* | n/a | automatic | n/a | VERIFIED-PARTIAL (2026-08-16) |
 | **4.2** | 4 | "For Review" queue | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **4.3** | 4 | Bank rules | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **4.4** | 4 | Excluded bank-feed items | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
@@ -115,7 +143,7 @@ import, screenshot, or manual QBO action.
 | **5.2** | 5 | Statement begin/end balance | — | **NONE** | **NONE** | import_required | n/a | NEGATIVE-HIGH |
 | **5.3** | 5 | Reconciliation history | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **5.4** | 5 | Finish / Undo reconciliation | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
-| **6.1** | 6 | Read accounts | `Account` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **6.1** | 6 | Read accounts | `Account` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **6.2** | 6 | Create account | `Account` | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
 | **6.3** | 6 | Rename / edit account | `Account` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
 | **6.4** | 6 | Deactivate account | `Account` `Active:false` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
@@ -127,9 +155,9 @@ import, screenshot, or manual QBO action.
 | **7.5** | 7 | Batched updates | `/batch` (30 max) | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
 | **7.6** | 7 | QBOA Reclassify Transactions tool | — | **NONE** | **NONE** | automatic | **manual_qbo** | NEGATIVE-HIGH |
 | **7.7** | 7 | Payroll transaction correction | — | **NONE** | **NONE** | assisted | **manual_qbo** | NEGATIVE-HIGH |
-| **8.1** | 8 | Balance Sheet | `RPT BalanceSheet` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **8.2** | 8 | Trial Balance | `RPT TrialBalance` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **8.3** | 8 | General Ledger | `RPT GeneralLedger` | ASSUMED | n/a | automatic | n/a | DOC-MED |
+| **8.1** | 8 | Balance Sheet | `RPT BalanceSheet` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
+| **8.2** | 8 | Trial Balance | `RPT TrialBalance` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
+| **8.3** | 8 | General Ledger | `RPT GeneralLedger` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **8.4** | 8 | Journal entries | `JournalEntry` | ASSUMED | ASSUMED | automatic | staged_api | DOC-HIGH |
 | **8.5** | 8 | Undeposited funds aging | `Deposit`+`Payment` | ASSUMED | n/a | automatic | staged_api | DOC-MED |
 | **8.6** | 8 | Transfers | `Transfer` | ASSUMED | ASSUMED | automatic | staged_api | DOC-MED |
@@ -143,13 +171,24 @@ import, screenshot, or manual QBO action.
 | **10.2** | 10 | Actual tax liability | — | **NONE** | **NONE** | unavailable | unsupported | NEGATIVE-HIGH |
 | **11.1** | 11 | Read close date at close | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **11.2** | 11 | Execute Books Close | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
-| **12.1** | 12 | P&L | `RPT ProfitAndLoss` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
-| **12.2** | 12 | Balance Sheet | `RPT BalanceSheet` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
+| **11.x** | 11 / slice gate | Void a Purchase | `Purchase` `?operation=void` | n/a | **DISPROVEN** | n/a | **manual_qbo** ⚠ | DISPROVEN (2026-08-16) |
+| **12.1** | 12 | P&L | `RPT ProfitAndLoss` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
+| **12.2** | 12 | Balance Sheet | `RPT BalanceSheet` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **12.3** | 12 | Cash Flow | `RPT CashFlow` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **12.4** | 12 | Aging reports | `RPT AgedReceivables`/`AgedPayables` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **12.5** | 12 | Report → QBO parity | — | n/a | n/a | assisted | n/a | INFERRED |
 
-Count: 61 rows. **VERIFIED: 0. ASSUMED: 61.**
+Count: 66 rows (65 original + row 11.x, added 2026-08-16 to record the void
+finding below). **The original document's "Count: 61" was itself wrong —
+never mechanically counted; corrected here while regenerating, since a
+false count is the same category of problem this whole exercise exists to
+catch.** **VERIFIED: 14 (3 marked `VERIFIED*` — partial coverage, see their
+detail cards). DISPROVEN: 1. ASSUMED / NONE / other: 51.**
+
+Generated from `docs/phase-0/VERIFICATION_LEDGER.json`, itself generated by
+`backend/spike/regenerateMatrix.ts` from `backend/spike/fixtures/results-*.json`
+— per §12.5, these status changes are not hand-typed. The ledger is the
+audit trail from raw QBO response to the marker in this table.
 
 ---
 
@@ -174,7 +213,21 @@ confirm we're pointed at the right company.
 metered CorePlus allowance, and the exact error shape when the refresh token has
 been revoked on Intuit's side (the failure mode this page exists to catch).
 
-**Det/Res:** automatic / n/a. **Status: ASSUMED (DOC-HIGH).**
+**Det/Res:** automatic / n/a. **Status: VERIFIED (2026-08-16).**
+
+**Verification evidence:** 3 live sandbox reads succeeded, latencies
+287/325/332ms. No CorePlus-metering-related response headers found (checked
+against header names matching `/rate|limit|quota|throttle/i`) — either QBO
+doesn't expose remaining-quota via headers on this endpoint, or names this
+row didn't anticipate; not resolved further this round. Error shape probed
+with a deliberately malformed bearer token (**not** a genuinely revoked
+token — revoking would require disconnecting the sandbox this entire spike
+run depends on): HTTP 401, `fault.error[0]` = `{"message":
+"...errorCode=003200; statusCode=401", "detail": "Malformed bearer token:
+too short or too long", "code": "3200"}`. A genuinely revoked (rather than
+malformed) token's exact shape remains ASSUMED. Non-cached-vs-cached is not
+independently verifiable from outside QBO's infrastructure and is not
+claimed either way. Fixture: `backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
 
 ---
 
@@ -223,7 +276,18 @@ window, so re-authorization must always trigger a full resync.
 and behavior when the window is exceeded (error vs. silent truncation — silent
 truncation is the dangerous answer and must be assumed until disproven).
 
-**Det/Res:** automatic / n/a. **Status: ASSUMED (DOC-MED).**
+**Det/Res:** automatic / n/a. **Status: VERIFIED-PARTIAL (2026-08-16).**
+
+**Verification evidence — partial, stated precisely:** the endpoint is
+reachable and returns the documented `CDCResponse` shape for a near-term
+window (`entities=Purchase,Account,Vendor`, `changedSince` = 1 hour prior);
+it reported a change to `Vendor` correctly. **NOT tested in this run** —
+and still fully ASSUMED — the 30-day lookback boundary (needs real elapsed
+calendar time at 29/30/31 days, which a single session cannot produce),
+tombstone shape for a deleted entity, and behavior once the window is
+exceeded. Do not treat this row as fully verified; only "the endpoint
+exists and responds correctly to a well-formed near-term request" is
+established. Fixture: `backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
 
 ---
 
@@ -514,6 +578,54 @@ report parameters (accounting method, date basis) rather than QBO being wrong.
 
 ---
 
+### 11.x — Void a Purchase — the vertical slice's write-path gate ⚠ DISPROVEN
+**Endpoint** `POST /v3/company/{realmId}/purchase?operation=void`
+**Profile** `TXN` (deviation — see below) · **Added 2026-08-16**, added as a
+row specifically because it's the exact question
+`docs/phase-0/11_VERTICAL_SLICE.md` §11.1 is gated on, and every other row
+touching write behavior already existed before this test ran.
+
+**This was previously ASSUMED (DOC-MED) — "I believe [void] does [work]." It
+does not.**
+
+QBO's response to the void attempt, verbatim:
+```json
+{
+  "Fault": {
+    "Error": [{
+      "Message": "Unsupported Operation",
+      "Detail": "Operation void is not supported.",
+      "code": "500",
+      "element": "Operation"
+    }],
+    "type": "ValidationFault"
+  }
+}
+```
+Unambiguous — not a malformed request, not a missing precondition (the
+`Purchase` being voided was created successfully first, confirmed via a
+fresh re-read). QBO is stating directly that the operation does not exist
+for this entity.
+
+**Consequence per §11.1's pre-written branch logic:** this selects
+**Branch B** — no API write for duplicate-expense resolution on `Purchase`;
+`resolution_capability` is `manual_qbo`, not `staged_api`, for
+`VL-DUP-EXP-001`'s primary worked example. Both branches were specified in
+advance precisely so this outcome wouldn't require a redesign — it requires
+building the already-specified Branch B path. **Whether and how to proceed
+with that is the owner's call, not something this regeneration decides.**
+
+**Det/Res:** n/a / **manual_qbo** (was: staged_api, ASSUMED). **Status:
+DISPROVEN (2026-08-16).**
+
+**Not yet tested, and worth doing before fully closing this row:** whether
+`?operation=void` is unsupported for `Purchase` specifically, or for every
+`TXN`-profile entity. If `Bill` or `JournalEntry` support void where
+`Purchase` doesn't, that changes which entity types Branch B applies to.
+Fixture: `backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
+
+---
+
 ## 2.4 What has no API at all — consolidated
 
 Because this list is what actually shapes the product, here it is in one place.
@@ -569,6 +681,16 @@ Design responses, all of which are architecture, not optimization:
 **Spike must record:** the actual 429 threshold, the `Retry-After` behavior, and
 which endpoints are metered.
 
+**Verification, 2026-08-16 — inconclusive by design, not a gap:** 40 rapid
+sequential `companyinfo` reads against the sandbox produced zero 429s (avg
+latency 304ms, range 258–419ms). **This does not mean no limit exists** —
+only that this endpoint, at this volume, in this sandbox, didn't trip one.
+Deliberately did not push further: a sandbox company used for every other
+test in this run is not the place to go looking for the ceiling by brute
+force. The threshold, `Retry-After` behavior, and which endpoints are
+metered all remain ASSUMED. Fixture:
+`backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
+
 ---
 
 ## 2.6 Cross-cutting: pagination correctness ⚠
@@ -593,6 +715,35 @@ Mitigations, in order of preference:
 Mitigation 3 is mandatory regardless of whether 1 or 2 works, because it converts
 a silent correctness failure into an honest gray. The spec's "periodic checksum
 catches missed events" is the same idea; this applies it per-sweep.
+
+**Verified, 2026-08-16 — this is a real bug, not a theoretical one.**
+Reproduced directly: created 6 `Purchase` records, fetched page 1
+(`ORDER BY Id STARTPOSITION 1 MAXRESULTS 2`), deleted the earliest of the
+6 (a record already fetched), then fetched page 2
+(`STARTPOSITION 3 MAXRESULTS 2`) against the now-5-element set. **A third
+record — never deleted, still existing in QBO — was silently absent from
+every page fetched.** Exact before/after Id sequences and both fixture
+runs (the first attempt used QBO's *default* order, which turned out to be
+Id-**descending**, not ascending as first assumed — that wrong assumption
+accidentally avoided reproducing the skip; the corrected run explicitly
+sorts `ORDER BY Id` and reproduces it cleanly) are in
+`backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
+
+Two mitigations also confirmed viable in the same session:
+- **Mitigation 1 (`ORDER BY Id`) is supported syntax** — confirmed via a
+  direct probe query, separate from the reproduction above.
+- **Mitigation 3 (checksum) is viable**: `select count(*) from Purchase`
+  is supported (`totalCount` field), and in an unrelated full-sweep test
+  the count matched the paginated total exactly (50 = 50) — confirming the
+  checksum mechanism itself works as designed, though it was not run
+  *concurrently* with the skip-reproduction above (that would require a
+  third, more elaborate test; the mechanism's correctness is established
+  either way).
+
+**Net effect:** §2.6's concern moves from ASSUMED to VERIFIED, and the
+verified answer is "the bug is real." This does not change the design —
+mitigations 1 and 3 were already specified — it converts them from
+precautionary to load-bearing.
 
 ---
 

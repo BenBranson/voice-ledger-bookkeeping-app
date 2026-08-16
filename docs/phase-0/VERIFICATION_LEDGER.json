@@ -1,0 +1,456 @@
+{
+  "generatedAt": "2026-08-16T17:37:28.295Z",
+  "generatedBy": "backend/spike/regenerateMatrix.ts — see file header for the coverage-mapping methodology",
+  "tableRowUpdates": [
+    {
+      "tableRowId": "C1",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:21.644Z",
+      "sourceMatrixRowKey": "C1",
+      "detail": "3 live reads succeeded, latencies [287, 325, 332]ms. Metering-related response headers found: none. Invalid-token probe (NOT a genuinely revoked token — see comment) returned HTTP 401: {\"warnings\":null,\"intuitObject\":null,\"fault\":{\"error\":[{\"message\":\"message=AuthenticationFailed; errorCode=003200; statusCode=401\",\"detail\":\"Malformed bearer token: too short or too long\",\"code\":\"3200\",\"element\":null}],\"type\":\"AUTHENTICATION\"},\"report\":null,\"queryResponse\":null,\"batchItemResponse\":[],\"attachableResponse\":[],\"syncErrorResponse\":null,\"requestId\":null,\"time\":1786901661634,\"status\":null,\"cdcresponse\":[]}. Non-cached vs. cached is not independently verifiable from outside QBO's infrastructure; not claimed either way."
+    },
+    {
+      "tableRowId": "C3",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:22.124Z",
+      "sourceMatrixRowKey": "C3 / 2.1",
+      "detail": "Preferences read OK. AccountingInfoPrefs present: true. BookCloseDate present: false (value: undefined — undefined here most likely means no closing date has been SET in this sandbox yet, not that the field doesn't exist; docs/phase-0/SPIKE_QUEUE.md items 41-42 test the set/read cycle directly, not run in this session). TaxPrefs present: true, UsingSalesTax: true (relevant to docs/phase-0/02_QBO_CAPABILITY_MATRIX.md's AST-vs-legacy mode gate, row 9.1)."
+    },
+    {
+      "tableRowId": "C5",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T17:34:31.331Z",
+      "sourceMatrixRowKey": "C5",
+      "detail": "CDC call succeeded for entities=Purchase,Account,Vendor over the last hour. Entity types with changes reported in this window: Vendor. ⚠ NOT tested in this run: the 30-day lookback boundary (needs real elapsed calendar time — 29/30/31 days — which a single session cannot produce), tombstone shape for a deleted entity, or behavior past the window. Those remain ASSUMED, not disproven or verified — this only confirms the endpoint itself is reachable and responds with the documented top-level shape.",
+      "note": "endpoint + near-term (1hr) window confirmed reachable and correctly shaped; the 30-day lookback boundary and tombstone shape were NOT tested (require real elapsed calendar time) and remain ASSUMED"
+    },
+    {
+      "tableRowId": "1.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:22.713Z",
+      "sourceMatrixRowKey": "1.2 / 6.1",
+      "detail": "92 accounts read. Observed AccountType values: Accounts Payable, Accounts Receivable, Bank, Cost of Goods Sold, Credit Card, Equity, Expense, Fixed Asset, Income, Long Term Liability, Other Current Asset, Other Current Liability, Other Expense, Other Income. All observed types map cleanly to our enum. 46 distinct AccountSubType values observed (kept verbatim per §4.6, not enumerated by design)."
+    },
+    {
+      "tableRowId": "6.1",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:22.713Z",
+      "sourceMatrixRowKey": "1.2 / 6.1",
+      "detail": "92 accounts read. Observed AccountType values: Accounts Payable, Accounts Receivable, Bank, Cost of Goods Sold, Credit Card, Equity, Expense, Fixed Asset, Income, Long Term Liability, Other Current Asset, Other Current Liability, Other Expense, Other Income. All observed types map cleanly to our enum. 46 distinct AccountSubType values observed (kept verbatim per §4.6, not enumerated by design)."
+    },
+    {
+      "tableRowId": "3.1",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T17:34:23.212Z",
+      "sourceMatrixRowKey": "3.1 (subset) / 4.1",
+      "detail": "15 purchases read. Required fields missing on at least one record: none. EntityRef (counterparty) present on all: true. AccountRef (paymentAccount) present on all: true. A 'cleared' field exists anywhere: false — corroborates §4.7's clearedStatus defaulting to .unknown by design.",
+      "note": "verified for Purchase only, of the TXN ×8 profile this row covers (Bill, BillPayment, JournalEntry, Deposit, Transfer, Payment, Invoice remain ASSUMED)"
+    },
+    {
+      "tableRowId": "4.1",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T17:34:23.212Z",
+      "sourceMatrixRowKey": "3.1 (subset) / 4.1",
+      "detail": "15 purchases read. Required fields missing on at least one record: none. EntityRef (counterparty) present on all: true. AccountRef (paymentAccount) present on all: true. A 'cleared' field exists anywhere: false — corroborates §4.7's clearedStatus defaulting to .unknown by design.",
+      "note": "verified for Purchase only, of the TXN ×4 profile this row covers"
+    },
+    {
+      "tableRowId": "1.3",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "8.1",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "8.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "8.3",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "3.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "12.1",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "12.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:45.968Z",
+      "sourceMatrixRowKey": "1.3 / 8.1-8.3 / 12.1-12.4",
+      "detail": "BalanceSheet: HTTP 200, 2 columns, rows present: true | ProfitAndLoss: HTTP 200, 2 columns, rows present: true | TrialBalance: HTTP 200, 3 columns, rows present: true | GeneralLedger: HTTP 200, 8 columns, rows present: true | TransactionList: HTTP 200, 9 columns, rows present: true. All 5 reports readable with complete ColTitle/ColType metadata on every column — supports §4.9's column-binding-by-metadata design as specified."
+    },
+    {
+      "tableRowId": "11.x",
+      "status": "DISPROVEN",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T17:34:18.664Z",
+      "sourceMatrixRowKey": "11.x (slice gate)",
+      "detail": "Void returned HTTP 400 — Branch B: no API write, resolution stays manual_qbo.",
+      "isNewRow": {
+        "id": "11.x",
+        "page": "11 / slice gate",
+        "capability": "Void a Purchase (`?operation=void`)",
+        "endpoint": "`Purchase`"
+      }
+    }
+  ],
+  "proseSectionFindings": [
+    {
+      "matrixRow": "§2.6 (pagination offset integrity)",
+      "claim": "Deleting an earlier-positioned record mid-sweep causes a later, still-existing record to be silently skipped",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-08-16T17:34:29.782Z",
+      "detail": "ORDER BY Id supported: true. Created 6, deleted 1 (Id 166) between page 1 and page 2. page1=[166,167] page2=[169,170] page3=[171]. Record C (Id 168), never deleted, WAS SKIPPED. Any Id duplicated across pages: false. => Confirms docs/phase-0/02_QBO_CAPABILITY_MATRIX.md §2.6's concern is REAL, not theoretical: offset pagination over a set that shrinks mid-sweep silently drops a still-existing record. Mitigation 3 (pagination checksum, item 8) is what converts this into an honest gray page instead of a silent miss.",
+      "request": {
+        "recordIdsInOrder": [
+          "166",
+          "167",
+          "168",
+          "169",
+          "170",
+          "171"
+        ],
+        "deletedId": "166",
+        "watchedId": "168"
+      },
+      "response": {
+        "orderBySupported": true,
+        "page1Ids": [
+          "166",
+          "167"
+        ],
+        "page2Ids": [
+          "169",
+          "170"
+        ],
+        "page3Ids": [
+          "171"
+        ],
+        "collected": [
+          "166",
+          "167",
+          "169",
+          "170",
+          "171"
+        ]
+      }
+    },
+    {
+      "matrixRow": "§2.6 (pagination checksum)",
+      "claim": "A COUNT query against Purchase is supported and can detect a pagination mismatch",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-08-16T17:34:30.804Z",
+      "detail": "COUNT query supported: totalCount=50. Full sweep collected 50 rows. Match: true. ",
+      "request": {
+        "query": "select count(*) from Purchase"
+      },
+      "response": {
+        "QueryResponse": {
+          "totalCount": 50
+        },
+        "time": "2026-08-16T10:34:30.382-07:00"
+      }
+    },
+    {
+      "matrixRow": "§2.5",
+      "claim": "Rate-limit behavior under a rapid sequential burst",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-08-16T17:34:43.689Z",
+      "detail": "No 429 within 40 sequential requests to companyinfo (avg latency 304ms). This does NOT mean no limit exists — only that this endpoint, at this volume, in this sandbox, didn't trip it. Deliberately did not push further; a sandbox company is not the place to find the ceiling by brute force.",
+      "request": {
+        "maxRequests": 40
+      },
+      "response": {
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "latencies": [
+          318,
+          409,
+          280,
+          270,
+          372,
+          271,
+          293,
+          357,
+          264,
+          280,
+          314,
+          288,
+          296,
+          396,
+          260,
+          284,
+          296,
+          387,
+          299,
+          287,
+          266,
+          293,
+          383,
+          278,
+          284,
+          291,
+          266,
+          419,
+          268,
+          285,
+          270,
+          267,
+          296,
+          314,
+          298,
+          304,
+          258,
+          275,
+          315,
+          311
+        ],
+        "hit429": null
+      }
+    },
+    {
+      "matrixRow": "§10.5 (idempotency)",
+      "claim": "QBO accepts a caller-supplied idempotency key on write operations, and repeating it doesn't double-write",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-08-16T17:34:20.126Z",
+      "detail": "requestid parameter works as expected: repeated request returned the SAME entity (Id 156) rather than creating a duplicate.",
+      "request": {
+        "idempotentRequest": {
+          "AccountRef": {
+            "value": "1150040000"
+          },
+          "EntityRef": {
+            "value": "59",
+            "type": "Vendor"
+          },
+          "TxnDate": "2026-08-01",
+          "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+          "PaymentType": "Check",
+          "Line": [
+            {
+              "Amount": 1,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040002"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "first": {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "59",
+              "name": "VL Spike Odessa Water",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "156",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T10:26:36-07:00",
+              "LastUpdatedTime": "2026-08-16T10:26:36-07:00"
+            },
+            "CustomField": [],
+            "TxnDate": "2026-08-01",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040002",
+                    "name": "VL Spike Utilities"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "time": "2026-08-16T10:26:36.345-07:00"
+        },
+        "second": {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "59",
+              "name": "VL Spike Odessa Water",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "156",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T10:26:36-07:00",
+              "LastUpdatedTime": "2026-08-16T10:26:36-07:00"
+            },
+            "CustomField": [],
+            "TxnDate": "2026-08-01",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "PrivateNote": "VL-SPIKE-IDEMPOTENCY-TEST",
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040002",
+                    "name": "VL Spike Utilities"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "time": "2026-08-16T10:26:36.345-07:00"
+        }
+      }
+    }
+  ]
+}

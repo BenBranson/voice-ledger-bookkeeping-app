@@ -1,0 +1,53 @@
+{
+  "accounts": {
+    "VL Spike Checking": "1150040000",
+    "VL Spike Office Supplies": "1150040001",
+    "VL Spike Utilities": "1150040002"
+  },
+  "vendors": {
+    "VL Spike Permian Supply": "58",
+    "VL Spike Odessa Water": "59"
+  },
+  "purchases": {
+    "VL-SPIKE-ZERO": {
+      "id": "146",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-LARGE": {
+      "id": "147",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-SPARSEFIELDS": {
+      "id": "148",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-RECON-CLEARED": {
+      "id": "149",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-RECON-UNCLEARED": {
+      "id": "150",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-DUP-A": {
+      "id": "145",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-DUP-B": {
+      "id": "151",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEARMISS": {
+      "id": "152",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEARDATE-A": {
+      "id": "153",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEARDATE-B": {
+      "id": "154",
+      "syncToken": "0"
+    }
+  }
+}

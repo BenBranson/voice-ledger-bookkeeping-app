@@ -61,12 +61,21 @@ node_modules/
 dist/
 backend/data/
 backend/test/.tmp/
-backend/spike/fixtures/*.json
-!backend/spike/fixtures/.gitkeep
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
 *.tsbuildinfo
+
+# NOTE: backend/spike/fixtures/*.json used to be blanket-excluded as
+# "runtime state." Reconsidered 2026-08-16: these are the evidentiary
+# record every VERIFIED/DISPROVEN status in the capability matrix cites by
+# filename — treating them as disposable would mean the matrix's "not
+# hand-typed" claim (§12.5) has no artifact backing it. Committed
+# selectively instead: keep the small, clean, or otherwise meaningfully
+# distinct runs; delete superseded/near-duplicate large ones by hand before
+# committing rather than blanket-ignoring the whole directory. Checked for
+# secrets before every commit regardless (see the top of this file) — QBO
+# response bodies can be large but are not credentials.
 
 # Local scratch
 *.local
