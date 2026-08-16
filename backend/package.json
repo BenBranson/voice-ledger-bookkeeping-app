@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "spike": "tsx spike/run.ts",
-    "spike:seed": "tsx spike/seed.ts"
+    "spike:wave3": "tsx spike/runWave3.ts",
+    "spike:seed": "tsx spike/seed.ts",
+    "spike:regenerate-matrix": "tsx spike/regenerateMatrix.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

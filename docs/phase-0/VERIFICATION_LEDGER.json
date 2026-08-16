@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T17:37:28.295Z",
+  "generatedAt": "2026-08-16T20:48:11.257Z",
   "generatedBy": "backend/spike/regenerateMatrix.ts — see file header for the coverage-mapping methodology",
   "tableRowUpdates": [
     {
@@ -129,6 +129,131 @@
         "page": "11 / slice gate",
         "capability": "Void a Purchase (`?operation=void`)",
         "endpoint": "`Purchase`"
+      }
+    },
+    {
+      "tableRowId": "6.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:18.843Z",
+      "sourceMatrixRowKey": "6.2",
+      "detail": "Created Account Id 1150040008, Name \"VL Spike Wave3 Test 117567\", AccountType \"Expense\"."
+    },
+    {
+      "tableRowId": "6.3",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:19.970Z",
+      "sourceMatrixRowKey": "6.3",
+      "detail": "Sparse rename succeeded. Name changed: true. AccountType survived unchanged: true (Expense). SyncToken: 0 -> 1."
+    },
+    {
+      "tableRowId": "6.4",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T20:45:21.298Z",
+      "sourceMatrixRowKey": "6.4 (zero balance)",
+      "detail": "Zero-balance deactivate succeeded. Active: false. No adjusting entry expected or observed (no transactions ever posted to this account).",
+      "note": "zero-balance case verified; see also the non-zero-balance result from the same session, both folded into this row's detail card"
+    },
+    {
+      "tableRowId": "6.4",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T20:45:24.652Z",
+      "sourceMatrixRowKey": "6.4 (non-zero balance)",
+      "detail": "Deactivate SUCCEEDED for a non-zero-balance account ($42 posted). Active: false. Recent same-day JournalEntry count (checking for an auto-created adjusting entry): 2. ⚠ The $42 balance's fate needs manual verification in the sandbox UI — this test detected no error, which could mean the balance was silently stranded rather than adjusted. Do not treat \"no error\" as \"handled correctly.\"",
+      "note": "non-zero-balance case verified — deactivate succeeded, no error, no adjusting JournalEntry found, account's own CurrentBalance reports 0 afterward, but the original posted Purchase transactions remain unchanged and still reference the (renamed, inactive) account"
+    },
+    {
+      "tableRowId": "7.1",
+      "status": "DISPROVEN",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:27.070Z",
+      "sourceMatrixRowKey": "7.1",
+      "detail": "AccountRef changed as requested: true. DocNumber survived: true. PrivateNote survived: true. Line memo (Description) survived: false. ⚠ SPARSE UPDATE LOST DATA — at least one unrelated field was cleared. This is exactly the data-loss hazard §2 row 7.1 warned about. Do NOT build batch reclassification on this exact payload shape without further isolation of which field caused the loss."
+    },
+    {
+      "tableRowId": "7.2",
+      "status": "DISPROVEN",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:29.285Z",
+      "sourceMatrixRowKey": "7.2",
+      "detail": "Sending only 1 of 2 lines (with VendorRef resent) SUCCEEDED (HTTP 200). Line 2 (Id 2) survived in the response: false. ⚠ Line 2 was SILENTLY DROPPED — a subset Line array truncates the transaction. Confirms the constraint the hard way."
+    },
+    {
+      "tableRowId": "C6",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:31.743Z",
+      "sourceMatrixRowKey": "C6",
+      "detail": "10 responses for 10 requests. 9 succeeded, 1 faulted. Fault isolation is per-item as expected — a batch of 30 that fails on item 8 can be trusted to have succeeded on items 1-7 and 9-30."
+    },
+    {
+      "tableRowId": "C7",
+      "status": "VERIFIED",
+      "coverage": "partial",
+      "verifiedAt": "2026-08-16T20:45:33.894Z",
+      "sourceMatrixRowKey": "C7",
+      "detail": "Attachable metadata created (Id 1000000011) and linked to Purchase 204. NOT tested: actual binary file upload via the multipart /upload endpoint — this only confirms the entity-linkage half works.",
+      "note": "JSON-metadata Attachable creation + entity linkage verified; binary file upload via the multipart endpoint NOT tested"
+    },
+    {
+      "tableRowId": "8.4",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:35.266Z",
+      "sourceMatrixRowKey": "8.4",
+      "detail": "JournalEntry created (Id 205), 2 balanced lines, TotalAmt confirms balance: true."
+    },
+    {
+      "tableRowId": "8.6",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:36.611Z",
+      "sourceMatrixRowKey": "8.6",
+      "detail": "Transfer created (Id 206), $15 from 1150040000 to 1150040012."
+    },
+    {
+      "tableRowId": "11.x-bill",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:38.191Z",
+      "sourceMatrixRowKey": "11.x (Bill)",
+      "detail": "Bill void → anomalous200. ⚠ HTTP 200 but body contains a Fault: {\"Error\":[{\"Message\":\"An application error has occurred while processing your request\",\"Detail\":\"System Failure Error: java.lang.UnsupportedOperationException\",\"code\":\"10000\",\"element\":\"SystemFailureError\"}],\"type\":\"SystemFault\"}. A status-code-only success check would WRONGLY treat this as a successful void.",
+      "isNewRow": {
+        "id": "11.x-bill",
+        "page": "11 / slice gate (Decision 3)",
+        "capability": "Void a Bill (`?operation=void`)",
+        "endpoint": "`Bill`"
+      }
+    },
+    {
+      "tableRowId": "11.x-je",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:39.898Z",
+      "sourceMatrixRowKey": "11.x (JournalEntry)",
+      "detail": "JournalEntry void → anomalous200. ⚠ HTTP 200 but body has neither a Fault nor a JournalEntry object: {\"BatchItemResponse\":[],\"time\":\"2026-08-16T13:45:39.643-07:00\"}. Ambiguous — cannot confirm success or failure from this response alone; a resolution probe (re-read the entity) would be required to know what actually happened. Resolution probe: entity still exists in QBO: true.",
+      "isNewRow": {
+        "id": "11.x-je",
+        "page": "11 / slice gate (Decision 3)",
+        "capability": "Void a JournalEntry (`?operation=void`)",
+        "endpoint": "`JournalEntry`"
+      }
+    },
+    {
+      "tableRowId": "11.x-bp",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-16T20:45:42.102Z",
+      "sourceMatrixRowKey": "11.x (BillPayment)",
+      "detail": "BillPayment void → cleanReject. HTTP 400: {\"Fault\":{\"Error\":[{\"Message\":\"Unsupported Operation\",\"Detail\":\"Operation void is not supported.\",\"code\":\"500\",\"element\":\"Operation\"}],\"type\":\"ValidationFault\"},\"time\":\"2026-08-16T13:45:42.083-07:00\"}",
+      "isNewRow": {
+        "id": "11.x-bp",
+        "page": "11 / slice gate (Decision 3)",
+        "capability": "Void a BillPayment (`?operation=void`)",
+        "endpoint": "`BillPayment`"
       }
     }
   ],

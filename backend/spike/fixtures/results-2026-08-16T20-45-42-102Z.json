@@ -1,0 +1,1715 @@
+[
+  {
+    "matrixRow": "6.2",
+    "claim": "Account create succeeds",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:18.843Z",
+    "detail": "Created Account Id 1150040008, Name \"VL Spike Wave3 Test 117567\", AccountType \"Expense\".",
+    "request": {
+      "name": "VL Spike Wave3 Test 117567"
+    },
+    "response": {
+      "Account": {
+        "Name": "VL Spike Wave3 Test 117567",
+        "SubAccount": false,
+        "FullyQualifiedName": "VL Spike Wave3 Test 117567",
+        "Active": true,
+        "Classification": "Expense",
+        "AccountType": "Expense",
+        "AccountSubType": "Travel",
+        "CurrentBalance": 0,
+        "CurrentBalanceWithSubAccounts": 0,
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "1150040008",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-08-16T13:45:18-07:00"
+        }
+      },
+      "time": "2026-08-16T13:45:18.810-07:00"
+    }
+  },
+  {
+    "matrixRow": "6.3",
+    "claim": "Account rename (sparse update, Name field only)",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:19.970Z",
+    "detail": "Sparse rename succeeded. Name changed: true. AccountType survived unchanged: true (Expense). SyncToken: 0 -> 1.",
+    "request": {
+      "accountId": "1150040009",
+      "originalName": "VL Spike Rename Test 118844",
+      "newName": "VL Spike Rename Test 118844 RENAMED"
+    },
+    "response": {
+      "created": {
+        "Account": {
+          "Name": "VL Spike Rename Test 118844",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Rename Test 118844",
+          "Active": true,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040009",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:19-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:19.477-07:00"
+      },
+      "updated": {
+        "Account": {
+          "Name": "VL Spike Rename Test 118844 RENAMED",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Rename Test 118844 RENAMED",
+          "Active": true,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040009",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:19-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:20-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:19.938-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "6.4 (zero balance)",
+    "claim": "Account deactivate with zero balance",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:21.298Z",
+    "detail": "Zero-balance deactivate succeeded. Active: false. No adjusting entry expected or observed (no transactions ever posted to this account).",
+    "request": {
+      "accountId": "1150040010"
+    },
+    "response": {
+      "created": {
+        "Account": {
+          "Name": "VL Spike Deactivate Zero 119970",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Deactivate Zero 119970",
+          "Active": true,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040010",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:20-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:20.542-07:00"
+      },
+      "deactivated": {
+        "Account": {
+          "Name": "VL Spike Deactivate Zero 119970 (deleted)",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Deactivate Zero 119970 (deleted)",
+          "Active": false,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040010",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:20-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:21-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:21.185-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "6.4 (non-zero balance)",
+    "claim": "Account deactivate with a non-zero balance — does QBO create an adjusting entry, refuse, or strand the balance?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:24.652Z",
+    "detail": "Deactivate SUCCEEDED for a non-zero-balance account ($42 posted). Active: false. Recent same-day JournalEntry count (checking for an auto-created adjusting entry): 2. ⚠ The $42 balance's fate needs manual verification in the sandbox UI — this test detected no error, which could mean the balance was silently stranded rather than adjusted. Do not treat \"no error\" as \"handled correctly.\"",
+    "request": {
+      "accountId": "1150040011",
+      "purchaseAmount": 42
+    },
+    "response": {
+      "accountCreated": {
+        "Account": {
+          "Name": "VL Spike Deactivate NonZero 122118",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Deactivate NonZero 122118",
+          "Active": true,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040011",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:22-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:22.709-07:00"
+      },
+      "purchaseCreated": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply",
+            "type": "Vendor"
+          },
+          "TotalAmt": 42,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "192",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:23-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:23-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "W3DEACT13122725",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 42,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040011",
+                  "name": "VL Spike Deactivate NonZero 122118"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:22.956-07:00"
+      },
+      "deactivated": {
+        "Account": {
+          "Name": "VL Spike Deactivate NonZero 122118 (deleted)",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Deactivate NonZero 122118 (deleted)",
+          "Active": false,
+          "Classification": "Expense",
+          "AccountType": "Expense",
+          "AccountSubType": "Travel",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040011",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:23-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:24-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:24.241-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "7.1",
+    "claim": "Sparse update of Purchase line AccountRef — do PrivateNote, DocNumber, and Memo survive untouched?",
+    "status": "DISPROVEN",
+    "verifiedAt": "2026-08-16T20:45:27.070Z",
+    "detail": "AccountRef changed as requested: true. DocNumber survived: true. PrivateNote survived: true. Line memo (Description) survived: false. ⚠ SPARSE UPDATE LOST DATA — at least one unrelated field was cleared. This is exactly the data-loss hazard §2 row 7.1 warned about. Do NOT build batch reclassification on this exact payload shape without further isolation of which field caused the loss.",
+    "request": {
+      "purchaseId": "193",
+      "docNumber": "W3SPARSE13126215",
+      "privateNote": "VL-SPIKE-W3-SPARSE-TEST",
+      "memo": "This memo must survive a sparse AccountRef update untouched.",
+      "note": "PaymentType resent because omitting it entirely failed with fault 2020 on the first attempt this session"
+    },
+    "response": {
+      "created": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply",
+            "type": "Vendor"
+          },
+          "TotalAmt": 77,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "193",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:26-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:26-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "W3SPARSE13126215",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "VL-SPIKE-W3-SPARSE-TEST",
+          "Line": [
+            {
+              "Id": "1",
+              "Description": "This memo must survive a sparse AccountRef update untouched.",
+              "Amount": 77,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:26.389-07:00"
+      },
+      "sparseUpdate": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply",
+            "type": "Vendor"
+          },
+          "TotalAmt": 77,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "193",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:26-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:27-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "W3SPARSE13126215",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "PrivateNote": "VL-SPIKE-W3-SPARSE-TEST",
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 77,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040002",
+                  "name": "VL Spike Utilities"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:26.799-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "7.2",
+    "claim": "Sparse update of Bill line — does it require resending the full Line array, or does a single-line patch work?",
+    "status": "DISPROVEN",
+    "verifiedAt": "2026-08-16T20:45:29.285Z",
+    "detail": "Sending only 1 of 2 lines (with VendorRef resent) SUCCEEDED (HTTP 200). Line 2 (Id 2) survived in the response: false. ⚠ Line 2 was SILENTLY DROPPED — a subset Line array truncates the transaction. Confirms the constraint the hard way.",
+    "request": {
+      "billId": "194",
+      "line1Id": "1",
+      "line2Id": "2",
+      "note": "VendorRef resent because omitting it failed with fault 2020 on the first attempt this session"
+    },
+    "response": {
+      "created": {
+        "Bill": {
+          "DueDate": "2026-08-16",
+          "Balance": 30,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "194",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:28-07:00",
+            "LastModifiedByRef": {
+              "value": "9341456442848794"
+            },
+            "LastUpdatedTime": "2026-08-16T13:45:28-07:00"
+          },
+          "DocNumber": "W3BILL13128261",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 10,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "2",
+              "LineNum": 2,
+              "Amount": 20,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040002",
+                  "name": "VL Spike Utilities"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 30
+        },
+        "time": "2026-08-16T13:45:28.464-07:00"
+      },
+      "sparseUpdate": {
+        "Bill": {
+          "DueDate": "2026-08-16",
+          "Balance": 15,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "194",
+          "SyncToken": "1",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:28-07:00",
+            "LastModifiedByRef": {
+              "value": "9341456442848794"
+            },
+            "LastUpdatedTime": "2026-08-16T13:45:29-07:00"
+          },
+          "DocNumber": "W3BILL13128261",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 15,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 15
+        },
+        "time": "2026-08-16T13:45:28.972-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "C6",
+    "claim": "Batch request: 10-item batch with one deliberately invalid item — is fault isolation per-item?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:31.743Z",
+    "detail": "10 responses for 10 requests. 9 succeeded, 1 faulted. Fault isolation is per-item as expected — a batch of 30 that fails on item 8 can be trusted to have succeeded on items 1-7 and 9-30.",
+    "request": {
+      "itemCount": 10,
+      "deliberatelyInvalidIndex": 5
+    },
+    "response": {
+      "BatchItemResponse": [
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "195",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH013130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-0"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "196",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH113130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-1"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "197",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH213130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-2"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "198",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH313130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-3"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "199",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH413130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-4"
+        },
+        {
+          "Fault": {
+            "Error": [
+              {
+                "Message": "Required param missing, need to supply the required value for the API",
+                "Detail": "Required parameter PaymentType is missing in the request",
+                "code": "2020",
+                "element": "PaymentType"
+              }
+            ],
+            "type": "ValidationFault"
+          },
+          "bId": "item-5"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "200",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH613130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-6"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "201",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH713130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-7"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "202",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH813130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-8"
+        },
+        {
+          "Purchase": {
+            "AccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PaymentType": "Check",
+            "EntityRef": {
+              "value": "58",
+              "name": "VL Spike Permian Supply",
+              "type": "Vendor"
+            },
+            "TotalAmt": 1,
+            "PrintStatus": "NotSet",
+            "PurchaseEx": {
+              "any": [
+                {
+                  "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                  "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                  "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                  "value": {
+                    "Name": "TxnType",
+                    "Value": "3"
+                  },
+                  "nil": false,
+                  "globalScope": true,
+                  "typeSubstituted": false
+                }
+              ]
+            },
+            "domain": "QBO",
+            "sparse": false,
+            "Id": "203",
+            "SyncToken": "0",
+            "MetaData": {
+              "CreateTime": "2026-08-16T13:45:31-07:00",
+              "LastUpdatedTime": "2026-08-16T13:45:31-07:00"
+            },
+            "CustomField": [],
+            "DocNumber": "W3BATCH913130091",
+            "TxnDate": "2026-08-16",
+            "CurrencyRef": {
+              "value": "USD",
+              "name": "United States Dollar"
+            },
+            "Line": [
+              {
+                "Id": "1",
+                "Amount": 1,
+                "DetailType": "AccountBasedExpenseLineDetail",
+                "AccountBasedExpenseLineDetail": {
+                  "AccountRef": {
+                    "value": "1150040000",
+                    "name": "VL Spike Checking"
+                  },
+                  "BillableStatus": "NotBillable",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  }
+                },
+                "CustomExtensions": []
+              }
+            ]
+          },
+          "bId": "item-9"
+        }
+      ],
+      "time": "2026-08-16T13:45:31.585-07:00"
+    }
+  },
+  {
+    "matrixRow": "C7",
+    "claim": "Attachable upload against a Purchase",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:33.894Z",
+    "detail": "Attachable metadata created (Id 1000000011) and linked to Purchase 204. NOT tested: actual binary file upload via the multipart /upload endpoint — this only confirms the entity-linkage half works.",
+    "request": {
+      "purchaseId": "204",
+      "note": "Note field added because metadata-only (no Note, no content) failed with fault 6000 on the first attempt this session"
+    },
+    "response": {
+      "purchaseCreated": {
+        "Purchase": {
+          "AccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "PaymentType": "Check",
+          "EntityRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply",
+            "type": "Vendor"
+          },
+          "TotalAmt": 5,
+          "PrintStatus": "NotSet",
+          "PurchaseEx": {
+            "any": [
+              {
+                "name": "{http://schema.intuit.com/finance/v3}NameValue",
+                "declaredType": "com.intuit.schema.finance.v3.NameValue",
+                "scope": "javax.xml.bind.JAXBElement$GlobalScope",
+                "value": {
+                  "Name": "TxnType",
+                  "Value": "3"
+                },
+                "nil": false,
+                "globalScope": true,
+                "typeSubstituted": false
+              }
+            ]
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "204",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:33-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:33-07:00"
+          },
+          "CustomField": [],
+          "DocNumber": "W3ATTACH13132531",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "1",
+              "Amount": 5,
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040000",
+                  "name": "VL Spike Checking"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:32.718-07:00"
+      },
+      "attachableCreated": {
+        "Attachable": {
+          "Note": "VL spike capability test — Attachable linked to a Purchase via EntityRef",
+          "documentId": "4db84b0b-1a2f-4819-b173-2f57330b518c",
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1000000011",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:34-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:34-07:00"
+          },
+          "AttachableRef": [
+            {
+              "EntityRef": {
+                "value": "204",
+                "type": "Purchase"
+              },
+              "IncludeOnSend": false
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:33.846-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "8.4",
+    "claim": "JournalEntry create — balanced debit/credit",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:35.266Z",
+    "detail": "JournalEntry created (Id 205), 2 balanced lines, TotalAmt confirms balance: true.",
+    "request": {
+      "debit": "1150040001",
+      "credit": "1150040000",
+      "amount": 25
+    },
+    "response": {
+      "JournalEntry": {
+        "Adjustment": false,
+        "TotalAmt": 0,
+        "domain": "QBO",
+        "sparse": false,
+        "Id": "205",
+        "SyncToken": "0",
+        "MetaData": {
+          "CreateTime": "2026-08-16T13:45:35-07:00",
+          "LastUpdatedTime": "2026-08-16T13:45:35-07:00"
+        },
+        "TxnDate": "2026-08-16",
+        "CurrencyRef": {
+          "value": "USD",
+          "name": "United States Dollar"
+        },
+        "Line": [
+          {
+            "Id": "0",
+            "Amount": 25,
+            "DetailType": "JournalEntryLineDetail",
+            "JournalEntryLineDetail": {
+              "PostingType": "Debit",
+              "AccountRef": {
+                "value": "1150040001",
+                "name": "VL Spike Office Supplies"
+              }
+            },
+            "CustomExtensions": []
+          },
+          {
+            "Id": "1",
+            "Amount": 25,
+            "DetailType": "JournalEntryLineDetail",
+            "JournalEntryLineDetail": {
+              "PostingType": "Credit",
+              "AccountRef": {
+                "value": "1150040000",
+                "name": "VL Spike Checking"
+              }
+            },
+            "CustomExtensions": []
+          }
+        ],
+        "TxnTaxDetail": {}
+      },
+      "time": "2026-08-16T13:45:35.097-07:00"
+    }
+  },
+  {
+    "matrixRow": "8.6",
+    "claim": "Transfer create between two accounts",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:36.611Z",
+    "detail": "Transfer created (Id 206), $15 from 1150040000 to 1150040012.",
+    "request": {
+      "from": "1150040000",
+      "to": "1150040012",
+      "amount": 15
+    },
+    "response": {
+      "secondAccount": {
+        "Account": {
+          "Name": "VL Spike Transfer Target 135767",
+          "SubAccount": false,
+          "FullyQualifiedName": "VL Spike Transfer Target 135767",
+          "Active": true,
+          "Classification": "Asset",
+          "AccountType": "Bank",
+          "AccountSubType": "CashOnHand",
+          "CurrentBalance": 0,
+          "CurrentBalanceWithSubAccounts": 0,
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "1150040012",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:36-07:00"
+          }
+        },
+        "time": "2026-08-16T13:45:36.238-07:00"
+      },
+      "created": {
+        "Transfer": {
+          "FromAccountRef": {
+            "value": "1150040000",
+            "name": "VL Spike Checking"
+          },
+          "ToAccountRef": {
+            "value": "1150040012",
+            "name": "VL Spike Transfer Target 135767"
+          },
+          "Amount": 15,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "206",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:36-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:36-07:00"
+          },
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          }
+        },
+        "time": "2026-08-16T13:45:36.421-07:00"
+      }
+    }
+  },
+  {
+    "matrixRow": "11.x (Bill)",
+    "claim": "Does ?operation=void work on Bill?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:38.191Z",
+    "detail": "Bill void → anomalous200. ⚠ HTTP 200 but body contains a Fault: {\"Error\":[{\"Message\":\"An application error has occurred while processing your request\",\"Detail\":\"System Failure Error: java.lang.UnsupportedOperationException\",\"code\":\"10000\",\"element\":\"SystemFailureError\"}],\"type\":\"SystemFault\"}. A status-code-only success check would WRONGLY treat this as a successful void.",
+    "request": {
+      "billId": "207"
+    },
+    "response": {
+      "created": {
+        "Bill": {
+          "DueDate": "2026-08-16",
+          "Balance": 30,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "207",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:38-07:00",
+            "LastModifiedByRef": {
+              "value": "9341456442848794"
+            },
+            "LastUpdatedTime": "2026-08-16T13:45:38-07:00"
+          },
+          "DocNumber": "W3VOIDBILL13137484",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 30,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 30
+        },
+        "time": "2026-08-16T13:45:37.668-07:00"
+      },
+      "voidedStatus": 200,
+      "voided": {
+        "Fault": {
+          "Error": [
+            {
+              "Message": "An application error has occurred while processing your request",
+              "Detail": "System Failure Error: java.lang.UnsupportedOperationException",
+              "code": "10000",
+              "element": "SystemFailureError"
+            }
+          ],
+          "type": "SystemFault"
+        },
+        "time": "2026-08-16T13:45:38.170-07:00"
+      },
+      "classification": "anomalous200"
+    }
+  },
+  {
+    "matrixRow": "11.x (JournalEntry)",
+    "claim": "Does ?operation=void work on JournalEntry?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:39.898Z",
+    "detail": "JournalEntry void → anomalous200. ⚠ HTTP 200 but body has neither a Fault nor a JournalEntry object: {\"BatchItemResponse\":[],\"time\":\"2026-08-16T13:45:39.643-07:00\"}. Ambiguous — cannot confirm success or failure from this response alone; a resolution probe (re-read the entity) would be required to know what actually happened. Resolution probe: entity still exists in QBO: true.",
+    "request": {
+      "journalEntryId": "208"
+    },
+    "response": {
+      "created": {
+        "JournalEntry": {
+          "Adjustment": false,
+          "TotalAmt": 0,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "208",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:39-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:39-07:00"
+          },
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Id": "0",
+              "Amount": 8,
+              "DetailType": "JournalEntryLineDetail",
+              "JournalEntryLineDetail": {
+                "PostingType": "Debit",
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                }
+              },
+              "CustomExtensions": []
+            },
+            {
+              "Id": "1",
+              "Amount": 8,
+              "DetailType": "JournalEntryLineDetail",
+              "JournalEntryLineDetail": {
+                "PostingType": "Credit",
+                "AccountRef": {
+                  "value": "1150040000",
+                  "name": "VL Spike Checking"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "TxnTaxDetail": {}
+        },
+        "time": "2026-08-16T13:45:39.282-07:00"
+      },
+      "voidedStatus": 200,
+      "voided": {
+        "BatchItemResponse": [],
+        "time": "2026-08-16T13:45:39.643-07:00"
+      },
+      "classification": "anomalous200"
+    }
+  },
+  {
+    "matrixRow": "11.x (BillPayment)",
+    "claim": "Does ?operation=void work on BillPayment?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-16T20:45:42.102Z",
+    "detail": "BillPayment void → cleanReject. HTTP 400: {\"Fault\":{\"Error\":[{\"Message\":\"Unsupported Operation\",\"Detail\":\"Operation void is not supported.\",\"code\":\"500\",\"element\":\"Operation\"}],\"type\":\"ValidationFault\"},\"time\":\"2026-08-16T13:45:42.083-07:00\"}",
+    "request": {
+      "billId": "209",
+      "billPaymentId": "210"
+    },
+    "response": {
+      "billCreated": {
+        "Bill": {
+          "DueDate": "2026-08-16",
+          "Balance": 12,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "209",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:41-07:00",
+            "LastModifiedByRef": {
+              "value": "9341456442848794"
+            },
+            "LastUpdatedTime": "2026-08-16T13:45:41-07:00"
+          },
+          "DocNumber": "W3BPBILL13141062",
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "LinkedTxn": [],
+          "Line": [
+            {
+              "Id": "1",
+              "LineNum": 1,
+              "Amount": 12,
+              "LinkedTxn": [],
+              "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                  "value": "1150040001",
+                  "name": "VL Spike Office Supplies"
+                },
+                "BillableStatus": "NotBillable",
+                "TaxCodeRef": {
+                  "value": "NON"
+                }
+              },
+              "CustomExtensions": []
+            }
+          ],
+          "VendorRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply"
+          },
+          "APAccountRef": {
+            "value": "33",
+            "name": "Accounts Payable (A/P)"
+          },
+          "TotalAmt": 12
+        },
+        "time": "2026-08-16T13:45:41.251-07:00"
+      },
+      "paymentCreated": {
+        "BillPayment": {
+          "VendorRef": {
+            "value": "58",
+            "name": "VL Spike Permian Supply"
+          },
+          "PayType": "Check",
+          "CheckPayment": {
+            "BankAccountRef": {
+              "value": "1150040000",
+              "name": "VL Spike Checking"
+            },
+            "PrintStatus": "NeedToPrint"
+          },
+          "TotalAmt": 12,
+          "domain": "QBO",
+          "sparse": false,
+          "Id": "210",
+          "SyncToken": "0",
+          "MetaData": {
+            "CreateTime": "2026-08-16T13:45:42-07:00",
+            "LastUpdatedTime": "2026-08-16T13:45:42-07:00"
+          },
+          "TxnDate": "2026-08-16",
+          "CurrencyRef": {
+            "value": "USD",
+            "name": "United States Dollar"
+          },
+          "Line": [
+            {
+              "Amount": 12,
+              "LinkedTxn": [
+                {
+                  "TxnId": "209",
+                  "TxnType": "Bill"
+                }
+              ]
+            }
+          ]
+        },
+        "time": "2026-08-16T13:45:41.643-07:00"
+      },
+      "voidedStatus": 400,
+      "voided": {
+        "Fault": {
+          "Error": [
+            {
+              "Message": "Unsupported Operation",
+              "Detail": "Operation void is not supported.",
+              "code": "500",
+              "element": "Operation"
+            }
+          ],
+          "type": "ValidationFault"
+        },
+        "time": "2026-08-16T13:45:42.083-07:00"
+      },
+      "classification": "cleanReject"
+    }
+  }
+]

@@ -59,6 +59,69 @@ directory for the record.
 
 ---
 
+## ✅ Run 2026-08-16 (same day) — Wave 3 + Decision 3's void tests complete
+
+Approved via `SPIKE_RUN_REVIEW.md` Decision 3, run immediately after Wave 1.
+13/13 tests produced a definitive result — 11 `VERIFIED` (2 partial-coverage),
+2 `DISPROVEN`. Matrix regenerated again. Fixture:
+`backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json` (an earlier
+same-session attempt crashed on two response-shape assumptions and is not
+kept — its bugs are fully explained in the test files' own revision
+comments instead of preserved as a redundant large fixture).
+
+**The two DISPROVEN results are the most consequential findings of the
+entire spike so far.** Both concern sparse updates — the mechanism §7's
+entire batch-fix design rests on:
+
+- **Purchase (item 16):** an entity-level sparse update left `DocNumber`
+  and `PrivateNote` untouched, but the same update — resending the `Line`
+  array to change `AccountRef` — **silently cleared the line's memo**,
+  a field never mentioned in the request.
+- **Bill (item 17):** sending only 1 of 2 lines **silently dropped the
+  second line** — no error, HTTP 200, a $20 line item gone.
+
+Neither is "sparse update requires the full array or rejects the
+request" (safe). Both are "a partial update is *accepted* and *silently
+loses data*" (dangerous). `docs/phase-0/02_QBO_CAPABILITY_MATRIX.md`'s
+§10 preflight round-trip check — decode, encode, byte-compare against a
+fresh read — is the only thing in the current design that would have
+caught either before it was written. This moves that check from
+precautionary to load-bearing.
+
+**Decision 3's three additional void tests (Bill, JournalEntry,
+BillPayment) all came back DISPROVEN, but not uniformly** — this is the
+other major finding:
+
+| Entity | Response | Danger |
+|---|---|---|
+| `Purchase` | Clean HTTP 400, "Unsupported Operation" | None — an honest answer |
+| `BillPayment` | Clean HTTP 400, identical to Purchase | None |
+| `Bill` | **HTTP 200** with a `Fault`/`SystemFault` body (a leaked Java `UnsupportedOperationException`) | Status-code-only success checking would wrongly record this as a successful void |
+| `JournalEntry` | **HTTP 200** with an empty body — no `Fault`, no entity object | No error signal at all; only a resolution-probe re-read revealed the entity was untouched |
+
+**Consequence:** "check `response.status === 200`" is not a sufficient
+success test against this API, at least for void, and nothing tested this
+session rules out the same pattern on other write operations not yet
+tried. Branch B is confirmed as the correct path for all four entities
+tested — the response-shape inconsistency is arguably the bigger finding.
+
+**Two more required-field discoveries, same pattern as Wave 1's
+`PaymentType` finding:** `Bill` requires `VendorRef` on every write,
+sparse or not (fault 2020) — the same shape as `Purchase` requiring
+`PaymentType`. Both now in §2.1's `TXN` profile notes.
+
+**Account deactivation with a non-zero balance (item 15) succeeded without
+error** — no adjusting `JournalEntry`, and QBO renames the account
+(appending `" (deleted)"`) as an undocumented side effect. The account's
+own `CurrentBalance` reports `0` afterward, but the original transactions
+that posted to it are untouched — this was verified directly (not
+inferred from "no error") and is flagged as needing a real accounting
+read (Trial Balance) before Page 6's deactivate path can be called safe
+for non-zero-balance accounts. See the matrix's 6.3/6.4 card for the full
+account.
+
+---
+
 ## Wave 0 — prerequisites
 
 Nothing below runs without this. Not capability tests themselves — this is
@@ -111,22 +174,31 @@ checksum-clean.
 ## Wave 3 — the writes (moved ahead of the negatives; owner decision 2026-08)
 
 Exit condition: write machinery proven, including the `UNKNOWN`/timeout
-recovery path. Items 1–2 already ran above. **Every write test in this wave
-runs twice** — once normally, once with an injected timeout after send — per
-§12.7's failure-injection requirement.
+recovery path. Items 1–2 already ran above.
 
-| # | Test | Matrix row | Notes |
-|---|---|---|---|
-| 12 | `testAccountCreate` | 6.2 | |
-| 13 | `testAccountEditNameOnly` | 6.3 | |
-| 14 | `testAccountDeactivateZeroBalance` | 6.4 | |
-| 15 | `testAccountDeactivateNonZeroBalance` | 6.4 | ⚠ material — QBO's UI creates an adjusting entry on deactivate-with-balance; confirm whether the API does the same, refuses, or strands it. Needs `edge-cases.json`. Do not build the deactivate path until this returns. |
-| 16 | `testPurchaseSparseUpdateAccountRef` | 7.1 | Also assert unrelated fields (`PrivateNote`, `DocNumber`, `Memo`) survive — the constraint that matters (§2 row 7.1). **Gates the entire batch-fix machinery.** |
-| 17 | `testBillSparseUpdateLine` | 7.2 | Specifically test whether a line-level change requires resending the full `Line` array (§2 row 7.1, constraint 2). |
-| 18 | `testBatchPartialFailure` | C6 | 10-item batch, deliberately include one invalid item; confirm per-item fault isolation. |
-| 19 | `testAttachableUpload` | C7 | |
-| 20 | `testJournalEntryCreate` | 8.4 | |
-| 21 | `testTransferCreate` | 8.6 | |
+⚠ **Failure injection NOT performed this run.** The original plan called
+for every write test to run twice — once normally, once with an injected
+timeout after send, per §12.7. That did not happen: all 13 tests below ran
+only in the normal path. The `UNKNOWN`-state / resolution-probe machinery
+(§10.6) remains unexercised against a real timeout. Flagging this
+explicitly rather than letting the table below imply more coverage than
+actually happened.
+
+| # | Test | Matrix row | Notes | Result (2026-08-16) |
+|---|---|---|---|---|
+| 12 | `testAccountCreate` | 6.2 | | ✅ VERIFIED — created cleanly |
+| 13 | `testAccountEditNameOnly` | 6.3 | | ✅ VERIFIED — renamed cleanly, `AccountType` survived. Type mutability post-posting still untested. |
+| 14 | `testAccountDeactivateZeroBalance` | 6.4 | | ✅ VERIFIED — clean, no error |
+| 15 | `testAccountDeactivateNonZeroBalance` | 6.4 | ⚠ material — QBO's UI creates an adjusting entry on deactivate-with-balance; confirm whether the API does the same, refuses, or strands it. Needs `edge-cases.json`. Do not build the deactivate path until this returns. | ⚠ VERIFIED-PARTIAL — succeeds without error; no adjusting JE found; account renamed `" (deleted)"` (new finding); original transactions untouched; `CurrentBalance` reports 0 but a real Trial Balance read wasn't done. **Not yet safe to call this path verified-safe.** |
+| 16 | `testPurchaseSparseUpdateAccountRef` | 7.1 | Also assert unrelated fields (`PrivateNote`, `DocNumber`, `Memo`) survive — the constraint that matters (§2 row 7.1). **Gates the entire batch-fix machinery.** | ❌ **DISPROVEN** — `DocNumber`/`PrivateNote` survived, but the line's `Description` (memo) was silently cleared. Sparse ≠ sparse at the line level. |
+| 17 | `testBillSparseUpdateLine` | 7.2 | Specifically test whether a line-level change requires resending the full `Line` array (§2 row 7.1, constraint 2). | ❌ **DISPROVEN** — sending 1 of 2 lines silently dropped line 2. Not rejected — accepted and truncated. |
+| 18 | `testBatchPartialFailure` | C6 | 10-item batch, deliberately include one invalid item; confirm per-item fault isolation. | ✅ VERIFIED — 9 succeeded, 1 faulted, cleanly isolated |
+| 19 | `testAttachableUpload` | C7 | | ⚠ VERIFIED-PARTIAL — metadata + entity linkage works (needs a `Note` field); binary upload endpoint not tested |
+| 20 | `testJournalEntryCreate` | 8.4 | | ✅ VERIFIED |
+| 21 | `testTransferCreate` | 8.6 | | ✅ VERIFIED |
+| 21a | `testBillVoid` *(added, Decision 3)* | 11.x-bill | Does void work on `Bill`? | ❌ DISPROVEN, anomalously — HTTP 200 with a `SystemFault` body |
+| 21b | `testJournalEntryVoid` *(added, Decision 3)* | 11.x-je | Does void work on `JournalEntry`? | ❌ DISPROVEN, ambiguously — HTTP 200, empty body, no signal at all |
+| 21c | `testBillPaymentVoid` *(added, Decision 3)* | 11.x-bp | Does void work on `BillPayment`? | ❌ DISPROVEN, cleanly — same shape as Purchase |
 
 ---
 

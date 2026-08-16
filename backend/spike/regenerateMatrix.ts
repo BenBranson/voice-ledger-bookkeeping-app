@@ -105,6 +105,42 @@ const MAPPING: MappingEntry[] = [
       capability: "Void a Purchase (`?operation=void`)",
       endpoint: "`Purchase`"
     }
+  },
+
+  // --- Wave 3 (writes) + Decision 3's void-on-other-entities tests, 2026-08-16 ---
+  { matrixRowKey: "6.2", rows: [{ rowId: "6.2", coverage: "full" }] },
+  { matrixRowKey: "6.3", rows: [{ rowId: "6.3", coverage: "full" }] },
+  {
+    matrixRowKey: "6.4 (zero balance)",
+    rows: [{ rowId: "6.4", coverage: "partial", note: "zero-balance case verified; see also the non-zero-balance result from the same session, both folded into this row's detail card" }]
+  },
+  {
+    matrixRowKey: "6.4 (non-zero balance)",
+    rows: [{ rowId: "6.4", coverage: "partial", note: "non-zero-balance case verified — deactivate succeeded, no error, no adjusting JournalEntry found, account's own CurrentBalance reports 0 afterward, but the original posted Purchase transactions remain unchanged and still reference the (renamed, inactive) account" }]
+  },
+  { matrixRowKey: "7.1", rows: [{ rowId: "7.1", coverage: "full" }] },
+  { matrixRowKey: "7.2", rows: [{ rowId: "7.2", coverage: "full" }] },
+  { matrixRowKey: "C6", rows: [{ rowId: "C6", coverage: "full" }] },
+  {
+    matrixRowKey: "C7",
+    rows: [{ rowId: "C7", coverage: "partial", note: "JSON-metadata Attachable creation + entity linkage verified; binary file upload via the multipart endpoint NOT tested" }]
+  },
+  { matrixRowKey: "8.4", rows: [{ rowId: "8.4", coverage: "full" }] },
+  { matrixRowKey: "8.6", rows: [{ rowId: "8.6", coverage: "full" }] },
+  {
+    matrixRowKey: "11.x (Bill)",
+    rows: [],
+    isNewRow: { id: "11.x-bill", page: "11 / slice gate (Decision 3)", capability: "Void a Bill (`?operation=void`)", endpoint: "`Bill`" }
+  },
+  {
+    matrixRowKey: "11.x (JournalEntry)",
+    rows: [],
+    isNewRow: { id: "11.x-je", page: "11 / slice gate (Decision 3)", capability: "Void a JournalEntry (`?operation=void`)", endpoint: "`JournalEntry`" }
+  },
+  {
+    matrixRowKey: "11.x (BillPayment)",
+    rows: [],
+    isNewRow: { id: "11.x-bp", page: "11 / slice gate (Decision 3)", capability: "Void a BillPayment (`?operation=void`)", endpoint: "`BillPayment`" }
   }
 ];
 

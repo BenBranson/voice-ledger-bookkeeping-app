@@ -116,8 +116,8 @@ import, screenshot, or manual QBO action.
 | **C3** | Conn | Preferences read | `Preferences` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **C4** | Conn | Webhooks | Intuit webhooks | ASSUMED | n/a | assisted | n/a | DOC-MED |
 | **C5** | Conn | Change Data Capture | `/cdc` | VERIFIED* | n/a | automatic | n/a | VERIFIED-PARTIAL (2026-08-16) |
-| **C6** | Conn | Batch | `/batch` | ASSUMED | ASSUMED | n/a | staged_api | DOC-HIGH |
-| **C7** | Conn | Attachments | `Attachable` + `/upload` | ASSUMED | ASSUMED | assisted | staged_api | DOC-MED |
+| **C6** | Conn | Batch | `/batch` | VERIFIED | VERIFIED | n/a | staged_api | VERIFIED (2026-08-16) |
+| **C7** | Conn | Attachments | `Attachable` + `/upload` | n/a | VERIFIED* | assisted | staged_api | VERIFIED-PARTIAL (2026-08-16) |
 | **1.1** | 1 | Company identity + realmId | `CompanyInfo` | ASSUMED | n/a | automatic | n/a | DOC-HIGH |
 | **1.2** | 1 | Chart of accounts snapshot | `Account` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **1.3** | 1 | Baseline reports | `RPT` ×5 | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
@@ -144,12 +144,12 @@ import, screenshot, or manual QBO action.
 | **5.3** | 5 | Reconciliation history | — | **NONE** | **NONE** | import_required | manual_qbo | NEGATIVE-HIGH |
 | **5.4** | 5 | Finish / Undo reconciliation | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
 | **6.1** | 6 | Read accounts | `Account` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
-| **6.2** | 6 | Create account | `Account` | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
-| **6.3** | 6 | Rename / edit account | `Account` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
-| **6.4** | 6 | Deactivate account | `Account` `Active:false` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **6.2** | 6 | Create account | `Account` | n/a | VERIFIED | n/a | staged_api | VERIFIED (2026-08-16) |
+| **6.3** | 6 | Rename / edit account | `Account` | n/a | VERIFIED | automatic | staged_api | VERIFIED (2026-08-16) |
+| **6.4** | 6 | Deactivate account | `Account` `Active:false` | n/a | VERIFIED* | automatic | staged_api | VERIFIED-PARTIAL (2026-08-16) |
 | **6.5** | 6 | Merge accounts | — | **NONE** | **NONE** | automatic | **manual_qbo** | NEGATIVE-HIGH |
-| **7.1** | 7 | Reclassify expense account | `Purchase` sparse | n/a | ASSUMED | automatic | staged_api | DOC-MED |
-| **7.2** | 7 | Reclassify bill line | `Bill` sparse | n/a | ASSUMED | automatic | staged_api | DOC-MED |
+| **7.1** | 7 | Reclassify expense account | `Purchase` sparse | n/a | **DISPROVEN** | automatic | **staged_api ⚠ see card** | DISPROVEN (2026-08-16) |
+| **7.2** | 7 | Reclassify bill line | `Bill` sparse | n/a | **DISPROVEN** | automatic | **staged_api ⚠ see card** | DISPROVEN (2026-08-16) |
 | **7.3** | 7 | Change Class / Department | `ClassRef`/`DepartmentRef` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
 | **7.4** | 7 | Change vendor on a txn | `Purchase`/`Bill` | n/a | ASSUMED | automatic | staged_api | DOC-MED |
 | **7.5** | 7 | Batched updates | `/batch` (30 max) | n/a | ASSUMED | n/a | staged_api | DOC-HIGH |
@@ -158,9 +158,9 @@ import, screenshot, or manual QBO action.
 | **8.1** | 8 | Balance Sheet | `RPT BalanceSheet` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **8.2** | 8 | Trial Balance | `RPT TrialBalance` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **8.3** | 8 | General Ledger | `RPT GeneralLedger` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
-| **8.4** | 8 | Journal entries | `JournalEntry` | ASSUMED | ASSUMED | automatic | staged_api | DOC-HIGH |
+| **8.4** | 8 | Journal entries | `JournalEntry` | ASSUMED | VERIFIED | automatic | staged_api | VERIFIED (2026-08-16, write only) |
 | **8.5** | 8 | Undeposited funds aging | `Deposit`+`Payment` | ASSUMED | n/a | automatic | staged_api | DOC-MED |
-| **8.6** | 8 | Transfers | `Transfer` | ASSUMED | ASSUMED | automatic | staged_api | DOC-MED |
+| **8.6** | 8 | Transfers | `Transfer` | ASSUMED | VERIFIED | automatic | staged_api | VERIFIED (2026-08-16, write only) |
 | **9.1** | 9 | Tax codes / rates / agencies | `TaxCode`,`TaxRate`,`TaxAgency` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **9.2** | 9 | Create tax rate | `TaxService` | n/a | ASSUMED | n/a | staged_api | DOC-MED |
 | **9.3** | 9 | Taxable treatment per txn | `TXN` line fields | ASSUMED | ASSUMED | automatic | staged_api | DOC-MED |
@@ -172,18 +172,22 @@ import, screenshot, or manual QBO action.
 | **11.1** | 11 | Read close date at close | `Preferences` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **11.2** | 11 | Execute Books Close | — | **NONE** | **NONE** | unavailable | manual_qbo | NEGATIVE-HIGH |
 | **11.x** | 11 / slice gate | Void a Purchase | `Purchase` `?operation=void` | n/a | **DISPROVEN** | n/a | **manual_qbo** ⚠ | DISPROVEN (2026-08-16) |
+| **11.x-bill** | 11 / Decision 3 | Void a Bill | `Bill` `?operation=void` | n/a | **DISPROVEN ⚠ anomalous** | n/a | **manual_qbo** | DISPROVEN (2026-08-16) — see card, HTTP 200 with a Fault body |
+| **11.x-je** | 11 / Decision 3 | Void a JournalEntry | `JournalEntry` `?operation=void` | n/a | **DISPROVEN ⚠ anomalous** | n/a | **manual_qbo** | DISPROVEN (2026-08-16) — see card, HTTP 200 with an empty body |
+| **11.x-bp** | 11 / Decision 3 | Void a BillPayment | `BillPayment` `?operation=void` | n/a | **DISPROVEN** | n/a | **manual_qbo** | DISPROVEN (2026-08-16) — clean rejection, same as Purchase |
 | **12.1** | 12 | P&L | `RPT ProfitAndLoss` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **12.2** | 12 | Balance Sheet | `RPT BalanceSheet` | VERIFIED | n/a | automatic | n/a | VERIFIED (2026-08-16) |
 | **12.3** | 12 | Cash Flow | `RPT CashFlow` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **12.4** | 12 | Aging reports | `RPT AgedReceivables`/`AgedPayables` | ASSUMED | n/a | automatic | n/a | DOC-MED |
 | **12.5** | 12 | Report → QBO parity | — | n/a | n/a | assisted | n/a | INFERRED |
 
-Count: 66 rows (65 original + row 11.x, added 2026-08-16 to record the void
-finding below). **The original document's "Count: 61" was itself wrong —
-never mechanically counted; corrected here while regenerating, since a
-false count is the same category of problem this whole exercise exists to
-catch.** **VERIFIED: 14 (3 marked `VERIFIED*` — partial coverage, see their
-detail cards). DISPROVEN: 1. ASSUMED / NONE / other: 51.**
+Count: 69 rows (65 original + row 11.x + rows 11.x-bill/11.x-je/11.x-bp,
+added 2026-08-16 across two spike runs the same day — Wave 1 then Wave 3).
+**The original document's "Count: 61" was itself wrong — never
+mechanically counted; corrected while regenerating, since a false count is
+the same category of problem this whole exercise exists to catch.**
+**VERIFIED: 21 (5 marked `VERIFIED*` — partial coverage, see their detail
+cards). DISPROVEN: 6. ASSUMED / NONE / other: 42.**
 
 Generated from `docs/phase-0/VERIFICATION_LEDGER.json`, itself generated by
 `backend/spike/regenerateMatrix.ts` from `backend/spike/fixtures/results-*.json`
@@ -309,7 +313,33 @@ resolution probe — which is why batch size is capped well below 30 in practice
 counts as 1 or N against rate limits, and behavior when two items in one batch
 touch the same entity.
 
-**Det/Res:** n/a / staged_api. **Status: ASSUMED (DOC-HIGH).**
+**Det/Res:** n/a / staged_api. **Status: VERIFIED (2026-08-16).**
+
+**Verification evidence:** 10-item batch, one deliberately invalid (missing
+`PaymentType`, a required-field finding from the same session — see the
+`TXN` profile notes in §2.1). Result: **9 successes, 1 fault, cleanly
+isolated** — the design assumption holds exactly. `docs/phase-0/10_STAGING_APPROVAL_AUDIT.md`
+§10.7's per-item journaling is safe to build on this. **Not tested:**
+whether a batch counts as 1 or N against rate limits, and behavior when two
+items in one batch touch the same entity — both remain ASSUMED. Fixture:
+`backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json`.
+
+---
+
+### C7 — Attachments
+**Endpoint** `POST /v3/company/{realmId}/attachable` (metadata) +
+`POST /v3/company/{realmId}/upload` (multipart binary content, not tested)
+
+**Det/Res:** assisted / staged_api. **Status: VERIFIED-PARTIAL (2026-08-16).**
+
+**Verification evidence:** creating an `Attachable` with only
+`FileName`/`ContentType`/`AttachableRef` (no real content) failed —
+`"You must have at least a note string or file attachment"` (fault `6000`).
+Adding a `Note` field succeeded: the `Attachable` was created and linked
+to a `Purchase` via `EntityRef`. **This verifies the entity-linkage half
+only.** The actual binary-upload path (`/upload`, multipart form data —
+what a real receipt-photo attachment needs) was **not exercised** and
+remains ASSUMED. Fixture: `backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json`.
 
 ---
 
@@ -422,21 +452,44 @@ design should not deepen its dependence on it before the spike.
 ### 6.3 / 6.4 — Account edit and deactivate
 **Profile** `NAME`
 
-**6.3 rename/edit — ASSUMED, DOC-MED.** Sparse update on `Account` is expected to
-work for `Name`, `AcctNum`, `Description`. The uncertainty: whether
-`AccountType` / `AccountSubType` are mutable after creation and after the account
-has transactions. Assume **not** mutable once posted to.
+**6.3 rename/edit — VERIFIED (2026-08-16).** Sparse update on `Account`
+confirmed for `Name`: renamed cleanly, `AccountType` survived unchanged as
+a side effect of the same test. **Still ASSUMED:** whether `AccountType` /
+`AccountSubType` are mutable **after the account has transactions** —
+this test used a fresh, empty account. Do not extend this VERIFIED status
+to "type is mutable post-posting" without a separate test.
 
-**6.4 deactivate — ASSUMED, DOC-MED.** `Active: false` via sparse update.
-**Deactivation is not deletion** — QBO retains the account and its history, and
-the UI presents this differently from a merge. The important unknown is behavior
-when the account has a non-zero balance; QBO's UI creates an adjusting entry in
-that case, and whether the API does the same, refuses, or silently strands the
-balance is a material difference. **Do not build the deactivate path until this
-is verified.**
+**6.4 deactivate — VERIFIED-PARTIAL (2026-08-16).** `Active: false` via
+sparse update, both cases tested directly:
 
-**Spike must record:** deactivate with zero balance, with non-zero balance, and
-with child accounts; capture whether any adjusting entry is auto-created.
+- **Zero balance:** deactivates cleanly, no error, nothing else to check.
+- **Non-zero balance ($42 posted):** **also deactivates cleanly, no error
+  returned.** But — verified by directly querying the account afterward,
+  not by trusting the absence of an error:
+  - **No adjusting `JournalEntry` was auto-created.**
+  - **QBO renames the account**, appending `" (deleted)"` to its `Name` —
+    an undocumented side effect discovered here. Any rule or UI matching
+    accounts by name must account for this on deactivated accounts.
+  - **The original `Purchase` transactions that posted the $42 remain
+    completely unchanged** — same `Id`, same `TotalAmt`, still referencing
+    the now-inactive account. Nothing about the transaction history is
+    touched.
+  - **The account's own `CurrentBalance` field reports `0`** after
+    deactivation. **Do not read this as "the balance was reclassified or
+    adjusted."** No mechanism that would explain a real adjustment was
+    found (no JE, no changed transaction) — this may simply be how QBO
+    reports `CurrentBalance` for any inactive account, verified or not.
+    **Unresolved:** what a Trial Balance / Balance Sheet shows for this
+    account post-deactivation was not checked. Do that before treating
+    Page 6's deactivate path as safe for non-zero-balance accounts.
+
+**Net effect:** the balance is not "stranded" in the sense of an error or a
+visible orphaned amount, but it is **not visibly reconciled either** — the
+$42 simply stops showing on the (renamed, inactive) account's balance while
+the transactions that created it are untouched. This needs a real
+accounting read (Trial Balance, not just `CurrentBalance`) before Page 6
+can claim this path is safe. Fixture:
+`backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json`.
 
 ---
 
@@ -458,39 +511,62 @@ reconciliation history is API-invisible per 5.3).
 
 ---
 
-### 7.1 / 7.2 — Reclassification via sparse update
+### 7.1 / 7.2 — Reclassification via sparse update ⚠ DISPROVEN
 **Profile** `TXN`
 
-**The single highest-risk write path in the app.** Constraints from the spec,
-each of which is a spike item:
+**The single highest-risk write path in the app — and the spike confirmed
+the risk is real, not hypothetical.** Constraints from the spec, each
+tested directly 2026-08-16:
 
-1. **Sparse updates are not universal.** Per-entity and per-field. A sparse update
-   that silently isn't sparse becomes a full update that **clears every field you
-   didn't send.**
-2. **Line-level updates may require sending the full `Line` array.** Changing one
-   line's `AccountRef` may require resubmitting all lines — meaning a "sparse"
-   update at the entity level is a full replacement at the line level. If so, any
-   line field we do not model is data loss.
-3. **Linked transactions complicate edits.** A `Purchase` linked to a
-   `BillPayment`, or a `Bill` with applied `VendorCredit`, may reject the update
-   or cascade.
-4. **`Id` + `SyncToken` required; stale tokens fail** with `5010`.
-5. **Closed periods reject writes** (2.3).
-6. **Payroll-originated entries** generally require Payroll APIs or manual
-   correction (7.7) and must be excluded from batch reclassification by rule, not
-   by hope.
+1. **"Sparse updates are not universal" — CONFIRMED, and more precisely
+   than assumed.** Sparse *is* genuinely sparse at the **entity level**:
+   updating a `Purchase`'s line `AccountRef` left `DocNumber` and
+   `PrivateNote` untouched. But sparse is **NOT sparse at the line
+   level**: the same update, resending the `Line` array without the
+   line's `Description` (memo), **silently cleared the memo** even
+   though nothing about it was mentioned as changing. Entity-level fields
+   you omit survive; line-level fields you omit inside a `Line` array you
+   DO send do not.
+2. **"Line-level updates may require the full `Line` array" — CONFIRMED,
+   and worse than "may."** Sending a `Bill` update with only 1 of its 2
+   lines **silently dropped the second line entirely** — no error, no
+   warning, HTTP 200. A $20 line item vanished from the transaction.
+   This is not "sparse update requires the full array or it's rejected"
+   (which would be safe) — it's "a partial array is *accepted* and
+   *truncates* the transaction" (which is actively dangerous).
+3. **Linked transactions** — not tested this round; remains ASSUMED.
+4. **`Id` + `SyncToken` required** — implicitly confirmed (every write
+   this session used this pattern successfully).
+5. **Closed periods** — not tested this round; remains ASSUMED (see §2.3).
+6. **Payroll-originated entries** — not applicable to this sandbox; remains
+   ASSUMED.
 
-**Design consequence:** §10's preflight does not merely compare `SyncToken`. It
-re-reads the full entity, verifies our stored representation round-trips
-losslessly (`decode → encode → byte-compare against the fresh read`), and refuses
-the write if it does not. That check is what protects against unknown-field data
-loss under constraint 2. It is cheap and it should be non-optional.
+**Two required-field findings discovered getting these tests to run at
+all**, now in §2.1's `TXN` profile notes: `Purchase` requires
+`PaymentType` on **every** write, sparse or not — omitting it (even when
+unchanged from the existing value) fails with fault `2020`. `Bill`
+requires `VendorRef` the same way. Sparse does not mean "unset fields
+keep their existing value" for these two fields; it means "omitted
+fields are cleared or rejected, entity by entity, field by field" —
+exactly as constraint 1 originally warned, now with two concrete
+examples.
 
-**Before any batch runs**, the preview shows: transactions affected · total
-dollars · old and new category · tax-period consequences · before/after report
-impact · reversal plan (spec, Page 7).
+**Design consequence — this is now load-bearing, not precautionary.**
+§10's preflight round-trip check (`decode → encode → byte-compare
+against a fresh read`) is not an abundance of caution. **It is the only
+thing in the current design that would have caught either data-loss
+event above before it was written.** Do not treat that check as optional
+or as something to simplify later — this session found two independent
+ways sparse updates silently destroy data on the two entities tested
+first.
 
-**Status: ASSUMED (DOC-MED).** Verify per entity, per field, in that order.
+**Status: DISPROVEN (2026-08-16) — "safe to build batch reclassification
+on a straightforward sparse-update payload" is false.** The capability
+(sparse update exists, writes succeed) is real; the *safety assumption*
+behind it is not. §7's batch-fix design must always resend: (a) every
+required field, regardless of whether it's changing, and (b) the complete
+`Line` array, every line, every field on every line — never a computed
+diff. Fixture: `backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json`.
 
 ---
 
@@ -618,11 +694,89 @@ with that is the owner's call, not something this regeneration decides.**
 **Det/Res:** n/a / **manual_qbo** (was: staged_api, ASSUMED). **Status:
 DISPROVEN (2026-08-16).**
 
-**Not yet tested, and worth doing before fully closing this row:** whether
-`?operation=void` is unsupported for `Purchase` specifically, or for every
-`TXN`-profile entity. If `Bill` or `JournalEntry` support void where
-`Purchase` doesn't, that changes which entity types Branch B applies to.
-Fixture: `backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`.
+**Tested 2026-08-16, per owner Decision 3** (`docs/phase-0/SPIKE_QUEUE.md`):
+whether void is a `Purchase`-specific gap or a `TXN`-profile-wide one.
+Answer: **it varies by entity, and two of the three responses are worse
+than Purchase's clean rejection.** See the three cards below.
+Fixture: `backend/spike/fixtures/results-2026-08-16T17-34-45-969Z.json`
+(Purchase), `backend/spike/fixtures/results-2026-08-16T20-45-42-102Z.json`
+(Bill, JournalEntry, BillPayment).
+
+---
+
+### 11.x-bill — Void a Bill ⚠ DISPROVEN, anomalously
+**Endpoint** `POST /v3/company/{realmId}/bill?operation=void`
+
+**Status: DISPROVEN (2026-08-16).** But not the way `Purchase` was.
+`Purchase`'s void returned a clean HTTP 400 with a plain "Unsupported
+Operation" fault. `Bill`'s void returns **HTTP 200** with this body:
+```json
+{
+  "Fault": {
+    "Error": [{
+      "Message": "An application error has occurred while processing your request",
+      "Detail": "System Failure Error: java.lang.UnsupportedOperationException",
+      "code": "10000",
+      "element": "SystemFailureError"
+    }],
+    "type": "SystemFault"
+  }
+}
+```
+A Java-level `UnsupportedOperationException` is leaking through as a
+`SystemFault`, **on a 200 status code.** This is the single most
+important finding from this test group: **`response.ok` / `status === 200`
+is not sufficient to confirm a QBO write succeeded.** Any code — ours or
+anyone else's — that checks status alone would record this as a
+successful void. It is not one. **Consequence for §10's preflight and
+resolution-probe design: the "did this write land" check must inspect the
+response body for a `Fault` key regardless of HTTP status, not treat 200
+as sufficient on its own.** This generalizes beyond void — nothing tested
+this session rules out the same pattern occurring on other write
+operations we haven't tried yet.
+
+---
+
+### 11.x-je — Void a JournalEntry ⚠ DISPROVEN, ambiguously
+**Endpoint** `POST /v3/company/{realmId}/journalentry?operation=void`
+
+**Status: DISPROVEN (2026-08-16).** A third distinct shape. HTTP 200,
+body:
+```json
+{ "BatchItemResponse": [], "time": "..." }
+```
+**No `Fault`. No `JournalEntry` object. Nothing.** Resolution probe run
+immediately after (re-reading the entity): **it still exists, unvoided.**
+So the write silently did nothing — QBO accepted the request, returned a
+success-shaped envelope, and changed nothing. This is arguably the
+**most dangerous of the three shapes**: `Bill`'s `SystemFault` is at least
+detectable by scanning for a `Fault` key; this response has no error
+signal of any kind. The only way to know it didn't work was to
+independently re-read the entity — exactly the resolution-probe pattern
+`docs/phase-0/10_STAGING_APPROVAL_AUDIT.md` §10.6 already specifies for
+the `UNKNOWN` timeout case, now shown necessary for a different reason: a
+200 response that is quietly a no-op.
+
+---
+
+### 11.x-bp — Void a BillPayment ✅ clean rejection, consistent with Purchase
+**Endpoint** `POST /v3/company/{realmId}/billpayment?operation=void`
+
+**Status: DISPROVEN (2026-08-16), cleanly.** HTTP 400, identical shape to
+`Purchase`: `"Message": "Unsupported Operation", "Detail": "Operation
+void is not supported.", "code": "500"`. The one entity of the four
+tested (`Purchase`, `Bill`, `JournalEntry`, `BillPayment`) that behaves
+the way you'd want an "unsupported" answer to behave.
+
+---
+
+**Summed up across all four:** void is unsupported everywhere tested, but
+QBO's way of saying so is **not consistent** — clean rejection
+(`Purchase`, `BillPayment`), a leaked system exception disguised as
+success (`Bill`), and a silent no-op disguised as success
+(`JournalEntry`). Branch B is confirmed as the only safe path for all
+four entities, and the response-classification problem this surfaced is
+arguably more consequential than the void question itself.
 
 ---
 
