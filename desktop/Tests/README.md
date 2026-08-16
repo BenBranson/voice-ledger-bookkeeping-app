@@ -4,38 +4,48 @@ These targets are written against **Swift Testing** (`import Testing`,
 `@Test`, `#expect`), which is Apple's current recommended framework and what
 `docs/phase-0/12_TEST_STRATEGY.md` §12.5 illustrates.
 
-## A known gap, stated plainly
+## Verified 2026-08-16 — 12/12 passing
 
-This repo was scaffolded in an environment with only the Command Line Tools
-installed (`xcode-select -p` → `/Library/Developer/CommandLineTools`), not
-full Xcode.app. In that environment, **neither `Testing` nor `XCTest`
+```
+swift test
+...
+Test run with 12 tests in 2 suites passed after 0.071 seconds.
+```
+
+4 in the `Money` suite, 4 in `Contrast — WCAG AA`, 4 ungrouped (module
+boundary lint, secret scan, `BackendConfiguration` env-var validation). This
+was the first actual execution of these files — see below for why it took
+until now, and why "looked right on review" was never treated as equivalent
+to a passing test in the meantime.
+
+## History: why this took a second environment
+
+This repo was originally scaffolded in an environment with only the Command
+Line Tools installed (`xcode-select -p` → `/Library/Developer/CommandLineTools`),
+not full Xcode.app. In that environment, **neither `Testing` nor `XCTest`
 resolve** — both ship as part of Xcode's bundled toolchain, not the
 standalone Command Line Tools.
 
-I tried pulling `swift-testing` in as an explicit SPM package dependency to
-work around this. It resolves and compiles, but linking fails:
+An attempt to pull `swift-testing` in as an explicit SPM package dependency
+to work around this resolved and compiled, but failed at link time:
 
 ```
 ld: library '_TestingInterop' not found
 ```
 
 `_TestingInterop` is itself a binary shipped inside Xcode's toolchain, not
-something buildable from `swift-testing`'s own sources — so this workaround
-doesn't actually close the gap, it just moves where it shows up. I reverted
-it rather than leave an unpinned `branch: "main"` dependency with a large
-build footprint (swift-syntax, swift-argument-parser) sitting in the repo for
-a fix that doesn't work.
+something buildable from `swift-testing`'s own sources — so that workaround
+didn't actually close the gap, it just moved where it showed up. It was
+reverted rather than left as an unpinned `branch: "main"` dependency with a
+large build footprint (swift-syntax, swift-argument-parser) sitting in the
+repo for a fix that didn't work.
 
-**What this means concretely:**
-- `swift build` — verified clean in this environment. All production code
-  (`Core`, `IntegrationsQuickBooks`, the stub targets, `voiceledger-devtool`)
-  compiles.
-- `swift test` — **not verified here.** The test files were written
-  carefully and reviewed by hand, but I cannot claim they compile or pass,
-  because I have no way to compile them in this environment.
+In that environment, only `swift build` could be verified (all production
+code compiled clean); `swift test` was explicitly flagged as unverified
+rather than assumed to pass. Once Xcode was installed on the actual dev
+machine (confirmed via `xcode-select -p` → `/Applications/Xcode.app/Contents/Developer`),
+`swift test` ran immediately with no changes needed to any test file — the
+code was correct the whole time, it just hadn't been checked.
 
-**Run `swift test` yourself once Xcode is installed** (needed anyway for
-SwiftUI work later in the Build Order) and treat the first run as the actual
-verification of everything under `Tests/`. If something doesn't compile,
-that's real signal — fix it then, don't assume it was fine because it "looked
-right."
+**Going forward:** run `swift test` after any change under `Sources/` or
+`Tests/`. A failure here is real signal.

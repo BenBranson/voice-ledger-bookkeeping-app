@@ -64,12 +64,9 @@ let package = Package(
             path: "Sources/VoiceLedgerDevTool"
         ),
 
-        // NOTE — see Tests/README.md: `swift test` requires full Xcode
-        // (Testing.framework isn't part of the standalone Command Line
-        // Tools). These targets are written against Swift Testing and are
-        // verified to build clean; running them was not verifiable in the
-        // environment this repo was scaffolded in. Run `swift test` yourself
-        // once Xcode is installed.
+        // `swift test` requires full Xcode (Testing.framework isn't part of
+        // the standalone Command Line Tools) — see Tests/README.md for that
+        // history. Verified 2026-08-16 with Xcode installed: 12/12 passing.
         .testTarget(
             name: "CoreTests",
             dependencies: ["Core"],

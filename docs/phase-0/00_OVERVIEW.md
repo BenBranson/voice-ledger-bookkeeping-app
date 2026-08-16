@@ -132,10 +132,12 @@ went wrong"):
 | No `Authorization` header | 401 | ✅ 401 |
 | Wrong session token | 401 | ✅ 401 (observed during diagnosis — validation correctly rejected it) |
 
-**Not yet verified at this gate:** `swift test` has still not been run. Xcode
-is now installed (26.6), so it is unblocked — but the test files remain
-unexecuted, and `docs/phase-0/12_TEST_STRATEGY.md`'s suites are therefore
-still claims rather than results.
+**`swift test` — verified 2026-08-16, same day.** 12/12 passing on the first
+execution, no changes needed to any test file (see `desktop/Tests/README.md`
+for the full history of why it took a second environment). The desktop
+package's tests are no longer claims — they're results. The 1.2 gate is now
+fully closed: backend live-verified against sandbox, desktop tests
+live-verified against Xcode.
 
 ---
 
