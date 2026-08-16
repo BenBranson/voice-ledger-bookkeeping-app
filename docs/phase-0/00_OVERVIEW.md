@@ -95,7 +95,7 @@ Ordered to match the spec's Build Order, with the gate conditions made explicit.
 |---|---|---|
 | 1.0 | Repo skeleton, module boundaries, lint rule enforcing `/core` ⊅ `/integrations` | Boundary violation fails CI |
 | 1.1 | Capability spike harness + sandbox seeding | ≥ 80% of matrix rows flipped to VERIFIED or DISPROVEN |
-| 1.2 | Thin backend: OAuth, session, operation catalog (read ops only) | Health check green from desktop; no secret in the client bundle |
+| 1.2 | Thin backend: OAuth, session, operation catalog (read ops only) | Health check green from desktop; no secret in the client bundle — **✅ MET 2026-08-16**, see below |
 | 1.3 | Both Connection Pages | A revoked token turns the row red within one health check |
 | 1.4 | Read-only sync: accounts, vendors, purchases, bills + CDC + pagination | Full sync of seeded sandbox reproducible byte-for-byte |
 | 1.4a | **Webhooks: deferred by owner decision (2026-08).** Ship CDC-polling-only first; add the webhook receiver later as a latency optimization once polling sync is working. This was already the architecture's correctness path (§2, row C4) — polling alone must produce correct results — so deferring the receiver changes nothing structural, only latency. | Not a gate; revisit after 1.4 is stable |
@@ -105,6 +105,37 @@ Ordered to match the spec's Build Order, with the gate conditions made explicit.
 Steps 1.1 and 1.2 can run in parallel. 1.5 must not start before the
 normalization contract in §4 is reviewed, because everything downstream is
 shaped by it.
+
+### Step 1.2 gate — verified 2026-08-16
+
+Recorded here because "it worked" is not evidence; this is what was actually
+observed.
+
+| Check | Result |
+|---|---|
+| Backend starts against real sandbox credentials | ✅ `QBO environment: sandbox` |
+| OAuth authorization-code exchange | ✅ `oauth_exchange` / `outcome: success` |
+| Session issued, bound to one realm | ✅ realm `9341456442848752` |
+| `voiceledger-devtool health` from the desktop | ✅ **`status: green`**, exit code `0` |
+| Health check is a LIVE call, not cached | ✅ two `readCompanyInfo` calls, HTTP 200, 1017ms / 1333ms, minorversion 75 |
+| No secret in the client bundle | ✅ `check-no-secrets.sh` passes; desktop holds only a backend URL + session token |
+| No secret in backend logs | ✅ log contains event names, realm ids, status codes, latencies — no tokens, no payloads |
+
+Negative controls, run with a live session to confirm green can actually be
+withheld (`CLAUDE.md` rule 5 — green must mean verified, not merely "nothing
+went wrong"):
+
+| Control | Expected | Observed |
+|---|---|---|
+| Session for realm A requests realm B (§7.4) | 403 | ✅ 403 |
+| Write op absent from the catalog (`voidPurchase`, §3.4) | **404**, not 403 — unlisted ops are *unreachable*, not merely forbidden | ✅ 404 |
+| No `Authorization` header | 401 | ✅ 401 |
+| Wrong session token | 401 | ✅ 401 (observed during diagnosis — validation correctly rejected it) |
+
+**Not yet verified at this gate:** `swift test` has still not been run. Xcode
+is now installed (26.6), so it is unblocked — but the test files remain
+unexecuted, and `docs/phase-0/12_TEST_STRATEGY.md`'s suites are therefore
+still claims rather than results.
 
 ---
 
