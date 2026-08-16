@@ -1,5 +1,34 @@
 import SwiftUI
 
+/// Status hues — `private` to this file, on purpose.
+///
+/// docs/design/DESIGN_SYSTEM.md, Decision 1: the original environment badge
+/// borrowed `VLColor.coral` and `VLColor.amber` directly, which meant
+/// production (a *permanent* state once live) sat on screen wearing the same
+/// hue reserved for urgent findings — exactly the kind of collision that
+/// trains a user to stop seeing the color that's supposed to mean something.
+///
+/// The fix isn't a comment asking people not to do that again. These three
+/// hues are declared `private` here, so no other file in this module —
+/// including `VLEnvironment.swift` — can spell the literal green, amber, or
+/// coral value. The only way to obtain a status color from outside this file
+/// is `VLStatus.color`, which always arrives bundled with an icon and a
+/// label. A future badge that wants "urgent-looking" has to reach for
+/// `VLStatus.urgent` itself — and using a finding-severity case to color an
+/// environment marker is obviously wrong the moment it's spelled out, which
+/// is the whole point.
+private enum StatusHue {
+    static let verified = Color(hex: 0x3ECF8E)
+    static let reviewNeeded = Color(hex: 0xF4B860)
+    static let urgent = Color(hex: 0xF06472)
+    /// A dedicated status blue — NOT `VLColor.cyan`/`cyanBright` (accent
+    /// vocabulary) and NOT `VLColor.blue` (fails 4.5:1 as text on
+    /// surfaceCard, see VLColor.swift). Measures 5.92:1 on surfaceCard.
+    /// Visually distinguishable from both accent hues so "informational"
+    /// doesn't silently read as "selected" or "active."
+    static let informational = Color(hex: 0x4FA3E8)
+}
+
 /// The accounting status vocabulary — the ONLY vocabulary permitted to
 /// communicate what a check, finding, or page state means.
 ///
@@ -48,10 +77,10 @@ public enum VLStatus: String, Sendable, CaseIterable {
     /// The color for this status. Never used without `iconName` and `label`.
     public var color: Color {
         switch self {
-        case .verified: return VLColor.verifiedGreen
-        case .reviewNeeded: return VLColor.amber
-        case .urgent: return VLColor.coral
-        case .informational: return VLColor.blue
+        case .verified: return StatusHue.verified
+        case .reviewNeeded: return StatusHue.reviewNeeded
+        case .urgent: return StatusHue.urgent
+        case .informational: return StatusHue.informational
         case .awaitingClient: return VLColor.violet
         case .notChecked: return VLColor.textMuted
         case .actionRequired: return VLColor.textMuted
@@ -137,47 +166,15 @@ public enum VLCoverageGap: Sendable {
     }
 }
 
-/// Environment marker. CLAUDE.md rule 7 and the spec both require production
-/// and sandbox be "visually unmistakable" from each other — differentiated by
-/// FORM (a striped treatment), not hue alone, so it survives both color-blind
-/// viewing and a glance from across two monitors.
-public enum VLEnvironmentTone: Sendable {
-    case production
-    case sandbox
-
-    public var label: String {
-        switch self {
-        case .production: return "PRODUCTION"
-        case .sandbox: return "SANDBOX"
-        }
-    }
-
-    public var accent: Color {
-        switch self {
-        case .production: return VLColor.coral
-        case .sandbox: return VLColor.amber
-        }
-    }
-
-    /// Sandbox uses a diagonal stripe fill; production uses a solid fill.
-    /// The difference in form is what makes these unmistakable — see
-    /// docs/design/DESIGN_SYSTEM.md §"Amber collision" for why sandbox amber
-    /// does not read as the amber "review needed" status.
-    public var usesStripedFill: Bool {
-        self == .sandbox
-    }
-
-    public var iconName: String {
-        switch self {
-        case .production: return "exclamationmark.shield.fill"
-        case .sandbox: return "hammer.fill"
-        }
-    }
-}
-
 /// Whether writes are permitted for the active client. Read-Only is the
 /// default for every new connection (CLAUDE.md rule 4) and renders as a calm
 /// shield — it is the safe state, not a warning.
+///
+/// This intentionally reuses `StatusHue.reviewNeeded`'s amber for
+/// `.writeEnabled` — that reuse is visible and deliberate (both files are
+/// literally the same file), unlike the environment-badge collision Decision
+/// 1 fixed. Write-Enabled is not an error state and must not use coral,
+/// which is reserved for actual risk.
 public enum VLAccessMode: Sendable {
     case readOnly
     case writeEnabled
@@ -196,12 +193,10 @@ public enum VLAccessMode: Sendable {
         }
     }
 
-    /// Write-Enabled is serious but is NOT an error state — it must not use
-    /// coral, which would train the user to ignore real alerts.
     public var accent: Color {
         switch self {
         case .readOnly: return VLColor.teal
-        case .writeEnabled: return VLColor.amber
+        case .writeEnabled: return StatusHue.reviewNeeded
         }
     }
 }

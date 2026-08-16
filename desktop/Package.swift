@@ -82,6 +82,16 @@ let package = Package(
             name: "ArchitectureTests",
             dependencies: ["Core", "IntegrationsQuickBooks"],
             path: "Tests/ArchitectureTests"
+        ),
+
+        // Contrast audit (docs/design/DESIGN_SYSTEM.md, Decision 2). The
+        // underlying computation (VLContrast.swift) is production code and
+        // is build-verified; this test target asserts the catalog stays
+        // clean going forward.
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"],
+            path: "Tests/DesignSystemTests"
         )
     ]
 )

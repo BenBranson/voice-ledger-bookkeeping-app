@@ -172,8 +172,14 @@ Every AI-touching surface needs a defined appearance with the kill switch on:
 | Client Question Builder | Manual composition; no draft. |
 
 Severity, dollar exposure, evidence, and proposed actions must be **byte
-identical** with AI on or off — that's the test in
-`docs/phase-0/12_TEST_STRATEGY.md` §12.8.
+identical** with AI on or off — that's the kill-switch suite's **data-layer**
+test in `docs/phase-0/12_TEST_STRATEGY.md` §12.8.
+
+**Each of these five rows now has a corresponding UI-layer test**, added to
+the same §12.8 suite 2026-08-16 (they weren't there originally — the suite
+proved the data was safe with AI off but said nothing about whether these
+five surfaces actually rendered their degraded state correctly). Numbered
+1–5 in that section, matching this table's row order.
 
 ---
 

@@ -43,12 +43,16 @@ Implemented in `VLColor.swift`. All values from the brief, unchanged.
 | Vocabulary | Colors | Means |
 |---|---|---|
 | **Accent** | cyan, cyan-bright, blue, teal, violet | Active nav, connection live, selected control, focus ring. Interaction state. |
-| **Status** | green, amber, coral, blue, violet, gray | What a check or finding *means*. Accounting semantics. |
+| **Status** | green, amber, coral, a dedicated status-blue, violet, gray | What a check or finding *means*. Accounting semantics. |
+| **Environment** | a dedicated near-black + a dedicated amber-adjacent stripe hue | Which QBO environment is active. Neither accent nor status — see §4c. |
 
 Cyan glow on a selected row means "this row is selected." It does **not** mean
-"this row is fine." That separation is the brief's own most important rule and
-it is enforced in code: `VLColor`'s status hues carry a comment directing
-callers to `VLStatus` instead of using them raw.
+"this row is fine." That separation is the brief's own most important rule,
+and it is now enforced structurally, not just by convention: `VLStatus.swift`
+declares its three status hues (green/amber/coral) `private` to that file, and
+`VLEnvironment.swift` does the same for its two environment hues. Neither file
+can reference the other's constants — a compile error, not a lint warning.
+See §4c for how this caught a real mistake.
 
 ### Status semantics (from the spec's color table)
 
@@ -57,10 +61,18 @@ callers to `VLStatus` instead of using them raw.
 | `.verified` | Green + checkmark | Checked and passed — **four preconditions, §3** |
 | `.reviewNeeded` | Amber + magnifier | Human review required |
 | `.urgent` | Coral + alert triangle | Urgent or materially risky |
-| `.informational` | Blue + info | Recommendation or opportunity |
+| `.informational` | A dedicated status-blue (`#4FA3E8`) + info | Recommendation or opportunity |
 | `.awaitingClient` | Violet + speech bubble | Waiting on client |
 | `.notChecked` | Gray + clock | Stale, unavailable, or not checked |
 | `.actionRequired` | Gray **dashed outline** + upload | Import or manual QBO work needed |
+
+**`.informational` does not use `VLColor.blue` or `VLColor.cyan`/`cyanBright`.**
+`VLColor.blue` fails WCAG AA as text on card surfaces (§9), and the accent
+cyans would make "this is a recommendation" visually indistinguishable from
+"this is selected" — the exact category error §4c fixes for environment,
+caught here during implementation before it shipped. `.informational` gets its
+own hue, `#4FA3E8`, private to `VLStatus.swift` alongside the other three
+status colors, measuring 5.92:1 on `surfaceCard`.
 
 `.notChecked` and `.actionRequired` share a hue, so they are differentiated by
 **form**: `.actionRequired` renders as a dashed outline, `.notChecked` as a
@@ -120,23 +132,47 @@ never striped. The stripe pattern appears nowhere else in the system, so
 "striped amber = environment" and "solid amber = review needed" stay distinct
 even at a glance from the far monitor.
 
-### 4c. Which environment should be louder?
+### 4c. Which environment should be louder? — resolved 2026-08-16, owner decision
 
 The brief says production is "restrained navy/cyan" and sandbox is the loud
-one. Worth a deliberate decision, because it is backwards from a pure risk
-standpoint: under `CLAUDE.md` rule 7 the *dangerous* state is being in
-production without realizing it.
+one. First pass inverted that so production read serious via coral + a shield
+icon — reasoning correctly that under `CLAUDE.md` rule 7 the dangerous state
+is being in production without noticing, but picking the wrong instrument for
+it.
 
-**Resolved:** both are unmistakable, but they signal different things —
-sandbox is loud because it means "nothing here is real," production uses
-coral + a shield icon because it means "this is a client's actual books."
-Production is not visually *quiet*; it is visually *serious*. During
-development the two are further separated by credentials, since the dev
-backend physically cannot mint a production token
+**The problem with coral:** coral means `.urgent` — a finding that's urgent or
+materially risky. Once live with real clients, production is the *permanent
+normal state*, not an occasional alert. A coral badge sitting on screen every
+working hour trains the eye to stop seeing coral, which is exactly the
+amber/sandbox collision from §4b, recurring one level up: reusing a status hue
+for something that isn't a status.
+
+**Resolved: environment is a third vocabulary**, separate from both accent
+(§2) and status (§3). It borrows no hue from either:
+
+- **Production** renders as a **solid filled bar** — wider than any status
+  pill, shield icon, primary text, on a dedicated near-black surface
+  (`#050B14`, deliberately darker than the app background so it reads as its
+  own surface rather than a chrome variant). Serious by **form and
+  permanence**, not by borrowing danger red.
+- **Sandbox** keeps the diagonal hazard-stripe chip from §4b — it already
+  worked, appears nowhere else, and survives color-blind viewing.
+
+Both remain unmistakable; neither steals from the status palette.
+
+**Structural guard, not just a naming convention:** the three status hues
+(`verified`/`reviewNeeded`/`urgent`) are declared `private` inside
+`VLStatus.swift`. Environment's two hues (`productionSurface`,
+`sandboxStripe`) are declared `private` inside `VLEnvironment.swift`. Neither
+file can see the other's constants — verified directly: adding a line to
+`VLEnvironment.swift` that reads `StatusHue.urgent` fails to compile with
+*"'StatusHue' is inaccessible due to 'private' protection level."* A future
+careless afternoon cannot reintroduce coral-as-environment; the compiler
+refuses it.
+
+During development the two are further separated by credentials, since the
+dev backend physically cannot mint a production token
 (`docs/phase-0/03_SECURITY_THREAT_MODEL.md` §3.8).
-
-**This one is worth your explicit sign-off** — it is the only place I chose
-against the brief's literal instruction.
 
 ### 4d. Write-Enabled is not an error
 
@@ -210,18 +246,64 @@ Built into the primitives rather than bolted on:
   "Status: Review needed" rather than announcing an SF Symbol name.
 - Decorative stripes and accent rails are `.accessibilityHidden(true)`.
 - Reduce Motion honored via `VLMotion`.
-- Text colors target WCAG AA against the navy surfaces. **Verify with a
-  contrast checker once real screens exist** — I have not measured these
-  ratios, and the brief's palette was supplied as-is.
+- **Text colors are contrast-checked, not just targeted.** See §9 — every
+  declared text-on-surface pairing measures ≥4.5:1, verified directly against
+  the actual code (not just the design intent).
 
 ---
 
-## 9. Open items
+## 9. Contrast — measured, fixed, and enforced (resolved 2026-08-16)
 
-- **§4c** (which environment is louder) needs your sign-off.
-- **Contrast ratios unmeasured.** `textMuted` (#71849B) on `surfaceCard`
-  (#102238) is the pair most likely to fall short of AA for small text.
-  Measure before shipping any screen that uses it for essential information.
+Two pairs were measured against WCAG 2.1's formula and failed AA for normal
+text:
+
+| Pair | Ratio | Verdict |
+|---|---|---|
+| `textMuted` (old `#71849B`) on `surfaceCard` | 4.19:1 | ❌ fails (4.5:1 required) |
+| `textMuted` (old) on `surfaceElevated` | 4.43:1 | ❌ fails, marginal |
+| `VLColor.blue` (`#2788D9`) on `surfaceCard` | 4.29:1 | ❌ fails as text |
+
+**Fixes applied:**
+
+1. **`textMuted` raised to `#7E92AA`.** Worst case (`surfaceCard`) now
+   measures **5.03:1**. One token change, applies everywhere the token is used.
+2. **`blue` is documented and enforced as non-text-safe.** `VLColor.swift`'s
+   doc comment states it directly; it never appears in the "declared valid"
+   catalog. It remains fine for borders, strokes, chart series, and icon
+   fills, which only need 3:1.
+3. **`.informational`'s status color is not `blue`, `cyan`, or `cyanBright`**
+   — see §2. A dedicated `#4FA3E8` was chosen specifically to clear AA while
+   staying visually distinct from both the accent-cyan family and the
+   now-non-text-safe `blue`.
+
+**Verified directly**, not just computed by hand: a scratch executable
+importing `DesignSystem` and calling `VLContrast.auditAllPairs()` against the
+actual compiled code returned **0 violations across all 45 declared pairs**,
+matching an independent Node.js computation of the same WCAG formula run
+first as a cross-check. Full ratio table available by running that audit
+again — see `VLContrast.swift`'s doc comment.
+
+**Enforced going forward, not just measured once:** `VLContrast.swift` is
+production code (verified by `swift build`, not only by `swift test`) —
+`auditAllPairs()` walks a declared catalog of every text/surface pairing the
+system claims is valid and flags anything below 4.5:1.
+`Tests/DesignSystemTests/ContrastTests.swift` asserts the catalog stays
+empty of violations, plus a regression guard on `textMuted`'s specific ratio
+and an explicit check that `blue` never re-enters the catalog. This closes
+the original open item — contrast is now something CI checks, not something
+remembered.
+
+**Marginal pair worth flagging:** `violet` on `surfaceCard` measures
+**4.52:1** — passes, but by the smallest margin of any pair in the catalog.
+Not currently used for essential text (it's `.awaitingClient`'s status color,
+always paired with an icon and label per §8), but worth knowing if it's ever
+reused for something smaller or thinner.
+
+---
+
+## 10. Remaining open items
+
 - **Condensed font substitution** — evaluate whether the system condensed
   width is close enough to the reference, or whether Barlow Condensed should
   be bundled.
+- **§4c** — resolved; see that section. No longer open.

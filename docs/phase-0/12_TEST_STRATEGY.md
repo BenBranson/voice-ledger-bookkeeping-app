@@ -203,13 +203,42 @@ whose failure would corrupt real client books.
 ## 12.8 Cross-cutting suites
 
 ### The kill-switch suite
-Run the **entire** T1 + T4 deterministic suite with AI disabled. Every finding,
-severity, dollar figure, evidence item, and proposed action must be **byte
-identical** to the AI-enabled run. Only `GeneratedProse` fields differ (present
-vs. `nil`).
+
+**Data layer** — run the **entire** T1 + T4 deterministic suite with AI
+disabled. Every finding, severity, dollar figure, evidence item, and proposed
+action must be **byte identical** to the AI-enabled run. Only `GeneratedProse`
+fields differ (present vs. `nil`).
 
 This is the proof that `CLAUDE.md` rule 1 and the spec's kill-switch guarantee
 are real. It is worth running regularly for exactly that reason (spec).
+
+**UI layer (added 2026-08-16 — was missing).** The data-layer suite above
+proves the *values* are unaffected by the kill switch; it says nothing about
+whether the five AI-touching surfaces in
+`docs/design/UI_ARCHITECTURE.md` §7 actually degrade the way that section
+specifies rather than, say, rendering broken or silently vanishing. Both
+failure modes would defeat the point of a kill switch someone is actually
+willing to flip. Once those views exist (Phase 1 step 1.3+), this suite must
+assert, with AI disabled:
+
+1. `AskClaudePanel` renders **collapsed and disabled with a stated reason** —
+   not hidden entirely. (Hiding it would obscure that the capability exists
+   at all, which §7 explicitly rules out.)
+2. A `FindingCard` whose `explanation` is `nil` renders the deterministic
+   template sentence in place of `GeneratedProse` — never a blank space
+   where prose was expected.
+3. Report views render their tables and figures **unchanged**, with the
+   commentary section omitted rather than left as an empty box.
+4. The ingestion UI's Tier 3 escalation control is **unavailable**, and a
+   document that would have needed it shows the honest
+   "capability unavailable" state from `VLCoverageGap` — never a silent
+   downgrade that pretends Tier 2 succeeded.
+5. `ClientQuestionPanel` opens directly into manual composition, with no
+   draft-generation affordance visible.
+
+Each of these is a snapshot or state-assertion test against the relevant
+view, gated on the kill switch, in the same run as the data-layer suite —
+so a regression in either layer fails the same CI job.
 
 ### The production-safety suite
 1. Attempt a production-classed write with the deployment flag unset → refused.

@@ -7,13 +7,17 @@ import SwiftUI
 ///
 /// 1. **Accent colors and status colors are separate vocabularies.**
 ///    `VLColor.cyan` means "active / connected / selected." It does NOT mean
-///    "good." Accounting status lives in `VLStatus` (VLStatus.swift) and is
-///    the only thing allowed to communicate a finding's meaning.
+///    "good." Accounting status lives in `VLStatus` (VLStatus.swift).
 ///
-/// 2. **`verifiedGreen` is not a general-purpose success color.** See
-///    `VLStatus.verified`'s documentation and CLAUDE.md rule 5. It is
-///    deliberately not named `success` so that reaching for it casually
-///    looks wrong.
+/// 2. **Status hues do not live here.** `verified`/`reviewNeeded`/`urgent`
+///    (green/amber/coral) are declared `private` inside `VLStatus.swift`,
+///    reachable ONLY through `VLStatus.color`. This is a structural guard,
+///    not a convention: no other file in this module can spell the literal
+///    green/amber/coral value, so a careless future edit cannot make some
+///    unrelated badge "borrow" a status color the way the environment
+///    badge originally (and wrongly) borrowed coral and amber — see
+///    docs/design/DESIGN_SYSTEM.md, Decision 1. Environment colors have
+///    their own equally-isolated pool in `VLEnvironment.swift`.
 public enum VLColor {
 
     // MARK: - Surfaces (dark navy, never pure black)
@@ -30,37 +34,34 @@ public enum VLColor {
     // MARK: - Accents (interaction and emphasis — NOT status)
 
     /// Primary interactive accent: active nav, focus rings, selected rows,
-    /// live connection indicators.
+    /// live connection indicators. Safe as TEXT on any surface token below —
+    /// see VLContrast.swift's validated pair catalog (8.94:1 on surfaceCard).
     public static let cyan = Color(hex: 0x29D3F2)
     /// Highlight cyan for small illuminated details and hover states.
     public static let cyanBright = Color(hex: 0x67E8F9)
+    /// ⚠️ NOT a text-safe color on `surfaceCard` or `surfaceElevated` — measures
+    /// 4.29:1 there, below the 4.5:1 WCAG AA threshold for normal text
+    /// (docs/design/DESIGN_SYSTEM.md, Decision 2). Safe for borders, strokes,
+    /// chart series, and icon fills, which only need 3:1. For blue-family TEXT
+    /// on a card, use `cyan` or `cyanBright` instead.
     public static let blue = Color(hex: 0x2788D9)
     public static let teal = Color(hex: 0x32C7A3)
     /// Reserved for AI / automation affordances (Ask Claude, generated prose).
     /// Violet marks guidance, never a deterministic accounting result.
     public static let violet = Color(hex: 0x9B6EF3)
 
-    // MARK: - Status hues
-    //
-    // Raw hues only. Do not use these directly in views — go through
-    // `VLStatus` so that every status rendering carries an icon and a text
-    // label alongside the color (WCAG, and the spec's "never communicate
-    // status through color alone").
-
-    /// Green means VERIFIED — see VLStatus.verified for the four preconditions.
-    public static let verifiedGreen = Color(hex: 0x3ECF8E)
-    /// Amber: human review required. Also used for the SANDBOX environment
-    /// marker, which is differentiated by FORM (stripes) not hue — see
-    /// docs/design/DESIGN_SYSTEM.md §"Amber collision".
-    public static let amber = Color(hex: 0xF4B860)
-    /// Coral: urgent, materially risky, overdue, or destructive.
-    public static let coral = Color(hex: 0xF06472)
-
     // MARK: - Text
 
     public static let textPrimary = Color(hex: 0xF4F8FC)
     public static let textSecondary = Color(hex: 0xB8C7D9)
-    public static let textMuted = Color(hex: 0x71849B)
+    /// #7E92AA — raised from the original #71849B (measured 4.19:1 on
+    /// surfaceCard, failing WCAG AA). This value clears 4.5:1 on every
+    /// surface token in the system; worst case is surfaceCard at 5.03:1.
+    /// See docs/design/DESIGN_SYSTEM.md Decision 2 and VLContrast.swift,
+    /// which asserts this holds. Still: never use textMuted for essential
+    /// information (a coverage state, a dollar figure) regardless of
+    /// contrast — reserve it for captions, timestamps, provenance chips.
+    public static let textMuted = Color(hex: 0x7E92AA)
 
     // MARK: - Borders
 

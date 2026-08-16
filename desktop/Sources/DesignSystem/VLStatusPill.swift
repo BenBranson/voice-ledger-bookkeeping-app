@@ -7,6 +7,10 @@ import SwiftUI
 /// There is no initializer that produces a bare colored dot — the label is
 /// not optional, because a status without a label is the accessibility
 /// failure this type is here to prevent.
+///
+/// The environment marker (`VLEnvironmentBadge`) deliberately lives in its
+/// own file, `VLEnvironment.swift` — see that file's doc comment for why
+/// environment is a third vocabulary, not a variant of status.
 public struct VLStatusPill: View {
     private let status: VLStatus
     private let overrideLabel: String?
@@ -52,75 +56,5 @@ public struct VLStatusPill: View {
         // "Status: Review needed" rather than announcing an icon name.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Status: \(text)")
-    }
-}
-
-/// The environment marker for the global top bar. Production and sandbox
-/// differ by FORM (striped vs. solid fill) as well as hue — CLAUDE.md rule 7
-/// requires they be unmistakable, and hue alone fails that for a color-blind
-/// viewer or a quick glance across two monitors.
-public struct VLEnvironmentBadge: View {
-    private let tone: VLEnvironmentTone
-
-    public init(_ tone: VLEnvironmentTone) {
-        self.tone = tone
-    }
-
-    public var body: some View {
-        HStack(spacing: VLSpacing.xxs) {
-            Image(systemName: tone.iconName)
-                .font(.system(size: 10, weight: .bold))
-            Text(tone.label)
-                .font(VLTypography.eyebrow())
-                .tracking(VLTypography.eyebrowTracking)
-        }
-        .foregroundStyle(tone.accent)
-        .padding(.horizontal, VLSpacing.xs)
-        .padding(.vertical, VLSpacing.xxs)
-        .background(backgroundFill)
-        .overlay(
-            RoundedRectangle(cornerRadius: VLRadius.chip)
-                .strokeBorder(tone.accent.opacity(0.65), lineWidth: VLBorder.emphasis)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Environment: \(tone.label)")
-    }
-
-    @ViewBuilder
-    private var backgroundFill: some View {
-        if tone.usesStripedFill {
-            RoundedRectangle(cornerRadius: VLRadius.chip)
-                .fill(tone.accent.opacity(0.10))
-                .overlay(VLDiagonalStripes(color: tone.accent.opacity(0.22)))
-                .clipShape(RoundedRectangle(cornerRadius: VLRadius.chip))
-        } else {
-            RoundedRectangle(cornerRadius: VLRadius.chip)
-                .fill(tone.accent.opacity(0.14))
-        }
-    }
-}
-
-/// Diagonal hazard stripes used only by the SANDBOX marker. Decorative and
-/// hidden from assistive technology — the badge's accessibility label already
-/// carries the meaning.
-struct VLDiagonalStripes: View {
-    let color: Color
-    var spacing: CGFloat = 6
-
-    var body: some View {
-        GeometryReader { geometry in
-            Path { path in
-                let width = geometry.size.width
-                let height = geometry.size.height
-                var x = -height
-                while x < width + height {
-                    path.move(to: CGPoint(x: x, y: height))
-                    path.addLine(to: CGPoint(x: x + height, y: 0))
-                    x += spacing
-                }
-            }
-            .stroke(color, lineWidth: 1.5)
-        }
-        .accessibilityHidden(true)
     }
 }
