@@ -1,0 +1,24 @@
+{
+  "description": "docs/phase-0/SPIKE_QUEUE.md items 41-43. Setting the actual closing date has no API (docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row 2.2) — set it by hand in the sandbox UI at a date between the two transactions below, with and without a closing-date password, before running item 43 (testClosedPeriodRejectionCodes). Record what you did in spike/README.md's runbook.",
+  "requiresBaseline": true,
+  "purchases": [
+    {
+      "case": "before the close date — should write successfully",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 3000,
+      "date": "2026-06-15",
+      "note": "VL-SPIKE-PRECLOSE"
+    },
+    {
+      "case": "after the close date — attempted edit should be rejected client-side AND by QBO",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 3000,
+      "date": "2026-08-15",
+      "note": "VL-SPIKE-POSTCLOSE"
+    }
+  ]
+}

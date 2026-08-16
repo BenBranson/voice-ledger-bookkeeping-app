@@ -1,0 +1,77 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+// Module layout mirrors docs/VOICE_LEDGER_SPEC.md's Architecture > Core layers,
+// and target dependencies encode the one rule that section states as absolute:
+// Core never imports Integrations. Scripts/check-module-boundaries.sh enforces
+// this by source scan; ArchitectureTests/ModuleBoundaryTests.swift runs it as
+// part of `swift test`, so a violation fails CI rather than surviving to review.
+let package = Package(
+    name: "VoiceLedger",
+    platforms: [
+        .macOS(.v15)   // provisional per docs/phase-0/OPEN_QUESTIONS.md Q4 — confirm against the actual installed OS
+    ],
+    products: [
+        .library(name: "Core", targets: ["Core"]),
+        .library(name: "IntegrationsQuickBooks", targets: ["IntegrationsQuickBooks"]),
+        .library(name: "IntegrationsImports", targets: ["IntegrationsImports"]),
+        .library(name: "Staging", targets: ["Staging"]),
+        .library(name: "Voice", targets: ["Voice"]),
+        .library(name: "DB", targets: ["DB"]),
+        .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"])
+    ],
+    targets: [
+        // /core — platform-agnostic. Zero dependencies, by design. This target
+        // must never depend on IntegrationsQuickBooks, IntegrationsImports, or
+        // any other module below it in the list.
+        .target(name: "Core", path: "Sources/Core", exclude: ["README.md"]),
+
+        // /integrations/quickbooks — this is the DESKTOP-SIDE client for our
+        // own thin backend (see docs/phase-0/03_SECURITY_THREAT_MODEL.md §3.4).
+        // It never talks to QBO directly and holds no QBO or Claude secret.
+        .target(name: "IntegrationsQuickBooks", dependencies: ["Core"], path: "Sources/Integrations/QuickBooks"),
+
+        // /integrations/imports — deferred; stub only until its approved
+        // build step (Build Order §4 in docs/VOICE_LEDGER_SPEC.md).
+        .target(name: "IntegrationsImports", dependencies: ["Core"], path: "Sources/Integrations/Imports"),
+
+        // /staging — deferred; stub only (docs/phase-0/10_STAGING_APPROVAL_AUDIT.md).
+        .target(name: "Staging", dependencies: ["Core"], path: "Sources/Staging"),
+
+        // /voice — deferred deliberately last per Build Order §12.
+        .target(name: "Voice", dependencies: ["Core"], path: "Sources/Voice"),
+
+        // /db — deferred; stub only.
+        .target(name: "DB", dependencies: ["Core"], path: "Sources/DB"),
+
+        // CLI used ONLY to verify Phase 1 step 1.2's exit gate: a live health
+        // check reachable from something running on the desktop, with no
+        // secret embedded. This is NOT the Connection Page (that's step 1.3,
+        // not yet approved) — it is the smallest thing that can prove the gate.
+        .executableTarget(
+            name: "VoiceLedgerDevTool",
+            dependencies: ["IntegrationsQuickBooks"],
+            path: "Sources/VoiceLedgerDevTool"
+        ),
+
+        // NOTE — see Tests/README.md: `swift test` requires full Xcode
+        // (Testing.framework isn't part of the standalone Command Line
+        // Tools). These targets are written against Swift Testing and are
+        // verified to build clean; running them was not verifiable in the
+        // environment this repo was scaffolded in. Run `swift test` yourself
+        // once Xcode is installed.
+        .testTarget(
+            name: "CoreTests",
+            dependencies: ["Core"],
+            path: "Tests/CoreTests"
+        ),
+
+        // T0 structural tests (docs/phase-0/12_TEST_STRATEGY.md §12.2) —
+        // architecture invariants that fail a build rather than survive to review.
+        .testTarget(
+            name: "ArchitectureTests",
+            dependencies: ["Core", "IntegrationsQuickBooks"],
+            path: "Tests/ArchitectureTests"
+        )
+    ]
+)

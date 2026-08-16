@@ -1,0 +1,56 @@
+{
+  "description": "docs/phase-0/11_VERTICAL_SLICE.md §11.4 worked example, plus the near-miss and legitimate-recurring cases §11.5's acceptance criteria require (items 2, 3).",
+  "requiresBaseline": true,
+  "purchases": [
+    {
+      "case": "exact-duplicate-pair (T1 — same vendor, date, amount, account)",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 48620,
+      "date": "2026-07-14",
+      "docNumber": "4471",
+      "note": "VL-SPIKE-DUP-A"
+    },
+    {
+      "case": "exact-duplicate-pair (the duplicate)",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 48620,
+      "date": "2026-07-14",
+      "docNumber": "4471",
+      "note": "VL-SPIKE-DUP-B"
+    },
+    {
+      "case": "near-miss — same amount, different vendor — must NOT match (§11.5 item 2)",
+      "vendor": "VL Spike Odessa Water",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Utilities",
+      "amountMinorUnits": 48620,
+      "date": "2026-07-14",
+      "docNumber": "9001",
+      "note": "VL-SPIKE-NEARMISS"
+    },
+    {
+      "case": "T3 near-date — same vendor/amount/account, 2 days apart — expect .medium confidence (§11.5 item 3)",
+      "vendor": "VL Spike Odessa Water",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Utilities",
+      "amountMinorUnits": 12000,
+      "date": "2026-07-10",
+      "docNumber": "9010",
+      "note": "VL-SPIKE-NEARDATE-A"
+    },
+    {
+      "case": "T3 near-date — the second, 2 days later",
+      "vendor": "VL Spike Odessa Water",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Utilities",
+      "amountMinorUnits": 12000,
+      "date": "2026-07-12",
+      "docNumber": "9011",
+      "note": "VL-SPIKE-NEARDATE-B"
+    }
+  ]
+}

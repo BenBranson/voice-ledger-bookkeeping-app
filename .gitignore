@@ -1,46 +1,72 @@
 # Credentials and secrets — never committed, by design (CLAUDE.md rule 3)
-*.env
-.env*
-*secret*
-*Secret*
-*SECRET*
-*credential*
-*Credential*
-*token*
-*Token*
-!docs/**/*token*        # doc prose mentioning "token" conceptually is fine
+#
+# NOTE: earlier drafts of this file used broad filename patterns like
+# *secret* and *token* to catch credential files. That backfired the moment
+# real code existed — "token" and "secret" are legitimate domain terms here
+# (OAuth tokens, session tokens, the QBO client secret as a config KEY name,
+# not a value) and those patterns silently excluded real source files
+# (backend/src/auth/tokenStore.ts, its tests, .env.example, the secret-scan
+# script itself). Filename matching is the wrong tool for this anyway —
+# gitignore can't see file CONTENTS, so it was only ever a weak, false-
+# confidence net. The actual defense against committing a secret VALUE is:
+#   - backend/src/logging/redaction.ts + logger.ts (§3.5) — content-scanning
+#     at the point secrets could leak into logs
+#   - desktop/Scripts/check-no-secrets.sh — content-scanning the desktop
+#     bundle for secret-shaped literals, run via `swift test`
+#   - actual environment files (.env, not .env.example) never being created
+#     with real values inside a path git tracks
+#   - manual review of `git status` before every commit — see CLAUDE.md's
+#     "Committing changes with git" guidance
+# What follows is deliberately narrow: real environment files and specific
+# credential file TYPES, not domain words that happen to appear in secrets.
+
+# Real environment files — but NOT the checked-in template.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Credential/key file types — these extensions are essentially never
+# anything other than an actual secret, so blocking by extension is safe.
 *.pem
 *.p12
-*.key
+*.pfx
 *.cer
 *.mobileprovision
-*apikey*
-*api_key*
 *.keychain
 *.keychain-db
-
-# QBO / Claude client secrets and OAuth artifacts
-oauth_client_secret*
-qbo_client_secret*
-claude_api_key*
 *.jwt
+
+# QBO / Claude client secrets and OAuth artifacts, by SPECIFIC name — not a
+# wildcard on a common word. If you ever export a real secret to a file,
+# name it one of these so it's actually excluded.
+oauth_client_secret.json
+qbo_client_secret.json
+claude_api_key.txt
 
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# Xcode / Swift (Phase 1)
+# --- Swift / Xcode (desktop/) ---
 .build/
 DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 .swiftpm/
 
-# Sandbox capture artifacts that may embed tokens before sanitization
-Tests/**/*.raw.json
-Tests/**/unsanitized/
+# --- Node (backend/) ---
+node_modules/
+dist/
+backend/data/
+backend/test/.tmp/
+backend/spike/fixtures/*.json
+!backend/spike/fixtures/.gitkeep
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.tsbuildinfo
 
 # Local scratch
 *.local
-.DS_Store

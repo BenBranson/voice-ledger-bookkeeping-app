@@ -1,0 +1,35 @@
+{
+  "description": "docs/phase-0/12_TEST_STRATEGY.md §12.6: zero amounts, very large, multi-line, linked transactions. Feeds SPIKE_QUEUE items 15 (account deactivate with non-zero balance), 16-17 (sparse update field-survival), and normalization-defect fixture cases in docs/phase-0/08_RULE_ENGINE.md §8.7.",
+  "requiresBaseline": true,
+  "purchases": [
+    {
+      "case": "zero-amount purchase — must not crash normalization or duplicate-match on $0",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 0,
+      "date": "2026-07-01",
+      "note": "VL-SPIKE-ZERO"
+    },
+    {
+      "case": "very large amount — Int64 minor units, no overflow (docs/phase-0/04_DATA_MODEL.md §4.3, decision M1)",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 999999999,
+      "date": "2026-07-02",
+      "note": "VL-SPIKE-LARGE"
+    },
+    {
+      "case": "has a PrivateNote, DocNumber, and Memo — used by SPIKE_QUEUE item 16 to assert sparse update leaves them untouched",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 15000,
+      "date": "2026-07-03",
+      "docNumber": "SPARSE-TEST-001",
+      "note": "VL-SPIKE-SPARSEFIELDS",
+      "memo": "This memo must survive a sparse AccountRef update untouched."
+    }
+  ]
+}

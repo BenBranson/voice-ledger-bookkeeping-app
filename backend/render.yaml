@@ -1,0 +1,47 @@
+# Render Blueprint for Voice Ledger's thin backend.
+# docs/phase-0/OPEN_QUESTIONS.md Q2: "a small managed container" — this is
+# that container, deployed as a Render Web Service.
+#
+# Secrets (QBO_SANDBOX_CLIENT_SECRET, TOKEN_ENCRYPTION_KEY, etc.) are
+# deliberately NOT in this file — set them in the Render dashboard under
+# the service's Environment tab, or `sync: false` below means Render will
+# prompt for them at blueprint creation and store them itself. Never commit
+# a real value for any variable marked `sync: false`.
+#
+# IMPORTANT — persistent storage: Render's default filesystem is EPHEMERAL
+# across deploys and restarts. src/db/sqlite.ts's local file will be wiped
+# on every deploy unless you attach a persistent disk (below) or migrate to
+# a managed database before this moves past sandbox testing. See
+# backend/README.md's "Storage" section.
+services:
+  - type: web
+    name: voice-ledger-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 3000
+      - key: APP_BASE_URL
+        sync: false # set to this service's actual Render URL after first deploy
+      - key: QBO_SANDBOX_CLIENT_ID
+        sync: false
+      - key: QBO_SANDBOX_CLIENT_SECRET
+        sync: false
+      - key: QBO_REDIRECT_URI
+        sync: false # <APP_BASE_URL>/oauth/callback — must also be registered in your Intuit app's settings
+      - key: QBO_MINOR_VERSION
+        value: "75"
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false # generate locally: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - key: SQLITE_PATH
+        value: /var/data/voiceledger.sqlite # matches the disk mount path below
+    disk:
+      name: voiceledger-data
+      mountPath: /var/data
+      sizeGB: 1

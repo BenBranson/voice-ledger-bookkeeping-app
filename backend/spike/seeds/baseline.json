@@ -1,0 +1,12 @@
+{
+  "description": "docs/phase-0/12_TEST_STRATEGY.md §12.6 — chart of accounts, vendors, and opening state every other seed file assumes exists.",
+  "accounts": [
+    { "name": "VL Spike Checking", "accountType": "Bank" },
+    { "name": "VL Spike Office Supplies", "accountType": "Expense" },
+    { "name": "VL Spike Utilities", "accountType": "Expense" }
+  ],
+  "vendors": [
+    { "displayName": "VL Spike Permian Supply" },
+    { "displayName": "VL Spike Odessa Water" }
+  ]
+}

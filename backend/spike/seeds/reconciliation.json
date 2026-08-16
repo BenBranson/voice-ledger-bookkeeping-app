@@ -1,0 +1,24 @@
+{
+  "description": "docs/phase-0/SPIKE_QUEUE.md item 44 (testClearedStatusFilter) needs a reconciled or partially-reconciled account. This seed creates the transactions; actually marking them reconciled/cleared must be done by hand in the sandbox UI (no API path — docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row 5.4) and recorded in spike/README.md's runbook once you've done it once.",
+  "requiresBaseline": true,
+  "purchases": [
+    {
+      "case": "will be marked Reconciled by hand",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 5000,
+      "date": "2026-07-05",
+      "note": "VL-SPIKE-RECON-CLEARED"
+    },
+    {
+      "case": "left Uncleared — the unmatched item",
+      "vendor": "VL Spike Odessa Water",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Utilities",
+      "amountMinorUnits": 7500,
+      "date": "2026-07-06",
+      "note": "VL-SPIKE-RECON-UNCLEARED"
+    }
+  ]
+}
