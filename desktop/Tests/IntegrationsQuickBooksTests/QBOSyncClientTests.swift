@@ -5,12 +5,11 @@ import Core
 
 /// No network access — decodes synthetic JSON in the real shape confirmed
 /// against the live sandbox by Wave 1's `testPurchasesRead`
-/// (docs/phase-0/SPIKE_QUEUE.md item 6). `isVoided` detection has no
-/// reliable signal yet — the `TotalAmt == 0` heuristic was tried and
-/// DISPROVEN against the live sandbox 2026-08-17 (false-positived on a
-/// legitimate $0 fixture, Purchase #146); see `QBORawPurchase.swift`'s
-/// doc comment. `isVoided` is hardcoded `false` until spike item 51 finds
-/// a real signal.
+/// (docs/phase-0/SPIKE_QUEUE.md item 6). `isVoided` detection: verified
+/// 2026-08-17 (spike item 51) — a manually-voided Purchase carries a
+/// top-level `"status": "Voided"` field, absent entirely on non-voided
+/// Purchases including the $0 VL-SPIKE-ZERO fixture that broke the earlier
+/// `TotalAmt == 0` heuristic. See `QBORawPurchase.swift`'s doc comment.
 @Suite("QBOSyncClient normalization")
 struct QBOSyncClientTests {
     @Test("Decodes a real-shaped Purchase query response and normalizes vendor/date/amount/account/docNumber")
@@ -45,11 +44,11 @@ struct QBOSyncClientTests {
         #expect(normalized.totalAmount == Money(minorUnits: 48_620, currency: .usd))
         #expect(normalized.paymentAccountID == "35")
         #expect(normalized.docNumber == "4471")
-        #expect(normalized.isVoided == false) // TotalAmt != 0
+        #expect(normalized.isVoided == false) // no "status" field present
     }
 
-    @Test("A TotalAmt of 0 is NOT treated as voided — the heuristic that once did this was disproven on real data (Purchase #146, the legitimate $0 VL-SPIKE-ZERO fixture)")
-    func zeroTotalAmtIsNotAssumedVoided() throws {
+    @Test("A TotalAmt of 0 with no status field is NOT treated as voided (Purchase #146, the legitimate $0 VL-SPIKE-ZERO fixture — the case that broke the old TotalAmt==0 heuristic)")
+    func zeroTotalAmtWithoutStatusFieldIsNotVoided() throws {
         let json = """
         {
           "Id": "146", "TxnDate": "2026-07-01", "TotalAmt": 0,
@@ -59,6 +58,20 @@ struct QBOSyncClientTests {
         """
         let raw = try JSONDecoder().decode(QBORawPurchase.self, from: Data(json.utf8))
         #expect(QBOSyncClient.normalize(raw).isVoided == false)
+    }
+
+    @Test("A Purchase with status: Voided is treated as voided — the real, verified signal (Purchase #151, spike item 51)")
+    func statusVoidedFieldIsTreatedAsVoided() throws {
+        let json = """
+        {
+          "Id": "151", "TxnDate": "2026-07-14", "TotalAmt": 0, "DocNumber": "4471-DUP",
+          "AccountRef": { "value": "1150040000" }, "EntityRef": { "value": "58", "name": "VL Spike Permian Supply" },
+          "PrivateNote": "Voided - VL-SPIKE-DUP-B", "status": "Voided"
+        }
+        """
+        let raw = try JSONDecoder().decode(QBORawPurchase.self, from: Data(json.utf8))
+        #expect(raw.isVoided == true)
+        #expect(QBOSyncClient.normalize(raw).isVoided == true)
     }
 
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")

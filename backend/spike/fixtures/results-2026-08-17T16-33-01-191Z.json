@@ -1,0 +1,98 @@
+[
+  {
+    "matrixRow": "testCategorizationProvenance",
+    "claim": "Is QBO's rule-vs-AI-vs-human categorization source exposed via any read API?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-17T16:32:59.046Z",
+    "detail": "Confirmed absent — see negativeEvidence.",
+    "request": {
+      "queries": [
+        "select * from Purchase MAXRESULTS 10",
+        "cdc?entities=Purchase",
+        "reports/TransactionList"
+      ]
+    },
+    "response": {
+      "purchaseQueryKeyCount": 37,
+      "cdcKeyCount": 93,
+      "reportColumns": [
+        "Date",
+        "Transaction Type",
+        "Num",
+        "Posting",
+        "Name",
+        "Memo/Description",
+        "Account",
+        "Split",
+        "Amount"
+      ]
+    },
+    "negativeEvidence": [
+      "Purchase entity query — 10 records, 37 distinct keys observed (full raw JSON checked, not just top level)",
+      "CDC feed for Purchase — 93 distinct keys observed",
+      "TransactionList report columns — Date, Transaction Type, Num, Posting, Name, Memo/Description, Account, Split, Amount",
+      "Candidate field names checked against all three: Source, TxnSource, CategorizationSource, CreatedBy, CreatedVia, SuggestedBy, AISource, RuleSource, BankRuleId, MatchedRuleId, AutoCategorized, IsAiSuggested"
+    ]
+  },
+  {
+    "matrixRow": "testReconciledTransactionDetection",
+    "claim": "Can the API tell us whether a transaction has already been reconciled?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-17T16:33:00.226Z",
+    "detail": "Confirmed absent — see negativeEvidence.",
+    "request": {
+      "queries": [
+        "select * from Purchase MAXRESULTS 10",
+        "cdc?entities=Purchase",
+        "reports/TransactionList"
+      ]
+    },
+    "response": {
+      "purchaseQueryKeyCount": 37,
+      "cdcKeyCount": 93,
+      "reportColumns": [
+        "Date",
+        "Transaction Type",
+        "Num",
+        "Posting",
+        "Name",
+        "Memo/Description",
+        "Account",
+        "Split",
+        "Amount"
+      ]
+    },
+    "negativeEvidence": [
+      "Purchase entity query — 10 records, 37 distinct keys observed",
+      "CDC feed for Purchase — 93 distinct keys observed",
+      "TransactionList report columns — Date, Transaction Type, Num, Posting, Name, Memo/Description, Account, Split, Amount",
+      "Candidate field names checked against all three: Cleared, cleared, Reconciled, ReconcileStatus, ReconciliationStatus, BankReconciliationStatus, ClearedStatus, TxnStatus",
+      "Caveat, recorded rather than hidden: no seed data in this sandbox has ever been through a real Finish Reconciliation in the QBO UI, so this confirms the field doesn't exist in an UNRECONCILED transaction's shape — it does not rule out a field that only appears once a transaction actually is reconciled. That would need a follow-up test against a manually-reconciled account (Wave 4's awkward-setup category, item 44's reconciliation.json fixture already exists for this)."
+    ]
+  },
+  {
+    "matrixRow": "testManualVoidPurchaseAPIShape",
+    "claim": "What does a Purchase manually voided in the QBO UI look like via the API, and is there a reliable isVoided signal?",
+    "status": "VERIFIED",
+    "verifiedAt": "2026-08-17T16:33:01.190Z",
+    "detail": "VERIFIED — a manually-voided Purchase carries a top-level \"status\": \"Voided\" field, absent entirely on non-voided Purchases (checked against #146, the same $0 fixture that broke the earlier TotalAmt==0 heuristic — confirms this signal doesn't repeat that false positive). QBO also automatically prefixed PrivateNote with \"Voided - \" (prefixed=true: \"Voided - VL-SPIKE-DUP-B\"), a secondary corroborating signal but \"status\" is the primary one. TotalAmt and all Line amounts are zeroed (already known, not sufficient alone). SyncToken incremented to \"1\" as expected for any write. Branch B's isVoided-exclusion resolution path (§11.1, §11.4) is now provably reachable against real data.",
+    "request": {
+      "queries": [
+        "select * from Purchase where Id = '151'",
+        "select * from Purchase where Id = '146'"
+      ]
+    },
+    "response": {
+      "voided": {
+        "status": "Voided",
+        "totalAmt": 0,
+        "privateNote": "Voided - VL-SPIKE-DUP-B",
+        "syncToken": "1"
+      },
+      "zeroButNotVoided": {
+        "totalAmt": 0,
+        "privateNote": "VL-SPIKE-ZERO"
+      }
+    }
+  }
+]

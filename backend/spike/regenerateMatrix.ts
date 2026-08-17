@@ -163,6 +163,16 @@ const MAPPING: MappingEntry[] = [
       capability: "Whether a transaction is already reconciled, exposed via any read API",
       endpoint: "`Purchase` query, `cdc`, `reports/TransactionList`"
     }
+  },
+  {
+    matrixRowKey: "testManualVoidPurchaseAPIShape",
+    rows: [],
+    isNewRow: {
+      id: "13.3",
+      page: "11 / slice gate — Branch B resolution path",
+      capability: "Detect a manually-voided Purchase via a read API — the real isVoided signal",
+      endpoint: "`Purchase` query (`status` field)"
+    }
   }
 ];
 

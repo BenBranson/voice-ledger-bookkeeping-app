@@ -5,28 +5,22 @@ import Foundation
 /// item 6, `testPurchasesRead`) for `Id`, `TxnDate`, `TotalAmt`, `DocNumber`,
 /// `PrivateNote`, `AccountRef`, `EntityRef`.
 ///
-/// **`isVoided` detection: the `TotalAmt == 0` heuristic was tried and
-/// DISPROVEN against the live sandbox, 2026-08-17.** A live `sync-check` run
-/// (`VoiceLedgerDevTool`) against the real sandbox surfaced Purchase `#146` —
-/// the `VL-SPIKE-ZERO` edge-case fixture (`backend/spike/seeds/edge-cases.json`),
-/// a **legitimate, never-voided** $0 Purchase created specifically to test
-/// that normalization "must not crash or duplicate-match on $0." The
-/// heuristic flagged it `isVoided: true` anyway — a real false positive on
-/// real data, not a hypothetical one. `TotalAmt == 0` conflates "voided" with
-/// "genuinely a zero-dollar transaction," which is not a safe distinction to
-/// guess at. Per `CLAUDE.md` rule 6 ("no feature labeled Automatic without
-/// sandbox proof" — the inverse also holds: a heuristic sandbox-DISPROVEN
-/// stays disproven, it doesn't get to keep running because it compiles),
-/// `isVoidedHeuristic` below is now hardcoded to `false` rather than left
-/// shipping a heuristic known to misfire. This means Branch B's `isVoided`
-/// exclusion (docs/phase-0/11_VERTICAL_SLICE.md §11.1) currently can never
-/// fire against real synced data — the resolution path is real in the rule
-/// engine (see `RuleEngineGatingTests`/`DuplicatePostedExpenseRuleTests`) but
-/// not yet reachable end-to-end against QBO until a real signal is found.
-/// `docs/phase-0/SPIKE_QUEUE.md` item 51 (`testManualVoidPurchaseAPIShape`)
-/// still needs to run — void Purchase #151 manually in the QBO UI, resync,
-/// and see what actually changes (a `PrivateNote` marker, if any, is the next
-/// candidate signal; `TotalAmt` alone is now known not to be one).
+/// **`isVoided` detection: RESOLVED 2026-08-17, spike item 51.** A `TotalAmt
+/// == 0` heuristic was tried first and DISPROVEN (false-positived on the
+/// legitimate, never-voided `VL-SPIKE-ZERO` $0 fixture, Purchase #146 —
+/// `backend/spike/seeds/edge-cases.json`). The owner then manually voided
+/// Purchase #151 (docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example)
+/// in the live QBO sandbox UI, and a re-read confirmed the real signal: QBO
+/// adds a **top-level `"status": "Voided"` field, present ONLY on voided
+/// transactions** — absent entirely (not `false`, not `null` — the key
+/// itself is missing) on every non-voided Purchase checked, including the
+/// same #146 control fixture that broke the old heuristic. QBO also
+/// prefixes `PrivateNote` with `"Voided - "` automatically, a secondary
+/// corroborating signal not used here as primary. See
+/// `backend/spike/tests/13-manual-void-purchase-shape.spike.ts` and its
+/// fixture for the full before/after evidence. Branch B's `isVoided`
+/// exclusion (§11.1) is now provably reachable end-to-end against real data,
+/// not just proven in the rule engine's offline tests.
 public struct QBORawPurchase: Decodable, Sendable {
     public let id: String
     public let txnDate: String
@@ -35,6 +29,7 @@ public struct QBORawPurchase: Decodable, Sendable {
     public let privateNote: String?
     public let accountRef: QBORawRef?
     public let entityRef: QBORawRef?
+    public let status: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
@@ -44,15 +39,16 @@ public struct QBORawPurchase: Decodable, Sendable {
         case privateNote = "PrivateNote"
         case accountRef = "AccountRef"
         case entityRef = "EntityRef"
+        case status
     }
 
-    /// See the type-level doc comment: `TotalAmt == 0` was tried and
-    /// DISPROVEN against the live sandbox (false-positived on a legitimate
-    /// $0 fixture, Purchase #146). Hardcoded `false` until spike item 51
-    /// finds a real signal — this is an honest "we don't know," not a
-    /// silent regression to the old (wrong) heuristic under another name.
-    public var isVoidedHeuristic: Bool {
-        false
+    /// The verified signal (see the type-level doc comment): a voided
+    /// Purchase carries `"status": "Voided"`. The key is absent — not
+    /// present-and-false — on every non-voided Purchase, so `status ==
+    /// "Voided"` is the whole check; no fallback to `TotalAmt` is needed
+    /// or wanted, since that path is the one already proven unsafe.
+    public var isVoided: Bool {
+        status == "Voided"
     }
 }
 

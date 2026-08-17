@@ -254,23 +254,26 @@ on a fresh sandbox.
 
 ---
 
-## ✅ Wave 5 — items 49-50 run 2026-08-17; item 51 still not run
+## ✅ Wave 5 — all three items (49-51) run 2026-08-17
 
-Owner instruction, `NEXT_INSTRUCTION.md` Part 4, 2026-08-16: pulled forward
-from `docs/backlog/CLEANUP_MODE.md` §2.7 and
-`docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` item 6, respectively — filed as
-queue items only, not run at the time. **Approved and run 2026-08-17** (owner:
-"go on and run spike items 49/50"). `backend/spike/runWave5.ts`,
-`backend/spike/tests/11-categorization-provenance.spike.ts` and
-`12-reconciled-transaction-detection.spike.ts`. Fixture:
-`backend/spike/fixtures/results-2026-08-17T16-06-42-317Z.json`. Matrix
-regenerated — new rows 13.1/13.2, `docs/phase-0/02_QBO_CAPABILITY_MATRIX.md`.
+Items 49-50 pulled forward from `docs/backlog/CLEANUP_MODE.md` §2.7 and
+`docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` item 6 (`NEXT_INSTRUCTION.md`
+Part 4, 2026-08-16) — filed as queue items only, not run at the time.
+**Approved and run 2026-08-17** (owner: "go on and run spike items 49/50").
+Item 51 needed the owner to manually void Purchase #151 in the sandbox UI
+first — done the same day, then verified. `backend/spike/runWave5.ts`,
+`backend/spike/tests/11-categorization-provenance.spike.ts`,
+`12-reconciled-transaction-detection.spike.ts`,
+`13-manual-void-purchase-shape.spike.ts`. Fixtures:
+`backend/spike/fixtures/results-2026-08-17T16-06-42-317Z.json` (49-50) and
+`results-2026-08-17T16-33-01-191Z.json` (51). Matrix regenerated — new rows
+13.1/13.2/13.3, `docs/phase-0/02_QBO_CAPABILITY_MATRIX.md`.
 
 | # | Test | Matrix row | Asserts | Result (2026-08-17) |
 |---|---|---|---|---|
 | 49 | `testCategorizationProvenance` | 13.1 | Is QBO's rule-vs-AI-vs-human categorization source exposed via any read API (transaction detail, CDC, or report)? Source: Hector Garcia's walkthrough showed QBO's own UI stating "100% a guess, no historical transactions" per-transaction — the question is whether that provenance is reachable outside the UI. If yes: an enormous cleanup filter (sort the whole file by "categorized by a guess"). If no: record as DISPROVEN — still a useful, permanent answer, not a failure to work around. | ❌ **DISPROVEN** — checked across a `Purchase` query (35 keys), `cdc` (93 keys), and `TransactionList` report columns; none of 12 candidate field names present anywhere. The cleanup-filter idea in `CLEANUP_MODE.md` §2.7 has no API path — closed, not just unimplemented. |
 | 50 | `testReconciledTransactionDetection` | 13.2 | Can we tell from the API whether a transaction has already been reconciled? Source: `REDDIT_FEEDBACK_ASSESSMENT.md`'s sensitive-write-preflight risk-tier proposal — a write against an already-reconciled transaction breaks that reconciliation, and §10.3's five preflight checks don't currently check for this. Needed before any write-risk-tiering work, not needed for the Phase 1 slice (Branch B makes no write at all, §11.1). If yes: which field/endpoint, and whether it's per-line or per-transaction. If no: record as DISPROVEN; the preflight risk-tier design would need a different signal (e.g., cross-referencing an imported reconciliation report). | ❌ **DISPROVEN, with a caveat** — same three-surface check, 8 candidate names, none found. **But no seed data in this sandbox has ever been through a real Finish Reconciliation**, so this only confirms the field is absent on an *unreconciled* transaction — a field that only appears once reconciled would still be missed. Genuinely needs Wave 4 item 44 (`testClearedStatusFilter`, `seeds/reconciliation.json` already exists) before this can be called fully closed. |
-| 51 | `testManualVoidPurchaseAPIShape` *(added during Phase 1 step 1.6's build, 2026-08-16)* | — (new row, TBD on run) | What does the API read of a `Purchase` look like after it's voided **manually in the QBO UI** (as opposed to `?operation=void`, already confirmed unsupported — §11.1)? **Half-run, 2026-08-17: the candidate signal was tested and DISPROVEN, the real question is still open.** A live `sync-check` run (`voiceledger-devtool sync-check`, against the real sandbox) surfaced Purchase #146 — the `VL-SPIKE-ZERO` edge-case fixture (`backend/spike/seeds/edge-cases.json`), a legitimate, never-voided $0 Purchase — being misclassified `isVoided: true` by the `TotalAmt == 0` heuristic. That heuristic is now DISPROVEN on real data, not merely unverified; `desktop/Sources/Integrations/QuickBooks/QBORawPurchase.swift`'s `isVoidedHeuristic` is hardcoded `false` as a result. **Still needed to close this item:** void the seeded Purchase #151 manually in the sandbox UI, resync, and diff the before/after raw JSON to find what actually changes (candidates: a `PrivateNote` marker QBO adds on manual void, `Line` array emptied vs. `TotalAmt` alone, a status field not yet read). This gates whether Branch B's resolution path (§11.1, §11.4) is reachable end-to-end against real client data — right now it is proven only in the rule engine (offline tests), not against a real voided Purchase. |
+| 51 | `testManualVoidPurchaseAPIShape` *(added during Phase 1 step 1.6's build, 2026-08-16)* | 13.3 | What does the API read of a `Purchase` look like after it's voided **manually in the QBO UI** (as opposed to `?operation=void`, already confirmed unsupported — §11.1)? | ✅ **VERIFIED (2026-08-17).** The owner manually voided Purchase #151 in the live sandbox UI. Real signal found: a top-level **`"status": "Voided"`** field, present only on voided Purchases (absent entirely — not `false`, not `null` — on every non-voided Purchase, including the #146 control fixture that broke the earlier `TotalAmt == 0` heuristic). `QBORawPurchase.swift`'s `isVoided` now decodes this field. Confirmed end-to-end: a `sync-check` run immediately after showed #151 as `voided=true`, and the `VL-DUP-EXP-001` finding for #145/#151 disappeared — resolved via the `isVoided` exclusion, zero QBO writes made by Voice Ledger. Branch B's full resolution path is now proven against real data, not just fixtures. See matrix row 13.3 for the full before/after JSON. |
 
 ---
 
@@ -296,11 +299,12 @@ actually works against the connected sandbox, not just offline fixtures.
   by the sync layer's `TotalAmt == 0` heuristic — see item 51 above, now
   fixed (hardcoded `false` pending a real signal).
 
-This is the first time any part of the vertical slice ran against the real
-sandbox rather than synthetic fixtures. It does not close item 51 (no
-manual void was performed), and it does not touch UI rendering (no
-screenshot tool available) — both remain open exactly as documented in
-`docs/VOICE_LEDGER_HANDOFF.md` §13, now with one fewer unknown between them.
+This was the first time any part of the vertical slice ran against the real
+sandbox rather than synthetic fixtures. At the time, it did not close item
+51 (no manual void had been performed yet) — **that gap closed the same
+day**, see the Wave 5 section above and matrix row 13.3. UI rendering
+verification (no screenshot tool available) remains the one open item from
+this note, still documented in `docs/VOICE_LEDGER_HANDOFF.md` §13.
 
 ---
 

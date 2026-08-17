@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T16:07:31.958Z",
+  "generatedAt": "2026-08-17T16:34:51.156Z",
   "generatedBy": "backend/spike/regenerateMatrix.ts — see file header for the coverage-mapping methodology",
   "tableRowUpdates": [
     {
@@ -260,7 +260,7 @@
       "tableRowId": "13.1",
       "status": "VERIFIED",
       "coverage": "full",
-      "verifiedAt": "2026-08-17T16:06:40.580Z",
+      "verifiedAt": "2026-08-17T16:32:59.046Z",
       "sourceMatrixRowKey": "testCategorizationProvenance",
       "detail": "Confirmed absent — see negativeEvidence.",
       "isNewRow": {
@@ -274,7 +274,7 @@
       "tableRowId": "13.2",
       "status": "VERIFIED",
       "coverage": "full",
-      "verifiedAt": "2026-08-17T16:06:42.316Z",
+      "verifiedAt": "2026-08-17T16:33:00.226Z",
       "sourceMatrixRowKey": "testReconciledTransactionDetection",
       "detail": "Confirmed absent — see negativeEvidence.",
       "isNewRow": {
@@ -282,6 +282,20 @@
         "page": "Backlog — sensitive-write preflight risk tiers",
         "capability": "Whether a transaction is already reconciled, exposed via any read API",
         "endpoint": "`Purchase` query, `cdc`, `reports/TransactionList`"
+      }
+    },
+    {
+      "tableRowId": "13.3",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-17T16:33:01.190Z",
+      "sourceMatrixRowKey": "testManualVoidPurchaseAPIShape",
+      "detail": "VERIFIED — a manually-voided Purchase carries a top-level \"status\": \"Voided\" field, absent entirely on non-voided Purchases (checked against #146, the same $0 fixture that broke the earlier TotalAmt==0 heuristic — confirms this signal doesn't repeat that false positive). QBO also automatically prefixed PrivateNote with \"Voided - \" (prefixed=true: \"Voided - VL-SPIKE-DUP-B\"), a secondary corroborating signal but \"status\" is the primary one. TotalAmt and all Line amounts are zeroed (already known, not sufficient alone). SyncToken incremented to \"1\" as expected for any write. Branch B's isVoided-exclusion resolution path (§11.1, §11.4) is now provably reachable against real data.",
+      "isNewRow": {
+        "id": "13.3",
+        "page": "11 / slice gate — Branch B resolution path",
+        "capability": "Detect a manually-voided Purchase via a read API — the real isVoided signal",
+        "endpoint": "`Purchase` query (`status` field)"
       }
     }
   ],
