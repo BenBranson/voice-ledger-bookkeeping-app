@@ -64,6 +64,15 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
+    public struct ReadDepositsParams: Encodable, Sendable {
+        public let startDate: String
+        public let endDate: String
+        public init(startDate: String, endDate: String) {
+            self.startDate = startDate
+            self.endDate = endDate
+        }
+    }
+
     /// Fetches `Purchase` for the period, `Account` (the full chart of
     /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
     /// coded to), and `Preferences` for the company feature flag (§11.2's
@@ -121,6 +130,16 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadPaymentsParams(startDate: startDate, endDate: endDate)
         )
+        // Note: scoped to the same period as everything else, so a Payment
+        // dated near the period boundary that was swept by a Deposit
+        // outside this window won't be matched — VL-BS-UNDEP-001 accepts
+        // this as a known limitation rather than widening every other
+        // entity's window to compensate.
+        let depositsData = try await backend.call(
+            .readDeposits,
+            realmID: realmID,
+            params: ReadDepositsParams(startDate: startDate, endDate: endDate)
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -134,6 +153,7 @@ public struct QBOSyncClient: Sendable {
         let vendorsResponse = try decoder.decode(QBOVendorQueryResponse.self, from: vendorsData)
         let invoicesResponse = try decoder.decode(QBOInvoiceQueryResponse.self, from: invoicesData)
         let paymentsResponse = try decoder.decode(QBOPaymentQueryResponse.self, from: paymentsData)
+        let depositsResponse = try decoder.decode(QBODepositQueryResponse.self, from: depositsData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
@@ -153,6 +173,7 @@ public struct QBOSyncClient: Sendable {
         let transactions = rawPurchases.map { Self.normalize($0) } + rawBills.map { Self.normalize($0) } + rawInvoices.map { Self.normalize($0) } + rawPayments.map { Self.normalize($0) }
         let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
         let vendors = (vendorsResponse.queryResponse.vendor ?? []).map { Self.normalize($0) }
+        let deposits = (depositsResponse.queryResponse.deposit ?? []).map { Self.normalize($0) }
 
         return NormalizedDataSet(
             realmID: realmID,
@@ -160,6 +181,7 @@ public struct QBOSyncClient: Sendable {
             transactions: transactions,
             accounts: accounts,
             vendors: vendors,
+            deposits: deposits,
             coverage: coverage,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: customTxnNumbers)
         )
@@ -242,6 +264,12 @@ public struct QBOSyncClient: Sendable {
 
     /// `isVoided` is decoded but unverified for Payment — see
     /// `QBORawPayment`'s doc comment.
+    /// `paymentAccountID` is set to `DepositToAccountRef` here — the
+    /// account the payment is heading to (Undeposited Funds, almost
+    /// always), not an account it was paid FROM the way a Purchase's
+    /// `paymentAccountID` works. `VL-BS-UNDEP-001` is the reason this
+    /// field is populated at all; no other rule currently reads it on a
+    /// `.payment` transaction.
     static func normalize(_ raw: QBORawPayment) -> LedgerTransaction {
         LedgerTransaction(
             id: raw.id,
@@ -249,7 +277,7 @@ public struct QBOSyncClient: Sendable {
             vendorName: raw.customerRef?.name,
             txnDate: AccountingDate(qboDateString: raw.txnDate),
             totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
-            paymentAccountID: nil,
+            paymentAccountID: raw.depositToAccountRef?.value,
             docNumber: nil,
             isVoided: raw.isVoided,
             memo: raw.privateNote,
@@ -260,6 +288,10 @@ public struct QBOSyncClient: Sendable {
 
     static func normalize(_ raw: QBORawVendor) -> LedgerVendor {
         LedgerVendor(id: raw.id, displayName: raw.displayName, isActive: raw.active ?? true)
+    }
+
+    static func normalize(_ raw: QBORawDeposit) -> LedgerDeposit {
+        LedgerDeposit(id: raw.id, linkedPaymentIDs: raw.linkedPaymentIDs)
     }
 
     static func minorUnits(from amount: Decimal) -> Int64 {

@@ -246,6 +246,11 @@ public struct QBORawPayment: Decodable, Sendable {
     public let totalAmt: Decimal
     public let privateNote: String?
     public let customerRef: QBORawRef?
+    /// Added for `VL-BS-UNDEP-001` — verified live present on every real
+    /// Payment checked. Almost always Undeposited Funds by default, but
+    /// QBO does let a Payment deposit straight to a real bank account, so
+    /// this is read rather than assumed.
+    public let depositToAccountRef: QBORawRef?
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
@@ -254,6 +259,7 @@ public struct QBORawPayment: Decodable, Sendable {
         case totalAmt = "TotalAmt"
         case privateNote = "PrivateNote"
         case customerRef = "CustomerRef"
+        case depositToAccountRef = "DepositToAccountRef"
         case status
     }
 
@@ -274,6 +280,61 @@ public struct QBOPaymentQueryResponse: Decodable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case payment = "Payment"
+        }
+    }
+}
+
+/// Added 2026-08-17 for `VL-BS-UNDEP-001`. Verified live: `Line[].LinkedTxn[]`
+/// with `TxnType == "Payment"` is the real signal QBO uses to record which
+/// Payments a Deposit swept up — a real sandbox Deposit (Id 121) was found
+/// referencing 5 Payments this way, including one dated 4 days before the
+/// deposit itself.
+public struct QBORawDeposit: Decodable, Sendable {
+    public let id: String
+    public let line: [QBORawDepositLine]?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case line = "Line"
+    }
+
+    public var linkedPaymentIDs: [String] {
+        (line ?? []).flatMap { line in
+            (line.linkedTxn ?? []).filter { $0.txnType == "Payment" }.map(\.txnId)
+        }
+    }
+}
+
+public struct QBORawDepositLine: Decodable, Sendable {
+    public let linkedTxn: [QBORawLinkedTxn]?
+
+    enum CodingKeys: String, CodingKey {
+        case linkedTxn = "LinkedTxn"
+    }
+}
+
+public struct QBORawLinkedTxn: Decodable, Sendable {
+    public let txnId: String
+    public let txnType: String
+
+    enum CodingKeys: String, CodingKey {
+        case txnId = "TxnId"
+        case txnType = "TxnType"
+    }
+}
+
+public struct QBODepositQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let deposit: [QBORawDeposit]?
+
+        enum CodingKeys: String, CodingKey {
+            case deposit = "Deposit"
         }
     }
 }

@@ -45,6 +45,19 @@ public struct AccountingDate: Hashable, Codable, Sendable, Comparable {
         self.day = d
     }
 
+    /// UTC calendar date components of `date` — used for "as of today"
+    /// comparisons (e.g. `VL-BS-UNDEP-001`'s aging check), never for
+    /// re-deriving a QBO `TxnDate` (which already has its own
+    /// `qboDateString` initializer).
+    public init(date: Date) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let comps = calendar.dateComponents([.year, .month, .day], from: date)
+        self.year = comps.year!
+        self.month = comps.month!
+        self.day = comps.day!
+    }
+
     public static func < (lhs: AccountingDate, rhs: AccountingDate) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }

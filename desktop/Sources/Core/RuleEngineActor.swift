@@ -150,7 +150,8 @@ public enum RuleRegistry {
         DuplicatePaymentRule.self,
         UncategorizedTransactionRule.self,
         BankFeedMissingPostingRule.self,
-        VendorDescriptionMismatchRule.self
+        VendorDescriptionMismatchRule.self,
+        UndepositedFundsAgingRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

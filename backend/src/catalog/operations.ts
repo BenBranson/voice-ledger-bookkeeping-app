@@ -139,6 +139,31 @@ const readPayments = op({
   }
 });
 
+const readDepositsParams = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+// docs/backlog's VL-BS-UNDEP-001. Added 2026-08-17 — Deposit.Line[].LinkedTxn
+// is the authoritative signal for which Payments have already been swept out
+// of Undeposited Funds, confirmed live (a Payment dated Jan 21 was found
+// swept by a Deposit dated Jan 25 — a Payment-only check would have
+// false-positived on it as "stuck").
+const readDeposits = op({
+  name: "readDeposits",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readDepositsParams,
+  execute: async (client, realmId, params: z.infer<typeof readDepositsParams>) => {
+    const query =
+      `select * from Deposit where TxnDate >= '${params.startDate}' and TxnDate <= '${params.endDate}' ` +
+      `STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 const readVendorsParams = z.object({
   activeOnly: z.boolean().default(true),
   startPosition: z.number().int().min(1).default(1),
@@ -215,7 +240,7 @@ const cdcSince = op({
 });
 
 export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = new Map(
-  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readInvoices, readPayments, readReport, cdcSince].map(
+  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readInvoices, readPayments, readDeposits, readReport, cdcSince].map(
     (definition) => [definition.name, definition]
   )
 );

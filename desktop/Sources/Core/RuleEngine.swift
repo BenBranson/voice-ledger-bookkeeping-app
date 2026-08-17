@@ -76,6 +76,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case statementLineMissingPosting
     /// `VL-VENDOR-MISMATCH-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 3).
     case vendorDescriptionMismatch
+    /// `VL-BS-UNDEP-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 8).
+    case agedUndepositedFunds
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
@@ -175,19 +177,27 @@ public struct RuleContext: Sendable {
     /// that transaction — it does not skip itself entirely. Empty for
     /// relationship-class rules, which always see the ungated context.
     public let gatedTransactionIDs: Set<String>
+    /// "Today," for a rule that needs to measure age (e.g.
+    /// `VL-BS-UNDEP-001`'s days-since-payment check) rather than compare
+    /// two stored dates. Defaults to the real current date — passed
+    /// explicitly by test callers so aging math stays deterministic and
+    /// testable rather than depending on when the test happens to run.
+    public let asOfDate: AccountingDate
 
     public init(
         period: AccountingPeriod,
         materiality: MaterialityPolicy,
         companyFacts: CompanyFacts,
         dismissedFindingIDs: Set<String> = [],
-        gatedTransactionIDs: Set<String> = []
+        gatedTransactionIDs: Set<String> = [],
+        asOfDate: AccountingDate = AccountingDate(date: Date())
     ) {
         self.period = period
         self.materiality = materiality
         self.companyFacts = companyFacts
         self.dismissedFindingIDs = dismissedFindingIDs
         self.gatedTransactionIDs = gatedTransactionIDs
+        self.asOfDate = asOfDate
     }
 
     /// Returns a copy with `gatedTransactionIDs` replaced — used by

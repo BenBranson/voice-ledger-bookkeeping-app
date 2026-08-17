@@ -111,6 +111,24 @@ public struct CompanyConnectionInfo: Sendable, Codable, Hashable {
     }
 }
 
+/// docs/phase-0/04_DATA_MODEL.md. Added for `VL-BS-UNDEP-001`. Not a
+/// `LedgerTransaction` — a `Deposit` isn't compared against other
+/// transactions the way a Purchase/Bill/Invoice/Payment is; it exists only
+/// to say which `Payment`s have already been swept out of Undeposited
+/// Funds, via `linkedPaymentIDs` (`Deposit.Line[].LinkedTxn[].TxnId` where
+/// `TxnType == "Payment"`, confirmed live as the authoritative signal —
+/// a Payment-only check without this would false-positive on any payment
+/// that was actually deposited days after its own `TxnDate`).
+public struct LedgerDeposit: Identifiable, Hashable, Codable, Sendable {
+    public let id: String
+    public let linkedPaymentIDs: [String]
+
+    public init(id: String, linkedPaymentIDs: [String]) {
+        self.id = id
+        self.linkedPaymentIDs = linkedPaymentIDs
+    }
+}
+
 /// docs/phase-0/04_DATA_MODEL.md. Only what `VL-DUP-VEND-001` needs.
 public struct LedgerVendor: Identifiable, Hashable, Codable, Sendable {
     public let id: String
@@ -228,6 +246,8 @@ public struct NormalizedDataSet: Sendable {
     public let accounts: [LedgerAccount]
     /// Added for `VL-DUP-VEND-001`.
     public let vendors: [LedgerVendor]
+    /// Added for `VL-BS-UNDEP-001`.
+    public let deposits: [LedgerDeposit]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -237,6 +257,7 @@ public struct NormalizedDataSet: Sendable {
         transactions: [LedgerTransaction],
         accounts: [LedgerAccount] = [],
         vendors: [LedgerVendor] = [],
+        deposits: [LedgerDeposit] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -245,6 +266,7 @@ public struct NormalizedDataSet: Sendable {
         self.transactions = transactions
         self.accounts = accounts
         self.vendors = vendors
+        self.deposits = deposits
         self.coverage = coverage
         self.companyFacts = companyFacts
     }
