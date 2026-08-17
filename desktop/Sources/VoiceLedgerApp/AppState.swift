@@ -23,6 +23,7 @@ public final class AppState {
         case balanceSheetIntegrity
         case bankFeedCleanup
         case monthEndClose
+        case balanceSheetReport
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -84,6 +85,11 @@ public final class AppState {
     // Month-End Close checklist (Page 11) state.
     public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
 
+    // Reporting (Page 12) state.
+    public private(set) var balanceSheetLines: [ReportLine] = []
+    public private(set) var isLoadingBalanceSheet = false
+    public private(set) var balanceSheetError: String?
+
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
@@ -138,6 +144,20 @@ public final class AppState {
         } catch {
             loadState = .failed("\(error)")
         }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 12 — a separate, on-demand fetch, not
+    /// part of `syncAndEvaluate()`: a report read is comparatively
+    /// expensive and no rule currently consumes it.
+    public func loadBalanceSheet() async {
+        isLoadingBalanceSheet = true
+        balanceSheetError = nil
+        do {
+            balanceSheetLines = try await syncClient.fetchBalanceSheet(realmID: realmID, period: period)
+        } catch {
+            balanceSheetError = "\(error)"
+        }
+        isLoadingBalanceSheet = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

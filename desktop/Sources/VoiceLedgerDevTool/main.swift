@@ -79,6 +79,13 @@ case "sync-check":
         let companyInfo = try await syncClient.fetchCompanyInfo(realmID: realmID)
         print("Company: \(companyInfo.companyName) (realmId \(companyInfo.realmID.rawValue))")
 
+        let balanceSheetLines = try await syncClient.fetchBalanceSheet(realmID: realmID, period: period)
+        print("Balance Sheet: \(balanceSheetLines.count) lines")
+        for line in balanceSheetLines.prefix(8) {
+            let indent = String(repeating: "  ", count: line.depth)
+            print("  \(indent)\(line.label): \(line.amount?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+        }
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let dataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(dataSet.transactions.count)")

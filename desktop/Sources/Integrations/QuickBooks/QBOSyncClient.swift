@@ -105,6 +105,61 @@ public struct QBOSyncClient: Sendable {
         return CompanyConnectionInfo(companyName: decoded.companyInfo.companyName, realmID: realmID)
     }
 
+    public struct ReadReportParams: Encodable, Sendable {
+        public let reportKind: String
+        public let startDate: String
+        public let endDate: String
+        public init(reportKind: String, startDate: String, endDate: String) {
+            self.reportKind = reportKind
+            self.startDate = startDate
+            self.endDate = endDate
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 12 (Type A), minimal slice — Balance
+    /// Sheet only, flattened. Separate from `sync(realmID:period:)` since a
+    /// report read is comparatively expensive and not every screen needs
+    /// it every sync.
+    public func fetchBalanceSheet(realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let data = try await backend.call(
+            .readReport,
+            realmID: realmID,
+            params: ReadReportParams(reportKind: "BalanceSheet", startDate: startDate, endDate: endDate)
+        )
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return Self.flatten(decoded.rows, depth: 0)
+    }
+
+    /// A section row (`Header`/`Rows`/optional `Summary`) and a leaf data
+    /// row (`ColData` + `type == "Data"`) are distinguished by which
+    /// optional fields are present — see `QBORawReportRow`'s doc comment.
+    static func flatten(_ rowList: QBORawReportRowList, depth: Int) -> [ReportLine] {
+        var lines: [ReportLine] = []
+        for row in rowList.row ?? [] {
+            if let header = row.header {
+                lines.append(ReportLine(label: header.colData.first?.value ?? "", amount: nil, depth: depth, isSummary: false))
+            }
+            if let nested = row.rows {
+                lines.append(contentsOf: flatten(nested, depth: depth + 1))
+            }
+            if row.type == "Data", let colData = row.colData {
+                lines.append(Self.reportLine(from: colData, depth: depth, isSummary: false))
+            }
+            if let summary = row.summary {
+                lines.append(Self.reportLine(from: summary.colData, depth: depth, isSummary: true))
+            }
+        }
+        return lines
+    }
+
+    private static func reportLine(from colData: [QBORawReportColData], depth: Int, isSummary: Bool) -> ReportLine {
+        let label = colData.first?.value ?? ""
+        let amountString = colData.count > 1 ? colData[1].value : nil
+        let amount = amountString.flatMap { $0.isEmpty ? nil : Money(minorUnits: Self.minorUnits(from: Decimal(string: $0) ?? 0), currency: .usd) }
+        return ReportLine(label: label, amount: amount, depth: depth, isSummary: isSummary)
+    }
+
     public func sync(realmID: RealmID, period: AccountingPeriod) async throws -> NormalizedDataSet {
         let (startDate, endDate) = Self.dateRange(for: period)
         let maxResults = 1000

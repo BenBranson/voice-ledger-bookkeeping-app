@@ -33,6 +33,9 @@ struct RootView: View {
                         Button("Month-End Close") { state.screen = .monthEndClose }
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Balance Sheet") { state.screen = .balanceSheetReport }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -193,6 +196,20 @@ struct RootView: View {
                 items: monthEndChecklistItemStates,
                 onComplete: { itemID, note in Task { await state.completeChecklistItem(itemID, actorName: actorName, note: note) } },
                 onUncomplete: { itemID in Task { await state.uncompleteChecklistItem(itemID) } }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .balanceSheetReport:
+            BalanceSheetReportView(
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.balanceSheetLines,
+                isLoading: state.isLoadingBalanceSheet,
+                errorMessage: state.balanceSheetError,
+                onRefresh: { Task { await state.loadBalanceSheet() } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
