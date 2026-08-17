@@ -26,6 +26,9 @@ public enum CatalogOperation: String, Sendable, CaseIterable {
     /// `readVendors` operation (`backend/src/catalog/operations.ts`), added
     /// in the same commit.
     case readVendors
+    /// Added 2026-08-17 alongside `VL-DUP-INV-001` — mirrors the backend's
+    /// `readInvoices` operation, added in the same commit.
+    case readInvoices
     case readReport
     case cdcSince
 }

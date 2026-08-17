@@ -146,6 +146,7 @@ public enum RuleRegistry {
         NegativeBalanceRule.self,
         DuplicateVendorRule.self,
         DuplicateBillRule.self,
+        DuplicateInvoiceRule.self,
         UncategorizedTransactionRule.self
     ]
 

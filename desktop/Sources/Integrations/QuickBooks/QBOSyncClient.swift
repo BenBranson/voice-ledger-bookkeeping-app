@@ -46,6 +46,15 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
+    public struct ReadInvoicesParams: Encodable, Sendable {
+        public let startDate: String
+        public let endDate: String
+        public init(startDate: String, endDate: String) {
+            self.startDate = startDate
+            self.endDate = endDate
+        }
+    }
+
     /// Fetches `Purchase` for the period, `Account` (the full chart of
     /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
     /// coded to), and `Preferences` for the company feature flag (§11.2's
@@ -93,6 +102,11 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadVendorsParams()
         )
+        let invoicesData = try await backend.call(
+            .readInvoices,
+            realmID: realmID,
+            params: ReadInvoicesParams(startDate: startDate, endDate: endDate)
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -104,13 +118,15 @@ public struct QBOSyncClient: Sendable {
         let billsResponse = try decoder.decode(QBOBillQueryResponse.self, from: billsData)
         let accountsResponse = try decoder.decode(QBOAccountQueryResponse.self, from: accountsData)
         let vendorsResponse = try decoder.decode(QBOVendorQueryResponse.self, from: vendorsData)
+        let invoicesResponse = try decoder.decode(QBOInvoiceQueryResponse.self, from: invoicesData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
         let rawBills = billsResponse.queryResponse.bill ?? []
-        let coverage: Coverage = (rawPurchases.count < maxResults && rawBills.count < maxResults)
+        let rawInvoices = invoicesResponse.queryResponse.invoice ?? []
+        let coverage: Coverage = (rawPurchases.count < maxResults && rawBills.count < maxResults && rawInvoices.count < maxResults)
             ? .complete
-            : .partial(reason: "readPurchases or readBills returned a full page (\(rawPurchases.count) purchases, \(rawBills.count) bills, of \(maxResults) max) — pagination is not yet wired into this sync call, so completeness beyond one page is unverified.")
+            : .partial(reason: "readPurchases, readBills, or readInvoices returned a full page (\(rawPurchases.count) purchases, \(rawBills.count) bills, \(rawInvoices.count) invoices, of \(maxResults) max) — pagination is not yet wired into this sync call, so completeness beyond one page is unverified.")
 
         let customTxnNumbers = preferencesResponse.queryResponse.preferences?.first?
             .vendorAndPurchasesPrefs?.useCustomTxnNumbers ?? false
@@ -118,7 +134,7 @@ public struct QBOSyncClient: Sendable {
         // Purchase and Bill normalize into the SAME LedgerTransaction shape,
         // distinguished only by entityKind — the whole point of §4.1's
         // normalization contract (rules can't tell the source apart).
-        let transactions = rawPurchases.map { Self.normalize($0) } + rawBills.map { Self.normalize($0) }
+        let transactions = rawPurchases.map { Self.normalize($0) } + rawBills.map { Self.normalize($0) } + rawInvoices.map { Self.normalize($0) }
         let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
         let vendors = (vendorsResponse.queryResponse.vendor ?? []).map { Self.normalize($0) }
 
@@ -185,6 +201,25 @@ public struct QBOSyncClient: Sendable {
             isVoided: raw.isVoided,
             memo: raw.privateNote,
             lineAccountIDs: raw.lineAccountIDs,
+            provenance: .qboAPI(readAt: Date())
+        )
+    }
+
+    /// `isVoided` reuses Purchase's proven `status == "Voided"` signal —
+    /// see `QBORawInvoice`'s doc comment: not independently live-verified
+    /// for Invoice, flagged rather than silently assumed.
+    static func normalize(_ raw: QBORawInvoice) -> LedgerTransaction {
+        LedgerTransaction(
+            id: raw.id,
+            entityKind: .invoice,
+            vendorName: raw.customerRef?.name,
+            txnDate: AccountingDate(qboDateString: raw.txnDate),
+            totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
+            paymentAccountID: nil,
+            docNumber: raw.docNumber,
+            isVoided: raw.isVoided,
+            memo: raw.privateNote,
+            lineAccountIDs: [],
             provenance: .qboAPI(readAt: Date())
         )
     }

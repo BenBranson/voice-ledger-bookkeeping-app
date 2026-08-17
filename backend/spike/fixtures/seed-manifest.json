@@ -85,5 +85,21 @@
       "id": "216",
       "syncToken": "0"
     }
+  },
+  "customers": {
+    "Cool Cars": "3"
+  },
+  "items": {
+    "Design": "4"
+  },
+  "invoices": {
+    "VL-SPIKE-DUP-INV-A": {
+      "id": "220",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-DUP-INV-B": {
+      "id": "221",
+      "syncToken": "0"
+    }
   }
 }

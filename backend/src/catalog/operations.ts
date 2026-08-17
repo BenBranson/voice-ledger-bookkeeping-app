@@ -92,6 +92,29 @@ const readBills = op({
   }
 });
 
+const readInvoicesParams = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+// docs/backlog's VL-DUP-INV-001. Added 2026-08-17, same date-bounded
+// pattern as readPurchases/readBills — Invoice is the sales-side
+// equivalent of Bill (CustomerRef instead of VendorRef).
+const readInvoices = op({
+  name: "readInvoices",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readInvoicesParams,
+  execute: async (client, realmId, params: z.infer<typeof readInvoicesParams>) => {
+    const query =
+      `select * from Invoice where TxnDate >= '${params.startDate}' and TxnDate <= '${params.endDate}' ` +
+      `STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 const readVendorsParams = z.object({
   activeOnly: z.boolean().default(true),
   startPosition: z.number().int().min(1).default(1),
@@ -168,7 +191,7 @@ const cdcSince = op({
 });
 
 export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = new Map(
-  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readReport, cdcSince].map(
+  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readInvoices, readReport, cdcSince].map(
     (definition) => [definition.name, definition]
   )
 );

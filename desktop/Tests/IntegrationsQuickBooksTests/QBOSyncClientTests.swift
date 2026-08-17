@@ -145,6 +145,34 @@ struct QBOSyncClientTests {
         #expect(response.companyInfo.id == "1")
     }
 
+    @Test("Decodes a real-shaped Invoice query response and normalizes customer/date/amount, entityKind == .invoice")
+    func decodesAndNormalizesInvoice() throws {
+        let json = """
+        {
+          "QueryResponse": {
+            "Invoice": [
+              {
+                "Id": "220",
+                "TxnDate": "2026-07-14",
+                "TotalAmt": 500.00,
+                "DocNumber": "1010",
+                "CustomerRef": { "value": "1", "name": "Amy's Bird Sanctuary" }
+              }
+            ]
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(QBOInvoiceQueryResponse.self, from: Data(json.utf8))
+        let raw = try #require(response.queryResponse.invoice?.first)
+        let normalized = QBOSyncClient.normalize(raw)
+
+        #expect(normalized.id == "220")
+        #expect(normalized.entityKind == .invoice)
+        #expect(normalized.vendorName == "Amy's Bird Sanctuary")
+        #expect(normalized.totalAmount == Money(minorUnits: 50_000, currency: .usd))
+        #expect(normalized.isVoided == false)
+    }
+
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")
     func decodesPreferences() throws {
         let json = """

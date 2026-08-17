@@ -10,6 +10,11 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     case journalEntry = "JournalEntry"
     case account = "Account"
     case vendor = "Vendor"
+    /// Added for `VL-DUP-INV-001` — the sales-side counterpart to `bill`.
+    /// `LedgerTransaction.vendorName` is reused for the customer name on an
+    /// Invoice (see that field's doc comment) rather than adding a parallel
+    /// `customerName` field, since no rule needs to distinguish the two yet.
+    case invoice = "Invoice"
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.6's closed enum — confirmed against the
@@ -140,6 +145,11 @@ public enum ExtractionMethod: String, Hashable, Codable, Sendable {
 public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
     public let id: String // QBO Id for API-sourced records; a derived stable ID for imports
     public let entityKind: QBOEntityKind
+    /// The counterparty name — `EntityRef`'s name for `Purchase`/`Bill`
+    /// (a vendor), `CustomerRef`'s name for `Invoice` (a customer). Named
+    /// `vendorName` because the vendor-side entities came first; reused
+    /// rather than adding a parallel `customerName` since no rule needs to
+    /// tell the two apart, only compare same-kind-to-same-kind.
     public let vendorName: String?
     public let txnDate: AccountingDate
     public let totalAmount: Money

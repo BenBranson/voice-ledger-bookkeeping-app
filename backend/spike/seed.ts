@@ -57,13 +57,30 @@ interface SeedBill {
   note: string;
 }
 
+interface SeedCustomerRef {
+  /** The exact DisplayName of an EXISTING customer (e.g. one of QBO's own sample-company customers) — this looks the customer up, it never creates one. Voice Ledger has no customer-creation path; Invoice seeding is only meaningful against a sandbox that already has customers. */
+  displayName: string;
+}
+
+interface SeedInvoice {
+  case: string;
+  customer: string;
+  itemName: string;
+  amountMinorUnits: number;
+  date: string;
+  docNumber?: string;
+  note: string;
+}
+
 interface SeedFile {
   description: string;
   requiresBaseline?: boolean;
   accounts?: SeedAccount[];
   vendors?: SeedVendor[];
+  customers?: SeedCustomerRef[];
   purchases?: SeedPurchase[];
   bills?: SeedBill[];
+  invoices?: SeedInvoice[];
 }
 
 const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.json");
@@ -71,17 +88,23 @@ const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.js
 interface Manifest {
   accounts: Record<string, string>; // name -> Id
   vendors: Record<string, string>; // displayName -> Id
+  customers?: Record<string, string>; // displayName -> Id
+  items?: Record<string, string>; // name -> Id
   purchases: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   bills?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
+  invoices?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
 }
 
 function loadManifest(): Manifest {
   if (existsSync(MANIFEST_PATH)) {
     const loaded = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
     loaded.bills ??= {};
+    loaded.customers ??= {};
+    loaded.items ??= {};
+    loaded.invoices ??= {};
     return loaded;
   }
-  return { accounts: {}, vendors: {}, purchases: {}, bills: {} };
+  return { accounts: {}, vendors: {}, purchases: {}, bills: {}, customers: {}, items: {}, invoices: {} };
 }
 
 function saveManifest(manifest: Manifest): void {
@@ -233,6 +256,81 @@ async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBi
   process.stdout.write(`  [created] ${spec.case} -> Bill ${bill.Id}\n`);
 }
 
+// Looks up an EXISTING customer by DisplayName — never creates one. Voice
+// Ledger has no customer-creation path (`CLAUDE.md` scope), so Invoice
+// seeding only works against a sandbox that already has customers (every
+// QBO sample company does, e.g. "Amy's Bird Sanctuary").
+// QBO's query language escapes a literal single quote by doubling it —
+// found live 2026-08-17 when "Amy's Bird Sanctuary" broke this exact query
+// unescaped. Only applied to the two functions added in this pass
+// (ensureCustomer, ensureItem); the pre-existing ensureAccount/ensureVendor
+// queries have the same latent bug but are out of scope for this fix.
+function escapeQboStringLiteral(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+async function ensureCustomer(client: QboRawClient, manifest: Manifest, spec: SeedCustomerRef): Promise<string> {
+  manifest.customers ??= {};
+  const cached = manifest.customers[spec.displayName];
+  if (cached) return cached;
+
+  const existing = await client.query(`select Id from Customer where DisplayName = '${escapeQboStringLiteral(spec.displayName)}'`);
+  const found = (existing.body as any)?.QueryResponse?.Customer?.[0];
+  if (!found) {
+    throw new Error(`Customer "${spec.displayName}" not found in this sandbox — Voice Ledger cannot create one, only seed against an existing customer.`);
+  }
+  manifest.customers[spec.displayName] = found.Id;
+  return found.Id;
+}
+
+// Looks up an EXISTING Item by Name — never creates one, same reasoning as
+// ensureCustomer. Every QBO sample company ships default Service items
+// (e.g. "Design").
+async function ensureItem(client: QboRawClient, manifest: Manifest, name: string): Promise<string> {
+  manifest.items ??= {};
+  const cached = manifest.items[name];
+  if (cached) return cached;
+
+  const existing = await client.query(`select Id from Item where Name = '${escapeQboStringLiteral(name)}'`);
+  const found = (existing.body as any)?.QueryResponse?.Item?.[0];
+  if (!found) {
+    throw new Error(`Item "${name}" not found in this sandbox — Voice Ledger cannot create one, only seed against an existing item.`);
+  }
+  manifest.items[name] = found.Id;
+  return found.Id;
+}
+
+async function ensureInvoice(client: QboRawClient, manifest: Manifest, spec: SeedInvoice): Promise<void> {
+  manifest.invoices ??= {};
+  if (manifest.invoices[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+
+  const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
+  const itemId = await ensureItem(client, manifest, spec.itemName);
+
+  const created = await client.post("invoice", {
+    CustomerRef: { value: customerId },
+    TxnDate: spec.date,
+    DocNumber: spec.docNumber,
+    PrivateNote: spec.note,
+    Line: [
+      {
+        Amount: spec.amountMinorUnits / 100,
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: { ItemRef: { value: itemId } }
+      }
+    ]
+  });
+  if (created.status !== 200) {
+    throw new Error(`Invoice create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const invoice = (created.body as any).Invoice;
+  manifest.invoices[spec.note] = { id: invoice.Id, syncToken: invoice.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> Invoice ${invoice.Id}\n`);
+}
+
 async function apply(seedName: string): Promise<void> {
   const client = new QboRawClient();
   const manifest = loadManifest();
@@ -263,6 +361,10 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const bill of seed.bills ?? []) {
     await ensureBill(client, manifest, bill);
+    saveManifest(manifest);
+  }
+  for (const invoice of seed.invoices ?? []) {
+    await ensureInvoice(client, manifest, invoice);
     saveManifest(manifest);
   }
 

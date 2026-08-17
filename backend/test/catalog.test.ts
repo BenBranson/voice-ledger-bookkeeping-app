@@ -17,7 +17,7 @@ describe("catalog", () => {
     }
   });
 
-  it("contains exactly the eight operations named in the desktop-side CatalogOperation enum", () => {
+  it("contains exactly the nine operations named in the desktop-side CatalogOperation enum", () => {
     const names = [...CATALOG_OPERATIONS.keys()].sort();
     expect(names).toEqual(
       [
@@ -25,6 +25,7 @@ describe("catalog", () => {
         "readAccounts",
         "readBills",
         "readCompanyInfo",
+        "readInvoices",
         "readPreferences",
         "readPurchases",
         "readVendors",
@@ -57,6 +58,20 @@ describe("catalog", () => {
     } as unknown as QBOClient;
 
     const result = await dispatch(fakeClient, "123456", "readVendors", { activeOnly: true });
+    expect(result.kind).toBe("success");
+    expect(capturedPath).toBe("query");
+  });
+
+  it("readInvoices calls through to the QBO client with parsed params on success", async () => {
+    let capturedPath: string | undefined;
+    const fakeClient = {
+      get: async (_realmId: string, path: string) => {
+        capturedPath = path;
+        return { QueryResponse: { Invoice: [] } };
+      }
+    } as unknown as QBOClient;
+
+    const result = await dispatch(fakeClient, "123456", "readInvoices", { startDate: "2026-07-01", endDate: "2026-07-31" });
     expect(result.kind).toBe("success");
     expect(capturedPath).toBe("query");
   });

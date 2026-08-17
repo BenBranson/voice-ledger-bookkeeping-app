@@ -183,6 +183,55 @@ public struct QBOBillQueryResponse: Decodable, Sendable {
     }
 }
 
+/// docs/backlog's `VL-DUP-INV-001`. Same shape as `QBORawBill` for the
+/// fields this slice needs, except `CustomerRef` (not `VendorRef`) and no
+/// `APAccountRef`/`AccountRef` equivalent read (this rule only needs
+/// customer/date/amount, not line-level account detail). `isVoided` reuses
+/// the same `status == "Voided"` signal verified live for Purchase (spike
+/// item 51) — NOT independently re-verified against a live voided Invoice,
+/// since no Invoice has been voided in this sandbox to check against. Flagged
+/// here rather than silently assumed: if a duplicate Invoice's exclusion via
+/// voiding is ever reported not to resolve, check this assumption first.
+public struct QBORawInvoice: Decodable, Sendable {
+    public let id: String
+    public let txnDate: String
+    public let totalAmt: Decimal
+    public let docNumber: String?
+    public let privateNote: String?
+    public let customerRef: QBORawRef?
+    public let status: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case txnDate = "TxnDate"
+        case totalAmt = "TotalAmt"
+        case docNumber = "DocNumber"
+        case privateNote = "PrivateNote"
+        case customerRef = "CustomerRef"
+        case status
+    }
+
+    public var isVoided: Bool {
+        status == "Voided"
+    }
+}
+
+public struct QBOInvoiceQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let invoice: [QBORawInvoice]?
+
+        enum CodingKeys: String, CodingKey {
+            case invoice = "Invoice"
+        }
+    }
+}
+
 /// Added 2026-08-17 for `VL-DUP-VEND-001`.
 public struct QBORawVendor: Decodable, Sendable {
     public let id: String
