@@ -35,14 +35,22 @@ public enum RuleClass: String, Hashable, Codable, Sendable {
     case categorization
 }
 
-/// docs/VOICE_LEDGER_SPEC.md's 12-page workflow. Only the page this slice
-/// needs is modeled.
+/// docs/VOICE_LEDGER_SPEC.md's 12-page workflow. Only the pages actually
+/// built are modeled. `cleanupAssessment` isn't one of the 12 — it's the
+/// backlog page from `docs/backlog/CLEANUP_MODE.md`, built ahead of the
+/// remaining 11 per the handoff doc's own recommended sequence (§19:
+/// "Cleanup Assessment... highest immediate business value").
 public enum WorkflowPage: String, Hashable, Codable, Sendable {
     case page3Transactions
+    case cleanupAssessment
 }
 
 public enum FindingCategory: String, Hashable, Codable, Sendable {
     case duplicateExpense
+    /// `VL-CC-PAYMENT-001`, docs/backlog/CLEANUP_MODE.md §2.1.
+    case creditCardPaymentMiscoded
+    /// `VL-PAYROLL-LUMP-001`, docs/backlog/CLEANUP_MODE.md §2.2.
+    case payrollLumpSum
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
@@ -135,17 +143,40 @@ public struct RuleContext: Sendable {
     public let materiality: MaterialityPolicy
     public let companyFacts: CompanyFacts
     public let dismissedFindingIDs: Set<String>
+    /// §8.2a's relationship-before-category gating, per transaction (see
+    /// `RuleEngineActor.swift`'s doc comment on why this is scoped to
+    /// individual transactions rather than whole rules). A categorization
+    /// rule checks `gatedTransactionIDs.contains(transaction.id)` and skips
+    /// that transaction — it does not skip itself entirely. Empty for
+    /// relationship-class rules, which always see the ungated context.
+    public let gatedTransactionIDs: Set<String>
 
     public init(
         period: AccountingPeriod,
         materiality: MaterialityPolicy,
         companyFacts: CompanyFacts,
-        dismissedFindingIDs: Set<String> = []
+        dismissedFindingIDs: Set<String> = [],
+        gatedTransactionIDs: Set<String> = []
     ) {
         self.period = period
         self.materiality = materiality
         self.companyFacts = companyFacts
         self.dismissedFindingIDs = dismissedFindingIDs
+        self.gatedTransactionIDs = gatedTransactionIDs
+    }
+
+    /// Returns a copy with `gatedTransactionIDs` replaced — used by
+    /// `RuleEngine.evaluate` to hand categorization rules the set collected
+    /// from relationship-rule findings, without relationship rules ever
+    /// seeing it themselves.
+    public func gatingTransactions(_ ids: Set<String>) -> RuleContext {
+        RuleContext(
+            period: period,
+            materiality: materiality,
+            companyFacts: companyFacts,
+            dismissedFindingIDs: dismissedFindingIDs,
+            gatedTransactionIDs: ids
+        )
     }
 }
 

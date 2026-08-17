@@ -154,7 +154,7 @@ struct DuplicatePostedExpenseRuleTests {
     func case07EngineCoverageGate() async {
         let engine = RuleEngine(rules: [DuplicatePostedExpenseRule.self])
         let evaluation = await engine.evaluate(
-            page: .page3Transactions,
+            pages: [.page3Transactions],
             input: dataSet([], coverage: .partial(reason: "no sync yet")),
             context: context()
         )
@@ -177,7 +177,7 @@ struct DuplicatePostedExpenseRuleTests {
         // unhealthy) is satisfied by the same gate as test 7.
         let engine = RuleEngine(rules: [DuplicatePostedExpenseRule.self])
         let evaluation = await engine.evaluate(
-            page: .page3Transactions,
+            pages: [.page3Transactions],
             input: dataSet([], coverage: .partial(reason: "connection unhealthy: last health check failed")),
             context: context()
         )

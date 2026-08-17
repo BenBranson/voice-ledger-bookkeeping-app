@@ -1,11 +1,21 @@
 import Foundation
 
 /// docs/phase-0/08_RULE_ENGINE.md §8.2a. Recorded when a relationship-class
-/// rule's finding suppresses a categorization-class rule for the same
-/// transaction — the gate is visible, never silent (mirrors §8.5 step 6's
+/// rule's finding gates a specific transaction out of categorization-class
+/// evaluation — the gate is visible, never silent (mirrors §8.5 step 6's
 /// suppression rule).
+///
+/// **Scoped to one transaction, not a whole rule.** An earlier version of
+/// this type gated entire categorization RULES whenever any relationship
+/// rule fired at all — correct for a single-relationship-rule fixture test,
+/// but wrong the moment a second, unrelated categorization rule existed:
+/// `VL-CC-PAYMENT-001` firing on one transaction must not blind
+/// `VL-PAYROLL-LUMP-001` to every OTHER transaction on the same page. Caught
+/// while wiring in the first two real Cleanup Assessment rules, before it
+/// could produce a wrong result — see `RuleEngineGatingTests`.
 public struct GatingOutcome: Sendable {
-    public let suppressedRuleID: RuleID
+    public let transactionID: String
+    public let gatingRuleID: RuleID
     public let gatingFindingID: String
     public let reason: String
 }
@@ -33,8 +43,17 @@ public actor RuleEngine {
         self.rules = rules
     }
 
-    public func evaluate(page: WorkflowPage, input: NormalizedDataSet, context: RuleContext) -> PageEvaluation {
-        let relevantRules = rules.filter { $0.identity.page == page }
+    /// `pages`, not a single page: docs/backlog/CLEANUP_MODE.md describes
+    /// the Cleanup Assessment as running "every deterministic rule across
+    /// the full available history," aggregating across what were
+    /// previously separate per-page rule buckets — not a page with its own
+    /// siloed rule set. Passing a set (rather than adding a second method)
+    /// keeps §8.2a's gating correct in both cases: a relationship rule on
+    /// one page can gate a categorization rule on another page IF the
+    /// caller asked for both together, and single-page callers (`Set([.page3Transactions])`)
+    /// see exactly the old single-page behavior.
+    public func evaluate(pages: Set<WorkflowPage>, input: NormalizedDataSet, context: RuleContext) -> PageEvaluation {
+        let relevantRules = rules.filter { pages.contains($0.identity.page) }
         let relationshipRules = relevantRules.filter { $0.identity.ruleClass == .relationship }
         let categorizationRules = relevantRules.filter { $0.identity.ruleClass == .categorization }
 
@@ -42,31 +61,38 @@ public actor RuleEngine {
         var gating: [GatingOutcome] = []
         var defects: [EngineDefect] = []
 
-        // Step 1a (§8.2a): relationship-class rules evaluate first. With
-        // zero relationship rules registered in this phase, this loop is a
-        // structural no-op in production — exercised instead by
-        // RuleEngineGatingTests using a fixture relationship rule, so the
-        // branch itself is real and tested even though no shipped rule
-        // takes it yet.
-        var gatedRuleIDs: Set<RuleID> = []
+        // Step 1a (§8.2a): relationship-class rules evaluate first, against
+        // the ORIGINAL context (no transactions gated yet — nothing can gate
+        // a relationship rule).
+        var gatedTransactionIDs: Set<String> = []
         for ruleType in relationshipRules {
             let result = Self.runOne(ruleType, input: input, context: context, defects: &defects)
             results[ruleType.identity.id] = result
-            if case .findings(let findings) = result.outcome, let first = findings.first {
-                for catRule in categorizationRules {
-                    gatedRuleIDs.insert(catRule.identity.id)
-                    gating.append(GatingOutcome(
-                        suppressedRuleID: catRule.identity.id,
-                        gatingFindingID: first.id,
-                        reason: "Not evaluated — transaction already explained by relationship finding \(first.id) (\(ruleType.identity.id))."
-                    ))
+            if case .findings(let findings) = result.outcome {
+                for finding in findings {
+                    for evidence in finding.evidence {
+                        gatedTransactionIDs.insert(evidence.transactionID)
+                        gating.append(GatingOutcome(
+                            transactionID: evidence.transactionID,
+                            gatingRuleID: ruleType.identity.id,
+                            gatingFindingID: finding.id,
+                            reason: "Not evaluated by categorization rules — already explained by relationship finding \(finding.id) (\(ruleType.identity.id))."
+                        ))
+                    }
                 }
             }
         }
 
+        // Categorization rules run with an AUGMENTED context carrying the
+        // gated transaction IDs — each rule is responsible for skipping
+        // those specific transactions in its own loop (see
+        // DuplicatePostedExpenseRule / CreditCardPaymentMiscodedRule /
+        // PayrollLumpSumRule). The rule itself still runs and can still
+        // produce findings for every OTHER transaction — nothing is
+        // suppressed at the rule level anymore.
+        let categorizationContext = context.gatingTransactions(gatedTransactionIDs)
         for ruleType in categorizationRules {
-            guard !gatedRuleIDs.contains(ruleType.identity.id) else { continue }
-            results[ruleType.identity.id] = Self.runOne(ruleType, input: input, context: context, defects: &defects)
+            results[ruleType.identity.id] = Self.runOne(ruleType, input: input, context: categorizationContext, defects: &defects)
         }
 
         return PageEvaluation(results: results, gating: gating, engineDefects: defects)
@@ -112,7 +138,9 @@ public actor RuleEngine {
 /// rule means editing this list, so it appears in a diff and gets reviewed.
 public enum RuleRegistry {
     public static let all: [any Rule.Type] = [
-        DuplicatePostedExpenseRule.self
+        DuplicatePostedExpenseRule.self,
+        CreditCardPaymentMiscodedRule.self,
+        PayrollLumpSumRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

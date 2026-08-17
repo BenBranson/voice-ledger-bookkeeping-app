@@ -70,7 +70,7 @@ public final class AppState {
             coverage = dataSet.coverage
 
             let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
-            let evaluation = await engine.evaluate(page: .page3Transactions, input: dataSet, context: context)
+            let evaluation = await engine.evaluate(pages: [.page3Transactions], input: dataSet, context: context)
 
             var currentRunIDsByRule: [RuleID: Set<String>] = [:]
             for (ruleID, result) in evaluation.results {

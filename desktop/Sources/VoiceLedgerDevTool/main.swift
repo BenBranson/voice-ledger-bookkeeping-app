@@ -87,7 +87,7 @@ case "sync-check":
 
         let engine = RuleEngine(rules: RuleRegistry.rules(for: .page3Transactions))
         let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
-        let evaluation = await engine.evaluate(page: .page3Transactions, input: dataSet, context: context)
+        let evaluation = await engine.evaluate(pages: [.page3Transactions], input: dataSet, context: context)
 
         let tempStoreRoot = FileManager.default.temporaryDirectory.appending(path: "voiceledger-devtool-sync-check")
         let store = try ClientStore(realmID: realmID, rootDirectory: tempStoreRoot)

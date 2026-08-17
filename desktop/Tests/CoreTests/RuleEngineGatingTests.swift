@@ -54,13 +54,13 @@ struct RuleEngineGatingTests {
         RuleContext(period: period, materiality: .defaultPolicy, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
     }
 
-    func purchase(id: String) -> LedgerTransaction {
+    func purchase(id: String, vendor: String = "Permian Supply", amountMinorUnits: Int64 = 48_620) -> LedgerTransaction {
         LedgerTransaction(
             id: id,
             entityKind: .purchase,
-            vendorName: "Permian Supply",
+            vendorName: vendor,
             txnDate: AccountingDate(year: 2026, month: 7, day: 14),
-            totalAmount: Money(minorUnits: 48_620, currency: .usd),
+            totalAmount: Money(minorUnits: amountMinorUnits, currency: .usd),
             paymentAccountID: "checking-1",
             docNumber: "4471",
             isVoided: false,
@@ -69,30 +69,90 @@ struct RuleEngineGatingTests {
         )
     }
 
-    @Test("§8.2a: a fired relationship-class rule gates categorization-class rules for the same page, and the gate is recorded, not silent")
-    func relationshipRuleGatesCategorizationRule() async {
+    @Test("§8.2a: a fired relationship-class rule gates only the SPECIFIC transaction it explains — not the whole categorization rule, and not unrelated transactions")
+    func relationshipRuleGatesOnlyTheAffectedTransaction() async {
+        // FixtureRelationshipRule always fires on transactions.first — with
+        // "145" first, it gates 145 only. 145/151 would otherwise be a T1
+        // duplicate match; 200/201 is a second, unrelated T1 duplicate pair
+        // that should NOT be gated by an unrelated relationship finding.
         let engine = RuleEngine(rules: [FixtureRelationshipRule.self, DuplicatePostedExpenseRule.self])
         let input = NormalizedDataSet(
             realmID: realm, period: period,
-            transactions: [purchase(id: "145"), purchase(id: "151")],
+            transactions: [
+                purchase(id: "145"), purchase(id: "151"),
+                purchase(id: "200", vendor: "Odessa Water", amountMinorUnits: 12_000),
+                purchase(id: "201", vendor: "Odessa Water", amountMinorUnits: 12_000)
+            ],
             coverage: .complete,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: false)
         )
-        let evaluation = await engine.evaluate(page: .page3Transactions, input: input, context: context())
+        let evaluation = await engine.evaluate(pages: [.page3Transactions], input: input, context: context())
 
-        // The relationship rule ran and fired.
+        // The relationship rule ran and fired on 145.
         guard case .findings(let relFindings) = evaluation.results[FixtureRelationshipRule.identity.id]?.outcome,
-              relFindings.count == 1 else {
-            Issue.record("expected the fixture relationship rule to fire")
+              relFindings.count == 1, relFindings[0].evidence.first?.transactionID == "145" else {
+            Issue.record("expected the fixture relationship rule to fire on transaction 145")
             return
         }
 
-        // The categorization rule (VL-DUP-EXP-001) was gated — no result at
-        // all is recorded for it under `results`, and the gate itself is
-        // recorded under `gating`, not silently dropped.
-        #expect(evaluation.results[DuplicatePostedExpenseRule.identity.id] == nil)
-        #expect(evaluation.gating.contains { $0.suppressedRuleID == DuplicatePostedExpenseRule.identity.id })
+        // The categorization rule STILL RAN — it is not absent from
+        // results — but the 145/151 pair is gone (145 was gated) while the
+        // unrelated 200/201 pair still fired normally.
+        guard case .findings(let catFindings) = evaluation.results[DuplicatePostedExpenseRule.identity.id]?.outcome else {
+            Issue.record("expected the categorization rule to have run and produced findings for the ungated pair")
+            return
+        }
+        #expect(catFindings.count == 1)
+        #expect(catFindings.first?.evidence.contains { $0.transactionID == "200" } == true)
+        #expect(catFindings.first?.evidence.contains { $0.transactionID == "145" } == false)
+
+        // The gate is recorded, not silent, and scoped to the specific
+        // transaction — not the whole rule.
+        #expect(evaluation.gating.contains { $0.transactionID == "145" && $0.gatingRuleID == FixtureRelationshipRule.identity.id })
         #expect(evaluation.gating.first?.gatingFindingID == "fixture-relationship-finding")
+    }
+
+    @Test("Real rules: VL-CC-PAYMENT-001 (relationship) gates a specific transaction from VL-DUP-EXP-001 (categorization), other transactions unaffected")
+    func realRelationshipRuleGatesRealCategorizationRule() async {
+        let ccPurchase = LedgerTransaction(
+            id: "cc-payment-1",
+            entityKind: .purchase,
+            vendorName: "Amex",
+            txnDate: AccountingDate(year: 2026, month: 7, day: 20),
+            totalAmount: Money(minorUnits: 50_000, currency: .usd),
+            paymentAccountID: "checking-1",
+            docNumber: nil,
+            isVoided: false,
+            memo: nil,
+            lineAccountIDs: ["expense-account-1"],
+            provenance: .qboAPI(readAt: Date())
+        )
+        let creditCardAccount = LedgerAccount(id: "cc-liability-1", name: "Amex", accountType: .creditCard)
+        let expenseAccount = LedgerAccount(id: "expense-account-1", name: "Office Supplies", accountType: .expense)
+
+        let engine = RuleEngine(rules: [CreditCardPaymentMiscodedRule.self, DuplicatePostedExpenseRule.self])
+        let input = NormalizedDataSet(
+            realmID: realm, period: period,
+            transactions: [purchase(id: "145"), purchase(id: "151"), ccPurchase],
+            accounts: [creditCardAccount, expenseAccount],
+            coverage: .complete,
+            companyFacts: CompanyFacts(customTxnNumbersForPurchases: false)
+        )
+        let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment], input: input, context: context())
+
+        guard case .findings(let ccFindings) = evaluation.results[CreditCardPaymentMiscodedRule.identity.id]?.outcome,
+              ccFindings.count == 1 else {
+            Issue.record("expected VL-CC-PAYMENT-001 to fire")
+            return
+        }
+        // VL-DUP-EXP-001 still runs on this page and still finds the
+        // unrelated 145/151 pair — the CC finding doesn't touch it.
+        guard case .findings(let dupFindings) = evaluation.results[DuplicatePostedExpenseRule.identity.id]?.outcome,
+              dupFindings.count == 1 else {
+            Issue.record("expected VL-DUP-EXP-001 to still find the unrelated 145/151 pair")
+            return
+        }
+        #expect(evaluation.gating.contains { $0.transactionID == "cc-payment-1" })
     }
 
     @Test("The engine never invokes a rule at all when coverage is partial")
@@ -104,7 +164,7 @@ struct RuleEngineGatingTests {
             coverage: .partial(reason: "pagination checksum mismatch"),
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: false)
         )
-        let evaluation = await engine.evaluate(page: .page3Transactions, input: input, context: context())
+        let evaluation = await engine.evaluate(pages: [.page3Transactions], input: input, context: context())
         guard case .cannotEvaluate = evaluation.results[DuplicatePostedExpenseRule.identity.id]?.outcome else {
             Issue.record("expected .cannotEvaluate — the rule must be gated before it ever sees the data")
             return

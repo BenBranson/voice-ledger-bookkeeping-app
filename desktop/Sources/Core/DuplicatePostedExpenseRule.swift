@@ -69,6 +69,11 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                 // exactly this exclusion, with no write of Voice Ledger's own.
                 if a.isVoided || b.isVoided { continue }
 
+                // §8.2a gating: either transaction already explained by a
+                // relationship-class finding (e.g. it's actually a
+                // credit-card payment, not a candidate expense at all).
+                if context.gatedTransactionIDs.contains(a.id) || context.gatedTransactionIDs.contains(b.id) { continue }
+
                 guard let vendorA = a.vendorName, vendorA == b.vendorName else { continue }
                 guard a.totalAmount == b.totalAmount else { continue }
 
