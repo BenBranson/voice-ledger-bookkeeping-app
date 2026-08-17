@@ -10,6 +10,8 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     case journalEntry = "JournalEntry"
     case account = "Account"
     case vendor = "Vendor"
+    /// Added for `VL-VENDCREDIT-UNAPPLIED-001`.
+    case vendorCredit = "VendorCredit"
     /// Added for `VL-DUP-INV-001` — the sales-side counterpart to `bill`.
     /// `LedgerTransaction.vendorName` is reused for the customer name on an
     /// Invoice (see that field's doc comment) rather than adding a parallel
@@ -126,6 +128,32 @@ public struct LedgerDeposit: Identifiable, Hashable, Codable, Sendable {
     public init(id: String, linkedPaymentIDs: [String]) {
         self.id = id
         self.linkedPaymentIDs = linkedPaymentIDs
+    }
+}
+
+/// docs/phase-0/04_DATA_MODEL.md. Added for `VL-VENDCREDIT-UNAPPLIED-001`
+/// (the vendor-refunds/vendor-credits cleanup workflow). Not a
+/// `LedgerTransaction` — this rule needs `balance` (how much of the credit
+/// is still unapplied) alongside `totalAmount` (the original credit
+/// amount), a distinction no other entity built so far needs. `balance`
+/// is QBO's own `VendorCredit.Balance` field, verified live as the
+/// authoritative "still unapplied" signal — not something derived from
+/// cross-referencing BillPayment/JournalEntry activity.
+public struct LedgerVendorCredit: Identifiable, Hashable, Codable, Sendable {
+    public let id: String
+    public let vendorName: String?
+    public let txnDate: AccountingDate
+    public let totalAmount: Money
+    public let balance: Money
+    public let provenance: Provenance
+
+    public init(id: String, vendorName: String?, txnDate: AccountingDate, totalAmount: Money, balance: Money, provenance: Provenance) {
+        self.id = id
+        self.vendorName = vendorName
+        self.txnDate = txnDate
+        self.totalAmount = totalAmount
+        self.balance = balance
+        self.provenance = provenance
     }
 }
 
@@ -248,6 +276,8 @@ public struct NormalizedDataSet: Sendable {
     public let vendors: [LedgerVendor]
     /// Added for `VL-BS-UNDEP-001`.
     public let deposits: [LedgerDeposit]
+    /// Added for `VL-VENDCREDIT-UNAPPLIED-001`.
+    public let vendorCredits: [LedgerVendorCredit]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -258,6 +288,7 @@ public struct NormalizedDataSet: Sendable {
         accounts: [LedgerAccount] = [],
         vendors: [LedgerVendor] = [],
         deposits: [LedgerDeposit] = [],
+        vendorCredits: [LedgerVendorCredit] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -267,6 +298,7 @@ public struct NormalizedDataSet: Sendable {
         self.accounts = accounts
         self.vendors = vendors
         self.deposits = deposits
+        self.vendorCredits = vendorCredits
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

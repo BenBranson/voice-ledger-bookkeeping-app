@@ -57,6 +57,15 @@ interface SeedBill {
   note: string;
 }
 
+interface SeedVendorCredit {
+  case: string;
+  vendor: string;
+  expenseAccount: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
+}
+
 interface SeedCustomerRef {
   /** The exact DisplayName of an EXISTING customer (e.g. one of QBO's own sample-company customers) — this looks the customer up, it never creates one. Voice Ledger has no customer-creation path; Invoice seeding is only meaningful against a sandbox that already has customers. */
   displayName: string;
@@ -90,6 +99,7 @@ interface SeedFile {
   bills?: SeedBill[];
   invoices?: SeedInvoice[];
   payments?: SeedPayment[];
+  vendorCredits?: SeedVendorCredit[];
 }
 
 const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.json");
@@ -103,6 +113,7 @@ interface Manifest {
   bills?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   invoices?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   payments?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
+  vendorCredits?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
 }
 
 function loadManifest(): Manifest {
@@ -113,9 +124,10 @@ function loadManifest(): Manifest {
     loaded.items ??= {};
     loaded.invoices ??= {};
     loaded.payments ??= {};
+    loaded.vendorCredits ??= {};
     return loaded;
   }
-  return { accounts: {}, vendors: {}, purchases: {}, bills: {}, customers: {}, items: {}, invoices: {}, payments: {} };
+  return { accounts: {}, vendors: {}, purchases: {}, bills: {}, customers: {}, items: {}, invoices: {}, payments: {}, vendorCredits: {} };
 }
 
 function saveManifest(manifest: Manifest): void {
@@ -267,6 +279,41 @@ async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBi
   process.stdout.write(`  [created] ${spec.case} -> Bill ${bill.Id}\n`);
 }
 
+async function ensureVendorCredit(client: QboRawClient, manifest: Manifest, spec: SeedVendorCredit): Promise<void> {
+  manifest.vendorCredits ??= {};
+  if (manifest.vendorCredits[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+
+  const vendorId = manifest.vendors[spec.vendor];
+  const expenseAccountId = manifest.accounts[spec.expenseAccount];
+  if (!vendorId || !expenseAccountId) {
+    throw new Error(
+      `Missing dependency for vendor credit "${spec.case}" — run 'apply baseline' first (vendor=${spec.vendor}, expenseAccount=${spec.expenseAccount}).`
+    );
+  }
+
+  const created = await client.post("vendorcredit", {
+    VendorRef: { value: vendorId },
+    TxnDate: spec.date,
+    PrivateNote: spec.note,
+    Line: [
+      {
+        Amount: spec.amountMinorUnits / 100,
+        DetailType: "AccountBasedExpenseLineDetail",
+        AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } }
+      }
+    ]
+  });
+  if (created.status !== 200) {
+    throw new Error(`VendorCredit create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const vendorCredit = (created.body as any).VendorCredit;
+  manifest.vendorCredits[spec.note] = { id: vendorCredit.Id, syncToken: vendorCredit.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> VendorCredit ${vendorCredit.Id}\n`);
+}
+
 // Looks up an EXISTING customer by DisplayName — never creates one. Voice
 // Ledger has no customer-creation path (`CLAUDE.md` scope), so Invoice
 // seeding only works against a sandbox that already has customers (every
@@ -408,6 +455,10 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const payment of seed.payments ?? []) {
     await ensurePayment(client, manifest, payment);
+    saveManifest(manifest);
+  }
+  for (const vendorCredit of seed.vendorCredits ?? []) {
+    await ensureVendorCredit(client, manifest, vendorCredit);
     saveManifest(manifest);
   }
 

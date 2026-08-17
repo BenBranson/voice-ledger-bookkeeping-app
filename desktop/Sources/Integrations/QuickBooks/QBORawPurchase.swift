@@ -339,6 +339,42 @@ public struct QBODepositQueryResponse: Decodable, Sendable {
     }
 }
 
+/// docs/backlog's `VL-VENDCREDIT-UNAPPLIED-001` — the vendor-refunds/vendor-
+/// credits cleanup workflow. Verified live against a real created
+/// VendorCredit (Id 224): `Balance` is a real top-level field, separate
+/// from `TotalAmt`, showing how much of the credit remains unapplied.
+public struct QBORawVendorCredit: Decodable, Sendable {
+    public let id: String
+    public let txnDate: String
+    public let totalAmt: Decimal
+    public let balance: Decimal?
+    public let vendorRef: QBORawRef?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case txnDate = "TxnDate"
+        case totalAmt = "TotalAmt"
+        case balance = "Balance"
+        case vendorRef = "VendorRef"
+    }
+}
+
+public struct QBOVendorCreditQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let vendorCredit: [QBORawVendorCredit]?
+
+        enum CodingKeys: String, CodingKey {
+            case vendorCredit = "VendorCredit"
+        }
+    }
+}
+
 /// Added 2026-08-17 for `VL-DUP-VEND-001`.
 public struct QBORawVendor: Decodable, Sendable {
     public let id: String

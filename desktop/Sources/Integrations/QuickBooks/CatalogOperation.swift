@@ -35,6 +35,9 @@ public enum CatalogOperation: String, Sendable, CaseIterable {
     /// Added 2026-08-17 alongside `VL-BS-UNDEP-001` — mirrors the backend's
     /// `readDeposits` operation, added in the same commit.
     case readDeposits
+    /// Added 2026-08-17 alongside `VL-VENDCREDIT-UNAPPLIED-001` — mirrors
+    /// the backend's `readVendorCredits` operation, added in the same commit.
+    case readVendorCredits
     case readReport
     case cdcSince
 }

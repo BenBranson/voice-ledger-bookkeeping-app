@@ -110,5 +110,15 @@
       "date": "2026-07-21",
       "note": "VL-SPIKE-DUP-BILL-B"
     }
+  ],
+  "vendorCredits": [
+    {
+      "case": "VL-VENDCREDIT-UNAPPLIED-001 — a vendor credit issued for returned goods, never applied to a bill or refunded. Dated well over 30 days before any realistic 'today' this sandbox is checked against.",
+      "vendor": "VL Spike Permian Supply",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 7500,
+      "date": "2026-06-01",
+      "note": "VL-SPIKE-VENDCREDIT-UNAPPLIED"
+    }
   ]
 }

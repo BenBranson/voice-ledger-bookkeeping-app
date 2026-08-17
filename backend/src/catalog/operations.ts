@@ -164,6 +164,31 @@ const readDeposits = op({
   }
 });
 
+const readVendorCreditsParams = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+// Added 2026-08-17 for the vendor-refunds/vendor-credits cleanup workflow
+// (VL-VENDCREDIT-UNAPPLIED-001). VendorCredit.Balance (verified live against
+// a real created VendorCredit, Id 224) is the authoritative "how much of
+// this credit is still unapplied" signal — not something that has to be
+// computed from BillPayment/JournalEntry cross-referencing.
+const readVendorCredits = op({
+  name: "readVendorCredits",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readVendorCreditsParams,
+  execute: async (client, realmId, params: z.infer<typeof readVendorCreditsParams>) => {
+    const query =
+      `select * from VendorCredit where TxnDate >= '${params.startDate}' and TxnDate <= '${params.endDate}' ` +
+      `STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 const readVendorsParams = z.object({
   activeOnly: z.boolean().default(true),
   startPosition: z.number().int().min(1).default(1),
@@ -240,7 +265,7 @@ const cdcSince = op({
 });
 
 export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = new Map(
-  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readInvoices, readPayments, readDeposits, readReport, cdcSince].map(
+  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readInvoices, readPayments, readDeposits, readVendorCredits, readReport, cdcSince].map(
     (definition) => [definition.name, definition]
   )
 );

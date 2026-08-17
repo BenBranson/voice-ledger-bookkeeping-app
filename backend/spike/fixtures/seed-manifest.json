@@ -111,5 +111,11 @@
       "id": "223",
       "syncToken": "0"
     }
+  },
+  "vendorCredits": {
+    "VL-SPIKE-VENDCREDIT-UNAPPLIED": {
+      "id": "225",
+      "syncToken": "0"
+    }
   }
 }

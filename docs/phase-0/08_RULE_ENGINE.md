@@ -461,8 +461,10 @@ stable; only the first is scoped in this phase (§11).
 | `VL-COA-DUPACCT-001` | Duplicate account candidates. **Investigated live 2026-08-17, not built.** Naive matching on account `Name` alone produces systematic false positives: this sandbox has 8 pairs of identically-named accounts (`Decks and Patios`, `Job Materials`, `Equipment Rental`, etc.) that are QBO's own industry-template pattern — the same leaf name legitimately used for both an Income and a matching COGS/Expense sub-account under different parents, for job costing. A safe version needs to match on `FullyQualifiedName` (or genuine near-duplicate fuzzy matching), not leaf `Name` — and this sandbox has zero real duplicate-account examples under that stricter, correct definition, so there's no live positive case to verify against yet either. Left as backlog with the false-positive risk documented rather than shipped on the naive approach. | 6 | 2 |
 | `VL-PERIOD-CLOSED-001` | Transactions dated in a closed period | 2 | 2 |
 | `VL-REPORT-TIE-001` | Report tie-out mismatch | 12 | 3 |
+| `VL-VENDCREDIT-UNAPPLIED-001` | **IMPLEMENTED 2026-08-17**, by explicit owner request ("knock out the vendor-refunds workflow") — not part of the original 27-rule backlog, added here directly (`desktop/Sources/Core/UnappliedVendorCreditRule.swift`). Flags a `VendorCredit` whose `Balance` (QBO's own "still unapplied" field, verified live against a real created VendorCredit before this was built) is nonzero more than 30 days after its own date — a credit sitting unused, easy to forget since QBO surfaces no reminder on its own. Required a **sixth new catalog operation** (`readVendorCredits`) and a new `LedgerVendorCredit` Core type (distinct from `LedgerTransaction` — needs `balance` alongside `totalAmount`, a distinction no other entity needs). Reuses `RuleContext.asOfDate` from `VL-BS-UNDEP-001`. Live-verified: a real seeded VendorCredit (#225, $75.00, dated 2026-06-01) flags at 77 days aged. | Cleanup Assessment | **Built** |
 
-Twenty-seven rules. Phase 1 shipped one, proven end to end (§11). Three more
+Twenty-seven backlog rules, plus one owner-requested addition beyond the
+original list. Phase 1 shipped one, proven end to end (§11). Three more
 shipped 2026-08-17 as the Cleanup Assessment's first pass (below) — see
 `docs/VOICE_LEDGER_HANDOFF.md` for the live-verification record.
 

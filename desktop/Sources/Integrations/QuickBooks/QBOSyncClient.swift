@@ -73,6 +73,15 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
+    public struct ReadVendorCreditsParams: Encodable, Sendable {
+        public let startDate: String
+        public let endDate: String
+        public init(startDate: String, endDate: String) {
+            self.startDate = startDate
+            self.endDate = endDate
+        }
+    }
+
     /// Fetches `Purchase` for the period, `Account` (the full chart of
     /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
     /// coded to), and `Preferences` for the company feature flag (§11.2's
@@ -140,6 +149,11 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadDepositsParams(startDate: startDate, endDate: endDate)
         )
+        let vendorCreditsData = try await backend.call(
+            .readVendorCredits,
+            realmID: realmID,
+            params: ReadVendorCreditsParams(startDate: startDate, endDate: endDate)
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -154,6 +168,7 @@ public struct QBOSyncClient: Sendable {
         let invoicesResponse = try decoder.decode(QBOInvoiceQueryResponse.self, from: invoicesData)
         let paymentsResponse = try decoder.decode(QBOPaymentQueryResponse.self, from: paymentsData)
         let depositsResponse = try decoder.decode(QBODepositQueryResponse.self, from: depositsData)
+        let vendorCreditsResponse = try decoder.decode(QBOVendorCreditQueryResponse.self, from: vendorCreditsData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
@@ -174,6 +189,7 @@ public struct QBOSyncClient: Sendable {
         let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
         let vendors = (vendorsResponse.queryResponse.vendor ?? []).map { Self.normalize($0) }
         let deposits = (depositsResponse.queryResponse.deposit ?? []).map { Self.normalize($0) }
+        let vendorCredits = (vendorCreditsResponse.queryResponse.vendorCredit ?? []).map { Self.normalize($0) }
 
         return NormalizedDataSet(
             realmID: realmID,
@@ -182,6 +198,7 @@ public struct QBOSyncClient: Sendable {
             accounts: accounts,
             vendors: vendors,
             deposits: deposits,
+            vendorCredits: vendorCredits,
             coverage: coverage,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: customTxnNumbers)
         )
@@ -292,6 +309,21 @@ public struct QBOSyncClient: Sendable {
 
     static func normalize(_ raw: QBORawDeposit) -> LedgerDeposit {
         LedgerDeposit(id: raw.id, linkedPaymentIDs: raw.linkedPaymentIDs)
+    }
+
+    /// `balance` defaults to 0 (not `totalAmt`) when QBO omits the field —
+    /// the conservative direction to get wrong: treating an unexpected
+    /// absence as "fully applied" understates findings rather than
+    /// overstating them.
+    static func normalize(_ raw: QBORawVendorCredit) -> LedgerVendorCredit {
+        LedgerVendorCredit(
+            id: raw.id,
+            vendorName: raw.vendorRef?.name,
+            txnDate: AccountingDate(qboDateString: raw.txnDate),
+            totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
+            balance: Money(minorUnits: Self.minorUnits(from: raw.balance ?? 0), currency: .usd),
+            provenance: .qboAPI(readAt: Date())
+        )
     }
 
     static func minorUnits(from amount: Decimal) -> Int64 {

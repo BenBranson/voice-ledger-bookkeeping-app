@@ -78,6 +78,10 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case vendorDescriptionMismatch
     /// `VL-BS-UNDEP-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 8).
     case agedUndepositedFunds
+    /// `VL-VENDCREDIT-UNAPPLIED-001` — the vendor-refunds/vendor-credits
+    /// cleanup workflow, added by explicit owner request 2026-08-17. Not
+    /// in the original 27-rule backlog table; tracked directly here.
+    case unappliedVendorCredit
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
