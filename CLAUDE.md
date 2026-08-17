@@ -2,6 +2,7 @@
 
 Native macOS (SwiftUI) bookkeeping command center layered on QuickBooks Online.
 Full spec: `docs/VOICE_LEDGER_SPEC.md` — read it before any architectural decision.
+**Institutional memory: `docs/VOICE_LEDGER_HANDOFF.md` — read it at the start of every session.** It carries decisions, verified findings, rejected approaches with reasons, and things that must never be removed or broken (§18) that don't live anywhere else. When it and the `docs/phase-0/*` files disagree, the more recently-dated statement wins — update the stale one rather than silently trusting either.
 
 ## Non-negotiable rules
 
