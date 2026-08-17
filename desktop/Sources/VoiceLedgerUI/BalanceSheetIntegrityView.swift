@@ -1,0 +1,126 @@
+import SwiftUI
+import Core
+import DesignSystem
+
+/// docs/VOICE_LEDGER_SPEC.md Page 8: "Strongest API coverage" — Balance
+/// Sheet, Trial Balance, General Ledger, Account List, Transaction List,
+/// journal entries, bills/payments/deposits/purchases/transfers,
+/// attachments. **This is the minimal read-only slice**: only the two
+/// account-balance rules built so far (`VL-BS-NEGBAL-001`,
+/// `VL-OBE-BALANCE-001`), sourced from Account List + Purchase/Bill reads.
+/// The full page (Balance Sheet/Trial Balance/GL report reads, suspense
+/// activity, stale clearing accounts, undeposited-funds aging, loan
+/// inconsistencies) needs report-reading catalog operations that don't
+/// exist yet — not shown rather than faked, per `CLAUDE.md` rule 5.
+public struct BalanceSheetIntegrityView: View {
+    public struct RuleSummary: Identifiable {
+        public let ruleID: String
+        public let title: String
+        public let findings: [Finding]
+        public var id: String { ruleID }
+
+        public init(ruleID: String, title: String, findings: [Finding]) {
+            self.ruleID = ruleID
+            self.title = title
+            self.findings = findings
+        }
+    }
+
+    private let environment: VLEnvironmentTone
+    private let coverageStatus: VLStatus
+    private let coverageDetail: String
+    private let summaries: [RuleSummary]
+    private let onSelectFinding: (Finding) -> Void
+
+    public init(
+        environment: VLEnvironmentTone,
+        coverageStatus: VLStatus,
+        coverageDetail: String,
+        summaries: [RuleSummary],
+        onSelectFinding: @escaping (Finding) -> Void
+    ) {
+        self.environment = environment
+        self.coverageStatus = coverageStatus
+        self.coverageDetail = coverageDetail
+        self.summaries = summaries
+        self.onSelectFinding = onSelectFinding
+    }
+
+    private var totalFindingCount: Int { summaries.reduce(0) { $0 + $1.findings.count } }
+
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: VLSpacing.md) {
+                HStack {
+                    Text("Balance Sheet Integrity")
+                        .font(VLTypography.pageTitle())
+                        .foregroundStyle(VLColor.textPrimary)
+                    Spacer()
+                    VLEnvironmentBadge(environment)
+                }
+
+                Text("Read-only. Checks account balances against expected structural signals (account subtype, sign convention). Full report-level checks — suspense activity, stale clearing accounts, undeposited-funds aging, loan inconsistencies — are not yet built; they need Balance Sheet/Trial Balance/General Ledger report reads this app doesn't have yet.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+
+                VLCoverageStrip(
+                    dataAvailable: coverageStatus,
+                    dataDetail: coverageDetail,
+                    checksCompleted: coverageStatus,
+                    checksDetail: "\(summaries.count) rule\(summaries.count == 1 ? "" : "s")",
+                    exceptions: totalFindingCount == 0 ? .verified : .reviewNeeded,
+                    exceptionsDetail: totalFindingCount == 0 ? "None" : "\(totalFindingCount) open"
+                )
+
+                if summaries.isEmpty {
+                    VLCard {
+                        Text("No Balance Sheet Integrity rules registered.")
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                } else {
+                    ForEach(summaries) { summary in
+                        ruleSection(summary)
+                    }
+                }
+            }
+            .padding(VLSpacing.pageGutter)
+        }
+        .background(VLColor.background)
+    }
+
+    private func ruleSection(_ summary: RuleSummary) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                HStack {
+                    Text(summary.title)
+                        .font(VLTypography.cardTitle())
+                        .foregroundStyle(VLColor.textPrimary)
+                    Spacer()
+                    VLStatusPill(summary.findings.isEmpty ? .verified : .reviewNeeded, label: "\(summary.findings.count)")
+                }
+                if summary.findings.isEmpty {
+                    Text("None found.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                } else {
+                    ForEach(summary.findings) { finding in
+                        Button {
+                            onSelectFinding(finding)
+                        } label: {
+                            HStack {
+                                Text(finding.title)
+                                    .font(VLTypography.body())
+                                    .foregroundStyle(VLColor.textSecondary)
+                                Spacer()
+                                Text(finding.dollarExposure.description)
+                                    .font(VLTypography.tabularNumeric())
+                                    .foregroundStyle(VLColor.textPrimary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}

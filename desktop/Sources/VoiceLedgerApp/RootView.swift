@@ -23,6 +23,9 @@ struct RootView: View {
                         Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -110,6 +113,20 @@ struct RootView: View {
                     Button("Back") { state.screen = .list }
                 }
             }
+
+        case .balanceSheetIntegrity:
+            BalanceSheetIntegrityView(
+                environment: state.environment == .production ? .production : .sandbox,
+                coverageStatus: StatusMapping.status(for: coverageOutcome),
+                coverageDetail: coverageDetail,
+                summaries: balanceSheetIntegritySummaries,
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
         }
     }
 
@@ -149,6 +166,22 @@ struct RootView: View {
                 ruleID: "VL-DUP-BILL-001",
                 title: "Possible duplicate bills",
                 findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-BILL-001" }
+            )
+        ]
+    }
+
+    private var balanceSheetIntegritySummaries: [BalanceSheetIntegrityView.RuleSummary] {
+        let openFindings = state.findings.filter { $0.status == .open }
+        return [
+            BalanceSheetIntegrityView.RuleSummary(
+                ruleID: "VL-BS-NEGBAL-001",
+                title: "Negative asset or liability balances",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" }
+            ),
+            BalanceSheetIntegrityView.RuleSummary(
+                ruleID: "VL-OBE-BALANCE-001",
+                title: "Nonzero Opening Balance Equity",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-OBE-BALANCE-001" }
             )
         ]
     }

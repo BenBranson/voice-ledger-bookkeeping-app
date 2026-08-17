@@ -19,6 +19,7 @@ public final class AppState {
         case procedure(findingID: String, actionID: String)
         case activityLog
         case cleanupAssessment
+        case balanceSheetIntegrity
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -27,6 +28,13 @@ public final class AppState {
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
     public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001"]
+
+    /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
+    /// belong to the real Balance Sheet Integrity workflow page, not just
+    /// the cross-cutting Cleanup Assessment tool. The two sets overlapping
+    /// is intentional (docs/backlog/CLEANUP_MODE.md's assessment is meant to
+    /// span multiple pages' rules), not a bug.
+    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001"]
 
     public enum LoadState: Equatable {
         case idle
