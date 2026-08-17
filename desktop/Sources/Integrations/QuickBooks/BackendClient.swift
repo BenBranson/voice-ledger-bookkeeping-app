@@ -45,6 +45,48 @@ public actor BackendClient {
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(HealthCheckResult.self, from: data)
     }
+
+    /// The one generic call this client makes — `POST
+    /// /realms/:realmId/operations/:operationName`, mirroring
+    /// `backend/src/routes/operations.ts`'s "entire surface." `operation` is
+    /// `CatalogOperation`, not a `String`, so nothing in this module can
+    /// invoke a name outside the fixed catalog (§3.4). `params` is JSON,
+    /// encoded from a caller-supplied `Encodable`; the raw QBO response body
+    /// is returned undecoded — normalization into Core's shape happens one
+    /// layer up (`QBOSyncClient`), which is where §4's normalization
+    /// contract actually lives, not in this transport-only client.
+    public func call<Params: Encodable>(
+        _ operation: CatalogOperation,
+        realmID: RealmID,
+        params: Params
+    ) async throws -> Data {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/operations/\(operation.rawValue)")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONEncoder().encode(params)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return data
+    }
+}
+
+/// Empty parameter payload, for operations like `readPreferences` that take
+/// none — mirrors the backend's `z.object({}).strict()` schema.
+public struct EmptyParams: Encodable, Sendable {
+    public init() {}
 }
 
 public struct HealthCheckResult: Codable, Sendable {

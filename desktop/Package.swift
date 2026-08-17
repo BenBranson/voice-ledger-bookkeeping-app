@@ -42,8 +42,16 @@ let package = Package(
         // /voice — deferred deliberately last per Build Order §12.
         .target(name: "Voice", dependencies: ["Core"], path: "Sources/Voice"),
 
-        // /db — deferred; stub only.
+        // /db — Phase 1 step 1.6: ClientStore.swift, a real (scoped-down)
+        // per-realm store. See its doc comment for the relationship to
+        // docs/phase-0/07_CLIENT_ISOLATION.md §7.1's SQLite-per-realm design.
         .target(name: "DB", dependencies: ["Core"], path: "Sources/DB"),
+
+        // Isolation and reconciliation tests for ClientStore. No dependency
+        // on IntegrationsQuickBooks — a violation here would mean /db leaked
+        // toward /integrations, which CLAUDE.md's architecture boundaries
+        // forbid just as much as the reverse.
+        .testTarget(name: "DBTests", dependencies: ["DB", "Core"], path: "Tests/DBTests"),
 
         // Design tokens and the smallest primitives that enforce them.
         // Deliberately has NO dependency on Core: these are pure presentation
@@ -79,6 +87,16 @@ let package = Package(
             name: "ArchitectureTests",
             dependencies: ["Core", "IntegrationsQuickBooks"],
             path: "Tests/ArchitectureTests"
+        ),
+
+        // Normalization tests for QBOSyncClient — synthetic JSON in, no
+        // network, no live sandbox. docs/phase-0/11_VERTICAL_SLICE.md §11.2's
+        // "Normalize to LedgerTransaction" step, tested against the real raw
+        // shape confirmed by Wave 1's testPurchasesRead.
+        .testTarget(
+            name: "IntegrationsQuickBooksTests",
+            dependencies: ["IntegrationsQuickBooks", "Core"],
+            path: "Tests/IntegrationsQuickBooksTests"
         ),
 
         // Contrast audit (docs/design/DESIGN_SYSTEM.md, Decision 2). The
