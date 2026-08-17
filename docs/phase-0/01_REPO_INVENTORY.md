@@ -1,30 +1,26 @@
 # 1. Existing Prototype Repo Inventory
 
-**Status: BLOCKED — cannot complete.**
+**Status: N/A — permanently, per owner confirmation 2026-08-17.**
 
-The Phase 0 prompt says:
+The Phase 0 prompt said:
 
 > There's also an existing prototype repo at **[REPO URL / PATH]** built in a
 > web-based AI app builder.
 
-The placeholder was never filled in. I searched the working directory
-(`/Users/benjaminkylebranson/Documents/Bookkeeping APP`) — it contains only
-`CLAUDE.md` and `docs/VOICE_LEDGER_SPEC.md`. There is no prototype checkout here,
-and the working directory is not a git repository.
-
-I did not go looking for it elsewhere on your filesystem. Guessing at which
-directory or GitHub repo you meant, and then producing an inventory of the wrong
-codebase, is worse than reporting the gap.
-
-**To unblock:** give me the path or URL and I'll produce this deliverable
-against the actual repo. Everything else in Phase 0 is complete and does not
-depend on it.
+That placeholder described an assumption, not a fact: it presumed a prototype
+codebase existed and just hadn't been located yet. The owner confirmed
+2026-08-17 that this build is fresh — no such repo exists anywhere. This
+deliverable is therefore closed as not applicable, not left open waiting on a
+path that will never arrive. Everything else in Phase 0 was already complete
+and never depended on it (§4.4 in `VOICE_LEDGER_HANDOFF.md`'s note on the
+prototype's *screenshots* — visual direction and feature-set inspiration
+only — still stands; that came from images shown in conversation, not a repo).
 
 ---
 
-## What this deliverable will contain when unblocked
+## What this deliverable would have contained, had a prototype existed
 
-So you know what you're getting, and so the shape is agreed before I do it:
+Kept for historical record only — do not resurrect this as a pending task.
 
 ### A. Inventory
 - File/module tree with LOC and last-modified, grouped by apparent purpose
@@ -61,16 +57,16 @@ record of which endpoints actually returned useful data in practice.
 
 ---
 
-## Interim assumption used elsewhere in Phase 0
+## The permanent stand-in, now that no prototype is coming
 
-Where other documents needed to know what the prototype checked for, I used the
+Where other documents needed to know what the prototype checked for, the
 **Reference Findings Library** at the end of `VOICE_LEDGER_SPEC.md` (duplicate
 expenses/bills/invoices/payments, reconciliation differences, uncategorized or
 miscoded transactions, unusual vendor names/amounts/timing, negative balances and
 abnormal clearing accounts, changed or unused recurring subscriptions, avoidable
 fees and interest, vendor price increases and duplicate services, possible
-personal expenses in business accounts) as the stand-in list of detections. §8's
-rule backlog is seeded from that list, not from the prototype.
-
-If the prototype's logic differs materially, the rule backlog is what changes —
-no other Phase 0 document is affected.
+personal expenses in business accounts) was used as the source list of
+detections. §8's rule backlog is seeded from that list — and, as of
+2026-08-17, this is no longer an interim substitute pending something better;
+it's the permanent source. No other Phase 0 document changes as a result of
+this resolution.

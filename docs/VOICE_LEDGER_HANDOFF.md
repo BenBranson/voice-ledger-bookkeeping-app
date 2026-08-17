@@ -24,7 +24,7 @@ The project began as an unrelated question: which reporting software to use for 
 
 There is a **prior prototype** built in Google AI Studio and later Base44, with a GitHub repo. Its code is conceptual reference only — near-zero reuse expected, since the rebuild is native Swift. The prototype's screenshots established the visual direction (dark, dense, "financial command center") and its feature set seeded the rules backlog.
 
-**IMPORTANT: `01_REPO_INVENTORY.md` is still BLOCKED.** The prototype repo URL was never supplied. When it arrives, the highest-value output is not a code inventory but section D — capability claims to re-verify. The prototype is a record of which QBO endpoints actually returned useful data in practice, which is stronger evidence than documentation.
+**RESOLVED 2026-08-17: `01_REPO_INVENTORY.md` is N/A, permanently — no prototype repo exists.** This build is fresh; the owner confirmed there's no codebase to retrieve. The "when it arrives" framing below described an assumption that turned out to be wrong — kept for historical record, not as a pending task. Do not re-open this or go looking for a prototype repo in a future session.
 
 ## What Voice Ledger is
 
@@ -686,8 +686,9 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 
 # 19. Outstanding decisions and next steps — corrected 2026-08-16
 
-## Blocked on the owner
-- **Prototype repo URL** — `01_REPO_INVENTORY.md` still blocked. Still true; the three backlog strategy documents (`CLEANUP_MODE.md` etc.) were located and filed in this session, but they are not the prototype repo — a separate, still-missing item.
+## Blocked on the owner — all three resolved 2026-08-17, kept here as a closed record
+
+- ~~**Prototype repo URL**~~ **Resolved 2026-08-17 — N/A, no such repo exists.** Confirmed by the owner directly; this build is fresh. Not the same thing as the three backlog strategy documents (`CLEANUP_MODE.md` etc.), which were located and filed separately — those exist and are real; the prototype simply never did.
 - ~~**macOS version**~~ **Resolved for the development machine, 2026-08-17: macOS 26.6.1.** See `OPEN_QUESTIONS.md` Q4 — this is a real answer for the machine this project is built on, not an independently-confirmed answer for every future deployment target, which is a distinction worth preserving rather than collapsing into "solved."
 - ~~**Violet contrast fix** — whether `#A67CF5` was applied.~~ **Resolved 2026-08-17 — it wasn't, now it is.** See §12.
 

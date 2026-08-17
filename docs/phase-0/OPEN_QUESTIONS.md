@@ -6,18 +6,19 @@ decisions I'm waiting on.
 
 ---
 
-## Q1 — Prototype repo — **still open (placeholder unfilled)**
+## Q1 — Prototype repo — **RESOLVED 2026-08-17: N/A, permanently — no such repo exists**
 
-The answers doc left `[FILL IN: paste your GitHub URL or local path here.]`
-unfilled. Deliverable 1 ([01_REPO_INVENTORY.md](01_REPO_INVENTORY.md)) stays
-blocked until the path or URL is supplied.
+Owner confirmation, 2026-08-17: this build is fresh — there is no prototype
+codebase anywhere to retrieve. The Phase 0 prompt's `[REPO URL / PATH]`
+placeholder was carried forward as an open question rather than dropped, on
+the assumption a prototype existed and just hadn't been located yet. That
+assumption was wrong.
 
-**Scope confirmed for when it arrives:** conceptual reference only, near-zero
-code reuse expected. Priority is section D of the original outline — capability
-claims to re-verify. Prototype-observed QBO behavior enters §2's matrix as
-`ASSUMED (prototype-observed)` and gets priority in the spike queue (see
-`SPIKE_QUEUE.md`). Sections A–C should stay thin rather than padded if the
-builder output turns out to be mostly scaffolding.
+**This is not "still blocked" — it's closed.** Deliverable 1
+([01_REPO_INVENTORY.md](01_REPO_INVENTORY.md)) is marked N/A rather than
+BLOCKED. Nothing in this project should keep waiting on a repo path arriving
+later, and no future session should re-open this question or go looking for
+a prototype on the assumption one exists.
 
 ---
 

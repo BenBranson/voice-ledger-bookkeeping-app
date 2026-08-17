@@ -13,7 +13,7 @@ reviewing everything; jump to §2 if you only have time for one.
 
 | # | Document | What it decides |
 |---|---|---|
-| 1 | [01_REPO_INVENTORY.md](01_REPO_INVENTORY.md) | **BLOCKED** — prototype repo path still not supplied (see `OPEN_QUESTIONS.md` Q1) |
+| 1 | [01_REPO_INVENTORY.md](01_REPO_INVENTORY.md) | **N/A** — no prototype repo exists; confirmed by the owner 2026-08-17 (see `OPEN_QUESTIONS.md` Q1) |
 | 2 | [02_QBO_CAPABILITY_MATRIX.md](02_QBO_CAPABILITY_MATRIX.md) | What QBO can actually do, per feature. The load-bearing document. |
 | 3 | [03_SECURITY_THREAT_MODEL.md](03_SECURITY_THREAT_MODEL.md) | Backend boundary, token handling, why the desktop client can't call arbitrary QBO |
 | 4 | [04_DATA_MODEL.md](04_DATA_MODEL.md) | The normalized shape API data and file imports both resolve into |
