@@ -109,6 +109,35 @@ public struct QBORawAccount: Decodable, Sendable {
     }
 }
 
+/// Added 2026-08-17 for `VL-DUP-VEND-001`.
+public struct QBORawVendor: Decodable, Sendable {
+    public let id: String
+    public let displayName: String
+    public let active: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case displayName = "DisplayName"
+        case active = "Active"
+    }
+}
+
+public struct QBOVendorQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let vendor: [QBORawVendor]?
+
+        enum CodingKeys: String, CodingKey {
+            case vendor = "Vendor"
+        }
+    }
+}
+
 public struct QBOAccountQueryResponse: Decodable, Sendable {
     public let queryResponse: QueryResponseBody
 

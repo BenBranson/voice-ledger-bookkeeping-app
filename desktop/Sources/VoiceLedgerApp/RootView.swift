@@ -118,6 +118,11 @@ struct RootView: View {
                 ruleID: "VL-BS-NEGBAL-001",
                 title: "Negative asset or liability balances",
                 findings: openFindings.filter { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" }
+            ),
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-DUP-VEND-001",
+                title: "Possible duplicate vendor records",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-VEND-001" }
             )
         ]
     }

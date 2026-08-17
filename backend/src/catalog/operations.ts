@@ -70,6 +70,27 @@ const readPurchases = op({
   }
 });
 
+const readVendorsParams = z.object({
+  activeOnly: z.boolean().default(true),
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+// docs/backlog/CLEANUP_MODE.md / the original 27-rule backlog's
+// VL-DUP-VEND-001. Added 2026-08-17 alongside that rule — read-only, same
+// pattern as readAccounts.
+const readVendors = op({
+  name: "readVendors",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readVendorsParams,
+  execute: async (client, realmId, params: z.infer<typeof readVendorsParams>) => {
+    const whereClause = params.activeOnly ? " where Active = true" : "";
+    const query = `select * from Vendor${whereClause} STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 // Closed set — deliberately NOT an arbitrary report-name passthrough.
 // docs/phase-0/04_DATA_MODEL.md §4.9: report column composition varies by
 // minor version and locale; an unlisted report name has no normalizer and
@@ -125,10 +146,9 @@ const cdcSince = op({
 });
 
 export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = new Map(
-  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readReport, cdcSince].map((definition) => [
-    definition.name,
-    definition
-  ])
+  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readVendors, readReport, cdcSince].map(
+    (definition) => [definition.name, definition]
+  )
 );
 
 /**

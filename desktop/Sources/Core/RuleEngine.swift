@@ -57,6 +57,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// also explicitly listed in docs/backlog/CLEANUP_MODE.md §1's own
     /// Cleanup Assessment scope ("Balance sheet: ... are there negative assets").
     case negativeAssetOrLiabilityBalance
+    /// `VL-DUP-VEND-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 3).
+    case duplicateVendor
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

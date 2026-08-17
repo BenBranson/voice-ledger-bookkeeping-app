@@ -9,6 +9,7 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     case billPayment = "BillPayment"
     case journalEntry = "JournalEntry"
     case account = "Account"
+    case vendor = "Vendor"
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.6's closed enum — confirmed against the
@@ -79,6 +80,19 @@ public struct LedgerAccount: Identifiable, Hashable, Codable, Sendable {
         self.accountType = accountType
         self.accountSubType = accountSubType
         self.currentBalance = currentBalance
+    }
+}
+
+/// docs/phase-0/04_DATA_MODEL.md. Only what `VL-DUP-VEND-001` needs.
+public struct LedgerVendor: Identifiable, Hashable, Codable, Sendable {
+    public let id: String
+    public let displayName: String
+    public let isActive: Bool
+
+    public init(id: String, displayName: String, isActive: Bool = true) {
+        self.id = id
+        self.displayName = displayName
+        self.isActive = isActive
     }
 }
 
@@ -179,6 +193,8 @@ public struct NormalizedDataSet: Sendable {
     /// account?"). Defaults empty so existing callers (VL-DUP-EXP-001,
     /// which needs no account data) don't have to supply it.
     public let accounts: [LedgerAccount]
+    /// Added for `VL-DUP-VEND-001`.
+    public let vendors: [LedgerVendor]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -187,6 +203,7 @@ public struct NormalizedDataSet: Sendable {
         period: AccountingPeriod,
         transactions: [LedgerTransaction],
         accounts: [LedgerAccount] = [],
+        vendors: [LedgerVendor] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -194,6 +211,7 @@ public struct NormalizedDataSet: Sendable {
         self.period = period
         self.transactions = transactions
         self.accounts = accounts
+        self.vendors = vendors
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

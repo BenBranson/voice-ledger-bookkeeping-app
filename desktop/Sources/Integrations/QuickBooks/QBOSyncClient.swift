@@ -30,6 +30,13 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
+    public struct ReadVendorsParams: Encodable, Sendable {
+        public let activeOnly: Bool
+        public init(activeOnly: Bool = true) {
+            self.activeOnly = activeOnly
+        }
+    }
+
     /// Fetches `Purchase` for the period, `Account` (the full chart of
     /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
     /// coded to), and `Preferences` for the company feature flag (§11.2's
@@ -59,6 +66,11 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadAccountsParams()
         )
+        let vendorsData = try await backend.call(
+            .readVendors,
+            realmID: realmID,
+            params: ReadVendorsParams()
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -68,6 +80,7 @@ public struct QBOSyncClient: Sendable {
         let decoder = JSONDecoder()
         let purchasesResponse = try decoder.decode(QBOPurchaseQueryResponse.self, from: purchasesData)
         let accountsResponse = try decoder.decode(QBOAccountQueryResponse.self, from: accountsData)
+        let vendorsResponse = try decoder.decode(QBOVendorQueryResponse.self, from: vendorsData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
@@ -80,12 +93,14 @@ public struct QBOSyncClient: Sendable {
 
         let transactions = rawPurchases.map { Self.normalize($0) }
         let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
+        let vendors = (vendorsResponse.queryResponse.vendor ?? []).map { Self.normalize($0) }
 
         return NormalizedDataSet(
             realmID: realmID,
             period: period,
             transactions: transactions,
             accounts: accounts,
+            vendors: vendors,
             coverage: coverage,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: customTxnNumbers)
         )
@@ -122,6 +137,10 @@ public struct QBOSyncClient: Sendable {
         guard let type = LedgerAccountType(rawValue: raw.accountType) else { return nil }
         let balance = raw.currentBalance.map { Money(minorUnits: Self.minorUnits(from: $0), currency: .usd) } ?? .zero
         return LedgerAccount(id: raw.id, name: raw.name, accountType: type, accountSubType: raw.accountSubType, currentBalance: balance)
+    }
+
+    static func normalize(_ raw: QBORawVendor) -> LedgerVendor {
+        LedgerVendor(id: raw.id, displayName: raw.displayName, isActive: raw.active ?? true)
     }
 
     static func minorUnits(from amount: Decimal) -> Int64 {

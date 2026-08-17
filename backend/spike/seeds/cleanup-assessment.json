@@ -1,5 +1,5 @@
 {
-  "description": "docs/backlog/CLEANUP_MODE.md's Cleanup Assessment rules — VL-CC-PAYMENT-001 and VL-PAYROLL-LUMP-001. Verifies both against real sandbox data before shipping either.",
+  "description": "docs/backlog/CLEANUP_MODE.md's Cleanup Assessment rules — VL-CC-PAYMENT-001, VL-PAYROLL-LUMP-001, VL-DUP-VEND-001. Verifies each against real sandbox data before shipping.",
   "requiresBaseline": true,
   "accounts": [
     { "name": "VL Spike Amex", "accountType": "Credit Card" },
@@ -7,7 +7,8 @@
   ],
   "vendors": [
     { "displayName": "VL Spike Amex" },
-    { "displayName": "VL Spike ADP" }
+    { "displayName": "VL Spike ADP" },
+    { "displayName": "VL Spike Permian Supply, Inc." }
   ],
   "purchases": [
     {

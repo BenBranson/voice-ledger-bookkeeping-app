@@ -17,11 +17,25 @@ describe("catalog", () => {
     }
   });
 
-  it("contains exactly the six operations named in the desktop-side CatalogOperation enum", () => {
+  it("contains exactly the seven operations named in the desktop-side CatalogOperation enum", () => {
     const names = [...CATALOG_OPERATIONS.keys()].sort();
     expect(names).toEqual(
-      ["cdcSince", "readAccounts", "readCompanyInfo", "readPreferences", "readPurchases", "readReport"].sort()
+      ["cdcSince", "readAccounts", "readCompanyInfo", "readPreferences", "readPurchases", "readVendors", "readReport"].sort()
     );
+  });
+
+  it("readVendors calls through to the QBO client with parsed params on success", async () => {
+    let capturedPath: string | undefined;
+    const fakeClient = {
+      get: async (_realmId: string, path: string) => {
+        capturedPath = path;
+        return { QueryResponse: { Vendor: [] } };
+      }
+    } as unknown as QBOClient;
+
+    const result = await dispatch(fakeClient, "123456", "readVendors", { activeOnly: true });
+    expect(result.kind).toBe("success");
+    expect(capturedPath).toBe("query");
   });
 
   it("dispatch returns 'unreachable' for an operation name not in the catalog — not merely unauthorized", async () => {

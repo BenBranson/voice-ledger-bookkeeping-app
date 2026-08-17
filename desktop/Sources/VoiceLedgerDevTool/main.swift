@@ -80,6 +80,7 @@ case "sync-check":
         let dataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(dataSet.transactions.count)")
         print("  accounts read: \(dataSet.accounts.count)")
+        print("  vendors read: \(dataSet.vendors.count)")
         print("  coverage: \(dataSet.coverage)")
         print("  customTxnNumbersForPurchases: \(dataSet.companyFacts.customTxnNumbersForPurchases)")
         for txn in dataSet.transactions.sorted(by: { $0.id < $1.id }) {
