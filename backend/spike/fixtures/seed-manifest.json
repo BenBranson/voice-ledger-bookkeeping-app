@@ -2,11 +2,15 @@
   "accounts": {
     "VL Spike Checking": "1150040000",
     "VL Spike Office Supplies": "1150040001",
-    "VL Spike Utilities": "1150040002"
+    "VL Spike Utilities": "1150040002",
+    "VL Spike Amex": "1150040013",
+    "VL Spike Wages": "1150040014"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
-    "VL Spike Odessa Water": "59"
+    "VL Spike Odessa Water": "59",
+    "VL Spike Amex": "60",
+    "VL Spike ADP": "61"
   },
   "purchases": {
     "VL-SPIKE-ZERO": {
@@ -47,6 +51,14 @@
     },
     "VL-SPIKE-NEARDATE-B": {
       "id": "154",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-CC-MISCODED": {
+      "id": "211",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-PAYROLL-LUMP": {
+      "id": "212",
       "syncToken": "0"
     }
   }

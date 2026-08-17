@@ -17,7 +17,15 @@ public final class AppState {
         case detail(findingID: String)
         case procedure(findingID: String, actionID: String)
         case activityLog
+        case cleanupAssessment
     }
+
+    /// Which rules belong to the Cleanup Assessment view vs. Page 3's
+    /// findings list — `Finding` itself doesn't carry a page/category
+    /// distinction, only `ruleID`, so the view layer keys off the ID set.
+    /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
+    /// field if the rule count grows enough to make this list unwieldy.
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001"]
 
     public enum LoadState: Equatable {
         case idle
@@ -45,7 +53,10 @@ public final class AppState {
         self.period = period
         self.syncClient = QBOSyncClient(backend: backend)
         self.store = store
-        self.engine = RuleEngine(rules: RuleRegistry.rules(for: .page3Transactions))
+        // All rules, not just Page 3's — Cleanup Assessment's rules must be
+        // evaluated in the SAME engine call for §8.2a's relationship
+        // gating to see both classes together (RuleEngineActor.swift).
+        self.engine = RuleEngine(rules: RuleRegistry.all)
     }
 
     public func loadFromDiskOnly() async {
@@ -70,7 +81,7 @@ public final class AppState {
             coverage = dataSet.coverage
 
             let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
-            let evaluation = await engine.evaluate(pages: [.page3Transactions], input: dataSet, context: context)
+            let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment], input: dataSet, context: context)
 
             var currentRunIDsByRule: [RuleID: Set<String>] = [:]
             for (ruleID, result) in evaluation.results {

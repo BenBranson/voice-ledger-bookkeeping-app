@@ -16,6 +16,9 @@ struct RootView: View {
                             .disabled(state.loadState == .loading)
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -32,7 +35,7 @@ struct RootView: View {
                     environment: state.environment == .production ? .production : .sandbox,
                     coverageStatus: StatusMapping.status(for: coverageOutcome),
                     coverageDetail: coverageDetail,
-                    findings: state.findings.filter { $0.status == .open }
+                    findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }
                 ),
                 onSelect: { finding in state.screen = .detail(findingID: finding.id) }
             )
@@ -72,7 +75,41 @@ struct RootView: View {
                         Button("Back") { state.screen = .list }
                     }
                 }
+
+        case .cleanupAssessment:
+            CleanupAssessmentView(
+                environment: state.environment == .production ? .production : .sandbox,
+                coverageStatus: StatusMapping.status(for: coverageOutcome),
+                coverageDetail: coverageDetail,
+                summaries: cleanupAssessmentSummaries,
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
         }
+    }
+
+    /// Only two rules exist today, so the title mapping is a small literal
+    /// table rather than a generic lookup — revisit once more Cleanup
+    /// Assessment rules exist (`RuleIdentity.title` could be read directly
+    /// at that point instead of duplicating it here).
+    private var cleanupAssessmentSummaries: [CleanupAssessmentView.RuleSummary] {
+        let openFindings = state.findings.filter { $0.status == .open }
+        return [
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-CC-PAYMENT-001",
+                title: "Credit card payments coded to an expense account",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-CC-PAYMENT-001" }
+            ),
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-PAYROLL-LUMP-001",
+                title: "Payroll payments on a single lump-sum line",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-PAYROLL-LUMP-001" }
+            )
+        ]
     }
 
     /// This app hasn't synced yet on first launch, so there's no
