@@ -33,6 +33,7 @@ public actor ClientStore {
     private var findingsURL: URL { directory.appending(path: "findings.json") }
     private var activityLogURL: URL { directory.appending(path: "activity-log.json") }
     private var importedStatementLinesURL: URL { directory.appending(path: "imported-statement-lines.json") }
+    private var checklistCompletionsURL: URL { directory.appending(path: "checklist-completions.json") }
 
     // MARK: - Findings
 
@@ -97,6 +98,34 @@ public actor ClientStore {
         for line in lines { byID[line.id] = line }
         existing = Array(byID.values).sorted { $0.id < $1.id }
         try save(existing, to: importedStatementLinesURL)
+    }
+
+    // MARK: - Month-End Close checklist
+
+    /// All completions ever recorded for this realm, across every period —
+    /// callers filter by `period` themselves (mirrors how `findings` are
+    /// loaded whole and filtered by the view layer).
+    public func loadChecklistCompletions() throws -> [ChecklistItemCompletion] {
+        try load([ChecklistItemCompletion].self, from: checklistCompletionsURL, default: [])
+    }
+
+    /// Upserts by `(itemID, period)` — re-marking the same item complete
+    /// for the same period replaces the prior attestation (a corrected
+    /// name/note) rather than accumulating duplicates.
+    public func upsertChecklistCompletion(_ completion: ChecklistItemCompletion) throws {
+        var existing = try loadChecklistCompletions()
+        existing.removeAll { $0.itemID == completion.itemID && $0.period == completion.period }
+        existing.append(completion)
+        try save(existing, to: checklistCompletionsURL)
+    }
+
+    /// Un-marks an item complete for a period — the reverse of
+    /// `upsertChecklistCompletion`, needed since an attestation can be a
+    /// mistake (CLAUDE.md: attestation is recorded, not treated as proof).
+    public func removeChecklistCompletion(itemID: ChecklistItemID, period: AccountingPeriod) throws {
+        var existing = try loadChecklistCompletions()
+        existing.removeAll { $0.itemID == itemID && $0.period == period }
+        try save(existing, to: checklistCompletionsURL)
     }
 
     // MARK: - Activity log

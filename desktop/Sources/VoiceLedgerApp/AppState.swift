@@ -22,6 +22,7 @@ public final class AppState {
         case cleanupAssessment
         case balanceSheetIntegrity
         case bankFeedCleanup
+        case monthEndClose
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -80,8 +81,14 @@ public final class AppState {
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
 
+    // Month-End Close checklist (Page 11) state.
+    public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
+
     private let realmID: RealmID
     private let period: AccountingPeriod
+    /// Exposed read-only so the view layer can filter period-scoped state
+    /// (e.g. `checklistCompletions`) without duplicating the period value.
+    public var currentPeriod: AccountingPeriod { period }
     private let backend: BackendClient
     private let syncClient: QBOSyncClient
     private let store: ClientStore
@@ -105,7 +112,29 @@ public final class AppState {
         do {
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
+            checklistCompletions = try await store.loadChecklistCompletions()
             loadState = .loaded
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 11 — a human attestation, recorded not
+    /// treated as proof (§11.4's same posture for finding completion).
+    public func completeChecklistItem(_ itemID: ChecklistItemID, actorName: String, note: String?) async {
+        do {
+            let completion = ChecklistItemCompletion(itemID: itemID, period: period, completedBy: actorName, note: note)
+            try await store.upsertChecklistCompletion(completion)
+            checklistCompletions = try await store.loadChecklistCompletions()
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    public func uncompleteChecklistItem(_ itemID: ChecklistItemID) async {
+        do {
+            try await store.removeChecklistCompletion(itemID: itemID, period: period)
+            checklistCompletions = try await store.loadChecklistCompletions()
         } catch {
             loadState = .failed("\(error)")
         }

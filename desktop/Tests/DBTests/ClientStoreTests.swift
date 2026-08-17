@@ -132,4 +132,51 @@ struct ClientStoreTests {
         let loaded = try await store.loadImportedStatementLines()
         #expect(loaded.count == 1)
     }
+
+    @Test("Checklist completions round-trip: upsert then load returns the same completion")
+    func checklistCompletionsRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let completion = ChecklistItemCompletion(
+            itemID: ChecklistItemID(rawValue: "resolve-cleanup-assessment"),
+            period: AccountingPeriod(year: 2026, month: 7),
+            completedBy: "Benjamin Branson"
+        )
+        try await store.upsertChecklistCompletion(completion)
+        let loaded = try await store.loadChecklistCompletions()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].completedBy == "Benjamin Branson")
+    }
+
+    @Test("Re-upserting a completion for the same item and period replaces the prior one, not duplicates it")
+    func checklistCompletionUpsertReplacesPrior() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let itemID = ChecklistItemID(rawValue: "resolve-cleanup-assessment")
+        let period = AccountingPeriod(year: 2026, month: 7)
+        try await store.upsertChecklistCompletion(ChecklistItemCompletion(itemID: itemID, period: period, completedBy: "First Name"))
+        try await store.upsertChecklistCompletion(ChecklistItemCompletion(itemID: itemID, period: period, completedBy: "Corrected Name"))
+        let loaded = try await store.loadChecklistCompletions()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].completedBy == "Corrected Name")
+    }
+
+    @Test("The same item completed in two different periods produces two separate completions")
+    func sameItemDifferentPeriodsAreSeparate() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let itemID = ChecklistItemID(rawValue: "resolve-cleanup-assessment")
+        try await store.upsertChecklistCompletion(ChecklistItemCompletion(itemID: itemID, period: AccountingPeriod(year: 2026, month: 6), completedBy: "Benjamin Branson"))
+        try await store.upsertChecklistCompletion(ChecklistItemCompletion(itemID: itemID, period: AccountingPeriod(year: 2026, month: 7), completedBy: "Benjamin Branson"))
+        let loaded = try await store.loadChecklistCompletions()
+        #expect(loaded.count == 2)
+    }
+
+    @Test("Removing a checklist completion is the reverse of upserting it")
+    func removeChecklistCompletion() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let itemID = ChecklistItemID(rawValue: "resolve-cleanup-assessment")
+        let period = AccountingPeriod(year: 2026, month: 7)
+        try await store.upsertChecklistCompletion(ChecklistItemCompletion(itemID: itemID, period: period, completedBy: "Benjamin Branson"))
+        try await store.removeChecklistCompletion(itemID: itemID, period: period)
+        let loaded = try await store.loadChecklistCompletions()
+        #expect(loaded.isEmpty)
+    }
 }

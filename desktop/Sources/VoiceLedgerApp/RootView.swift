@@ -30,6 +30,9 @@ struct RootView: View {
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Month-End Close") { state.screen = .monthEndClose }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -183,6 +186,19 @@ struct RootView: View {
                     EmptyView()
                 }
             }
+
+        case .monthEndClose:
+            MonthEndCloseView(
+                environment: state.environment == .production ? .production : .sandbox,
+                items: monthEndChecklistItemStates,
+                onComplete: { itemID, note in Task { await state.completeChecklistItem(itemID, actorName: actorName, note: note) } },
+                onUncomplete: { itemID in Task { await state.uncompleteChecklistItem(itemID) } }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
         }
     }
 
@@ -202,6 +218,41 @@ struct RootView: View {
                     findings: openFindings.filter { $0.ruleID == ruleType.identity.id }
                 )
             }
+    }
+
+    /// `readyDetail` per item is real, computed from open-`Finding` counts
+    /// for the rule sets each checklist step corresponds to — never a
+    /// manual guess (`CLAUDE.md` rule 1). Items with no automatic signal
+    /// (QBO-side reconciliation, setting the closing date) get `nil`.
+    private var monthEndChecklistItemStates: [MonthEndCloseView.ItemState] {
+        let completionsForPeriod = state.checklistCompletions.filter { $0.period == state.currentPeriod }
+        let completedIDs = Set(completionsForPeriod.map(\.itemID))
+        let openFindings = state.findings.filter { $0.status == .open }
+
+        func detail(for ruleIDs: Set<String>) -> String {
+            let count = openFindings.filter { ruleIDs.contains($0.ruleID.rawValue) }.count
+            return count == 0 ? "No open findings." : "\(count) open finding\(count == 1 ? "" : "s")."
+        }
+
+        return MonthEndChecklist.defaultItems.map { item in
+            let readyDetail: String?
+            switch item.id.rawValue {
+            case "resolve-cleanup-assessment":
+                readyDetail = detail(for: AppState.cleanupAssessmentRuleIDs)
+            case "review-balance-sheet-integrity":
+                readyDetail = detail(for: AppState.balanceSheetIntegrityRuleIDs)
+            case "review-bank-feed":
+                readyDetail = detail(for: ["VL-RECON-MISSING-001", "VL-VENDOR-MISMATCH-001"])
+            default:
+                readyDetail = nil
+            }
+            return MonthEndCloseView.ItemState(
+                item: item,
+                isUnlocked: MonthEndChecklist.isUnlocked(item, completedItemIDs: completedIDs),
+                completion: completionsForPeriod.first { $0.itemID == item.id },
+                readyDetail: readyDetail
+            )
+        }
     }
 
     private var balanceSheetIntegritySummaries: [BalanceSheetIntegrityView.RuleSummary] {
