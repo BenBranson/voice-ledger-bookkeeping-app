@@ -28,6 +28,7 @@ reviewing everything; jump to §2 if you only have time for one.
 | — | [CAPABILITY_CLASSIFICATION.md](CAPABILITY_CLASSIFICATION.md) | Every proposed feature, classified into the five buckets |
 | — | [SPIKE_QUEUE.md](SPIKE_QUEUE.md) | The §2.8 waves as an ordered, runnable test list — `Purchase` void first |
 | — | [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) | Answered 2026-08. Two placeholders still open: repo path, macOS version. |
+| — | [../backlog/README.md](../backlog/README.md) | Filed, not planned: Cleanup Assessment, Transaction Relationship Guard, many-to-one matching, and the rest of the post-slice roadmap. Reserved rule IDs live in §8.8, not here. |
 
 ---
 

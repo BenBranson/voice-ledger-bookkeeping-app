@@ -114,11 +114,17 @@ compare against the raw response. A mismatch means we hold fields we don't
 understand, and a full update would clear them (§2, row 7.1, constraint 2). →
 block the write.
 
-This check is the one most likely to be dropped as over-engineering. It shouldn't
-be: it is cheap, it runs once per write, and it is the only defense against
-silently destroying fields on entities whose sparse-update support turns out to
-be incomplete. It also *discovers* those entities for us, which feeds §2's
-matrix.
+**Verified-necessary, not precautionary — do not remove this check.** This was
+flagged as the check most likely to be dropped as over-engineering. It isn't:
+the Wave 3 spike (2026-08-16) confirmed sparse updates silently drop data on
+real QBO entities — a `Purchase` line memo was cleared, and a `Bill`'s second
+line was truncated, by resending a sparse update that omitted them (see
+`spike/fixtures/results-2026-08-16T20-45-42-102Z.json`, matrix rows 6.3/7.1,
+7.2, `docs/phase-0/02_QBO_CAPABILITY_MATRIX.md`). This is not a hypothetical
+QBO behavior this check guards against — it is an observed one. It is cheap,
+it runs once per write, and it is the only defense against silently destroying
+fields on entities whose sparse-update support turns out to be incomplete. It
+also *discovers* those entities for us, which feeds §2's matrix.
 
 **4. Period lock.** `TxnDate` vs. `BookCloseDate` and Voice Ledger's own stricter
 lock. Per `CLAUDE.md` and spec, closed-period writes are blocked **client-side
@@ -191,6 +197,77 @@ kind of unverified-capability dependency `CLAUDE.md` rule 6 prohibits.
 
 ---
 
+## 10.5a Response validation — HTTP 200 is not success ⚠ correction, 2026-08-16
+
+**This is a correctness bug fix, not a new feature.** Wave 3's void-on-other-
+entities tests found two real anomalous-200 responses from QBO:
+- `Bill` void → HTTP 200 with a `SystemFault` body (a leaked Java exception
+  inside a 200 envelope)
+- `JournalEntry` void → HTTP 200 with an empty `BatchItemResponse` (a silent
+  no-op)
+
+(`spike/fixtures/results-2026-08-16T20-45-42-102Z.json`, matrix rows
+`11.x-bill`, `11.x-je`.) Either would be read as success by a status-code
+check. **Status-code checking is therefore not a valid success test anywhere
+in this design**, and every write path in this document that implicitly
+assumed "2xx ⇒ success" is corrected by this section.
+
+**1. A single chokepoint, not a per-operation check.** The backend's response
+handling has exactly one place a QBO write response passes through before any
+caller sees a result:
+
+```swift
+enum WriteResponseOutcome: Sendable {
+    case success(entity: QBOEntitySnapshot)
+    case rejected(fault: QBOFault)                 // clean, well-formed rejection
+    case unknown(reason: MalformedResponseReason)   // §10.5a — routes to §10.6
+}
+
+enum MalformedResponseReason: Sendable {
+    case faultInside2xx(QBOFault)          // Bill-void shape
+    case emptyOrMissingExpectedEntity      // JournalEntry-void shape
+    case unparseableBody
+}
+
+/// The ONLY function in the backend permitted to turn a raw HTTP response
+/// into a result a caller acts on. No individual catalog operation parses
+/// its own response — this exists specifically so no operation can forget
+/// to check the body.
+func classifyWriteResponse(_ raw: RawHTTPResponse) -> WriteResponseOutcome
+```
+
+No catalog operation (§3.4) is permitted to inspect `raw.status` and decide
+success on its own. Every write op's implementation calls
+`classifyWriteResponse` and only ever sees its result — `.success`,
+`.rejected`, or `.unknown`. A fault element present anywhere in a 2xx body is
+`.rejected`, never `.success`.
+
+**2. An empty or structurally unexpected success body is `.unknown`, not
+`.success`.** This is the JournalEntry-void case. "No fault present" is not
+"it worked" — it's exactly the shape of response we have the least ability to
+interpret, so it is treated with the same suspicion as a network timeout: it
+routes into `UNKNOWN` (§10.6), not into `CONFIRMED`.
+
+**3. This changes the resolution probe's step 1** (§10.6, revised below). The
+probe used to start by re-reading the entity. It now starts by asking whether
+the *original* response was well-formed at all, because an anomalous-200 write
+is exactly the case where the original response tells us the least, and a
+probe that skips straight to re-reading throws that signal away.
+
+**4. Structural test requirement.** Add a backend test asserting **no code
+path treats a 2xx status as success without passing through
+`classifyWriteResponse`** — e.g., a lint-style test that greps/AST-scans every
+catalog operation's response handling for a direct `status == 2xx` success
+branch outside the chokepoint, or (preferred, once the catalog exists in code)
+a compile-time guarantee that operations can only construct a
+`WriteResponseOutcome` via the chokepoint function, never by hand. This is a
+Phase 1 step-1.6 requirement, not deferred — the slice makes no QBO write
+(§11.1), but the chokepoint and its test are prerequisites for step 1.6 per
+the owner's instruction, because the *next* rule whose resolution is
+`staged_api` depends on it existing.
+
+---
+
 ## 10.6 The `UNKNOWN` state and the resolution probe
 
 **The case this whole document is organized around.** We sent a write. We got no
@@ -208,27 +285,49 @@ landed.
 
 ### The probe
 
+**Revised 2026-08-16 (§10.5a) — step 1 is now about the original response,
+not the entity.** An `UNKNOWN` can arise two ways: no response at all (network
+timeout — the classic case this document was written for), or a response that
+arrived but was malformed (§10.5a's anomalous-200 case). Those need different
+first moves: the second case already has a real, if confusing, response worth
+inspecting before spending a network round trip on a fresh read.
+
 ```
-1. Re-read the entity by Id.
+1. Was there an original response at all?
+   ├─ No response received (true timeout/network error) → go to step 2
+   └─ A response WAS received but was malformed (§10.5a:
+      .faultInside2xx or .unparseableBody) → inspect it first:
+        ├─ faultInside2xx names a real QBO fault  → treat as strong evidence
+        │    of FAILED, but still corroborate via step 2 before finalizing —
+        │    a leaked fault in a 200 is not yet proven equivalent to a clean
+        │    rejection until we've seen it happen more than once (Bill-void
+        │    is the only confirmed instance so far)
+        └─ emptyOrMissingExpectedEntity (JournalEntry-void shape) → no signal
+             either way, proceed to step 2 with no prior
+2. Re-read the entity by Id.
    ├─ Not found + operation was a delete   → CONFIRMED
    ├─ Not found + operation was not delete → FAILED (or investigate)
    └─ Found → continue
-2. Compare SyncToken to baselineSyncToken.
+3. Compare SyncToken to baselineSyncToken.
    ├─ Unchanged → the write did not land → FAILED (safe to re-stage)
    └─ Changed  → something wrote → continue
-3. Compare entity state to the correction's expected post-state.
+4. Compare entity state to the correction's expected post-state.
    ├─ Matches expected → CONFIRMED (our write landed)
    └─ Differs          → AMBIGUOUS
-4. CDC sweep for the entity around the submission window.
-   └─ Corroborates or contradicts step 3.
-5. AMBIGUOUS after all of the above → escalate to you, with both snapshots
+5. CDC sweep for the entity around the submission window.
+   └─ Corroborates or contradicts step 4.
+6. AMBIGUOUS after all of the above → escalate to you, with both snapshots
    side by side. Never guessed.
 ```
 
-**Step 2 is the load-bearing one.** An unchanged `SyncToken` is strong evidence
-the write did not land, because any successful write increments it.
+**Step 3 is the load-bearing one for the classic timeout case.** An unchanged
+`SyncToken` is strong evidence the write did not land, because any successful
+write increments it. **Step 1 is now the load-bearing one for the
+anomalous-200 case** (§10.5a) — it's the only step that uses information the
+original response actually gave us, before falling back to the same
+re-read/SyncToken/CDC machinery used for a true timeout.
 
-**Step 3's `AMBIGUOUS` case is real**: someone edited the entity in QBO during
+**Step 4's `AMBIGUOUS` case is real**: someone edited the entity in QBO during
 the same window, so the token changed for a different reason. That is exactly
 when a human must look, and exactly when an automated system that guesses causes
 damage.
@@ -253,6 +352,16 @@ sandbox testing shows batch reliability is high.
 
 Per-item journaling, never per-batch: 10 items produce 10 journal rows with
 independent states.
+
+**Every item in a batch is a full-entity update with a complete `Line` array,
+never a sparse update — correction, 2026-08-16.** §10.3 check 3 already made
+this the rule for a single correction; Wave 3 confirmed it's not optional for
+batch either, since the failure mode is the same shape either way: a partial
+`Line` array is silently accepted by QBO and **truncates** the transaction
+(the spike's Bill test dropped a second line by resending only the first).
+Each of the 10 items in a batch runs its own §10.3 preflight — including round-
+trip fidelity — before submission; a batch is 10 independently-preflighted
+corrections submitted together, not one operation that gets preflighted once.
 
 **Before any batch runs, the preview shows** (spec, Page 7): transactions
 affected · total dollars · old and new category · tax-period consequences ·

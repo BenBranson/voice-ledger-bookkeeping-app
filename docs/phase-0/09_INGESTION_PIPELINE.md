@@ -380,3 +380,80 @@ enum ImportFreshness: Sendable {
 Only `.current` permits a page to go green, and it feeds §6's watermark via
 `importDigests` — so replacing an import automatically invalidates the pages that
 consumed the old one, with no manual step.
+
+---
+
+## 9.11 Matching contract — sets on both sides (interface only, no matcher implementations beyond the slice)
+
+Owner instruction, 2026-08-16, independently converged on by
+`docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` item 2: a one-to-one matcher
+reports a client's normal Stripe settlement as a missing transaction every
+month, because a real statement-to-ledger match is routinely **many QBO
+records to one bank line, one bank line to many QBO records, or net of fees**
+— never reliably one-to-one. Required shapes, from that document:
+
+- Several QBO payments → one bank deposit (this is what Undeposited Funds *is*)
+- One statement withdrawal → several QBO lines (a split transaction)
+- Settlement deposits net of processing fees (Stripe, PayPal, Square)
+- Refunds and chargebacks
+- Transaction date vs. cleared date differences
+- Amount tolerances for fees and rounding
+- Outstanding checks and deposits in transit
+
+**A one-to-one matcher cannot express any of these without hacks** — mapping a
+`(statementLine, ledgerTransaction)` pair forces every real settlement into a
+false "missing transaction," which is precisely what makes a matching page get
+ignored. This is a correctness requirement on the interface, not a feature to
+add later: **adopted now as the shape of the matching contract itself. No
+matcher beyond what §11's slice needs is implemented in this phase** — the
+slice's Branch B needs no statement matching at all (§11.2), so this section
+lands with zero conforming matchers, on purpose.
+
+```swift
+/// A match is a relation between two SETS of records, never a pair. This is
+/// the whole fix: `bankSide`/`ledgerSide` can each hold 1..N members, which is
+/// what lets the same type express 1:1, N:1, 1:N, and N:N shapes without a
+/// special case per shape.
+struct StatementMatch: Identifiable, Sendable {
+    let id: StatementMatchID
+    let bankSide: [StatementLineID]        // 1 or more statement lines
+    let ledgerSide: [LedgerTransactionID]  // 1 or more QBO-sourced transactions
+    let reason: MatchReason
+    let tolerance: MatchTolerance
+    let netDifference: Money               // bankSide total − ledgerSide total;
+                                            // zero for an exact match, non-zero
+                                            // and EXPLAINED for a fee-net match
+}
+
+enum MatchReason: Hashable, Codable, Sendable {
+    case exactAmountAndDate
+    case exactAmountNearDate(daysApart: Int)
+    case sumOfLedgerEqualsBankAmount            // N:1 — grouped deposit
+    case sumOfBankEqualsLedgerAmount            // 1:N — split transaction
+    case settlementNetOfFees(feeAccount: AccountID, feeAmount: Money)
+    case refundOrChargeback(originalMatchID: StatementMatchID)
+    case clearedDateDiffersFromTransactionDate(days: Int)
+    case outstandingAtStatementEnd              // check/deposit in transit — no
+                                                 // ledger-side match expected yet
+    case userConfirmed                          // manual override, always allowed
+}
+
+struct MatchTolerance: Hashable, Codable, Sendable {
+    let amount: Money        // e.g. $0.02 for rounding
+    let dateWindow: Int       // days
+}
+```
+
+**Why `netDifference` is a required field, not optional:** a fee-net match
+(`settlementNetOfFees`) is only trustworthy if the gap between the two sides is
+itself explained — a Stripe deposit that's $4.87 short of the sum of its
+payments is correct *only if* $4.87 is accounted for as a fee somewhere. A
+match type that hides the residual is indistinguishable from a match that's
+silently wrong by the fee amount.
+
+**Where this plugs in:** Pages 4 and 5 (the two pages this doc's intro already
+names as most API-limited) are the intended consumers, once built — not in
+this phase. `StatementMatch` doesn't replace `CrossFootCheck` (§9.5) or
+`Provenance` (§9.8); a matched set still carries its members' individual
+provenance, and cross-foot still runs on the statement independently of
+matching.

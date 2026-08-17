@@ -254,6 +254,21 @@ on a fresh sandbox.
 
 ---
 
+## Wave 5 — added from the backlog assessment, tests only, NOT run yet
+
+Owner instruction, `NEXT_INSTRUCTION.md` Part 4, 2026-08-16: pulled forward
+from `docs/backlog/CLEANUP_MODE.md` §2.7 and
+`docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` item 6, respectively. **Filed as
+queue items only — do not run either until explicitly approved,** same rule as
+every other wave in this document.
+
+| # | Test | Matrix row | Asserts |
+|---|---|---|---|
+| 49 | `testCategorizationProvenance` | — (new row, TBD on run) | Is QBO's rule-vs-AI-vs-human categorization source exposed via any read API (transaction detail, CDC, or report)? Source: Hector Garcia's walkthrough showed QBO's own UI stating "100% a guess, no historical transactions" per-transaction — the question is whether that provenance is reachable outside the UI. If yes: an enormous cleanup filter (sort the whole file by "categorized by a guess"). If no: record as DISPROVEN — still a useful, permanent answer, not a failure to work around. |
+| 50 | `testReconciledTransactionDetection` | — (new row, TBD on run) | Can we tell from the API whether a transaction has already been reconciled? Source: `REDDIT_FEEDBACK_ASSESSMENT.md`'s sensitive-write-preflight risk-tier proposal — a write against an already-reconciled transaction breaks that reconciliation, and §10.3's five preflight checks don't currently check for this. Needed before any write-risk-tiering work, not needed for the Phase 1 slice (Branch B makes no write at all, §11.1). If yes: which field/endpoint, and whether it's per-line or per-transaction. If no: record as DISPROVEN; the preflight risk-tier design would need a different signal (e.g., cross-referencing an imported reconciliation report). |
+
+---
+
 ## After the queue runs
 
 1. Regenerate `02_QBO_CAPABILITY_MATRIX.md` from the passing tests (§12.5 — not

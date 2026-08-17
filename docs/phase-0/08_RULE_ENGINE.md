@@ -82,9 +82,20 @@ struct RuleIdentity: Hashable, Codable, Sendable {
     let version: RuleVersion             // semantic; see §8.4
     let title: String
     let category: FindingCategory
+    let ruleClass: RuleClass             // §8.2a — relationship vs. categorization
     let page: WorkflowPage
     let accountingPrinciple: String      // Training Mode: *why*, not just *what*
     let sourceDependencies: Set<SourceDependency>   // §4.12 — declares QBO-specific needs
+}
+
+/// §8.2a. Which prior question this rule answers. Relationship rules answer
+/// "is this the right kind of transaction" (match/transfer/split/refund/
+/// owner movement); categorization rules answer "is the category correct."
+/// The distinction exists so the engine can gate one class on the other —
+/// see §8.2a and §8.5 step 1a.
+enum RuleClass: String, Hashable, Codable, Sendable {
+    case relationship
+    case categorization
 }
 
 struct DataRequirements: Sendable {
@@ -113,6 +124,107 @@ rule still *detects*; it just cannot offer an unproven fix.
 thresholds, the company's feature flags, client memory rules, and previously
 dismissed findings — all values, no handles. A rule physically cannot call the
 network or read the clock, which is what makes `evaluate` reproducible.
+
+---
+
+## 8.2a Relationship-before-category ordering (interface only — design accommodation, no relationship rules yet)
+
+Owner instruction, 2026-08-16: the engine currently only asks "is the category
+correct?" There's a prior question — "is this the right *kind* of transaction?"
+(matched to an existing bill/invoice/payment, a credit-card payment, a
+transfer, part of a grouped deposit, a split, a refund, an owner contribution
+or distribution) — and every catastrophic error lives in that first set. A
+wrong category is off by one P&L line; a "categorize" that should have been a
+"match" duplicates the transaction outright.
+
+This section adds the **interface accommodation** — ordering with gating — so
+the cost of retrofitting it after rules exist is paid once, now, instead of
+after 26 rules. **No relationship-class rule is implemented in this phase.**
+
+```swift
+extension RuleEngine {
+    /// Relationship-class rules evaluate first, in `RuleClass.relationship`
+    /// order, for a given transaction. If one FIRES (produces a finding),
+    /// every categorization-class rule scoped to the same transaction is
+    /// gated — it does not run, and its absence is not silent.
+    struct GatingOutcome: Sendable {
+        let suppressedRuleIDs: Set<RuleID>
+        let gatingFindingID: FindingID   // the relationship finding that caused it
+        let reason: String               // rendered on the categorization rule's
+                                          // would-be finding: "not evaluated — see <gatingFindingID>"
+    }
+}
+```
+
+**Why gating, not just ordering.** Running both classes and showing both
+findings would let a categorization suggestion sit next to a relationship
+finding that already explains the transaction — visually implying two separate
+problems where there's one. Gating collapses that to one finding with a clear
+cause, and the suppressed categorization rule is *recorded as gated*, not
+silently skipped — matching §8.5 step 6's rule that suppression must stay
+visible.
+
+**Placed as engine step 1a** (see revised §8.5): after the requirement check,
+before data assembly, relationship-class rules for a transaction's scope run
+first; a fired relationship rule adds its `RuleID`s to that transaction's gate
+set before categorization-class rules are considered for it.
+
+---
+
+## 8.2b Per-tier rule introspection (general capability, not a `VL-DUP-EXP-001` special case)
+
+Owner instruction, 2026-08-16, in response to the T2 (`UseCustomTxnNumbers`)
+conditional-applicability finding in §11.2: *"this needs per-tier introspection
+on `Rule`, which is a real interface change... make it a general capability, not
+a special case for this rule: any rule with multiple detection tiers should be
+able to report which tiers are active for this client and why."*
+
+```swift
+/// A detection tier within a single rule — e.g. VL-DUP-EXP-001's T1 (exact
+/// match), T2 (reference/DocNumber match), T3 (near-date match).
+struct RuleTier: Hashable, Codable, Sendable {
+    let id: String                 // stable within the rule, e.g. "T1", "T2", "T3"
+    let label: String              // "Exact match", "Reference number match", …
+    let confidence: Confidence     // what this tier can award if it matches
+}
+
+/// Optional — only rules with more than one detection tier conform.
+/// A rule with a single tier has nothing to report and doesn't need it.
+protocol MultiTierRule: Rule {
+    /// Pure, same contract as `evaluate` — no I/O, no clock. Given the
+    /// client's feature flags and company facts (via `RuleContext`), report
+    /// which of this rule's tiers are active and why.
+    static func tierApplicability(context: RuleContext) -> [TierStatus]
+}
+
+struct TierStatus: Hashable, Codable, Sendable {
+    let tier: RuleTier
+    let active: Bool
+    let reason: String   // "Custom Transaction Numbers is off in this client's
+                          //  QBO vendor/purchases settings" — always populated,
+                          // for both active and inactive, so Training Mode can
+                          // show *why* a tier is or isn't in play.
+}
+```
+
+**Informational, not a coverage gate — non-negotiable.** An inactive tier must
+never push `RuleOutcome` toward `.cannotEvaluate`. As long as at least one tier
+is active, the rule is fully evaluable; `tierApplicability` is read-only
+metadata layered on top of a `RuleOutcome` that's computed exactly as before.
+The engine does not consult `tierApplicability` when deciding evaluability —
+only Training Mode and the finding's evidence rendering do.
+
+**Where it surfaces:**
+- Training Mode reads `tierApplicability` for the rule and states which tiers
+  are live for this client and why, per the owner's explicit requirement.
+- A finding produced by a specific tier can drop irrelevant evidence fields
+  for tiers that didn't fire (§11.4's worked example drops `docNumber` from the
+  highlight set when only T1 matched).
+
+`VL-DUP-EXP-001` is the first (and, in this phase, only) conformer — see
+§11.2's `.customTxnNumbersForPurchases` company feature flag, populated from
+`VendorAndPurchasesPrefs.UseCustomTxnNumbers` and cached with other company
+facts read into `RuleContext`.
 
 ---
 
@@ -194,6 +306,16 @@ Sequence per rule:
 1. **Requirement check.** Any requirement unmet → `.cannotEvaluate` with the
    specific reason. The rule never runs. Cheap, and it means rules don't each
    reimplement "is my data here."
+1a. **Relationship gating (§8.2a — interface only, no relationship rules
+   registered yet).** `RuleClass.relationship` rules scoped to a transaction
+   evaluate before `RuleClass.categorization` rules scoped to the same
+   transaction. A fired relationship rule adds the transaction to that rule's
+   `GatingOutcome.suppressedRuleIDs`; gated categorization rules do not run for
+   that transaction, and the gate is recorded, not silent — Coverage/Findings
+   views can list "N categorization checks gated by relationship finding
+   `<id>`." With zero relationship rules registered, this step is a no-op in
+   practice, but the branch exists and is exercised in engine tests via a
+   fixture relationship rule.
 2. **Data assembly.** `NormalizedDataSet` (§4.11) built from the client store,
    carrying coverage and defects.
 3. **Coverage gate.** `dataSet.coverage < requirements.requiredCoverage` →
@@ -341,6 +463,39 @@ stable; only the first is scoped in this phase (§11).
 | `VL-REPORT-TIE-001` | Report tie-out mismatch | 12 | 3 |
 
 Twenty-seven rules. Phase 1 ships exactly one, proven end to end.
+
+### Backlog additions from `docs/backlog/` (2026-08-16, filed not built)
+
+IDs reserved per the owner's Part 4 instruction so they're stable once the
+source documents are implemented. Source: `docs/backlog/CLEANUP_MODE.md` and
+`docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` — both filed in full (not
+summarized) under `docs/backlog/`; the detection column below is a one-line
+compression, not the complete design. **Do not implement any of these.**
+
+| Rule ID | Detection (one-line — see source doc for the real design) | Page | Phase |
+|---|---|---|---|
+| `VL-RELATIONSHIP-001`…`-006` | Transaction Relationship Guard — one rule per branch of the "is this even the right kind of transaction" decision tree (match-to-existing / credit-card-payment / transfer / grouped-deposit / split / refund-or-owner-movement), evaluated before any categorization rule on the same transaction. First real conformer to §8.2a's relationship-class gating. **`-002` (credit-card-payment branch) subsumes `VL-CC-PAYMENT-001` below — see note.** | 3 | Backlog |
+| `VL-CC-PAYMENT-001` | Credit-card payment coded to an expense account instead of the card's balance-sheet liability account (double-counts the expense). Named independently in `CLEANUP_MODE.md`, but `REDDIT_FEEDBACK_ASSESSMENT.md` identifies it as identical to `VL-RELATIONSHIP-002`. **Unresolved overlap, flagged rather than silently merged** — whoever builds either rule decides whether `VL-CC-PAYMENT-001` stays a distinct ID or is retired in favor of `VL-RELATIONSHIP-002`. | 3 | Backlog |
+| `VL-PAYROLL-LUMP-001` | Payment to a known payroll processor (ADP, Gusto, Paychex, Rippling, QuickBooks Payroll, Justworks, TriNet) coded entirely to one expense account instead of split wages/taxes/withholdings. Resolution is guided-manual (needs the payroll register); good Import Bridge candidate. | 3 | Backlog |
+| `VL-VENDOR-MISMATCH-001` | Statement's original bank description diverges from QBO's cleaned-up vendor name (Import Bridge: match on date+amount, compare descriptions). | 3 | Backlog |
+| `VL-PREPAID-PERIOD-001` | Large payment where an attached document's service period extends past the transaction date (needs OCR on the attachment; QBO can flag the anomaly but can't read the invoice). | 3 | Backlog |
+| `VL-OPENING-BAL-001` | Non-zero opening balance entry plus an equity contribution within N days for a similar amount — opening-balance double-count. | 6 | Backlog |
+| `VL-CLOSED-PERIOD-DRIFT-001` | A closed period's stored trial-balance snapshot/hash no longer matches on resync — someone (client, prior bookkeeper, QBO auto-categorization) edited a closed-period transaction. No audit-log dependency; needs no API QBO doesn't already expose. | 2 | Backlog |
+| `VL-FORCED-RECON-001` | Non-zero balance in Reconciliation Discrepancies — someone forced a reconciliation to close rather than finding the cause. | 5 | Backlog |
+| `VL-OBE-BALANCE-001` | Non-zero Opening Balance Equity — classic signature of a self-set-up file. | 6 | Backlog |
+| `VL-AUTOADD-RULE-001` | Imported bank-rules export shows a rule with auto-add enabled, broad matching condition, whose category doesn't match how similar transactions were historically coded. | 4 | Backlog |
+
+**Not rule IDs — filed as page/interface designs in the backlog docs, not
+detection rules:** many-to-one/one-to-many statement matching (Part 3 already
+covers the matching *interface*; the reddit doc's version is the same
+requirement, not a separate rule), Account-Month Control Grid, Client
+Accounting Control Profile (a `MaterialityPolicy`-style watermark component,
+not a rule), Balance-Sheet Evidence Workpapers, Sensitive-Write Preflight risk
+tiers (extends §10.3's five checks with a reconciled-transaction check — see
+`testReconciledTransactionDetection` in `SPIKE_QUEUE.md`), Client Exception
+Packet, Cleanup Assessment page itself (Type A, no writes — the reddit doc's
+own priority-order argument, independently, puts it first after this slice,
+matching `NEXT_INSTRUCTION.md`'s roadmap).
 
 **Note on `VL-DUP-EXP-002` and the slice (Q8, owner decision 2026-08):**
 `VL-DUP-EXP-001` stays scoped to same-payment-account matches, deliberately
