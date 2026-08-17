@@ -36,6 +36,24 @@ public enum LedgerAccountType: String, Hashable, Codable, Sendable {
     public var isExpenseLike: Bool {
         self == .expense || self == .otherExpense
     }
+
+    /// True for every asset and liability type. What `VL-BS-NEGBAL-001`
+    /// checks a negative `CurrentBalance` against — QBO's `CurrentBalance`
+    /// sign convention shows liabilities as positive-when-owed, so a
+    /// negative balance on an asset OR a liability is abnormal (an
+    /// overdrawn asset, or an overpaid liability). Deliberately excludes
+    /// Equity/Income/Expense: a negative balance is unremarkable on those
+    /// (e.g. an owner's draw exceeding contributions) and including them
+    /// would just produce noise.
+    public var isAssetOrLiability: Bool {
+        switch self {
+        case .bank, .accountsReceivable, .otherCurrentAsset, .fixedAsset, .otherAsset,
+             .accountsPayable, .creditCard, .otherCurrentLiability, .longTermLiability:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 /// docs/phase-0/04_DATA_MODEL.md. Only what the Cleanup Assessment rules

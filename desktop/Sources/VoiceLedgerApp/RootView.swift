@@ -113,6 +113,11 @@ struct RootView: View {
                 ruleID: "VL-OBE-BALANCE-001",
                 title: "Nonzero Opening Balance Equity",
                 findings: openFindings.filter { $0.ruleID.rawValue == "VL-OBE-BALANCE-001" }
+            ),
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-BS-NEGBAL-001",
+                title: "Negative asset or liability balances",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" }
             )
         ]
     }

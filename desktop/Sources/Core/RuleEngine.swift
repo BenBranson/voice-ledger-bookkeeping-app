@@ -53,6 +53,10 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case payrollLumpSum
     /// `VL-OBE-BALANCE-001`, docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md item B.
     case openingBalanceEquity
+    /// `VL-BS-NEGBAL-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 8) —
+    /// also explicitly listed in docs/backlog/CLEANUP_MODE.md §1's own
+    /// Cleanup Assessment scope ("Balance sheet: ... are there negative assets").
+    case negativeAssetOrLiabilityBalance
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
