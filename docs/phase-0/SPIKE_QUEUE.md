@@ -266,7 +266,37 @@ every other wave in this document.
 |---|---|---|---|
 | 49 | `testCategorizationProvenance` | — (new row, TBD on run) | Is QBO's rule-vs-AI-vs-human categorization source exposed via any read API (transaction detail, CDC, or report)? Source: Hector Garcia's walkthrough showed QBO's own UI stating "100% a guess, no historical transactions" per-transaction — the question is whether that provenance is reachable outside the UI. If yes: an enormous cleanup filter (sort the whole file by "categorized by a guess"). If no: record as DISPROVEN — still a useful, permanent answer, not a failure to work around. |
 | 50 | `testReconciledTransactionDetection` | — (new row, TBD on run) | Can we tell from the API whether a transaction has already been reconciled? Source: `REDDIT_FEEDBACK_ASSESSMENT.md`'s sensitive-write-preflight risk-tier proposal — a write against an already-reconciled transaction breaks that reconciliation, and §10.3's five preflight checks don't currently check for this. Needed before any write-risk-tiering work, not needed for the Phase 1 slice (Branch B makes no write at all, §11.1). If yes: which field/endpoint, and whether it's per-line or per-transaction. If no: record as DISPROVEN; the preflight risk-tier design would need a different signal (e.g., cross-referencing an imported reconciliation report). |
-| 51 | `testManualVoidPurchaseAPIShape` *(added during Phase 1 step 1.6's build, 2026-08-16)* | — (new row, TBD on run) | What does the API read of a `Purchase` look like after it's voided **manually in the QBO UI** (as opposed to `?operation=void`, already confirmed unsupported — §11.1)? `QBOSyncClient.normalize` currently maps `isVoided` from a `TotalAmt == 0` heuristic that was never checked against a real manually-voided Purchase in this session — flagged explicitly in `desktop/Sources/Integrations/QuickBooks/QBORawPurchase.swift`'s doc comment. **This gates whether Branch B's resolution path (§11.1, §11.4) actually works against real client data** — void the seeded Purchase #151 in the sandbox UI, resync, and confirm the heuristic correctly flips `isVoided` to true (or find the real signal, if `TotalAmt == 0` turns out wrong or insufficient). |
+| 51 | `testManualVoidPurchaseAPIShape` *(added during Phase 1 step 1.6's build, 2026-08-16)* | — (new row, TBD on run) | What does the API read of a `Purchase` look like after it's voided **manually in the QBO UI** (as opposed to `?operation=void`, already confirmed unsupported — §11.1)? **Half-run, 2026-08-17: the candidate signal was tested and DISPROVEN, the real question is still open.** A live `sync-check` run (`voiceledger-devtool sync-check`, against the real sandbox) surfaced Purchase #146 — the `VL-SPIKE-ZERO` edge-case fixture (`backend/spike/seeds/edge-cases.json`), a legitimate, never-voided $0 Purchase — being misclassified `isVoided: true` by the `TotalAmt == 0` heuristic. That heuristic is now DISPROVEN on real data, not merely unverified; `desktop/Sources/Integrations/QuickBooks/QBORawPurchase.swift`'s `isVoidedHeuristic` is hardcoded `false` as a result. **Still needed to close this item:** void the seeded Purchase #151 manually in the sandbox UI, resync, and diff the before/after raw JSON to find what actually changes (candidates: a `PrivateNote` marker QBO adds on manual void, `Line` array emptied vs. `TotalAmt` alone, a status field not yet read). This gates whether Branch B's resolution path (§11.1, §11.4) is reachable end-to-end against real client data — right now it is proven only in the rule engine (offline tests), not against a real voided Purchase. |
+
+---
+
+## ✅ Live verification, 2026-08-17 — the slice's rule engine run against real sandbox data
+
+Not a formal queue item — a direct check that Phase 1 step 1.6's build
+actually works against the connected sandbox, not just offline fixtures.
+`voiceledger-devtool sync-check 2026 7` against realm `9341456442848752`:
+
+- Health check genuinely green: 2101ms, live, not cached.
+- 10 real `Purchase` records synced and normalized correctly (vendor, date,
+  amount, account, DocNumber all matched the seed data exactly).
+- `VL-DUP-EXP-001` fired correctly: Purchase #145/#151 ($486.20, same
+  date/account, differing DocNumbers 4471/4471-DUP) matched **T1 at
+  `.high`** — the documented §11.4 worked example, confirmed against real
+  data, not just the offline test suite. Purchase #153/#154 (Odessa Water,
+  $120, 2 days apart) matched **T3 at `.medium`** — an unplanned but correct
+  real-data confirmation of the near-date tier, from a fixture built for a
+  different purpose (§11.5 acceptance criterion 3). The near-miss fixture
+  (#152, same $486.20, different vendor) correctly produced no finding.
+- **Also found a real bug this way, not by inspection:** Purchase #146 (the
+  `VL-SPIKE-ZERO` $0 edge-case fixture) was misclassified `isVoided: true`
+  by the sync layer's `TotalAmt == 0` heuristic — see item 51 above, now
+  fixed (hardcoded `false` pending a real signal).
+
+This is the first time any part of the vertical slice ran against the real
+sandbox rather than synthetic fixtures. It does not close item 51 (no
+manual void was performed), and it does not touch UI rendering (no
+screenshot tool available) — both remain open exactly as documented in
+`docs/VOICE_LEDGER_HANDOFF.md` §13, now with one fewer unknown between them.
 
 ---
 

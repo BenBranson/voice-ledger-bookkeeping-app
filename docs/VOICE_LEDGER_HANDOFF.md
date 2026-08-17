@@ -282,7 +282,9 @@ This required adding **per-tier introspection to `Rule`** as a general capabilit
 
 ## What's still genuinely unverified about `isVoided` — new finding from building the sync layer, 2026-08-16
 
-`?operation=void` being unsupported on `Purchase` only settles *how a duplicate gets voided* (manually, in the QBO UI). It says nothing about *what the API shows afterward*. Building `QBOSyncClient`'s normalization surfaced that this was never checked: there is no sandbox test in this project, at any point, of reading a `Purchase` back via the API after voiding it manually in the QBO UI. The sync client's `isVoided` mapping (`TotalAmt == 0`) is a documented, flagged assumption — not verified — and it's the fact Branch B's entire resolution path (§14) depends on. Added to the spike queue as `testManualVoidPurchaseAPIShape` (item 51). **Do not treat Branch B's resolution path as proven against real data until this runs.**
+`?operation=void` being unsupported on `Purchase` only settles *how a duplicate gets voided* (manually, in the QBO UI). It says nothing about *what the API shows afterward*. Building `QBOSyncClient`'s normalization surfaced that this was never checked: there is no sandbox test in this project, at any point, of reading a `Purchase` back via the API after voiding it manually in the QBO UI. Added to the spike queue as `testManualVoidPurchaseAPIShape` (item 51).
+
+**Update, 2026-08-17: the candidate signal was tested and DISPROVEN, not merely left unverified.** A live `voiceledger-devtool sync-check` run against the real sandbox surfaced Purchase #146 — a legitimate, never-voided $0 edge-case fixture — being misclassified `isVoided: true` by the `TotalAmt == 0` heuristic. `TotalAmt == 0` conflates "voided" with "genuinely a zero-dollar transaction," and does so on real data, not a hypothetical. `isVoidedHeuristic` is now hardcoded `false` in `QBORawPurchase.swift` — an honest "no signal yet," not the old wrong heuristic under cover. **Branch B's resolution path is still not reachable end-to-end against real data — it needed a different reason before, and needs one now.** Spike item 51 is still open: void Purchase #151 manually in the QBO UI and diff the before/after raw JSON to find what actually changes.
 
 ## API cost and scale
 
@@ -550,10 +552,10 @@ Neither accent nor status. **Production:** solid bar on a dedicated near-black s
 - **41/41 tests passing**, all offline (no network) — 10 Core rule/engine tests, 5 sync-normalization tests, 5 persistence tests, plus the pre-existing 21 (Money, Contrast, module-boundary, secret-scan).
 
 **What's still explicitly unverified about this slice, flagged rather than claimed:**
-- The `isVoided` heuristic (§6, spike item 51) has never been checked against a live sandbox.
-- The UI was never visually verified — no screenshot tool for a native macOS window was available in the session that built it. It was confirmed to build and launch without crashing; nothing about its actual rendered appearance or interaction flow is confirmed.
-- No live end-to-end run (mint a session, sync the real sandbox, click through Approve → attest → resync) happened in that session. Everything above is proven at the logic layer against synthetic/fixture data.
-- Pagination (§2.6) is not wired into `QBOSyncClient` — coverage is conservatively `.partial` on any full page as a placeholder, not a real offset-integrity check.
+- The `isVoided` heuristic (§6, spike item 51) — **update 2026-08-17: run once, DISPROVEN, fixed to a safe `false` default, still no real signal found.** See §6.
+- The UI was never visually verified — no screenshot tool for a native macOS window was available in the session that built it. It was confirmed to build and launch without crashing; nothing about its actual rendered appearance or interaction flow is confirmed. Still true as of 2026-08-17.
+- **Update 2026-08-17: a real live-sandbox sync-and-evaluate run DID happen**, via a new `voiceledger-devtool sync-check` command — health check green, 10 real `Purchase` records synced, and `VL-DUP-EXP-001` fired correctly against real data (T1 on the documented #145/#151 pair, and an unplanned but correct T3 match on #153/#154). What still hasn't happened: clicking through Approve → guided procedure → attestation → resync in the actual UI, since that requires the UI (still visually unverified, above) and a manual QBO-UI void (spike item 51, still open).
+- Pagination (§2.6) is not wired into `QBOSyncClient` — coverage is conservatively `.partial` on any full page as a placeholder, not a real offset-integrity check. Confirmed via the live run: this period's 10 transactions came back as one page, so coverage read `.complete` — this path hasn't yet been exercised against a period large enough to actually hit the page boundary.
 
 **UI scope decision made, and honored:** full logic + minimal UI, fenced to exactly what §11.2 lists. What was explicitly NOT built, correctly: AppShell, left navigation, workflow progress spine, Firm Cockpit, Next Best Action, Ask Claude panel, the staging-queue view (not needed — Branch B has no staged write, §14).
 
@@ -695,10 +697,10 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 - Is **categorization provenance** (rule vs. AI vs. human) exposed via API? Still genuinely open — filed as spike item 49, not run.
 - Can the API tell us a transaction is **reconciled**? Still genuinely open — filed as spike item 50, not run.
 - Are **T1's fixtures rich enough** now that T2 is largely inert? Still correctly deferred — no golden fixture set exists yet in the on-disk sense (§14's note on inline-Swift-fixtures-as-substitute).
-- **New, from the slice build:** does a manually-voided `Purchase` actually show `TotalAmt == 0` (or some other signal) via the API? Genuinely open — spike item 51, gates whether Branch B's resolution path is trustworthy against real data.
+- **New, from the slice build:** does a manually-voided `Purchase` actually show `TotalAmt == 0` (or some other signal) via the API? **Half-answered 2026-08-17: `TotalAmt == 0` is confirmed NOT a reliable signal** (it false-positived on a legitimate $0 fixture against live data). Still genuinely open what the real signal is — spike item 51, gates whether Branch B's resolution path is trustworthy against real data.
 
 ## Recommended sequence
-1. ~~**Finish the vertical slice** (Branch B, fenced UI scope)~~ — **the logic/sync/persistence/UI build is done and committed as of 2026-08-16.** What's left before calling it genuinely finished: run spike item 51 (isVoided verification), do a real live-sandbox end-to-end pass, and get eyes on the actual rendered UI (no screenshot tool was available in the building session).
+1. ~~**Finish the vertical slice** (Branch B, fenced UI scope)~~ — **the logic/sync/persistence/UI build is done and committed as of 2026-08-16; a real live-sandbox sync-and-evaluate pass ran successfully 2026-08-17** (see §13). What's still left: finish spike item 51 (a real `isVoided` signal — `TotalAmt == 0` is now confirmed wrong, not just unverified), and get eyes on the actual rendered UI (no screenshot tool was available in either session).
 2. **Cleanup Assessment** — read-only, no writes, highest immediate business value; it prices engagements and doubles as a sales artifact
 3. **Get the first client**
 4. Reprioritize everything else against that client's actual books
