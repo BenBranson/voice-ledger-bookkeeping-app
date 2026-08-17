@@ -561,9 +561,25 @@ Neither accent nor status. **Production:** solid bar on a dedicated near-black s
 
 **UI scope decision made, and honored:** full logic + minimal UI, fenced to exactly what §11.2 lists. What was explicitly NOT built, correctly: AppShell, left navigation, workflow progress spine, Firm Cockpit, Next Best Action, Ask Claude panel, the staging-queue view (not needed — Branch B has no staged write, §14).
 
+## Cleanup Assessment — built 2026-08-17, per explicit owner instruction to continue autonomously
+
+After the vertical slice closed out (every open item resolved, including live UI verification — see §14), the owner instructed continuing to build the app independently, following this document's own recommended sequence (§19: Cleanup Assessment next). Three real rules shipped the same day, each offline-tested AND live-verified against the sandbox in the same pass that built it — not deferred to a later verification step:
+
+- **`VL-CC-PAYMENT-001`** (`desktop/Sources/Core/CreditCardPaymentMiscodedRule.swift`) — credit-card payment coded to an expense account. Built as `RuleClass.relationship`, the first real (non-fixture) conformer to §8.2a's gating — this resolves the `VL-RELATIONSHIP-002` overlap §8.8 had flagged as unresolved, by being that branch rather than a separate rule.
+- **`VL-PAYROLL-LUMP-001`** (`PayrollLumpSumRule.swift`) — payroll processor payment on a single lump line.
+- **`VL-OBE-BALANCE-001`** (`OpeningBalanceEquityRule.swift`) — nonzero Opening Balance Equity. **Reached only after disproving the originally-planned `VL-OPENING-BAL-001`**: `Account.OpeningBalance`/`OpeningBalanceDate` were checked live and confirmed write-only on create, never readable back — the planned detection method literally cannot work via the API. Pivoted to the buildable alternative in the same session rather than building on the disproven assumption.
+
+**A real, non-fixture bug was caught wiring the first two rules together, not by inspection:** §8.2a's gating originally suppressed an entire categorization RULE whenever any relationship rule fired anywhere — correct for one relationship rule and one categorization rule in a fixture test, wrong the instant a second unrelated categorization rule existed. Fixed to gate per-transaction (`RuleContext.gatedTransactionIDs`) before it could produce a wrong result in shipped code. `RuleEngine.evaluate` also changed from a single `page:` to `pages: Set<WorkflowPage>`, since Cleanup Assessment (per its own spec) aggregates rules that previously lived in separate page buckets — gating can't work correctly across rules the engine never evaluates together.
+
+`QBOSyncClient` now also reads `Account` (existing `readAccounts` catalog operation, no backend change) and decodes each `Purchase` `Line`'s `AccountRef` into `lineAccountIDs` — both needed by the new rules, neither existed before this pass.
+
+**`CleanupAssessmentView`** (`desktop/Sources/VoiceLedgerUI/CleanupAssessmentView.swift`) is a minimal read-only Type A page: total dollar exposure and per-rule finding lists. Deliberately does not show an hours estimate or price band — `CLEANUP_MODE.md`'s own text ties those to account-months-unreconciled and uncategorized-transaction count, neither of which exists yet; showing a number from only three rules would be unearned precision, not honesty.
+
+67/67 tests passing throughout (up from 42). See `docs/phase-0/08_RULE_ENGINE.md` §8.8 for the updated backlog table (four rows moved from Backlog to Built/Disproven) and `docs/phase-0/SPIKE_QUEUE.md` for the live-verification record.
+
 ## NOT STARTED
 
-Every one of the 12 workflow pages except the slice's minimal Page 3 shell · Universal Ingestion (all three tiers) · voice · reporting and Close Package · Firm Cockpit · all rules except `VL-DUP-EXP-001` · spike Waves 2 (negatives) and 4 (awkward, needs manual sandbox setup) · the staged-write path (`StagedCorrection`, preflight, `UNKNOWN`, resolution probe) in actual code — fully specified, not implemented, since Branch B never exercises it (§14, §16)
+8 of the 12 workflow pages entirely (Page 3 has a minimal shell; Cleanup Assessment — not one of the original 12 — has a minimal shell too) · Universal Ingestion (all three tiers) · voice · reporting and Close Package · Firm Cockpit · 23 of 27 backlog rules (4 built as of 2026-08-17) · spike Waves 2 (negatives) and 4 (awkward, needs manual sandbox setup) · the staged-write path (`StagedCorrection`, preflight, `UNKNOWN`, resolution probe) in actual code — fully specified, not implemented, since nothing built so far makes a QBO write at all
 
 ---
 

@@ -462,28 +462,33 @@ stable; only the first is scoped in this phase (§11).
 | `VL-PERIOD-CLOSED-001` | Transactions dated in a closed period | 2 | 2 |
 | `VL-REPORT-TIE-001` | Report tie-out mismatch | 12 | 3 |
 
-Twenty-seven rules. Phase 1 ships exactly one, proven end to end.
+Twenty-seven rules. Phase 1 shipped one, proven end to end (§11). Three more
+shipped 2026-08-17 as the Cleanup Assessment's first pass (below) — see
+`docs/VOICE_LEDGER_HANDOFF.md` for the live-verification record.
 
-### Backlog additions from `docs/backlog/` (2026-08-16, filed not built)
+### Backlog additions from `docs/backlog/` (2026-08-16; four built 2026-08-17)
 
 IDs reserved per the owner's Part 4 instruction so they're stable once the
 source documents are implemented. Source: `docs/backlog/CLEANUP_MODE.md` and
 `docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md` — both filed in full (not
 summarized) under `docs/backlog/`; the detection column below is a one-line
-compression, not the complete design. **Do not implement any of these.**
+compression, not the complete design. **Four rows below are now IMPLEMENTED,
+not backlog — built and live-verified 2026-08-17 per the owner's instruction
+to continue building the Cleanup Assessment autonomously. The rest remain
+backlog; do not implement them without separate approval.**
 
-| Rule ID | Detection (one-line — see source doc for the real design) | Page | Phase |
+| Rule ID | Detection (one-line — see source doc for the real design) | Page | Status |
 |---|---|---|---|
-| `VL-RELATIONSHIP-001`…`-006` | Transaction Relationship Guard — one rule per branch of the "is this even the right kind of transaction" decision tree (match-to-existing / credit-card-payment / transfer / grouped-deposit / split / refund-or-owner-movement), evaluated before any categorization rule on the same transaction. First real conformer to §8.2a's relationship-class gating. **`-002` (credit-card-payment branch) subsumes `VL-CC-PAYMENT-001` below — see note.** | 3 | Backlog |
-| `VL-CC-PAYMENT-001` | Credit-card payment coded to an expense account instead of the card's balance-sheet liability account (double-counts the expense). Named independently in `CLEANUP_MODE.md`, but `REDDIT_FEEDBACK_ASSESSMENT.md` identifies it as identical to `VL-RELATIONSHIP-002`. **Unresolved overlap, flagged rather than silently merged** — whoever builds either rule decides whether `VL-CC-PAYMENT-001` stays a distinct ID or is retired in favor of `VL-RELATIONSHIP-002`. | 3 | Backlog |
-| `VL-PAYROLL-LUMP-001` | Payment to a known payroll processor (ADP, Gusto, Paychex, Rippling, QuickBooks Payroll, Justworks, TriNet) coded entirely to one expense account instead of split wages/taxes/withholdings. Resolution is guided-manual (needs the payroll register); good Import Bridge candidate. | 3 | Backlog |
-| `VL-VENDOR-MISMATCH-001` | Statement's original bank description diverges from QBO's cleaned-up vendor name (Import Bridge: match on date+amount, compare descriptions). | 3 | Backlog |
-| `VL-PREPAID-PERIOD-001` | Large payment where an attached document's service period extends past the transaction date (needs OCR on the attachment; QBO can flag the anomaly but can't read the invoice). | 3 | Backlog |
-| `VL-OPENING-BAL-001` | Non-zero opening balance entry plus an equity contribution within N days for a similar amount — opening-balance double-count. | 6 | Backlog |
+| `VL-RELATIONSHIP-001`…`-006` | Transaction Relationship Guard — one rule per branch of the "is this even the right kind of transaction" decision tree (match-to-existing / credit-card-payment / transfer / grouped-deposit / split / refund-or-owner-movement), evaluated before any categorization rule on the same transaction. **`-002` (credit-card-payment branch) is now built as `VL-CC-PAYMENT-001` — see that row; the overlap is resolved, not just flagged, by implementing `VL-CC-PAYMENT-001` itself as `RuleClass.relationship`.** The other five branches remain backlog. | 3 | Backlog (5 of 6 branches) |
+| `VL-CC-PAYMENT-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/CreditCardPaymentMiscodedRule.swift`). Credit-card payment coded to an expense account instead of the card's balance-sheet liability account. Built as `RuleClass.relationship` — the first real (non-fixture) conformer to §8.2a's gating. `.high` confidence when the vendor name structurally matches a real Credit-Card-type account in the client's chart of accounts, `.medium` on keyword match alone. Live-verified against the sandbox. | Cleanup Assessment | **Built** |
+| `VL-PAYROLL-LUMP-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/PayrollLumpSumRule.swift`). Payment to a known payroll processor (ADP, Gusto, Paychex, Rippling, QuickBooks Payroll, Justworks, TriNet) coded entirely to one expense account. Resolution is guided-manual (needs the payroll register — cannot compute the correct split without it). Live-verified. | Cleanup Assessment | **Built** |
+| `VL-VENDOR-MISMATCH-001` | Statement's original bank description diverges from QBO's cleaned-up vendor name (Import Bridge: match on date+amount, compare descriptions). Not buildable without the Import Bridge (§9), which doesn't exist yet. | 3 | Backlog |
+| `VL-PREPAID-PERIOD-001` | Large payment where an attached document's service period extends past the transaction date (needs OCR on the attachment). Not buildable without the Import Bridge. | 3 | Backlog |
+| `VL-OPENING-BAL-001` | **DISPROVEN as originally scoped, 2026-08-17.** Was going to read a non-zero opening-balance entry plus a nearby equity contribution. Checked against the live sandbox first: `Account.OpeningBalance`/`OpeningBalanceDate` are write-only on create — QBO never returns them on any subsequent read, so there is no field to detect this from. See `VL-OBE-BALANCE-001` below for the buildable alternative that replaced this plan. | 6 | Disproven, not building as scoped |
 | `VL-CLOSED-PERIOD-DRIFT-001` | A closed period's stored trial-balance snapshot/hash no longer matches on resync — someone (client, prior bookkeeper, QBO auto-categorization) edited a closed-period transaction. No audit-log dependency; needs no API QBO doesn't already expose. | 2 | Backlog |
 | `VL-FORCED-RECON-001` | Non-zero balance in Reconciliation Discrepancies — someone forced a reconciliation to close rather than finding the cause. | 5 | Backlog |
-| `VL-OBE-BALANCE-001` | Non-zero Opening Balance Equity — classic signature of a self-set-up file. | 6 | Backlog |
-| `VL-AUTOADD-RULE-001` | Imported bank-rules export shows a rule with auto-add enabled, broad matching condition, whose category doesn't match how similar transactions were historically coded. | 4 | Backlog |
+| `VL-OBE-BALANCE-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/OpeningBalanceEquityRule.swift`). Non-zero balance in the account with `AccountSubType == "OpeningBalanceEquity"` — verified live as the reliable structural signal (this sandbox's own Opening Balance Equity account carries a real nonzero balance). Replaces the disproven `VL-OPENING-BAL-001` plan above. | Cleanup Assessment | **Built** |
+| `VL-AUTOADD-RULE-001` | Imported bank-rules export shows a rule with auto-add enabled, broad matching condition, whose category doesn't match how similar transactions were historically coded. Not buildable without the Import Bridge. | 4 | Backlog |
 
 **Not rule IDs — filed as page/interface designs in the backlog docs, not
 detection rules:** many-to-one/one-to-many statement matching (Part 3 already
@@ -493,9 +498,18 @@ Accounting Control Profile (a `MaterialityPolicy`-style watermark component,
 not a rule), Balance-Sheet Evidence Workpapers, Sensitive-Write Preflight risk
 tiers (extends §10.3's five checks with a reconciled-transaction check — see
 `testReconciledTransactionDetection` in `SPIKE_QUEUE.md`), Client Exception
-Packet, Cleanup Assessment page itself (Type A, no writes — the reddit doc's
-own priority-order argument, independently, puts it first after this slice,
-matching `NEXT_INSTRUCTION.md`'s roadmap).
+Packet, the hours-estimate/price-band formula (`docs/backlog/CLEANUP_MODE.md`
+§1 calls for one; `CleanupAssessmentView.swift` deliberately doesn't show one
+yet — it needs account-months-unreconciled and uncategorized-transaction
+count, neither of which exists, and a formula built from only the three
+rules that do exist would be unearned precision).
+
+**Cleanup Assessment page itself (Type A, no writes) — a minimal version is
+now IMPLEMENTED**, 2026-08-17 (`desktop/Sources/VoiceLedgerUI/CleanupAssessmentView.swift`):
+total dollar exposure and per-rule finding counts/lists for the three rules
+above, reusing the existing design system. Not the full page CLEANUP_MODE.md
+describes (no hours estimate, no reconciliation gap map, no paper-client
+handling) — those need capabilities that don't exist yet (see above).
 
 **Note on `VL-DUP-EXP-002` and the slice (Q8, owner decision 2026-08):**
 `VL-DUP-EXP-001` stays scoped to same-payment-account matches, deliberately
