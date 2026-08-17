@@ -109,6 +109,28 @@ public struct QBORawAccount: Decodable, Sendable {
     }
 }
 
+/// Added 2026-08-17 for the Connection Page (step 1.3). Verified shape
+/// against the live sandbox — `readCompanyInfo`'s response is a direct
+/// `{ "CompanyInfo": {...} }` object, not a `QueryResponse` wrapper (it's a
+/// GET-by-Id, not a query).
+public struct QBORawCompanyInfoResponse: Decodable, Sendable {
+    public let companyInfo: QBORawCompanyInfo
+
+    enum CodingKeys: String, CodingKey {
+        case companyInfo = "CompanyInfo"
+    }
+}
+
+public struct QBORawCompanyInfo: Decodable, Sendable {
+    public let id: String
+    public let companyName: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case companyName = "CompanyName"
+    }
+}
+
 /// docs/backlog's `VL-DUP-BILL-001`. Same shape as `QBORawPurchase` for the
 /// fields this slice needs, except `VendorRef` (not `EntityRef`) and
 /// `APAccountRef` (not `AccountRef`) — verified against a live sandbox Bill,

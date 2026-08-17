@@ -1,5 +1,6 @@
 import SwiftUI
 import Core
+import IntegrationsQuickBooks
 import DesignSystem
 import VoiceLedgerUI
 
@@ -12,6 +13,9 @@ struct RootView: View {
             content
                 .toolbar {
                     ToolbarItem(placement: .automatic) {
+                        Button("Connection") { state.screen = .connection }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Sync") { Task { await state.syncAndEvaluate() } }
                             .disabled(state.loadState == .loading)
                     }
@@ -23,12 +27,29 @@ struct RootView: View {
                     }
                 }
         }
-        .task { await state.loadFromDiskOnly() }
+        .task {
+            await state.loadFromDiskOnly()
+            await state.checkHealth()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
         switch state.screen {
+        case .connection:
+            ConnectionView(
+                state: ConnectionView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    companyName: state.companyInfo?.companyName,
+                    realmID: state.companyInfo?.realmID.rawValue ?? "(not yet checked)",
+                    healthStatus: state.healthResult.map { Self.vlStatus(for: $0.status) },
+                    healthDetail: state.healthCheckError ?? state.healthResult.map { "\($0.status.rawValue) — \($0.latencyMs)ms" },
+                    lastCheckedAt: state.healthResult?.checkedAt,
+                    isChecking: state.isCheckingHealth
+                ),
+                onCheckHealth: { Task { await state.checkHealth() } }
+            )
+
         case .list:
             FindingsListView(
                 state: FindingsListView.ViewState(
@@ -148,6 +169,20 @@ struct RootView: View {
         switch state.coverage {
         case .complete: return "Synced"
         case .partial(let reason): return reason
+        }
+    }
+
+    /// `HealthStatus` (IntegrationsQuickBooks) -> `VLStatus` (DesignSystem).
+    /// Lives here, not in `VoiceLedgerUI`'s `StatusMapping`, because
+    /// `VoiceLedgerUI` deliberately has no dependency on
+    /// `IntegrationsQuickBooks` (Package.swift's boundary) — only the app
+    /// layer, which already depends on both, is allowed to bridge them.
+    private static func vlStatus(for health: HealthStatus) -> VLStatus {
+        switch health {
+        case .green: return .verified
+        case .yellow: return .reviewNeeded
+        case .red: return .urgent
+        case .gray: return .notChecked
         }
     }
 }

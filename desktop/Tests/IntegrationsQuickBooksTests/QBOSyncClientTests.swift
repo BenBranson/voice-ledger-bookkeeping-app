@@ -129,6 +129,22 @@ struct QBOSyncClientTests {
         #expect(normalized.first { $0.id == "3" } == nil)
     }
 
+    @Test("CompanyInfo decodes as a direct object, not a QueryResponse wrapper — verified against the live sandbox shape")
+    func decodesCompanyInfo() throws {
+        let json = """
+        {
+          "CompanyInfo": {
+            "Id": "1",
+            "CompanyName": "Sandbox Company US 1c1b"
+          },
+          "time": "2026-08-17T10:20:22.789-07:00"
+        }
+        """
+        let response = try JSONDecoder().decode(QBORawCompanyInfoResponse.self, from: Data(json.utf8))
+        #expect(response.companyInfo.companyName == "Sandbox Company US 1c1b")
+        #expect(response.companyInfo.id == "1")
+    }
+
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")
     func decodesPreferences() throws {
         let json = """

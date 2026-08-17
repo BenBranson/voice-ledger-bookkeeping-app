@@ -76,6 +76,9 @@ case "sync-check":
         let syncClient = QBOSyncClient(backend: backend)
         let period = AccountingPeriod(year: year, month: month)
 
+        let companyInfo = try await syncClient.fetchCompanyInfo(realmID: realmID)
+        print("Company: \(companyInfo.companyName) (realmId \(companyInfo.realmID.rawValue))")
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let dataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(dataSet.transactions.count)")

@@ -13,6 +13,7 @@ import DB
 @Observable
 public final class AppState {
     public enum Screen: Equatable {
+        case connection
         case list
         case detail(findingID: String)
         case procedure(findingID: String, actionID: String)
@@ -38,11 +39,18 @@ public final class AppState {
     public private(set) var activityLog: [ActivityLogEntry] = []
     public private(set) var coverage: Coverage = .partial(reason: "not synced yet")
     public private(set) var loadState: LoadState = .idle
-    public var screen: Screen = .list
+    public var screen: Screen = .connection
     public let environment: QBOEnvironment
+
+    // Connection Page (step 1.3) state.
+    public private(set) var companyInfo: CompanyConnectionInfo?
+    public private(set) var healthResult: HealthCheckResult?
+    public private(set) var healthCheckError: String?
+    public private(set) var isCheckingHealth = false
 
     private let realmID: RealmID
     private let period: AccountingPeriod
+    private let backend: BackendClient
     private let syncClient: QBOSyncClient
     private let store: ClientStore
     private let engine: RuleEngine
@@ -51,6 +59,7 @@ public final class AppState {
         self.realmID = realmID
         self.environment = environment
         self.period = period
+        self.backend = backend
         self.syncClient = QBOSyncClient(backend: backend)
         self.store = store
         // All rules, not just Page 3's — Cleanup Assessment's rules must be
@@ -68,6 +77,25 @@ public final class AppState {
         } catch {
             loadState = .failed("\(error)")
         }
+    }
+
+    /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped
+    /// call, never a cached assumption — the same guarantee
+    /// `voiceledger-devtool health` already proved from the CLI, now
+    /// reachable from inside the app itself (step 1.3).
+    public func checkHealth() async {
+        isCheckingHealth = true
+        healthCheckError = nil
+        do {
+            async let health = backend.healthCheck(realmID: realmID)
+            async let info = syncClient.fetchCompanyInfo(realmID: realmID)
+            let (healthResultValue, infoValue) = try await (health, info)
+            healthResult = healthResultValue
+            companyInfo = infoValue
+        } catch {
+            healthCheckError = "\(error)"
+        }
+        isCheckingHealth = false
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

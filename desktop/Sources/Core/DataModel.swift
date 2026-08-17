@@ -83,6 +83,19 @@ public struct LedgerAccount: Identifiable, Hashable, Codable, Sendable {
     }
 }
 
+/// docs/phase-0/04_DATA_MODEL.md. Added for the Connection Page (step 1.3) —
+/// the smallest amount of connection-level (not period-level) info the UI
+/// needs to show a real company name instead of just a bare realmId.
+public struct CompanyConnectionInfo: Sendable, Codable, Hashable {
+    public let companyName: String
+    public let realmID: RealmID
+
+    public init(companyName: String, realmID: RealmID) {
+        self.companyName = companyName
+        self.realmID = realmID
+    }
+}
+
 /// docs/phase-0/04_DATA_MODEL.md. Only what `VL-DUP-VEND-001` needs.
 public struct LedgerVendor: Identifiable, Hashable, Codable, Sendable {
     public let id: String

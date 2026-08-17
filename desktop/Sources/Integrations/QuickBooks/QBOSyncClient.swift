@@ -61,6 +61,14 @@ public struct QBOSyncClient: Sendable {
     /// page does not independently affect coverage here — a client with
     /// over 1000 active accounts would need real pagination on this call
     /// too, not yet built.
+    /// Connection Page (step 1.3) support — connection-level info, not
+    /// period-scoped, so kept separate from `sync(realmID:period:)`.
+    public func fetchCompanyInfo(realmID: RealmID) async throws -> CompanyConnectionInfo {
+        let data = try await backend.call(.readCompanyInfo, realmID: realmID, params: EmptyParams())
+        let decoded = try JSONDecoder().decode(QBORawCompanyInfoResponse.self, from: data)
+        return CompanyConnectionInfo(companyName: decoded.companyInfo.companyName, realmID: realmID)
+    }
+
     public func sync(realmID: RealmID, period: AccountingPeriod) async throws -> NormalizedDataSet {
         let (startDate, endDate) = Self.dateRange(for: period)
         let maxResults = 1000
