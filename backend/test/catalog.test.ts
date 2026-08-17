@@ -17,11 +17,34 @@ describe("catalog", () => {
     }
   });
 
-  it("contains exactly the seven operations named in the desktop-side CatalogOperation enum", () => {
+  it("contains exactly the eight operations named in the desktop-side CatalogOperation enum", () => {
     const names = [...CATALOG_OPERATIONS.keys()].sort();
     expect(names).toEqual(
-      ["cdcSince", "readAccounts", "readCompanyInfo", "readPreferences", "readPurchases", "readVendors", "readReport"].sort()
+      [
+        "cdcSince",
+        "readAccounts",
+        "readBills",
+        "readCompanyInfo",
+        "readPreferences",
+        "readPurchases",
+        "readVendors",
+        "readReport"
+      ].sort()
     );
+  });
+
+  it("readBills calls through to the QBO client with parsed params on success", async () => {
+    let capturedPath: string | undefined;
+    const fakeClient = {
+      get: async (_realmId: string, path: string) => {
+        capturedPath = path;
+        return { QueryResponse: { Bill: [] } };
+      }
+    } as unknown as QBOClient;
+
+    const result = await dispatch(fakeClient, "123456", "readBills", { startDate: "2026-07-01", endDate: "2026-07-31" });
+    expect(result.kind).toBe("success");
+    expect(capturedPath).toBe("query");
   });
 
   it("readVendors calls through to the QBO client with parsed params on success", async () => {

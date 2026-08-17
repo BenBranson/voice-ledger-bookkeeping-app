@@ -143,7 +143,8 @@ public enum RuleRegistry {
         PayrollLumpSumRule.self,
         OpeningBalanceEquityRule.self,
         NegativeBalanceRule.self,
-        DuplicateVendorRule.self
+        DuplicateVendorRule.self,
+        DuplicateBillRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

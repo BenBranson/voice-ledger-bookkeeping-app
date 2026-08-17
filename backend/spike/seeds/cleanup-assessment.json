@@ -1,5 +1,5 @@
 {
-  "description": "docs/backlog/CLEANUP_MODE.md's Cleanup Assessment rules — VL-CC-PAYMENT-001, VL-PAYROLL-LUMP-001, VL-DUP-VEND-001. Verifies each against real sandbox data before shipping.",
+  "description": "docs/backlog/CLEANUP_MODE.md's Cleanup Assessment rules — VL-CC-PAYMENT-001, VL-PAYROLL-LUMP-001, VL-DUP-VEND-001, VL-DUP-BILL-001. Verifies each against real sandbox data before shipping.",
   "requiresBaseline": true,
   "accounts": [
     { "name": "VL Spike Amex", "accountType": "Credit Card" },
@@ -28,6 +28,24 @@
       "amountMinorUnits": 991234,
       "date": "2026-07-19",
       "note": "VL-SPIKE-PAYROLL-LUMP"
+    }
+  ],
+  "bills": [
+    {
+      "case": "VL-DUP-BILL-001 — exact-duplicate-pair (same vendor, date, amount)",
+      "vendor": "VL Spike Permian Supply",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 22500,
+      "date": "2026-07-21",
+      "note": "VL-SPIKE-DUP-BILL-A"
+    },
+    {
+      "case": "VL-DUP-BILL-001 — exact-duplicate-pair (the duplicate)",
+      "vendor": "VL Spike Permian Supply",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 22500,
+      "date": "2026-07-21",
+      "note": "VL-SPIKE-DUP-BILL-B"
     }
   ]
 }

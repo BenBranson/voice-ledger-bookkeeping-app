@@ -62,5 +62,15 @@
       "id": "212",
       "syncToken": "0"
     }
+  },
+  "bills": {
+    "VL-SPIKE-DUP-BILL-A": {
+      "id": "215",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-DUP-BILL-B": {
+      "id": "216",
+      "syncToken": "0"
+    }
   }
 }

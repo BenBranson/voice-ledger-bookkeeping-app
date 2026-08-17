@@ -46,12 +46,22 @@ interface SeedPurchase {
   memo?: string;
 }
 
+interface SeedBill {
+  case: string;
+  vendor: string;
+  expenseAccount: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
+}
+
 interface SeedFile {
   description: string;
   requiresBaseline?: boolean;
   accounts?: SeedAccount[];
   vendors?: SeedVendor[];
   purchases?: SeedPurchase[];
+  bills?: SeedBill[];
 }
 
 const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.json");
@@ -60,13 +70,16 @@ interface Manifest {
   accounts: Record<string, string>; // name -> Id
   vendors: Record<string, string>; // displayName -> Id
   purchases: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
+  bills?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
 }
 
 function loadManifest(): Manifest {
   if (existsSync(MANIFEST_PATH)) {
-    return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+    const loaded = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+    loaded.bills ??= {};
+    return loaded;
   }
-  return { accounts: {}, vendors: {}, purchases: {} };
+  return { accounts: {}, vendors: {}, purchases: {}, bills: {} };
 }
 
 function saveManifest(manifest: Manifest): void {
@@ -177,6 +190,45 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
   process.stdout.write(`  [created] ${spec.case} -> Purchase ${purchase.Id}\n`);
 }
 
+// Added 2026-08-17 for VL-DUP-BILL-001. Same idempotency shape as
+// ensurePurchase, minus the DocNumber-based existing-check (Bill specs
+// here don't set one) — manifest tracking is the sole idempotency
+// mechanism, same fallback ensurePurchase uses for note-only specs.
+async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBill): Promise<void> {
+  manifest.bills ??= {};
+  if (manifest.bills[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+
+  const vendorId = manifest.vendors[spec.vendor];
+  const expenseAccountId = manifest.accounts[spec.expenseAccount];
+  if (!vendorId || !expenseAccountId) {
+    throw new Error(
+      `Missing dependency for bill "${spec.case}" — run 'apply baseline' first (vendor=${spec.vendor}, expenseAccount=${spec.expenseAccount}).`
+    );
+  }
+
+  const created = await client.post("bill", {
+    VendorRef: { value: vendorId },
+    TxnDate: spec.date,
+    PrivateNote: spec.note,
+    Line: [
+      {
+        Amount: spec.amountMinorUnits / 100,
+        DetailType: "AccountBasedExpenseLineDetail",
+        AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } }
+      }
+    ]
+  });
+  if (created.status !== 200) {
+    throw new Error(`Bill create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const bill = (created.body as any).Bill;
+  manifest.bills[spec.note] = { id: bill.Id, syncToken: bill.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> Bill ${bill.Id}\n`);
+}
+
 async function apply(seedName: string): Promise<void> {
   const client = new QboRawClient();
   const manifest = loadManifest();
@@ -203,6 +255,10 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const purchase of seed.purchases ?? []) {
     await ensurePurchase(client, manifest, purchase);
+    saveManifest(manifest);
+  }
+  for (const bill of seed.bills ?? []) {
+    await ensureBill(client, manifest, bill);
     saveManifest(manifest);
   }
 

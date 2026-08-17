@@ -109,6 +109,58 @@ public struct QBORawAccount: Decodable, Sendable {
     }
 }
 
+/// docs/backlog's `VL-DUP-BILL-001`. Same shape as `QBORawPurchase` for the
+/// fields this slice needs, except `VendorRef` (not `EntityRef`) and
+/// `APAccountRef` (not `AccountRef`) — verified against a live sandbox Bill,
+/// 2026-08-17.
+public struct QBORawBill: Decodable, Sendable {
+    public let id: String
+    public let txnDate: String
+    public let totalAmt: Decimal
+    public let docNumber: String?
+    public let privateNote: String?
+    public let apAccountRef: QBORawRef?
+    public let vendorRef: QBORawRef?
+    public let status: String?
+    public let line: [QBORawPurchaseLine]?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case txnDate = "TxnDate"
+        case totalAmt = "TotalAmt"
+        case docNumber = "DocNumber"
+        case privateNote = "PrivateNote"
+        case apAccountRef = "APAccountRef"
+        case vendorRef = "VendorRef"
+        case status
+        case line = "Line"
+    }
+
+    public var isVoided: Bool {
+        status == "Voided"
+    }
+
+    public var lineAccountIDs: [String] {
+        (line ?? []).compactMap { $0.accountBasedExpenseLineDetail?.accountRef?.value }
+    }
+}
+
+public struct QBOBillQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let bill: [QBORawBill]?
+
+        enum CodingKeys: String, CodingKey {
+            case bill = "Bill"
+        }
+    }
+}
+
 /// Added 2026-08-17 for `VL-DUP-VEND-001`.
 public struct QBORawVendor: Decodable, Sendable {
     public let id: String

@@ -70,6 +70,28 @@ const readPurchases = op({
   }
 });
 
+const readBillsParams = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+// docs/backlog's VL-DUP-BILL-001. Added 2026-08-17, same pattern as
+// readPurchases — Bill is date-bounded the same way.
+const readBills = op({
+  name: "readBills",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readBillsParams,
+  execute: async (client, realmId, params: z.infer<typeof readBillsParams>) => {
+    const query =
+      `select * from Bill where TxnDate >= '${params.startDate}' and TxnDate <= '${params.endDate}' ` +
+      `STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 const readVendorsParams = z.object({
   activeOnly: z.boolean().default(true),
   startPosition: z.number().int().min(1).default(1),
@@ -146,7 +168,7 @@ const cdcSince = op({
 });
 
 export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = new Map(
-  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readVendors, readReport, cdcSince].map(
+  [readCompanyInfo, readPreferences, readAccounts, readPurchases, readBills, readVendors, readReport, cdcSince].map(
     (definition) => [definition.name, definition]
   )
 );
