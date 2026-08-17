@@ -81,7 +81,7 @@ public enum VLContrast {
         let cyan = ResolvedRGB(hex: 0x29D3F2)
         let cyanBright = ResolvedRGB(hex: 0x67E8F9)
         let teal = ResolvedRGB(hex: 0x32C7A3)
-        let violet = ResolvedRGB(hex: 0x9B6EF3)
+        let violet = ResolvedRGB(hex: 0xA67CF5) // Decision 2's recommended fix, applied 2026-08-17
         let verifiedGreen = ResolvedRGB(hex: 0x3ECF8E)
         let reviewAmber = ResolvedRGB(hex: 0xF4B860)
         let urgentCoral = ResolvedRGB(hex: 0xF06472)

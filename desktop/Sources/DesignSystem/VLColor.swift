@@ -48,7 +48,16 @@ public enum VLColor {
     public static let teal = Color(hex: 0x32C7A3)
     /// Reserved for AI / automation affordances (Ask Claude, generated prose).
     /// Violet marks guidance, never a deterministic accounting result.
-    public static let violet = Color(hex: 0x9B6EF3)
+    // docs/design/DESIGN_SYSTEM.md Decision 2 flagged the original violet
+    // (#9B6EF3) as passing AA at only 4.52:1 on surfaceCard — a 0.02 margin
+    // with no headroom. Left genuinely unresolved through two sessions
+    // (docs/VOICE_LEDGER_HANDOFF.md §19) until checked directly here,
+    // 2026-08-17: the original recommendation (#A67CF5, same hue, 5.22:1)
+    // had never been applied. Applied now — VLContrast.swift's declared
+    // pairs must be updated in the same commit (see that file's own
+    // doc comment on why the duplication exists) and ContrastTests.swift
+    // re-run to confirm.
+    public static let violet = Color(hex: 0xA67CF5)
 
     // MARK: - Text
 
