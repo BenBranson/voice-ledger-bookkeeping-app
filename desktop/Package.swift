@@ -19,7 +19,9 @@ let package = Package(
         .library(name: "Voice", targets: ["Voice"]),
         .library(name: "DB", targets: ["DB"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
-        .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"])
+        .library(name: "VoiceLedgerUI", targets: ["VoiceLedgerUI"]),
+        .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"]),
+        .executable(name: "VoiceLedgerApp", targets: ["VoiceLedgerApp"])
     ],
     targets: [
         // /core — platform-agnostic. Zero dependencies, by design. This target
@@ -70,6 +72,29 @@ let package = Package(
             name: "VoiceLedgerDevTool",
             dependencies: ["IntegrationsQuickBooks"],
             path: "Sources/VoiceLedgerDevTool"
+        ),
+
+        // Phase 1 step 1.6's minimal UI (docs/phase-0/11_VERTICAL_SLICE.md
+        // §11.2's "UI — minimum viable, and no more"): findings list, finding
+        // detail, guided-procedure/attestation view, activity log view. Maps
+        // Core's domain types (Severity, Coverage) to DesignSystem's VLStatus
+        // vocabulary — that mapping belongs here, not in Core (which cannot
+        // import SwiftUI) and not in DesignSystem (pure presentation tokens,
+        // no domain knowledge).
+        .target(
+            name: "VoiceLedgerUI",
+            dependencies: ["Core", "DesignSystem"],
+            path: "Sources/VoiceLedgerUI"
+        ),
+
+        // The actual running app: wires QBOSyncClient -> RuleEngine ->
+        // ClientStore -> VoiceLedgerUI for the slice's real end-to-end path.
+        // NOT visually verified in this session — no screenshot tool for a
+        // native macOS window was available; see the final report.
+        .executableTarget(
+            name: "VoiceLedgerApp",
+            dependencies: ["Core", "IntegrationsQuickBooks", "DB", "DesignSystem", "VoiceLedgerUI"],
+            path: "Sources/VoiceLedgerApp"
         ),
 
         // `swift test` requires full Xcode (Testing.framework isn't part of
