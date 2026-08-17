@@ -575,11 +575,27 @@ After the vertical slice closed out (every open item resolved, including live UI
 
 **`CleanupAssessmentView`** (`desktop/Sources/VoiceLedgerUI/CleanupAssessmentView.swift`) is a minimal read-only Type A page: total dollar exposure and per-rule finding lists. Deliberately does not show an hours estimate or price band — `CLEANUP_MODE.md`'s own text ties those to account-months-unreconciled and uncategorized-transaction count, neither of which exists yet; showing a number from only three rules would be unearned precision, not honesty.
 
-67/67 tests passing throughout (up from 42). See `docs/phase-0/08_RULE_ENGINE.md` §8.8 for the updated backlog table (four rows moved from Backlog to Built/Disproven) and `docs/phase-0/SPIKE_QUEUE.md` for the live-verification record.
+67/67 tests passing after these three (up from 42).
+
+### The same session kept going: three more rules, two new catalog operations, then a deliberate stop
+
+The owner then said "keep building the app" / "you pick" twice more. Rather than picking arbitrarily, each next rule was chosen by checking what was *safely* buildable against the live sandbox first — and two candidates were explicitly rejected before being built, not silently skipped:
+
+- **`VL-BS-NEGBAL-001`** (`NegativeBalanceRule.swift`) — negative balance on an Asset or Liability account. Buildable immediately from Account data already synced; live-verified against 6 real negative-balance accounts already present in the sandbox.
+- **Investigated and correctly NOT built**, each for a specific documented reason (`08_RULE_ENGINE.md` §8.8 carries the detail):
+  - `VL-FORCED-RECON-001` — no "Reconciliation Discrepancies" account exists in this sandbox; creating that test data needs an actual forced reconciliation in the QBO UI, which is the owner's call, not an autonomous one.
+  - `VL-COA-DUPACCT-001` — naive same-`Name` account matching produces systematic false positives: this sandbox has 8 pairs of identically-named accounts that are QBO's own legitimate industry-template pattern (same leaf name used for a matching Income and Expense account, for job costing), not real duplicates.
+  - `VL-BS-SUSPENSE-001` — no system `AccountSubType` exists for "suspense" the way there is for Opening Balance Equity, so detection would need the same unreliable name-matching `VL-COA-DUPACCT-001` just disproved.
+- **`VL-DUP-VEND-001`** (`DuplicateVendorRule.swift`) — duplicate vendor records. Required the **first new backend catalog operation since Phase 1 step 1.2** (`readVendors`). Matching is deliberately normalized-EXACT (case/punctuation/whitespace/common-suffix stripped), not fuzzy — a direct, explicit response to the false-positive risk `VL-COA-DUPACCT-001`'s investigation had just surfaced for the same general problem shape. Live-verified against a real seeded near-duplicate vendor pair.
+- **`VL-DUP-BILL-001`** (`DuplicateBillRule.swift`) — duplicate bills. Required a **second new catalog operation** (`readBills`). Deliberately narrower than `VL-DUP-EXP-001` (one exact-match tier only; no DocNumber tier, since Bill's DocNumber-uniqueness behavior was never checked the way Purchase's was — no tier built on an unverified assumption). `Bill` and `Purchase` now share one normalization pipeline in `QBOSyncClient`, proving §4.1's "rules can't tell the source apart" contract across a second real entity type. `backend/spike/seed.ts` gained real Bill-seeding support (not an ad hoc script) so this stays reproducible on a fresh sandbox. Live-verified against a real seeded duplicate-bill pair.
+
+**All seven rules now built (`VL-DUP-EXP-001` from the original slice, plus these six) were confirmed firing correctly together in the same live sync** — not just individually. 85/85 desktop tests, 31/31 backend tests, both catalog additions covered by their own backend tests and typecheck-clean.
+
+**Deliberate stop, not a run out of ideas:** after `VL-DUP-BILL-001`, work paused rather than continuing to a `VL-DUP-INV-001`/further catalog expansion, explicitly to avoid repeating the exact failure mode §20 above already named as the project's own recurring risk — momentum toward "one more rule" without a checkpoint. Seven rules across two entity-read expansions in one sitting is a real, substantial unit; the next session should read this section before adding an eighth.
 
 ## NOT STARTED
 
-8 of the 12 workflow pages entirely (Page 3 has a minimal shell; Cleanup Assessment — not one of the original 12 — has a minimal shell too) · Universal Ingestion (all three tiers) · voice · reporting and Close Package · Firm Cockpit · 23 of 27 backlog rules (4 built as of 2026-08-17) · spike Waves 2 (negatives) and 4 (awkward, needs manual sandbox setup) · the staged-write path (`StagedCorrection`, preflight, `UNKNOWN`, resolution probe) in actual code — fully specified, not implemented, since nothing built so far makes a QBO write at all
+8 of the 12 workflow pages entirely (Page 3 has a minimal shell; Cleanup Assessment — not one of the original 12 — has a minimal shell too) · Universal Ingestion (all three tiers) · voice · reporting and Close Package · Firm Cockpit · 20 of 27 backlog rules (7 built as of 2026-08-17) · spike Waves 2 (negatives) and 4 (awkward, needs manual sandbox setup) · the staged-write path (`StagedCorrection`, preflight, `UNKNOWN`, resolution probe) in actual code — fully specified, not implemented, since nothing built so far makes a QBO write at all · `VL-FORCED-RECON-001` / `VL-COA-DUPACCT-001` / `VL-BS-SUSPENSE-001` — investigated and deliberately deferred, see above, not simply unattempted
 
 ---
 
