@@ -20,6 +20,7 @@ public final class AppState {
         case activityLog
         case cleanupAssessment
         case balanceSheetIntegrity
+        case bankFeedCleanup
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -117,7 +118,7 @@ public final class AppState {
             coverage = dataSet.coverage
 
             let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
-            let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment], input: dataSet, context: context)
+            let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             var currentRunIDsByRule: [RuleID: Set<String>] = [:]
             for (ruleID, result) in evaluation.results {

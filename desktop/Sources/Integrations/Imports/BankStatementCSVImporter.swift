@@ -23,13 +23,21 @@ public enum BankStatementCSVImporter {
     ///   - hasHeaderRow: whether row 0 is a header, skipped during parsing.
     ///   - realmID, documentID, importedAt: provenance fields, carried
     ///     through to every produced `LedgerTransaction.provenance`.
+    ///   - statementAccountID: the QBO account this statement is FOR — you
+    ///     declare which bank/card account you're importing a statement
+    ///     for (the Type B page already knows this from context), it is
+    ///     never inferred from the file. Stored as `paymentAccountID` on
+    ///     every produced line, the same field a posted `Purchase` uses,
+    ///     so a comparison rule (e.g. `VL-RECON-MISSING-001`) can match on
+    ///     it directly.
     public static func `import`(
         csvText: String,
         mappings: [ColumnMapping],
         hasHeaderRow: Bool,
         realmID: RealmID,
         documentID: ImportedDocumentID,
-        importedAt: Date
+        importedAt: Date,
+        statementAccountID: String? = nil
     ) -> Result {
         let allRows = CSVParser.parse(csvText)
         guard !allRows.isEmpty else {
@@ -88,7 +96,7 @@ public enum BankStatementCSVImporter {
                 vendorName: description,
                 txnDate: date,
                 totalAmount: amount,
-                paymentAccountID: nil,
+                paymentAccountID: statementAccountID,
                 docNumber: nil,
                 isVoided: false,
                 memo: nil,

@@ -26,6 +26,9 @@ struct RootView: View {
                         Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -120,6 +123,20 @@ struct RootView: View {
                 coverageStatus: StatusMapping.status(for: coverageOutcome),
                 coverageDetail: coverageDetail,
                 summaries: balanceSheetIntegritySummaries,
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .bankFeedCleanup:
+            BankFeedCleanupView(
+                environment: state.environment == .production ? .production : .sandbox,
+                coverageStatus: .notChecked,
+                missingPostingOutcomeDetail: "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4).",
+                findings: state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" },
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
             )
             .toolbar {

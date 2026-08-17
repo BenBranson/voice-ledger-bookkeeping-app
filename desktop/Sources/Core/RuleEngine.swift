@@ -43,6 +43,11 @@ public enum RuleClass: String, Hashable, Codable, Sendable {
 public enum WorkflowPage: String, Hashable, Codable, Sendable {
     case page3Transactions
     case cleanupAssessment
+    /// docs/VOICE_LEDGER_SPEC.md Page 4, Type B — needs an imported
+    /// statement (Universal Ingestion Tier 1) to compare against posted
+    /// QBO activity; there is no API substitute (spec: "Cannot see the
+    /// 'For Review' queue... none of it is API-exposed").
+    case bankFeedCleanup
 }
 
 public enum FindingCategory: String, Hashable, Codable, Sendable {
@@ -67,6 +72,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case duplicateInvoice
     /// `VL-DUP-PAY-001`, docs/phase-0/08_RULE_ENGINE.md §8.8.
     case duplicatePayment
+    /// `VL-RECON-MISSING-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (pages 4, 5).
+    case statementLineMissingPosting
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
