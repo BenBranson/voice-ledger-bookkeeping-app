@@ -517,7 +517,7 @@ Neither accent nor status. **Production:** solid bar on a dedicated near-black s
 
 - `VLStatusPill` has **no initializer producing a bare colored dot.** The label is not optional. Status-by-color-alone is structurally impossible.
 - WCAG AA contrast enforced by `ContrastTests.swift` over a 45-pair catalog. `textMuted` was raised to **`#7E92AA`** (5.03:1 worst case) after measurement showed the original `#71849B` failed at 4.19:1 on `surfaceCard`. `blue #2788D9` is documented as **non-text-safe** and excluded from the valid-pairs catalog.
-- **OPEN:** violet `#9B6EF3` passes at **4.52:1** — a 0.02 margin with no headroom. `#A67CF5` was recommended (5.22:1, same hue). **UNKNOWN whether this was applied** — still genuinely unresolved; nothing in the Claude Code session that built the slice touched `VLColor.swift`'s violet value. Ask the owner or check `VLColor.swift` directly before relying on either answer.
+- **RESOLVED 2026-08-17:** violet was checked directly and confirmed still `#9B6EF3` (4.52:1, no headroom) — the recommended `#A67CF5` (5.22:1, same hue) had never been applied across either drafting session. Applied now to `VLColor.swift` and the duplicated literal in `VLContrast.swift`'s declared-pairs catalog; `ContrastTests.swift`'s full audit passes.
 - SF Symbols, not Lucide (Lucide is a web library). System font at `.width(.condensed)`, since Barlow Condensed isn't on macOS.
 - Reduce Motion honored via `VLMotion.respecting(_:_:)`, which returns `nil` under the setting so honoring it is the default path.
 - Condensed type is **display only** — never paragraphs, inputs, or table data.
@@ -689,7 +689,7 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 ## Blocked on the owner
 - **Prototype repo URL** — `01_REPO_INVENTORY.md` still blocked. Still true; the three backlog strategy documents (`CLEANUP_MODE.md` etc.) were located and filed in this session, but they are not the prototype repo — a separate, still-missing item.
 - **macOS version** — determines Tier 2 OCR quality and whether the `VNRecognizeTextRequest` fallback is needed. Still unconfirmed as far as any repo artifact shows, though the Swift toolchain work this session implies at least macOS 15-class tooling is present (full Xcode installed, `swift test` passing) — that's evidence about the *development* machine, not necessarily a confirmed answer for the *target* minimum version question in `OPEN_QUESTIONS.md` Q4.
-- **Violet contrast fix** — whether `#A67CF5` was applied. **Still unknown** — check `desktop/Sources/DesignSystem/VLColor.swift` directly; nothing in the slice-building session touched it either way.
+- ~~**Violet contrast fix** — whether `#A67CF5` was applied.~~ **Resolved 2026-08-17 — it wasn't, now it is.** See §12.
 
 ## Open technical questions
 - Is **Page 7** still worth building as designed, given sparse-update data loss? **Answered as a recommendation** (§15.B) — not settled, but no longer unaddressed.
