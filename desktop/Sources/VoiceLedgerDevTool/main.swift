@@ -76,18 +76,19 @@ case "sync-check":
         let syncClient = QBOSyncClient(backend: backend)
         let period = AccountingPeriod(year: year, month: month)
 
-        print("Syncing Purchase + Preferences for \(realmID.rawValue), \(year)-\(month)...")
+        print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let dataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(dataSet.transactions.count)")
+        print("  accounts read: \(dataSet.accounts.count)")
         print("  coverage: \(dataSet.coverage)")
         print("  customTxnNumbersForPurchases: \(dataSet.companyFacts.customTxnNumbersForPurchases)")
         for txn in dataSet.transactions.sorted(by: { $0.id < $1.id }) {
-            print("    #\(txn.id) \(txn.vendorName ?? "?") \(txn.txnDate) \(txn.totalAmount) doc=\(txn.docNumber ?? "-") voided=\(txn.isVoided) acct=\(txn.paymentAccountID ?? "-")")
+            print("    #\(txn.id) \(txn.vendorName ?? "?") \(txn.txnDate) \(txn.totalAmount) doc=\(txn.docNumber ?? "-") voided=\(txn.isVoided) acct=\(txn.paymentAccountID ?? "-") lineAccts=\(txn.lineAccountIDs)")
         }
 
-        let engine = RuleEngine(rules: RuleRegistry.rules(for: .page3Transactions))
+        let engine = RuleEngine(rules: RuleRegistry.all)
         let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
-        let evaluation = await engine.evaluate(pages: [.page3Transactions], input: dataSet, context: context)
+        let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment], input: dataSet, context: context)
 
         let tempStoreRoot = FileManager.default.temporaryDirectory.appending(path: "voiceledger-devtool-sync-check")
         let store = try ClientStore(realmID: realmID, rootDirectory: tempStoreRoot)

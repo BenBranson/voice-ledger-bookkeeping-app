@@ -23,15 +23,28 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
-    /// Fetches `Purchase` for the period and `Preferences` for the company
-    /// feature flag (§11.2's `.customTxnNumbersForPurchases`), and normalizes
-    /// both into a `NormalizedDataSet`. **`Coverage` is `.complete` only if
-    /// the returned page count is strictly less than the requested
+    public struct ReadAccountsParams: Encodable, Sendable {
+        public let activeOnly: Bool
+        public init(activeOnly: Bool = true) {
+            self.activeOnly = activeOnly
+        }
+    }
+
+    /// Fetches `Purchase` for the period, `Account` (the full chart of
+    /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
+    /// coded to), and `Preferences` for the company feature flag (§11.2's
+    /// `.customTxnNumbersForPurchases`), and normalizes all three into a
+    /// `NormalizedDataSet`. **`Coverage` is `.complete` only if the returned
+    /// Purchase page count is strictly less than the requested
     /// `maxResults`** — a full page is treated as `.partial` pending real
     /// pagination (§2.6's checksum/offset-integrity machinery is specified
-    /// but not wired in at this call site yet; see the final report's note
-    /// on what Part 5 left undone). This is the conservative direction to
-    /// get wrong: a real gap could otherwise render green.
+    /// but not wired in at this call site yet). This is the conservative
+    /// direction to get wrong: a real gap could otherwise render green.
+    /// Accounts are read `activeOnly` and are not period-scoped (the chart
+    /// of accounts isn't a per-period concept), so an incomplete accounts
+    /// page does not independently affect coverage here — a client with
+    /// over 1000 active accounts would need real pagination on this call
+    /// too, not yet built.
     public func sync(realmID: RealmID, period: AccountingPeriod) async throws -> NormalizedDataSet {
         let (startDate, endDate) = Self.dateRange(for: period)
         let maxResults = 1000
@@ -41,6 +54,11 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadPurchasesParams(startDate: startDate, endDate: endDate)
         )
+        let accountsData = try await backend.call(
+            .readAccounts,
+            realmID: realmID,
+            params: ReadAccountsParams()
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -49,6 +67,7 @@ public struct QBOSyncClient: Sendable {
 
         let decoder = JSONDecoder()
         let purchasesResponse = try decoder.decode(QBOPurchaseQueryResponse.self, from: purchasesData)
+        let accountsResponse = try decoder.decode(QBOAccountQueryResponse.self, from: accountsData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
@@ -60,11 +79,13 @@ public struct QBOSyncClient: Sendable {
             .vendorAndPurchasesPrefs?.useCustomTxnNumbers ?? false
 
         let transactions = rawPurchases.map { Self.normalize($0) }
+        let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
 
         return NormalizedDataSet(
             realmID: realmID,
             period: period,
             transactions: transactions,
+            accounts: accounts,
             coverage: coverage,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: customTxnNumbers)
         )
@@ -86,8 +107,20 @@ public struct QBOSyncClient: Sendable {
             // path (§11.1) is now reachable end-to-end against real data.
             isVoided: raw.isVoided,
             memo: raw.privateNote,
+            lineAccountIDs: raw.lineAccountIDs,
             provenance: .qboAPI(readAt: Date())
         )
+    }
+
+    /// `nil` for an `AccountType` value not in `LedgerAccountType`'s closed
+    /// enum — silently dropping an unrecognized account would be worse
+    /// (VL-CC-PAYMENT-001 would then falsely treat it as "not expense-like"
+    /// and potentially match). Excluding it entirely means the rule's
+    /// `lineAccounts.count == purchase.lineAccountIDs.count` check catches
+    /// it and skips the transaction rather than guessing.
+    static func normalize(_ raw: QBORawAccount) -> LedgerAccount? {
+        guard let type = LedgerAccountType(rawValue: raw.accountType) else { return nil }
+        return LedgerAccount(id: raw.id, name: raw.name, accountType: type)
     }
 
     static func minorUnits(from amount: Decimal) -> Int64 {

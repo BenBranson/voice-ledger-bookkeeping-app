@@ -1,0 +1,32 @@
+{
+  "description": "docs/backlog/CLEANUP_MODE.md's Cleanup Assessment rules — VL-CC-PAYMENT-001 and VL-PAYROLL-LUMP-001. Verifies both against real sandbox data before shipping either.",
+  "requiresBaseline": true,
+  "accounts": [
+    { "name": "VL Spike Amex", "accountType": "Credit Card" },
+    { "name": "VL Spike Wages", "accountType": "Expense" }
+  ],
+  "vendors": [
+    { "displayName": "VL Spike Amex" },
+    { "displayName": "VL Spike ADP" }
+  ],
+  "purchases": [
+    {
+      "case": "VL-CC-PAYMENT-001 — credit card payment coded to an expense account instead of the card's own liability account. Vendor name 'VL Spike Amex' exactly matches a real Credit Card-type account of the same name, so this should match at .high confidence.",
+      "vendor": "VL Spike Amex",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 75000,
+      "date": "2026-07-18",
+      "note": "VL-SPIKE-CC-MISCODED"
+    },
+    {
+      "case": "VL-PAYROLL-LUMP-001 — payroll processor payment coded to a single expense line instead of split wages/tax/withholding.",
+      "vendor": "VL Spike ADP",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Wages",
+      "amountMinorUnits": 991234,
+      "date": "2026-07-19",
+      "note": "VL-SPIKE-PAYROLL-LUMP"
+    }
+  ]
+}

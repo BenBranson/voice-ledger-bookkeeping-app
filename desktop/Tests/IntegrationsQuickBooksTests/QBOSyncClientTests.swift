@@ -74,6 +74,61 @@ struct QBOSyncClientTests {
         #expect(QBOSyncClient.normalize(raw).isVoided == true)
     }
 
+    @Test("Line-level AccountRef decodes into lineAccountIDs, for VL-CC-PAYMENT-001")
+    func decodesLineAccountIDs() throws {
+        let json = """
+        {
+          "Id": "1", "TxnDate": "2026-07-20", "TotalAmt": 500,
+          "AccountRef": { "value": "35" }, "EntityRef": { "value": "62", "name": "Amex" },
+          "Line": [
+            { "Amount": 500, "DetailType": "AccountBasedExpenseLineDetail",
+              "AccountBasedExpenseLineDetail": { "AccountRef": { "value": "expense-1" } } }
+          ]
+        }
+        """
+        let raw = try JSONDecoder().decode(QBORawPurchase.self, from: Data(json.utf8))
+        #expect(raw.lineAccountIDs == ["expense-1"])
+        #expect(QBOSyncClient.normalize(raw).lineAccountIDs == ["expense-1"])
+    }
+
+    @Test("A line with no AccountBasedExpenseLineDetail (e.g. a different DetailType) is skipped, not guessed at")
+    func skipsLinesWithoutAccountBasedDetail() throws {
+        let json = """
+        {
+          "Id": "1", "TxnDate": "2026-07-20", "TotalAmt": 500,
+          "Line": [
+            { "Amount": 500, "DetailType": "ItemBasedExpenseLineDetail" }
+          ]
+        }
+        """
+        let raw = try JSONDecoder().decode(QBORawPurchase.self, from: Data(json.utf8))
+        #expect(raw.lineAccountIDs.isEmpty)
+    }
+
+    @Test("Account decoding maps a real AccountType string to LedgerAccountType, and rejects an unrecognized one rather than guessing")
+    func decodesAccountsAndRejectsUnknownType() throws {
+        let json = """
+        {
+          "QueryResponse": {
+            "Account": [
+              { "Id": "1", "Name": "Amex", "AccountType": "Credit Card" },
+              { "Id": "2", "Name": "Office Supplies", "AccountType": "Expense" },
+              { "Id": "3", "Name": "Some New Type QBO Adds Later", "AccountType": "Something Unrecognized" }
+            ]
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(QBOAccountQueryResponse.self, from: Data(json.utf8))
+        let rawAccounts = try #require(response.queryResponse.account)
+        #expect(rawAccounts.count == 3)
+
+        let normalized = rawAccounts.compactMap { QBOSyncClient.normalize($0) }
+        #expect(normalized.count == 2) // the unrecognized type is dropped, not guessed at
+        #expect(normalized.first { $0.id == "1" }?.accountType == .creditCard)
+        #expect(normalized.first { $0.id == "2" }?.accountType == .expense)
+        #expect(normalized.first { $0.id == "3" } == nil)
+    }
+
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")
     func decodesPreferences() throws {
         let json = """

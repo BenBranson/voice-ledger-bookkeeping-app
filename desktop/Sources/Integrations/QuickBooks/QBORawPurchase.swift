@@ -30,6 +30,7 @@ public struct QBORawPurchase: Decodable, Sendable {
     public let accountRef: QBORawRef?
     public let entityRef: QBORawRef?
     public let status: String?
+    public let line: [QBORawPurchaseLine]?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
@@ -40,6 +41,7 @@ public struct QBORawPurchase: Decodable, Sendable {
         case accountRef = "AccountRef"
         case entityRef = "EntityRef"
         case status
+        case line = "Line"
     }
 
     /// The verified signal (see the type-level doc comment): a voided
@@ -50,6 +52,32 @@ public struct QBORawPurchase: Decodable, Sendable {
     public var isVoided: Bool {
         status == "Voided"
     }
+
+    /// The account each `AccountBasedExpenseLineDetail` line was coded to —
+    /// verified present against the live sandbox (§4.1's field-completeness
+    /// check, Wave 1 item 6). Added for `VL-CC-PAYMENT-001`, which needs to
+    /// know what a Purchase's LINE was coded to, not just its payment
+    /// account. Lines with a different `DetailType` (no
+    /// `AccountBasedExpenseLineDetail`) are silently skipped, not guessed at.
+    public var lineAccountIDs: [String] {
+        (line ?? []).compactMap { $0.accountBasedExpenseLineDetail?.accountRef?.value }
+    }
+}
+
+public struct QBORawPurchaseLine: Decodable, Sendable {
+    public let accountBasedExpenseLineDetail: QBORawAccountBasedExpenseLineDetail?
+
+    enum CodingKeys: String, CodingKey {
+        case accountBasedExpenseLineDetail = "AccountBasedExpenseLineDetail"
+    }
+}
+
+public struct QBORawAccountBasedExpenseLineDetail: Decodable, Sendable {
+    public let accountRef: QBORawRef?
+
+    enum CodingKeys: String, CodingKey {
+        case accountRef = "AccountRef"
+    }
 }
 
 public struct QBORawRef: Decodable, Sendable {
@@ -58,6 +86,38 @@ public struct QBORawRef: Decodable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case value, name
+    }
+}
+
+/// docs/phase-0/04_DATA_MODEL.md §4.6 — verified against the live sandbox by
+/// Wave 1's `testAccountsRead` (`docs/phase-0/SPIKE_QUEUE.md` item 5, 92
+/// accounts read, every observed `AccountType` mapped cleanly to
+/// `LedgerAccountType`'s closed enum).
+public struct QBORawAccount: Decodable, Sendable {
+    public let id: String
+    public let name: String
+    public let accountType: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case name = "Name"
+        case accountType = "AccountType"
+    }
+}
+
+public struct QBOAccountQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let account: [QBORawAccount]?
+
+        enum CodingKeys: String, CodingKey {
+            case account = "Account"
+        }
     }
 }
 
