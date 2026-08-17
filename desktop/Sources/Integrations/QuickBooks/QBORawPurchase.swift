@@ -97,11 +97,15 @@ public struct QBORawAccount: Decodable, Sendable {
     public let id: String
     public let name: String
     public let accountType: String
+    public let accountSubType: String?
+    public let currentBalance: Decimal?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
         case name = "Name"
         case accountType = "AccountType"
+        case accountSubType = "AccountSubType"
+        case currentBalance = "CurrentBalance"
     }
 }
 

@@ -51,6 +51,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case creditCardPaymentMiscoded
     /// `VL-PAYROLL-LUMP-001`, docs/backlog/CLEANUP_MODE.md §2.2.
     case payrollLumpSum
+    /// `VL-OBE-BALANCE-001`, docs/backlog/REDDIT_FEEDBACK_ASSESSMENT.md item B.
+    case openingBalanceEquity
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

@@ -140,7 +140,8 @@ public enum RuleRegistry {
     public static let all: [any Rule.Type] = [
         DuplicatePostedExpenseRule.self,
         CreditCardPaymentMiscodedRule.self,
-        PayrollLumpSumRule.self
+        PayrollLumpSumRule.self,
+        OpeningBalanceEquityRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

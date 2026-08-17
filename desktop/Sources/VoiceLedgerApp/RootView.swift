@@ -108,6 +108,11 @@ struct RootView: View {
                 ruleID: "VL-PAYROLL-LUMP-001",
                 title: "Payroll payments on a single lump-sum line",
                 findings: openFindings.filter { $0.ruleID.rawValue == "VL-PAYROLL-LUMP-001" }
+            ),
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-OBE-BALANCE-001",
+                title: "Nonzero Opening Balance Equity",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-OBE-BALANCE-001" }
             )
         ]
     }

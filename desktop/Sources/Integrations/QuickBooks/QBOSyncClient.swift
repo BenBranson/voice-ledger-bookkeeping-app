@@ -120,7 +120,8 @@ public struct QBOSyncClient: Sendable {
     /// it and skips the transaction rather than guessing.
     static func normalize(_ raw: QBORawAccount) -> LedgerAccount? {
         guard let type = LedgerAccountType(rawValue: raw.accountType) else { return nil }
-        return LedgerAccount(id: raw.id, name: raw.name, accountType: type)
+        let balance = raw.currentBalance.map { Money(minorUnits: Self.minorUnits(from: $0), currency: .usd) } ?? .zero
+        return LedgerAccount(id: raw.id, name: raw.name, accountType: type, accountSubType: raw.accountSubType, currentBalance: balance)
     }
 
     static func minorUnits(from amount: Decimal) -> Int64 {

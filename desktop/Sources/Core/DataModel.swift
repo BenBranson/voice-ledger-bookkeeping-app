@@ -45,11 +45,22 @@ public struct LedgerAccount: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let name: String
     public let accountType: LedgerAccountType
+    /// QBO's `AccountSubType` — a raw passthrough string, not a closed enum
+    /// like `LedgerAccountType`. QBO has dozens of subtypes across all
+    /// account types; modeling them all isn't needed yet. `VL-OBE-BALANCE-001`
+    /// checks this against the one value it needs (`"OpeningBalanceEquity"`)
+    /// directly — verified live as the reliable structural signal for the
+    /// system-created Opening Balance Equity account, more robust than
+    /// matching on the account's (renameable) `name`.
+    public let accountSubType: String?
+    public let currentBalance: Money
 
-    public init(id: String, name: String, accountType: LedgerAccountType) {
+    public init(id: String, name: String, accountType: LedgerAccountType, accountSubType: String? = nil, currentBalance: Money = .zero) {
         self.id = id
         self.name = name
         self.accountType = accountType
+        self.accountSubType = accountSubType
+        self.currentBalance = currentBalance
     }
 }
 
