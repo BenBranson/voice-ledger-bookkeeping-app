@@ -436,7 +436,7 @@ stable; only the first is scoped in this phase (§11).
 |---|---|---|---|
 | `VL-DUP-EXP-001` | Duplicate posted expenses (same payment account) | 3 | **1 — the vertical slice** |
 | `VL-DUP-EXP-002` | Cross-account duplicate candidate — same vendor/amount/near-date, **different** payment account, `.medium` confidence at best | 3 | 2 |
-| `VL-DUP-BILL-001` | Duplicate bills | 3 | 2 |
+| `VL-DUP-BILL-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/DuplicateBillRule.swift`) — duplicate bills, single exact-match tier (vendor + date + amount), deliberately narrower than `VL-DUP-EXP-001` (no DocNumber tier — Bill's DocNumber-uniqueness behavior unverified; no near-date tier — not added speculatively). Required the second new backend catalog operation this session (`readBills`, matrix row 13.5). `Bill` normalizes into the same `LedgerTransaction` shape as `Purchase`. Live-verified against a real seeded duplicate-bill pair. | Cleanup Assessment | **Built** |
 | `VL-DUP-INV-001` | Duplicate invoices | 3 | 2 |
 | `VL-DUP-PAY-001` | Duplicate payments | 3 | 2 |
 | `VL-DUP-VEND-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/DuplicateVendorRule.swift`) — duplicate vendor records, matched by normalized-EXACT name (case/punctuation/whitespace/common-suffix stripped), deliberately not fuzzy — see the rule's own doc comment for why, after `VL-COA-DUPACCT-001`'s false-positive finding (below in this same table). Required adding the first new backend catalog operation since Phase 1 step 1.2 (`readVendors`, matrix row 13.4). Live-verified against a real seeded near-duplicate pair. | Cleanup Assessment | **Built** |
