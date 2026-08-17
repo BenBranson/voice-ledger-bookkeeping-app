@@ -25,21 +25,36 @@ public struct ImportBankStatementView: View {
 
     private let filename: String
     private let columns: [ColumnPreview]
-    private let onConfirm: ([ColumnMapping]) -> Void
+    /// The client's chart of accounts (from the last sync) — you declare
+    /// which one this statement is FOR; it is never inferred from the
+    /// file. Required for `VL-RECON-MISSING-001`/`VL-VENDOR-MISMATCH-001`
+    /// to compare an imported line against the right posted transactions
+    /// at all (both match on `paymentAccountID`).
+    private let accounts: [LedgerAccount]
+    private let onConfirm: ([ColumnMapping], _ statementAccountID: String) -> Void
     private let onCancel: () -> Void
 
     @State private var selections: [MappedField]
+    @State private var selectedAccountID: String?
 
-    public init(filename: String, columns: [ColumnPreview], onConfirm: @escaping ([ColumnMapping]) -> Void, onCancel: @escaping () -> Void) {
+    public init(
+        filename: String,
+        columns: [ColumnPreview],
+        accounts: [LedgerAccount],
+        onConfirm: @escaping ([ColumnMapping], _ statementAccountID: String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
         self.filename = filename
         self.columns = columns
+        self.accounts = accounts
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         self._selections = State(initialValue: Array(repeating: .unmapped, count: columns.count))
+        self._selectedAccountID = State(initialValue: nil)
     }
 
     private var canImport: Bool {
-        selections.contains(.date) && selections.contains(.amount)
+        selections.contains(.date) && selections.contains(.amount) && selectedAccountID != nil
     }
 
     public var body: some View {
@@ -52,6 +67,28 @@ public struct ImportBankStatementView: View {
                 Text(filename)
                     .font(VLTypography.body())
                     .foregroundStyle(VLColor.textSecondary)
+
+                VLCard {
+                    VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                        Text("WHICH ACCOUNT IS THIS STATEMENT FOR?")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        if accounts.isEmpty {
+                            Text("No accounts loaded yet — sync first, then import.")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        } else {
+                            Picker("", selection: $selectedAccountID) {
+                                Text("Select an account").tag(String?.none)
+                                ForEach(accounts) { account in
+                                    Text(account.name).tag(String?.some(account.id))
+                                }
+                            }
+                            .labelsHidden()
+                        }
+                    }
+                }
 
                 Text("Assign each column below, then confirm. Nothing is guessed for you — an unmapped column is skipped, not silently dropped.")
                     .font(VLTypography.caption())
@@ -92,7 +129,7 @@ public struct ImportBankStatementView: View {
                 }
 
                 if !canImport {
-                    Text("Assign both a Date column and an Amount column to continue.")
+                    Text("Select an account, and assign both a Date column and an Amount column, to continue.")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
                 }
@@ -101,12 +138,13 @@ public struct ImportBankStatementView: View {
                     Button("Cancel") { onCancel() }
                     Spacer()
                     Button("Confirm & Import") {
+                        guard let accountID = selectedAccountID else { return }
                         let mappings = columns.enumerated().compactMap { index, column -> ColumnMapping? in
                             let field = selections[index]
                             guard field != .unmapped else { return nil }
                             return ColumnMapping(sourceColumn: column.index, sourceHeader: column.header, target: field, origin: .userSpecified, confirmed: true)
                         }
-                        onConfirm(mappings)
+                        onConfirm(mappings, accountID)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!canImport)

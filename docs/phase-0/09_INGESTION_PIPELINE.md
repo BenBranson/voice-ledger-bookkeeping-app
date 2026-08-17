@@ -26,10 +26,31 @@ defaulting to `.unmapped` — never a pre-selected guess), `.fileImporter` on
 relaunch and is re-merged into every subsequent `syncAndEvaluate()`, not just
 evaluated once at import time. `VL-RECON-MISSING-001` can now actually fire
 against a real imported file, not just prove its own logic in isolation.
+**OFX/QFX also implemented, same day** (`OFXParser.swift`,
+`OFXBankStatementImporter.swift`) — the spec's own "highest-fidelity source
+available for bank data." Targets OFX 1.x's SGML-style format (most banks
+still export this, not true XML) — leaf tags frequently have no closing tag
+at all (`<TRNAMT>-486.20`, newline as the only terminator), which a strict
+XML parser would reject outright; this parser tolerates both forms. No
+column-mapping confirm step needed (tags are self-describing) and no date
+ambiguity (`YYYYMMDD` is unambiguous) — `ImportOFXStatementView` only asks
+which QBO account the statement is for. OFX's own `FITID` is used as the
+produced `LedgerTransaction.id` when present, a better identity than the CSV
+importer's synthesized `doc-rowN`.
+
+**A real correctness gap was caught and fixed the same day**: the CSV
+import UI (previous day's commit) never actually passed `statementAccountID`
+through — every imported line got `paymentAccountID: nil`, which can never
+equal a posted transaction's real account ID, so `VL-RECON-MISSING-001`
+would have silently flagged every import as "missing" regardless of truth.
+Fixed by adding an account-selection step to both confirm screens
+(`AppState.accounts`, populated from the last sync) — required before
+Import is enabled, never inferred or defaulted.
+
 **Still not built:** cross-foot validation (§9.5 — needs a stated statement
-total/ending balance this importer doesn't accept as input yet), learned-
-mapping persistence (stage 6), OFX/QFX/Excel within Tier 1, and Tier 2
-(on-device Vision) / Tier 3 (Claude vision) entirely.
+total/ending balance neither importer accepts as input yet), learned-mapping
+persistence (stage 6), Excel within Tier 1, and Tier 2 (on-device Vision) /
+Tier 3 (Claude vision) entirely.
 
 ---
 

@@ -148,10 +148,13 @@ struct RootView: View {
                     Button("Back") { state.screen = .list }
                 }
             }
-            .fileImporter(isPresented: $isImportingStatement, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+            .fileImporter(isPresented: $isImportingStatement, allowedContentTypes: [.commaSeparatedText, .plainText, .data]) { result in
                 // A `.failure` here is the user cancelling the panel or an
                 // OS-level picker error — nothing to show; `selectFileForImport`
                 // itself reports a real read/parse failure via `importError`.
+                // `.data` is included so `.ofx`/`.qfx` (no dedicated UTType)
+                // still pass the picker's filter; format is then decided by
+                // extension inside `selectFileForImport`, not by this filter.
                 if case .success(let url) = result {
                     let accessed = url.startAccessingSecurityScopedResource()
                     defer { if accessed { url.stopAccessingSecurityScopedResource() } }
@@ -159,13 +162,25 @@ struct RootView: View {
                 }
             }
             .sheet(isPresented: Binding(get: { state.pendingImport != nil }, set: { if !$0 { state.cancelPendingImport() } })) {
-                if let pending = state.pendingImport {
+                switch state.pendingImport {
+                case .csv(let pending):
                     ImportBankStatementView(
                         filename: pending.filename,
                         columns: Self.columnPreviews(for: pending),
-                        onConfirm: { mappings in Task { await state.confirmImport(mappings: mappings) } },
+                        accounts: state.accounts,
+                        onConfirm: { mappings, accountID in Task { await state.confirmCSVImport(mappings: mappings, statementAccountID: accountID) } },
                         onCancel: { state.cancelPendingImport() }
                     )
+                case .ofx(let pending):
+                    ImportOFXStatementView(
+                        filename: pending.filename,
+                        transactionCount: pending.transactionCount,
+                        accounts: state.accounts,
+                        onConfirm: { accountID in Task { await state.confirmOFXImport(statementAccountID: accountID) } },
+                        onCancel: { state.cancelPendingImport() }
+                    )
+                case nil:
+                    EmptyView()
                 }
             }
         }
@@ -239,7 +254,7 @@ struct RootView: View {
     /// Builds one `ColumnPreview` per CSV column — header (from row 0, if
     /// present) and up to 3 sample values from the data rows — for
     /// `ImportBankStatementView`'s confirm-and-correct screen.
-    private static func columnPreviews(for pending: AppState.PendingImport) -> [ImportBankStatementView.ColumnPreview] {
+    private static func columnPreviews(for pending: AppState.PendingCSVImport) -> [ImportBankStatementView.ColumnPreview] {
         let headerRow = pending.hasHeaderRow ? pending.allRows.first : nil
         let dataRows = pending.hasHeaderRow ? Array(pending.allRows.dropFirst()) : pending.allRows
         let columnCount = pending.allRows.map(\.count).max() ?? 0

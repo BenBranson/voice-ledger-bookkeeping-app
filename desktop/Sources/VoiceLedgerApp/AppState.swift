@@ -48,6 +48,10 @@ public final class AppState {
     public private(set) var findings: [Finding] = []
     public private(set) var activityLog: [ActivityLogEntry] = []
     public private(set) var coverage: Coverage = .partial(reason: "not synced yet")
+    /// The chart of accounts from the last sync — used to let the import
+    /// UI ask "which QBO account is this statement FOR?" (never inferred
+    /// from the file). Empty until the first `syncAndEvaluate()` completes.
+    public private(set) var accounts: [LedgerAccount] = []
     public private(set) var loadState: LoadState = .idle
     public var screen: Screen = .connection
     public let environment: QBOEnvironment
@@ -59,10 +63,19 @@ public final class AppState {
     public private(set) var isCheckingHealth = false
 
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
-    public struct PendingImport {
+    public struct PendingCSVImport {
         public let filename: String
         public let allRows: [[String]]
         public let hasHeaderRow: Bool
+    }
+    public struct PendingOFXImport {
+        public let filename: String
+        public let rawText: String
+        public let transactionCount: Int
+    }
+    public enum PendingImport {
+        case csv(PendingCSVImport)
+        case ofx(PendingOFXImport)
     }
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
@@ -126,6 +139,7 @@ public final class AppState {
         do {
             let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
             coverage = syncedDataSet.coverage
+            accounts = syncedDataSet.accounts
 
             // Merge in any previously-imported, persisted statement lines
             // (Universal Ingestion Tier 1) so VL-RECON-MISSING-001 sees them
@@ -167,20 +181,33 @@ public final class AppState {
 
     /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file
     /// (Tier 1, deterministic) and stops there — this does NOT import
-    /// anything yet. `pendingImport` drives `ImportBankStatementView`'s
-    /// confirm-and-correct screen (§9.4); nothing is normalized or
-    /// persisted until `confirmImport(mappings:)` is called with an
-    /// explicitly human-confirmed mapping.
+    /// anything yet. Format is detected from the file extension only (OFX
+    /// vs CSV need different confirm screens — OFX has no column mapping
+    /// to confirm at all); `declaredKind`-style semantic guessing is not
+    /// attempted. `pendingImport` drives the confirm screen (§9.4 for CSV,
+    /// account-only for OFX); nothing is normalized or persisted until
+    /// `confirmCSVImport`/`confirmOFXImport` is called with an explicitly
+    /// human-confirmed mapping/account.
     public func selectFileForImport(url: URL) {
         importError = nil
         do {
             let text = try String(contentsOf: url, encoding: .utf8)
-            let rows = CSVParser.parse(text)
-            guard !rows.isEmpty else {
-                importError = "\(url.lastPathComponent) is empty."
-                return
+            let ext = url.pathExtension.lowercased()
+            if ext == "ofx" || ext == "qfx" {
+                let count = OFXParser.parseTransactions(text).count
+                guard count > 0 else {
+                    importError = "\(url.lastPathComponent) has no <STMTTRN> transactions."
+                    return
+                }
+                pendingImport = .ofx(PendingOFXImport(filename: url.lastPathComponent, rawText: text, transactionCount: count))
+            } else {
+                let rows = CSVParser.parse(text)
+                guard !rows.isEmpty else {
+                    importError = "\(url.lastPathComponent) is empty."
+                    return
+                }
+                pendingImport = .csv(PendingCSVImport(filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true))
             }
-            pendingImport = PendingImport(filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true)
         } catch {
             importError = "Could not read \(url.lastPathComponent): \(error)"
         }
@@ -195,8 +222,8 @@ public final class AppState {
     /// confirmed mappings via its Confirm button). Persists the normalized
     /// lines via `ClientStore` and immediately re-evaluates so the result
     /// is visible without a separate manual sync.
-    public func confirmImport(mappings: [ColumnMapping]) async {
-        guard let pending = pendingImport else { return }
+    public func confirmCSVImport(mappings: [ColumnMapping], statementAccountID: String) async {
+        guard case .csv(let pending) = pendingImport else { return }
         let documentID = ImportedDocumentID(rawValue: "\(pending.filename)-\(Date().timeIntervalSince1970)")
         let result = BankStatementCSVImporter.import(
             rows: pending.allRows,
@@ -204,7 +231,33 @@ public final class AppState {
             hasHeaderRow: pending.hasHeaderRow,
             realmID: realmID,
             documentID: documentID,
-            importedAt: Date()
+            importedAt: Date(),
+            statementAccountID: statementAccountID
+        )
+        guard result.defects.isEmpty else {
+            importError = "Import produced \(result.defects.count) issue(s): \(result.defects)"
+            return
+        }
+        do {
+            try await store.upsertImportedStatementLines(result.transactions)
+            pendingImport = nil
+            await syncAndEvaluate()
+        } catch {
+            importError = "\(error)"
+        }
+    }
+
+    /// OFX's counterpart — no column mapping to confirm (self-describing
+    /// tags), so only the account needs an explicit human choice.
+    public func confirmOFXImport(statementAccountID: String) async {
+        guard case .ofx(let pending) = pendingImport else { return }
+        let documentID = ImportedDocumentID(rawValue: "\(pending.filename)-\(Date().timeIntervalSince1970)")
+        let result = OFXBankStatementImporter.import(
+            ofxText: pending.rawText,
+            realmID: realmID,
+            documentID: documentID,
+            importedAt: Date(),
+            statementAccountID: statementAccountID
         )
         guard result.defects.isEmpty else {
             importError = "Import produced \(result.defects.count) issue(s): \(result.defects)"
