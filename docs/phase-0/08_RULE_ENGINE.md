@@ -445,10 +445,10 @@ stable; only the first is scoped in this phase (§11).
 | `VL-CAT-UNCAT-001` | Uncategorized transactions | 3 | 2 |
 | `VL-CAT-MISCODE-001` | Probable miscoding vs. vendor history | 3 | 3 |
 | `VL-VEND-ANOMALY-001` | Unusual vendor name, amount, or timing | 3 | 3 |
-| `VL-BS-NEGBAL-001` | Negative asset/liability balances | 8 | 2 |
-| `VL-BS-CLEARING-001` | Stale or abnormal clearing accounts | 8 | 2 |
-| `VL-BS-UNDEP-001` | Undeposited funds aging | 8 | 2 |
-| `VL-BS-SUSPENSE-001` | Suspense account activity | 8 | 2 |
+| `VL-BS-NEGBAL-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/NegativeBalanceRule.swift`) — negative CurrentBalance on an Asset or Liability-classified account. Live-verified: 6 real accounts in the sandbox currently trip it. | 8 | **Built** |
+| `VL-BS-CLEARING-001` | Stale or abnormal clearing accounts. Not attempted 2026-08-17 — needs per-account last-activity-date, which isn't on the Account entity itself; would need transaction-level cross-referencing across entity types not yet in the catalog. | 8 | 2 |
+| `VL-BS-UNDEP-001` | Undeposited funds aging. Not attempted 2026-08-17 — "aging" needs per-transaction dates for what's sitting in Undeposited Funds (Payment/Deposit entity reads, not in the catalog); a balance-only check would just flag normal short-term UF activity as noise. | 8 | 2 |
+| `VL-BS-SUSPENSE-001` | Suspense account activity. **Checked live 2026-08-17, not buildable as safely as `VL-OBE-BALANCE-001`:** unlike Opening Balance Equity, QBO has no system `AccountSubType` for a "suspense" account — detection would mean matching on account *name* alone, which the `VL-COA-DUPACCT-001` investigation below just proved unreliable in this exact sandbox. No suspense-named account exists here to test against either way. Left as backlog rather than shipped on an unverified heuristic. | 8 | 2 |
 | `VL-BS-LOAN-001` | Loan balance inconsistencies | 8 | 3 |
 | `VL-BS-EQUITY-001` | Equity postings needing review | 8 | 3 |
 | `VL-BS-DRCR-001` | Debit/credit pattern vs. account expectation | 8 | 3 |
@@ -458,7 +458,7 @@ stable; only the first is scoped in this phase (§11).
 | `VL-VEND-PRICE-001` | Vendor price increases | 3 | 3 |
 | `VL-VEND-DUPSVC-001` | Possible duplicate services | 3 | 3 |
 | `VL-PERSONAL-001` | Possible personal expense or owner draw | 3 | 3 |
-| `VL-COA-DUPACCT-001` | Duplicate account candidates | 6 | 2 |
+| `VL-COA-DUPACCT-001` | Duplicate account candidates. **Investigated live 2026-08-17, not built.** Naive matching on account `Name` alone produces systematic false positives: this sandbox has 8 pairs of identically-named accounts (`Decks and Patios`, `Job Materials`, `Equipment Rental`, etc.) that are QBO's own industry-template pattern — the same leaf name legitimately used for both an Income and a matching COGS/Expense sub-account under different parents, for job costing. A safe version needs to match on `FullyQualifiedName` (or genuine near-duplicate fuzzy matching), not leaf `Name` — and this sandbox has zero real duplicate-account examples under that stricter, correct definition, so there's no live positive case to verify against yet either. Left as backlog with the false-positive risk documented rather than shipped on the naive approach. | 6 | 2 |
 | `VL-PERIOD-CLOSED-001` | Transactions dated in a closed period | 2 | 2 |
 | `VL-REPORT-TIE-001` | Report tie-out mismatch | 12 | 3 |
 
@@ -486,7 +486,7 @@ backlog; do not implement them without separate approval.**
 | `VL-PREPAID-PERIOD-001` | Large payment where an attached document's service period extends past the transaction date (needs OCR on the attachment). Not buildable without the Import Bridge. | 3 | Backlog |
 | `VL-OPENING-BAL-001` | **DISPROVEN as originally scoped, 2026-08-17.** Was going to read a non-zero opening-balance entry plus a nearby equity contribution. Checked against the live sandbox first: `Account.OpeningBalance`/`OpeningBalanceDate` are write-only on create — QBO never returns them on any subsequent read, so there is no field to detect this from. See `VL-OBE-BALANCE-001` below for the buildable alternative that replaced this plan. | 6 | Disproven, not building as scoped |
 | `VL-CLOSED-PERIOD-DRIFT-001` | A closed period's stored trial-balance snapshot/hash no longer matches on resync — someone (client, prior bookkeeper, QBO auto-categorization) edited a closed-period transaction. No audit-log dependency; needs no API QBO doesn't already expose. | 2 | Backlog |
-| `VL-FORCED-RECON-001` | Non-zero balance in Reconciliation Discrepancies — someone forced a reconciliation to close rather than finding the cause. | 5 | Backlog |
+| `VL-FORCED-RECON-001` | Non-zero balance in Reconciliation Discrepancies — someone forced a reconciliation to close rather than finding the cause. **Checked live 2026-08-17, not buildable right now:** no "Reconciliation Discrepancies" account exists in this sandbox — nothing has ever forced a reconciliation here, and creating that test data means actually performing a forced reconciliation in the QBO UI, which needs the owner's call, not an autonomous one. A guessed `AccountSubType` of `'DiscrepancyAccount'` was also rejected outright by QBO's query engine as invalid, so even the query predicate isn't confirmed. | 5 | Backlog |
 | `VL-OBE-BALANCE-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/OpeningBalanceEquityRule.swift`). Non-zero balance in the account with `AccountSubType == "OpeningBalanceEquity"` — verified live as the reliable structural signal (this sandbox's own Opening Balance Equity account carries a real nonzero balance). Replaces the disproven `VL-OPENING-BAL-001` plan above. | Cleanup Assessment | **Built** |
 | `VL-AUTOADD-RULE-001` | Imported bank-rules export shows a rule with auto-add enabled, broad matching condition, whose category doesn't match how similar transactions were historically coded. Not buildable without the Import Bridge. | 4 | Backlog |
 
