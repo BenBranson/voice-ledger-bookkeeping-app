@@ -139,6 +139,7 @@ public actor RuleEngine {
 public enum RuleRegistry {
     public static let all: [any Rule.Type] = [
         DuplicatePostedExpenseRule.self,
+        CrossAccountDuplicateExpenseRule.self,
         CreditCardPaymentMiscodedRule.self,
         PayrollLumpSumRule.self,
         OpeningBalanceEquityRule.self,

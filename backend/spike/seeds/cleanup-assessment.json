@@ -28,6 +28,25 @@
       "amountMinorUnits": 991234,
       "date": "2026-07-19",
       "note": "VL-SPIKE-PAYROLL-LUMP"
+    },
+    {
+      "case": "VL-DUP-EXP-002 — same vendor/amount/near-date, paid from Checking. Cross-account duplicate candidate A.",
+      "vendor": "VL Spike Permian Supply, Inc.",
+      "account": "VL Spike Checking",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 31500,
+      "date": "2026-07-22",
+      "note": "VL-SPIKE-CROSSACCT-DUP-A"
+    },
+    {
+      "case": "VL-DUP-EXP-002 — same vendor/amount, paid from the Amex credit card two days later instead of Checking. Cross-account duplicate candidate B.",
+      "vendor": "VL Spike Permian Supply, Inc.",
+      "account": "VL Spike Amex",
+      "expenseAccount": "VL Spike Office Supplies",
+      "amountMinorUnits": 31500,
+      "date": "2026-07-24",
+      "note": "VL-SPIKE-CROSSACCT-DUP-B",
+      "paymentType": "CreditCard"
     }
   ],
   "bills": [

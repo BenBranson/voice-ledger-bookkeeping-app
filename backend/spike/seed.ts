@@ -44,6 +44,8 @@ interface SeedPurchase {
   docNumber?: string;
   note: string;
   memo?: string;
+  /** QBO requires PaymentType to match the AccountRef's account type — "Check" fails outright (fault 6430) against a Credit Card account. Defaults to "Check"; pass "CreditCard" when `account` is Credit Card-typed. */
+  paymentType?: "Check" | "CreditCard" | "Cash";
 }
 
 interface SeedBill {
@@ -171,8 +173,10 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
     // discovered by this seeding run failing with QBO fault code 2020
     // ("Required parameter PaymentType is missing"). "Check" matches
     // docs/phase-0/11_VERTICAL_SLICE.md §11.2's in-scope description
-    // ("a Purchase with PaymentType == Check is in scope").
-    PaymentType: "Check",
+    // ("a Purchase with PaymentType == Check is in scope"); override to
+    // "CreditCard" when spec.account is Credit Card-typed — QBO fault 6430
+    // ("Invalid account type used") otherwise.
+    PaymentType: spec.paymentType ?? "Check",
     Line: [
       {
         Amount: spec.amountMinorUnits / 100,

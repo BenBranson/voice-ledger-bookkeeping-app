@@ -61,6 +61,14 @@
     "VL-SPIKE-PAYROLL-LUMP": {
       "id": "212",
       "syncToken": "0"
+    },
+    "VL-SPIKE-CROSSACCT-DUP-A": {
+      "id": "217",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-CROSSACCT-DUP-B": {
+      "id": "218",
+      "syncToken": "0"
     }
   },
   "bills": {
