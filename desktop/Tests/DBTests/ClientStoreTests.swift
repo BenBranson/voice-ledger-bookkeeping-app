@@ -104,4 +104,32 @@ struct ClientStoreTests {
         #expect(loaded.count == 1)
         #expect(loaded[0].note == "Confirmed with client, only one withdrawal occurred")
     }
+
+    func sampleStatementLine(id: String) -> LedgerTransaction {
+        LedgerTransaction(
+            id: id, entityKind: .importedBankStatementLine, vendorName: "PERMIAN SUPPLY",
+            txnDate: AccountingDate(year: 2026, month: 7, day: 14), totalAmount: Money(minorUnits: 48_620, currency: .usd),
+            paymentAccountID: "checking-1", docNumber: nil, isVoided: false, memo: nil,
+            provenance: .importedFile(documentID: "doc-1", importedAt: Date(), extractionMethod: .deterministicParse, coverage: .complete)
+        )
+    }
+
+    @Test("Imported statement lines round-trip: upsert then load returns the same lines")
+    func importedStatementLinesRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.upsertImportedStatementLines([sampleStatementLine(id: "doc-1-row0")])
+        let loaded = try await store.loadImportedStatementLines()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].id == "doc-1-row0")
+        #expect(loaded[0].entityKind == .importedBankStatementLine)
+    }
+
+    @Test("Upserting imported statement lines is idempotent by id — reimporting the same file does not duplicate rows")
+    func importedStatementLinesUpsertIsIdempotent() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.upsertImportedStatementLines([sampleStatementLine(id: "doc-1-row0")])
+        try await store.upsertImportedStatementLines([sampleStatementLine(id: "doc-1-row0")])
+        let loaded = try await store.loadImportedStatementLines()
+        #expect(loaded.count == 1)
+    }
 }

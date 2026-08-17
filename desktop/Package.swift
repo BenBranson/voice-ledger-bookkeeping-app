@@ -95,7 +95,7 @@ let package = Package(
         // native macOS window was available; see the final report.
         .executableTarget(
             name: "VoiceLedgerApp",
-            dependencies: ["Core", "IntegrationsQuickBooks", "DB", "DesignSystem", "VoiceLedgerUI"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "DesignSystem", "VoiceLedgerUI"],
             path: "Sources/VoiceLedgerApp"
         ),
 

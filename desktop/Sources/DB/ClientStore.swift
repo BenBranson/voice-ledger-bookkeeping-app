@@ -32,6 +32,7 @@ public actor ClientStore {
 
     private var findingsURL: URL { directory.appending(path: "findings.json") }
     private var activityLogURL: URL { directory.appending(path: "activity-log.json") }
+    private var importedStatementLinesURL: URL { directory.appending(path: "imported-statement-lines.json") }
 
     // MARK: - Findings
 
@@ -75,6 +76,27 @@ public actor ClientStore {
             }
         }
         try save(existing, to: findingsURL)
+    }
+
+    // MARK: - Imported statement lines (Universal Ingestion Tier 1)
+
+    /// Persisted so an imported statement survives an app relaunch and is
+    /// re-merged into every subsequent sync's `NormalizedDataSet`, not just
+    /// evaluated once at import time — `VL-RECON-MISSING-001` needs to see
+    /// it on every run, the same way a synced `Purchase` is.
+    public func loadImportedStatementLines() throws -> [LedgerTransaction] {
+        try load([LedgerTransaction].self, from: importedStatementLinesURL, default: [])
+    }
+
+    /// Upserts by `id` (stable per `BankStatementCSVImporter`'s
+    /// `documentID-rowN` scheme, so reimporting the same file is a no-op
+    /// merge, not a duplicate) — same idempotency shape as `upsertFindings`.
+    public func upsertImportedStatementLines(_ lines: [LedgerTransaction]) throws {
+        var existing = try loadImportedStatementLines()
+        var byID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        for line in lines { byID[line.id] = line }
+        existing = Array(byID.values).sorted { $0.id < $1.id }
+        try save(existing, to: importedStatementLinesURL)
     }
 
     // MARK: - Activity log

@@ -4,32 +4,37 @@ import DesignSystem
 
 /// docs/VOICE_LEDGER_SPEC.md Page 4 (Type B): "analyzes posted QBO activity
 /// and compares it against your imported CSV/OFX/QFX statement; detects
-/// duplicates and missing postings." **Minimal read-only slice**: only
-/// `VL-RECON-MISSING-001` (missing postings) — no file-import UI yet (no
-/// drag-and-drop, no column-mapping confirm-and-correct screen per
-/// docs/phase-0/09_INGESTION_PIPELINE.md §9.4), so this always shows the
-/// "no statement imported" honest state until that UI exists. Not
-/// theater: the rule and its data pipeline (`BankStatementCSVImporter`)
-/// are real and tested — only the UI to actually drop a file in is missing.
+/// duplicates and missing postings." **Minimal slice**: only
+/// `VL-RECON-MISSING-001` (missing postings), CSV only (no OFX/QFX/Excel),
+/// no drag-and-drop (file picker only), no cross-foot validation (§9.5).
+/// The confirm-and-correct column-mapping step (§9.4) is real —
+/// `ImportBankStatementView`, presented by the app layer after
+/// `onImportTapped` picks a file.
 public struct BankFeedCleanupView: View {
     private let environment: VLEnvironmentTone
     private let coverageStatus: VLStatus
     private let missingPostingOutcomeDetail: String
     private let findings: [Finding]
+    private let importError: String?
     private let onSelectFinding: (Finding) -> Void
+    private let onImportTapped: () -> Void
 
     public init(
         environment: VLEnvironmentTone,
         coverageStatus: VLStatus,
         missingPostingOutcomeDetail: String,
         findings: [Finding],
-        onSelectFinding: @escaping (Finding) -> Void
+        importError: String?,
+        onSelectFinding: @escaping (Finding) -> Void,
+        onImportTapped: @escaping () -> Void
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
         self.missingPostingOutcomeDetail = missingPostingOutcomeDetail
         self.findings = findings
+        self.importError = importError
         self.onSelectFinding = onSelectFinding
+        self.onImportTapped = onImportTapped
     }
 
     public var body: some View {
@@ -46,6 +51,14 @@ public struct BankFeedCleanupView: View {
                 Text("Type B — needs an imported bank/card statement. QBO's own \"For Review\" queue, suggested matches, and bank rules are not API-exposed, so this page cannot substitute for them; it can only compare what you import against what's posted.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
+
+                HStack {
+                    Button("Import Statement (CSV)…") { onImportTapped() }
+                        .buttonStyle(.borderedProminent)
+                    if let importError {
+                        VLStatusPill(.urgent, label: importError)
+                    }
+                }
 
                 VLCard {
                     VStack(alignment: .leading, spacing: VLSpacing.sm) {
@@ -82,10 +95,6 @@ public struct BankFeedCleanupView: View {
                         }
                     }
                 }
-
-                Text("Statement import (drag-and-drop, column mapping, cross-foot validation) is not built yet — this page's data pipeline is real and tested, but there is no way to bring a file in through the UI yet.")
-                    .font(VLTypography.caption())
-                    .foregroundStyle(VLColor.textMuted)
             }
             .padding(VLSpacing.pageGutter)
         }

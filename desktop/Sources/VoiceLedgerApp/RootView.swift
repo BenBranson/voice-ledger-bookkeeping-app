@@ -7,6 +7,7 @@ import VoiceLedgerUI
 struct RootView: View {
     @Bindable var state: AppState
     @State private var actorName = NSFullUserName()
+    @State private var isImportingStatement = false
 
     var body: some View {
         NavigationStack {
@@ -132,16 +133,39 @@ struct RootView: View {
             }
 
         case .bankFeedCleanup:
+            let missingPostingFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" }
             BankFeedCleanupView(
                 environment: state.environment == .production ? .production : .sandbox,
-                coverageStatus: .notChecked,
+                coverageStatus: missingPostingFindings.isEmpty ? .notChecked : .reviewNeeded,
                 missingPostingOutcomeDetail: "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4).",
-                findings: state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" },
-                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+                findings: missingPostingFindings,
+                importError: state.importError,
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
+                onImportTapped: { isImportingStatement = true }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
+                }
+            }
+            .fileImporter(isPresented: $isImportingStatement, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+                // A `.failure` here is the user cancelling the panel or an
+                // OS-level picker error — nothing to show; `selectFileForImport`
+                // itself reports a real read/parse failure via `importError`.
+                if case .success(let url) = result {
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                    state.selectFileForImport(url: url)
+                }
+            }
+            .sheet(isPresented: Binding(get: { state.pendingImport != nil }, set: { if !$0 { state.cancelPendingImport() } })) {
+                if let pending = state.pendingImport {
+                    ImportBankStatementView(
+                        filename: pending.filename,
+                        columns: Self.columnPreviews(for: pending),
+                        onConfirm: { mappings in Task { await state.confirmImport(mappings: mappings) } },
+                        onCancel: { state.cancelPendingImport() }
+                    )
                 }
             }
         }
@@ -243,6 +267,21 @@ struct RootView: View {
         case .yellow: return .reviewNeeded
         case .red: return .urgent
         case .gray: return .notChecked
+        }
+    }
+
+    /// Builds one `ColumnPreview` per CSV column — header (from row 0, if
+    /// present) and up to 3 sample values from the data rows — for
+    /// `ImportBankStatementView`'s confirm-and-correct screen.
+    private static func columnPreviews(for pending: AppState.PendingImport) -> [ImportBankStatementView.ColumnPreview] {
+        let headerRow = pending.hasHeaderRow ? pending.allRows.first : nil
+        let dataRows = pending.hasHeaderRow ? Array(pending.allRows.dropFirst()) : pending.allRows
+        let columnCount = pending.allRows.map(\.count).max() ?? 0
+
+        return (0..<columnCount).map { index in
+            let header = headerRow.flatMap { $0.indices.contains(index) ? $0[index] : nil } ?? "Column \(index + 1)"
+            let samples = dataRows.prefix(3).compactMap { $0.indices.contains(index) ? $0[index] : nil }
+            return ImportBankStatementView.ColumnPreview(index: index, header: header, sampleValues: samples)
         }
     }
 }

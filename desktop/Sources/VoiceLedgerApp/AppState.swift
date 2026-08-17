@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Core
 import IntegrationsQuickBooks
+import IntegrationsImports
 import DB
 
 /// Wires QBOSyncClient -> RuleEngine -> ClientStore -> the UI layer for the
@@ -56,6 +57,15 @@ public final class AppState {
     public private(set) var healthResult: HealthCheckResult?
     public private(set) var healthCheckError: String?
     public private(set) var isCheckingHealth = false
+
+    // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
+    public struct PendingImport {
+        public let filename: String
+        public let allRows: [[String]]
+        public let hasHeaderRow: Bool
+    }
+    public private(set) var pendingImport: PendingImport?
+    public private(set) var importError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
@@ -114,8 +124,22 @@ public final class AppState {
     public func syncAndEvaluate() async {
         loadState = .loading
         do {
-            let dataSet = try await syncClient.sync(realmID: realmID, period: period)
-            coverage = dataSet.coverage
+            let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
+            coverage = syncedDataSet.coverage
+
+            // Merge in any previously-imported, persisted statement lines
+            // (Universal Ingestion Tier 1) so VL-RECON-MISSING-001 sees them
+            // on every sync, not just the run right after import.
+            let importedLines = try await store.loadImportedStatementLines()
+            let dataSet = NormalizedDataSet(
+                realmID: syncedDataSet.realmID,
+                period: syncedDataSet.period,
+                transactions: syncedDataSet.transactions + importedLines,
+                accounts: syncedDataSet.accounts,
+                vendors: syncedDataSet.vendors,
+                coverage: syncedDataSet.coverage,
+                companyFacts: syncedDataSet.companyFacts
+            )
 
             let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
@@ -138,6 +162,60 @@ public final class AppState {
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
+        }
+    }
+
+    /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file
+    /// (Tier 1, deterministic) and stops there — this does NOT import
+    /// anything yet. `pendingImport` drives `ImportBankStatementView`'s
+    /// confirm-and-correct screen (§9.4); nothing is normalized or
+    /// persisted until `confirmImport(mappings:)` is called with an
+    /// explicitly human-confirmed mapping.
+    public func selectFileForImport(url: URL) {
+        importError = nil
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let rows = CSVParser.parse(text)
+            guard !rows.isEmpty else {
+                importError = "\(url.lastPathComponent) is empty."
+                return
+            }
+            pendingImport = PendingImport(filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true)
+        } catch {
+            importError = "Could not read \(url.lastPathComponent): \(error)"
+        }
+    }
+
+    public func cancelPendingImport() {
+        pendingImport = nil
+    }
+
+    /// The confirm step (§9.4) — `mappings` are already `confirmed: true`
+    /// by the time they reach here (`ImportBankStatementView` only emits
+    /// confirmed mappings via its Confirm button). Persists the normalized
+    /// lines via `ClientStore` and immediately re-evaluates so the result
+    /// is visible without a separate manual sync.
+    public func confirmImport(mappings: [ColumnMapping]) async {
+        guard let pending = pendingImport else { return }
+        let documentID = ImportedDocumentID(rawValue: "\(pending.filename)-\(Date().timeIntervalSince1970)")
+        let result = BankStatementCSVImporter.import(
+            rows: pending.allRows,
+            mappings: mappings,
+            hasHeaderRow: pending.hasHeaderRow,
+            realmID: realmID,
+            documentID: documentID,
+            importedAt: Date()
+        )
+        guard result.defects.isEmpty else {
+            importError = "Import produced \(result.defects.count) issue(s): \(result.defects)"
+            return
+        }
+        do {
+            try await store.upsertImportedStatementLines(result.transactions)
+            pendingImport = nil
+            await syncAndEvaluate()
+        } catch {
+            importError = "\(error)"
         }
     }
 

@@ -39,7 +39,23 @@ public enum BankStatementCSVImporter {
         importedAt: Date,
         statementAccountID: String? = nil
     ) -> Result {
-        let allRows = CSVParser.parse(csvText)
+        Self.import(rows: CSVParser.parse(csvText), mappings: mappings, hasHeaderRow: hasHeaderRow, realmID: realmID, documentID: documentID, importedAt: importedAt, statementAccountID: statementAccountID)
+    }
+
+    /// Same as the `csvText:` overload, but takes already-parsed rows —
+    /// for a caller (e.g. a column-mapping confirmation screen) that
+    /// parsed the file once already to show a preview and would otherwise
+    /// have to re-serialize rows back to CSV text just to parse them again,
+    /// a lossy round-trip for any field that needed quoting.
+    public static func `import`(
+        rows allRows: [[String]],
+        mappings: [ColumnMapping],
+        hasHeaderRow: Bool,
+        realmID: RealmID,
+        documentID: ImportedDocumentID,
+        importedAt: Date,
+        statementAccountID: String? = nil
+    ) -> Result {
         guard !allRows.isEmpty else {
             return Result(transactions: [], defects: [.emptyFile])
         }

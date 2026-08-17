@@ -14,13 +14,22 @@ section specifies (`ImportedDocument`, `ColumnMapping`/`MappedField`/
 `MappingOrigin`, `NormalizationDefect`) — a new `QBOEntityKind
 .importedBankStatementLine` case lets an imported line normalize into the same
 `LedgerTransaction` shape the QBO API path produces (§9.8's contract, proven
-against a second real source for the first time). **Not built in this pass:**
-confirm-and-correct UI (§9.4 — callers must construct already-`confirmed`
-`ColumnMapping`s), cross-foot validation (§9.5 — needs a stated statement
-total/ending balance this importer doesn't yet accept as input), learned-mapping
-persistence (stage 6), Tier 2 (on-device Vision) and Tier 3 (Claude vision)
-entirely. 15 new tests (`Tests/IntegrationsImportsTests/`), all offline —
-deterministic CSV parsing needs no live sandbox.
+against a second real source for the first time). 15 new tests
+(`Tests/IntegrationsImportsTests/`), all offline — deterministic CSV parsing
+needs no live sandbox.
+
+**The confirm-and-correct UI (§9.4) is now real too**, wired end-to-end the
+same day: `ImportBankStatementView` (a `Picker` per CSV column, every column
+defaulting to `.unmapped` — never a pre-selected guess), `.fileImporter` on
+`BankFeedCleanupView`, and `ClientStore.upsertImportedStatementLines`/
+`loadImportedStatementLines` so an imported statement survives an app
+relaunch and is re-merged into every subsequent `syncAndEvaluate()`, not just
+evaluated once at import time. `VL-RECON-MISSING-001` can now actually fire
+against a real imported file, not just prove its own logic in isolation.
+**Still not built:** cross-foot validation (§9.5 — needs a stated statement
+total/ending balance this importer doesn't accept as input yet), learned-
+mapping persistence (stage 6), OFX/QFX/Excel within Tier 1, and Tier 2
+(on-device Vision) / Tier 3 (Claude vision) entirely.
 
 ---
 
