@@ -3,7 +3,8 @@
   "requiresBaseline": true,
   "accounts": [
     { "name": "VL Spike Amex", "accountType": "Credit Card" },
-    { "name": "VL Spike Wages", "accountType": "Expense" }
+    { "name": "VL Spike Wages", "accountType": "Expense" },
+    { "name": "Uncategorized Expense", "accountType": "Expense" }
   ],
   "vendors": [
     { "displayName": "VL Spike Amex" },
@@ -47,6 +48,15 @@
       "date": "2026-07-24",
       "note": "VL-SPIKE-CROSSACCT-DUP-B",
       "paymentType": "CreditCard"
+    },
+    {
+      "case": "VL-CAT-UNCAT-001 — a bank-feed item added without picking a real category, still sitting in QBO's default Uncategorized Expense catch-all account. Vendor is deliberately NOT 'VL Spike Amex' — that name would trip VL-CC-PAYMENT-001's relationship gate first and exclude this transaction from categorization-class rules via §8.2a.",
+      "vendor": "VL Spike Permian Supply, Inc.",
+      "account": "VL Spike Checking",
+      "expenseAccount": "Uncategorized Expense",
+      "amountMinorUnits": 12000,
+      "date": "2026-07-25",
+      "note": "VL-SPIKE-UNCATEGORIZED"
     }
   ],
   "bills": [

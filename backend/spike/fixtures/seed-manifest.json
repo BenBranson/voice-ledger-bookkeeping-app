@@ -4,7 +4,8 @@
     "VL Spike Office Supplies": "1150040001",
     "VL Spike Utilities": "1150040002",
     "VL Spike Amex": "1150040013",
-    "VL Spike Wages": "1150040014"
+    "VL Spike Wages": "1150040014",
+    "Uncategorized Expense": "31"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
@@ -68,6 +69,10 @@
     },
     "VL-SPIKE-CROSSACCT-DUP-B": {
       "id": "218",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-UNCATEGORIZED": {
+      "id": "219",
       "syncToken": "0"
     }
   },
