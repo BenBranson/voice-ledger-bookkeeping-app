@@ -439,7 +439,7 @@ stable; only the first is scoped in this phase (§11).
 | `VL-DUP-BILL-001` | Duplicate bills | 3 | 2 |
 | `VL-DUP-INV-001` | Duplicate invoices | 3 | 2 |
 | `VL-DUP-PAY-001` | Duplicate payments | 3 | 2 |
-| `VL-DUP-VEND-001` | Duplicate vendor records | 3 | 2 |
+| `VL-DUP-VEND-001` | **IMPLEMENTED 2026-08-17** (`desktop/Sources/Core/DuplicateVendorRule.swift`) — duplicate vendor records, matched by normalized-EXACT name (case/punctuation/whitespace/common-suffix stripped), deliberately not fuzzy — see the rule's own doc comment for why, after `VL-COA-DUPACCT-001`'s false-positive finding (below in this same table). Required adding the first new backend catalog operation since Phase 1 step 1.2 (`readVendors`, matrix row 13.4). Live-verified against a real seeded near-duplicate pair. | Cleanup Assessment | **Built** |
 | `VL-RECON-DIFF-001` | Bank/CC reconciliation differences | 5 | 2 |
 | `VL-RECON-MISSING-001` | Statement line with no posting | 4, 5 | 2 |
 | `VL-CAT-UNCAT-001` | Uncategorized transactions | 3 | 2 |
