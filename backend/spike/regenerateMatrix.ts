@@ -141,6 +141,28 @@ const MAPPING: MappingEntry[] = [
     matrixRowKey: "11.x (BillPayment)",
     rows: [],
     isNewRow: { id: "11.x-bp", page: "11 / slice gate (Decision 3)", capability: "Void a BillPayment (`?operation=void`)", endpoint: "`BillPayment`" }
+  },
+
+  // --- Wave 5, items 49-50, run 2026-08-17 ---
+  {
+    matrixRowKey: "testCategorizationProvenance",
+    rows: [],
+    isNewRow: {
+      id: "13.1",
+      page: "Backlog — Cleanup Assessment",
+      capability: "QBO's rule-vs-AI-vs-human categorization source, exposed via any read API",
+      endpoint: "`Purchase` query, `cdc`, `reports/TransactionList`"
+    }
+  },
+  {
+    matrixRowKey: "testReconciledTransactionDetection",
+    rows: [],
+    isNewRow: {
+      id: "13.2",
+      page: "Backlog — sensitive-write preflight risk tiers",
+      capability: "Whether a transaction is already reconciled, exposed via any read API",
+      endpoint: "`Purchase` query, `cdc`, `reports/TransactionList`"
+    }
   }
 ];
 

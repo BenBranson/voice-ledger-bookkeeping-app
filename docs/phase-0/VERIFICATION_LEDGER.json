@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T20:48:11.257Z",
+  "generatedAt": "2026-08-17T16:07:31.958Z",
   "generatedBy": "backend/spike/regenerateMatrix.ts — see file header for the coverage-mapping methodology",
   "tableRowUpdates": [
     {
@@ -254,6 +254,34 @@
         "page": "11 / slice gate (Decision 3)",
         "capability": "Void a BillPayment (`?operation=void`)",
         "endpoint": "`BillPayment`"
+      }
+    },
+    {
+      "tableRowId": "13.1",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-17T16:06:40.580Z",
+      "sourceMatrixRowKey": "testCategorizationProvenance",
+      "detail": "Confirmed absent — see negativeEvidence.",
+      "isNewRow": {
+        "id": "13.1",
+        "page": "Backlog — Cleanup Assessment",
+        "capability": "QBO's rule-vs-AI-vs-human categorization source, exposed via any read API",
+        "endpoint": "`Purchase` query, `cdc`, `reports/TransactionList`"
+      }
+    },
+    {
+      "tableRowId": "13.2",
+      "status": "VERIFIED",
+      "coverage": "full",
+      "verifiedAt": "2026-08-17T16:06:42.316Z",
+      "sourceMatrixRowKey": "testReconciledTransactionDetection",
+      "detail": "Confirmed absent — see negativeEvidence.",
+      "isNewRow": {
+        "id": "13.2",
+        "page": "Backlog — sensitive-write preflight risk tiers",
+        "capability": "Whether a transaction is already reconciled, exposed via any read API",
+        "endpoint": "`Purchase` query, `cdc`, `reports/TransactionList`"
       }
     }
   ],
