@@ -630,8 +630,8 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 - `VL-AUTOADD-RULE-001` — bank rules with auto-add enabled posting without review
 
 ## Spike items — status corrected 2026-08-16 (see §6's note)
-- `testCategorizationProvenance` — is QBO's rule-vs-AI-vs-human categorization source exposed? **Filed, not run** (`SPIKE_QUEUE.md` Wave 5, item 49).
-- `testReconciledTransactionDetection` — can the API tell us a transaction is reconciled? **Filed, not run** (item 50).
+- `testCategorizationProvenance` — is QBO's rule-vs-AI-vs-human categorization source exposed? **Run 2026-08-17, DISPROVEN.** Checked three surfaces (Purchase query, cdc, TransactionList columns), 12 candidate field names, none found. Matrix row 13.1. The cleanup-filter idea this was meant to enable (`CLEANUP_MODE.md` §2.7) has no API path — treat it as closed, not a live backlog item.
+- `testReconciledTransactionDetection` — can the API tell us a transaction is reconciled? **Run 2026-08-17, DISPROVEN with a real caveat.** Same three-surface check, 8 candidate names, none found — but only against unreconciled test data, since nothing in this sandbox has ever been through an actual Finish Reconciliation. Matrix row 13.2. Genuinely still needs Wave 4 item 44 (`testClearedStatusFilter`) before the reconciled case itself is checked.
 - `testManualVoidPurchaseAPIShape` — **new item, not in the original draft of this handoff.** What does the API show for a `Purchase` voided manually in the QBO UI? Discovered as a gap while building `QBOSyncClient` — see §6. Item 51.
 - ~~Void on `Bill` / `JournalEntry` / `BillPayment` — partially run; still open~~ **corrected: this was fully run, not partial, and it is resolved, not open.** All three confirmed unsupported (§6). The anomalous-200 shapes on `Bill`/`JournalEntry` are a real, separate, already-addressed finding (§15.A's response-validation chokepoint), not an indication the void question itself is unanswered.
 
@@ -695,8 +695,8 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 ## Open technical questions
 - Is **Page 7** still worth building as designed, given sparse-update data loss? **Answered as a recommendation** (§15.B) — not settled, but no longer unaddressed.
 - ~~Does void work on `Bill` / `JournalEntry` / `BillPayment`?~~ **Resolved, not open — corrected from the original draft.** All three confirmed unsupported for void; Branch B applies to the whole tested TXN profile. See §6.
-- Is **categorization provenance** (rule vs. AI vs. human) exposed via API? Still genuinely open — filed as spike item 49, not run.
-- Can the API tell us a transaction is **reconciled**? Still genuinely open — filed as spike item 50, not run.
+- ~~Is **categorization provenance** (rule vs. AI vs. human) exposed via API?~~ **Answered 2026-08-17: no.** DISPROVEN across three surfaces; see §16.
+- ~~Can the API tell us a transaction is **reconciled**?~~ **Half-answered 2026-08-17: no, for unreconciled transactions.** The reconciled case itself is still open — needs a manually-reconciled sandbox account (Wave 4 item 44). See §16.
 - Are **T1's fixtures rich enough** now that T2 is largely inert? Still correctly deferred — no golden fixture set exists yet in the on-disk sense (§14's note on inline-Swift-fixtures-as-substitute).
 - **New, from the slice build:** does a manually-voided `Purchase` actually show `TotalAmt == 0` (or some other signal) via the API? **Half-answered 2026-08-17: `TotalAmt == 0` is confirmed NOT a reliable signal** (it false-positived on a legitimate $0 fixture against live data). Still genuinely open what the real signal is — spike item 51, gates whether Branch B's resolution path is trustworthy against real data.
 
