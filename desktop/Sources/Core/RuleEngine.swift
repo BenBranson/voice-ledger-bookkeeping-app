@@ -65,6 +65,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `duplicateExpense`: a duplicate Invoice overstates revenue and
     /// accounts receivable, not expense.
     case duplicateInvoice
+    /// `VL-DUP-PAY-001`, docs/phase-0/08_RULE_ENGINE.md §8.8.
+    case duplicatePayment
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

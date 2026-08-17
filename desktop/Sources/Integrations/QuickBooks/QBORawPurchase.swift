@@ -232,6 +232,52 @@ public struct QBOInvoiceQueryResponse: Decodable, Sendable {
     }
 }
 
+/// docs/backlog's `VL-DUP-PAY-001`. Verified live against a real
+/// sample-company `Payment` (Id 128) before this struct was written:
+/// `CustomerRef`, `TotalAmt`, `TxnDate`, `Id` all present as expected. No
+/// `status` field was observed on any Payment checked (none of the sample
+/// data has ever been voided), so `isVoided` decodes the same key as
+/// Purchase/Bill for structural consistency but is UNVERIFIED for
+/// Payment — always `false` in practice until a real voided Payment can be
+/// checked. Flagged rather than silently assumed.
+public struct QBORawPayment: Decodable, Sendable {
+    public let id: String
+    public let txnDate: String
+    public let totalAmt: Decimal
+    public let privateNote: String?
+    public let customerRef: QBORawRef?
+    public let status: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case txnDate = "TxnDate"
+        case totalAmt = "TotalAmt"
+        case privateNote = "PrivateNote"
+        case customerRef = "CustomerRef"
+        case status
+    }
+
+    public var isVoided: Bool {
+        status == "Voided"
+    }
+}
+
+public struct QBOPaymentQueryResponse: Decodable, Sendable {
+    public let queryResponse: QueryResponseBody
+
+    enum CodingKeys: String, CodingKey {
+        case queryResponse = "QueryResponse"
+    }
+
+    public struct QueryResponseBody: Decodable, Sendable {
+        public let payment: [QBORawPayment]?
+
+        enum CodingKeys: String, CodingKey {
+            case payment = "Payment"
+        }
+    }
+}
+
 /// Added 2026-08-17 for `VL-DUP-VEND-001`.
 public struct QBORawVendor: Decodable, Sendable {
     public let id: String

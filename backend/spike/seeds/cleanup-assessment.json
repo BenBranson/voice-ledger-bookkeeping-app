@@ -77,6 +77,22 @@
       "note": "VL-SPIKE-DUP-INV-B"
     }
   ],
+  "payments": [
+    {
+      "case": "VL-DUP-PAY-001 — exact-duplicate-pair (same customer, date, amount)",
+      "customer": "Cool Cars",
+      "amountMinorUnits": 40000,
+      "date": "2026-07-27",
+      "note": "VL-SPIKE-DUP-PAY-A"
+    },
+    {
+      "case": "VL-DUP-PAY-001 — exact-duplicate-pair (the duplicate)",
+      "customer": "Cool Cars",
+      "amountMinorUnits": 40000,
+      "date": "2026-07-27",
+      "note": "VL-SPIKE-DUP-PAY-B"
+    }
+  ],
   "bills": [
     {
       "case": "VL-DUP-BILL-001 — exact-duplicate-pair (same vendor, date, amount)",

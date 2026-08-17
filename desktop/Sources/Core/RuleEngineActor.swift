@@ -147,6 +147,7 @@ public enum RuleRegistry {
         DuplicateVendorRule.self,
         DuplicateBillRule.self,
         DuplicateInvoiceRule.self,
+        DuplicatePaymentRule.self,
         UncategorizedTransactionRule.self
     ]
 

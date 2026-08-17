@@ -101,5 +101,15 @@
       "id": "221",
       "syncToken": "0"
     }
+  },
+  "payments": {
+    "VL-SPIKE-DUP-PAY-A": {
+      "id": "222",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-DUP-PAY-B": {
+      "id": "223",
+      "syncToken": "0"
+    }
   }
 }

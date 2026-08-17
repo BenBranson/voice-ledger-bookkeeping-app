@@ -171,6 +171,11 @@ struct RootView: View {
                 ruleID: "VL-DUP-INV-001",
                 title: "Possible duplicate invoices",
                 findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-INV-001" }
+            ),
+            CleanupAssessmentView.RuleSummary(
+                ruleID: "VL-DUP-PAY-001",
+                title: "Possible duplicate payments",
+                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-PAY-001" }
             )
         ]
     }

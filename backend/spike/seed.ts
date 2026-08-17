@@ -72,6 +72,14 @@ interface SeedInvoice {
   note: string;
 }
 
+interface SeedPayment {
+  case: string;
+  customer: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
+}
+
 interface SeedFile {
   description: string;
   requiresBaseline?: boolean;
@@ -81,6 +89,7 @@ interface SeedFile {
   purchases?: SeedPurchase[];
   bills?: SeedBill[];
   invoices?: SeedInvoice[];
+  payments?: SeedPayment[];
 }
 
 const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.json");
@@ -93,6 +102,7 @@ interface Manifest {
   purchases: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   bills?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   invoices?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
+  payments?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
 }
 
 function loadManifest(): Manifest {
@@ -102,9 +112,10 @@ function loadManifest(): Manifest {
     loaded.customers ??= {};
     loaded.items ??= {};
     loaded.invoices ??= {};
+    loaded.payments ??= {};
     return loaded;
   }
-  return { accounts: {}, vendors: {}, purchases: {}, bills: {}, customers: {}, items: {}, invoices: {} };
+  return { accounts: {}, vendors: {}, purchases: {}, bills: {}, customers: {}, items: {}, invoices: {}, payments: {} };
 }
 
 function saveManifest(manifest: Manifest): void {
@@ -331,6 +342,34 @@ async function ensureInvoice(client: QboRawClient, manifest: Manifest, spec: See
   process.stdout.write(`  [created] ${spec.case} -> Invoice ${invoice.Id}\n`);
 }
 
+// Payment's raw shape (verified live 2026-08-17 against a real sample-
+// company Payment, Id 128) showed no PrivateNote field in any observed
+// record, so — unlike ensurePurchase/ensureBill/ensureInvoice — this does
+// NOT attempt a PrivateNote-based existing-check or set one on create.
+// Manifest tracking is the ENTIRE idempotency mechanism here, same
+// fallback ensureBill already documents for specs without a DocNumber.
+async function ensurePayment(client: QboRawClient, manifest: Manifest, spec: SeedPayment): Promise<void> {
+  manifest.payments ??= {};
+  if (manifest.payments[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+
+  const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
+
+  const created = await client.post("payment", {
+    CustomerRef: { value: customerId },
+    TotalAmt: spec.amountMinorUnits / 100,
+    TxnDate: spec.date
+  });
+  if (created.status !== 200) {
+    throw new Error(`Payment create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const payment = (created.body as any).Payment;
+  manifest.payments[spec.note] = { id: payment.Id, syncToken: payment.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> Payment ${payment.Id}\n`);
+}
+
 async function apply(seedName: string): Promise<void> {
   const client = new QboRawClient();
   const manifest = loadManifest();
@@ -365,6 +404,10 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const invoice of seed.invoices ?? []) {
     await ensureInvoice(client, manifest, invoice);
+    saveManifest(manifest);
+  }
+  for (const payment of seed.payments ?? []) {
+    await ensurePayment(client, manifest, payment);
     saveManifest(manifest);
   }
 

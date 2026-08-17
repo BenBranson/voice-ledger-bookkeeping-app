@@ -15,6 +15,8 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     /// Invoice (see that field's doc comment) rather than adding a parallel
     /// `customerName` field, since no rule needs to distinguish the two yet.
     case invoice = "Invoice"
+    /// Added for `VL-DUP-PAY-001`.
+    case payment = "Payment"
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.6's closed enum — confirmed against the

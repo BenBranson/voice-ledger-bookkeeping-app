@@ -55,6 +55,15 @@ public struct QBOSyncClient: Sendable {
         }
     }
 
+    public struct ReadPaymentsParams: Encodable, Sendable {
+        public let startDate: String
+        public let endDate: String
+        public init(startDate: String, endDate: String) {
+            self.startDate = startDate
+            self.endDate = endDate
+        }
+    }
+
     /// Fetches `Purchase` for the period, `Account` (the full chart of
     /// accounts — needed by `VL-CC-PAYMENT-001` to know what a line was
     /// coded to), and `Preferences` for the company feature flag (§11.2's
@@ -107,6 +116,11 @@ public struct QBOSyncClient: Sendable {
             realmID: realmID,
             params: ReadInvoicesParams(startDate: startDate, endDate: endDate)
         )
+        let paymentsData = try await backend.call(
+            .readPayments,
+            realmID: realmID,
+            params: ReadPaymentsParams(startDate: startDate, endDate: endDate)
+        )
         let preferencesData = try await backend.call(
             .readPreferences,
             realmID: realmID,
@@ -119,14 +133,16 @@ public struct QBOSyncClient: Sendable {
         let accountsResponse = try decoder.decode(QBOAccountQueryResponse.self, from: accountsData)
         let vendorsResponse = try decoder.decode(QBOVendorQueryResponse.self, from: vendorsData)
         let invoicesResponse = try decoder.decode(QBOInvoiceQueryResponse.self, from: invoicesData)
+        let paymentsResponse = try decoder.decode(QBOPaymentQueryResponse.self, from: paymentsData)
         let preferencesResponse = try decoder.decode(QBOPreferencesQueryResponse.self, from: preferencesData)
 
         let rawPurchases = purchasesResponse.queryResponse.purchase ?? []
         let rawBills = billsResponse.queryResponse.bill ?? []
         let rawInvoices = invoicesResponse.queryResponse.invoice ?? []
-        let coverage: Coverage = (rawPurchases.count < maxResults && rawBills.count < maxResults && rawInvoices.count < maxResults)
+        let rawPayments = paymentsResponse.queryResponse.payment ?? []
+        let coverage: Coverage = (rawPurchases.count < maxResults && rawBills.count < maxResults && rawInvoices.count < maxResults && rawPayments.count < maxResults)
             ? .complete
-            : .partial(reason: "readPurchases, readBills, or readInvoices returned a full page (\(rawPurchases.count) purchases, \(rawBills.count) bills, \(rawInvoices.count) invoices, of \(maxResults) max) — pagination is not yet wired into this sync call, so completeness beyond one page is unverified.")
+            : .partial(reason: "readPurchases, readBills, readInvoices, or readPayments returned a full page (\(rawPurchases.count) purchases, \(rawBills.count) bills, \(rawInvoices.count) invoices, \(rawPayments.count) payments, of \(maxResults) max) — pagination is not yet wired into this sync call, so completeness beyond one page is unverified.")
 
         let customTxnNumbers = preferencesResponse.queryResponse.preferences?.first?
             .vendorAndPurchasesPrefs?.useCustomTxnNumbers ?? false
@@ -134,7 +150,7 @@ public struct QBOSyncClient: Sendable {
         // Purchase and Bill normalize into the SAME LedgerTransaction shape,
         // distinguished only by entityKind — the whole point of §4.1's
         // normalization contract (rules can't tell the source apart).
-        let transactions = rawPurchases.map { Self.normalize($0) } + rawBills.map { Self.normalize($0) } + rawInvoices.map { Self.normalize($0) }
+        let transactions = rawPurchases.map { Self.normalize($0) } + rawBills.map { Self.normalize($0) } + rawInvoices.map { Self.normalize($0) } + rawPayments.map { Self.normalize($0) }
         let accounts = (accountsResponse.queryResponse.account ?? []).compactMap { Self.normalize($0) }
         let vendors = (vendorsResponse.queryResponse.vendor ?? []).map { Self.normalize($0) }
 
@@ -217,6 +233,24 @@ public struct QBOSyncClient: Sendable {
             totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
             paymentAccountID: nil,
             docNumber: raw.docNumber,
+            isVoided: raw.isVoided,
+            memo: raw.privateNote,
+            lineAccountIDs: [],
+            provenance: .qboAPI(readAt: Date())
+        )
+    }
+
+    /// `isVoided` is decoded but unverified for Payment — see
+    /// `QBORawPayment`'s doc comment.
+    static func normalize(_ raw: QBORawPayment) -> LedgerTransaction {
+        LedgerTransaction(
+            id: raw.id,
+            entityKind: .payment,
+            vendorName: raw.customerRef?.name,
+            txnDate: AccountingDate(qboDateString: raw.txnDate),
+            totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
+            paymentAccountID: nil,
+            docNumber: nil,
             isVoided: raw.isVoided,
             memo: raw.privateNote,
             lineAccountIDs: [],

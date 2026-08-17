@@ -22,6 +22,7 @@ export type OperationName =
   | "readBills"
   | "readVendors"
   | "readInvoices"
+  | "readPayments"
   | "readReport"
   | "cdcSince";
 

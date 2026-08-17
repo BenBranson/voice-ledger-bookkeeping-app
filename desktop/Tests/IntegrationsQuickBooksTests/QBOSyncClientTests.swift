@@ -173,6 +173,33 @@ struct QBOSyncClientTests {
         #expect(normalized.isVoided == false)
     }
 
+    @Test("Decodes a real-shaped Payment query response and normalizes customer/date/amount, entityKind == .payment")
+    func decodesAndNormalizesPayment() throws {
+        let json = """
+        {
+          "QueryResponse": {
+            "Payment": [
+              {
+                "Id": "128",
+                "TxnDate": "2026-01-25",
+                "TotalAmt": 387,
+                "CustomerRef": { "value": "8", "name": "0969 Ocean View Road" }
+              }
+            ]
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(QBOPaymentQueryResponse.self, from: Data(json.utf8))
+        let raw = try #require(response.queryResponse.payment?.first)
+        let normalized = QBOSyncClient.normalize(raw)
+
+        #expect(normalized.id == "128")
+        #expect(normalized.entityKind == .payment)
+        #expect(normalized.vendorName == "0969 Ocean View Road")
+        #expect(normalized.totalAmount == Money(minorUnits: 38_700, currency: .usd))
+        #expect(normalized.isVoided == false)
+    }
+
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")
     func decodesPreferences() throws {
         let json = """
