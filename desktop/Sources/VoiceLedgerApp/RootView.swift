@@ -171,70 +171,36 @@ struct RootView: View {
         }
     }
 
-    /// Only two rules exist today, so the title mapping is a small literal
-    /// table rather than a generic lookup — revisit once more Cleanup
-    /// Assessment rules exist (`RuleIdentity.title` could be read directly
-    /// at that point instead of duplicating it here).
+    /// Reads each rule's title directly from `RuleIdentity` rather than
+    /// duplicating it in a literal table — the table this replaced grew to
+    /// 8 hand-maintained entries before becoming the generic lookup its own
+    /// comment said to revisit to once the rule count grew past "a couple."
     private var cleanupAssessmentSummaries: [CleanupAssessmentView.RuleSummary] {
         let openFindings = state.findings.filter { $0.status == .open }
-        return [
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-CC-PAYMENT-001",
-                title: "Credit card payments coded to an expense account",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-CC-PAYMENT-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-PAYROLL-LUMP-001",
-                title: "Payroll payments on a single lump-sum line",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-PAYROLL-LUMP-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-OBE-BALANCE-001",
-                title: "Nonzero Opening Balance Equity",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-OBE-BALANCE-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-BS-NEGBAL-001",
-                title: "Negative asset or liability balances",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-DUP-VEND-001",
-                title: "Possible duplicate vendor records",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-VEND-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-DUP-BILL-001",
-                title: "Possible duplicate bills",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-BILL-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-DUP-INV-001",
-                title: "Possible duplicate invoices",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-INV-001" }
-            ),
-            CleanupAssessmentView.RuleSummary(
-                ruleID: "VL-DUP-PAY-001",
-                title: "Possible duplicate payments",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-DUP-PAY-001" }
-            )
-        ]
+        return RuleRegistry.all
+            .filter { AppState.cleanupAssessmentRuleIDs.contains($0.identity.id.rawValue) }
+            .sorted { $0.identity.id.rawValue < $1.identity.id.rawValue }
+            .map { ruleType in
+                CleanupAssessmentView.RuleSummary(
+                    ruleID: ruleType.identity.id.rawValue,
+                    title: ruleType.identity.title,
+                    findings: openFindings.filter { $0.ruleID == ruleType.identity.id }
+                )
+            }
     }
 
     private var balanceSheetIntegritySummaries: [BalanceSheetIntegrityView.RuleSummary] {
         let openFindings = state.findings.filter { $0.status == .open }
-        return [
-            BalanceSheetIntegrityView.RuleSummary(
-                ruleID: "VL-BS-NEGBAL-001",
-                title: "Negative asset or liability balances",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" }
-            ),
-            BalanceSheetIntegrityView.RuleSummary(
-                ruleID: "VL-OBE-BALANCE-001",
-                title: "Nonzero Opening Balance Equity",
-                findings: openFindings.filter { $0.ruleID.rawValue == "VL-OBE-BALANCE-001" }
-            )
-        ]
+        return RuleRegistry.all
+            .filter { AppState.balanceSheetIntegrityRuleIDs.contains($0.identity.id.rawValue) }
+            .sorted { $0.identity.id.rawValue < $1.identity.id.rawValue }
+            .map { ruleType in
+                BalanceSheetIntegrityView.RuleSummary(
+                    ruleID: ruleType.identity.id.rawValue,
+                    title: ruleType.identity.title,
+                    findings: openFindings.filter { $0.ruleID == ruleType.identity.id }
+                )
+            }
     }
 
     /// This app hasn't synced yet on first launch, so there's no
