@@ -74,6 +74,8 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case duplicatePayment
     /// `VL-RECON-MISSING-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (pages 4, 5).
     case statementLineMissingPosting
+    /// `VL-VENDOR-MISMATCH-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 3).
+    case vendorDescriptionMismatch
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
