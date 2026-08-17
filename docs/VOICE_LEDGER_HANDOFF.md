@@ -387,7 +387,7 @@ One bundle at month-end: P&L, balance sheet, cash-flow summary, MoM variance, ke
 
 **Tier 1 — Deterministic parsers** (CSV, OFX, QFX, Excel). No AI. Column mapping with confirm-and-correct, never a silent guess.
 
-**Tier 2 — Apple Vision on-device OCR** (PDFs, screenshots). Runs on the Neural Engine, understands document layout. Two properties make it the default: free, and **the document never leaves the Mac.** macOS 15+ `RecognizeDocumentsRequest` returns structured document data. **UNKNOWN: the owner's actual macOS version was never confirmed.** If macOS 14, Tier 2 falls back to `VNRecognizeTextRequest` plus our own bounding-box column clustering — noticeably worse on tables, and more Tier 3 escalations.
+**Tier 2 — Apple Vision on-device OCR** (PDFs, screenshots). Runs on the Neural Engine, understands document layout. Two properties make it the default: free, and **the document never leaves the Mac.** macOS 15+ `RecognizeDocumentsRequest` returns structured document data. **Checked 2026-08-17: this machine runs macOS 26.6.1** — comfortably above the 15+ floor, so `RecognizeDocumentsRequest` is safe here. Not an independent confirmation of every future deployment machine — see `OPEN_QUESTIONS.md` Q4's note on the limits of that. If a lower-OS machine turns up later, Tier 2 falls back to `VNRecognizeTextRequest` plus our own bounding-box column clustering — noticeably worse on tables, and more Tier 3 escalations.
 
 **Tier 3 — Claude vision, escalation only.** Sends the document **off-device**, so it requires explicit per-file consent with the UI saying so plainly. Claude's job is structuring what was read, not deciding what the numbers mean.
 
@@ -688,7 +688,7 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 
 ## Blocked on the owner
 - **Prototype repo URL** — `01_REPO_INVENTORY.md` still blocked. Still true; the three backlog strategy documents (`CLEANUP_MODE.md` etc.) were located and filed in this session, but they are not the prototype repo — a separate, still-missing item.
-- **macOS version** — determines Tier 2 OCR quality and whether the `VNRecognizeTextRequest` fallback is needed. Still unconfirmed as far as any repo artifact shows, though the Swift toolchain work this session implies at least macOS 15-class tooling is present (full Xcode installed, `swift test` passing) — that's evidence about the *development* machine, not necessarily a confirmed answer for the *target* minimum version question in `OPEN_QUESTIONS.md` Q4.
+- ~~**macOS version**~~ **Resolved for the development machine, 2026-08-17: macOS 26.6.1.** See `OPEN_QUESTIONS.md` Q4 — this is a real answer for the machine this project is built on, not an independently-confirmed answer for every future deployment target, which is a distinction worth preserving rather than collapsing into "solved."
 - ~~**Violet contrast fix** — whether `#A67CF5` was applied.~~ **Resolved 2026-08-17 — it wasn't, now it is.** See §12.
 
 ## Open technical questions

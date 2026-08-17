@@ -49,17 +49,23 @@ attribution.
 
 ---
 
-## Q4 — Minimum macOS version — **still open (needs the owner to check About This Mac)**
+## Q4 — Minimum macOS version — **the development machine is confirmed; the deployment target is not**
 
 **Target macOS 15+, provisionally confirmed** — the `RecognizeDocumentsRequest`
 gap is material (§9, Tier 2): worse table extraction means more Tier 3
 escalations, which means more client documents leaving the Mac, which is the
 wrong direction on the one privacy property the import path provides.
 
-Still needs the actual installed OS version checked (Apple menu → About This
-Mac) to confirm the target isn't ahead of the dev machine. If it turns out to be
-macOS 14, Tier 2 is designed with the `VNRecognizeTextRequest` + bounding-box
-clustering fallback from the start rather than assuming 15+ and retrofitting.
+**2026-08-17: checked directly (`sw_vers`) on the machine this project is being
+built on — macOS 26.6.1 (Tahoe), build 25G76.** Comfortably above the
+provisional 15+ floor, so the `RecognizeDocumentsRequest` path (not the
+`VNRecognizeTextRequest` fallback) is safe to build against **on this
+machine**. This resolves "is the dev machine ahead of the target" only in the
+reassuring direction — it doesn't independently confirm what any future
+production/client machine will run, since this session has no way to know
+that. If Voice Ledger is ever deployed to a machine other than this one before
+Tier 2 ships, re-check `About This Mac` there specifically rather than
+assuming this answer travels.
 
 ---
 
