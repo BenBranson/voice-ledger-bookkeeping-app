@@ -8,6 +8,20 @@ the two most limited by the API — and it proves the normalization contract (§
 holds across every source. If normalization only ever sees API data, we won't
 find out it's leaky until the first import.
 
+**Tier 1 (CSV) — IMPLEMENTED 2026-08-17**, `desktop/Sources/Integrations/Imports/`
+(`CSVParser.swift`, `BankStatementCSVImporter.swift`) plus the Core types this
+section specifies (`ImportedDocument`, `ColumnMapping`/`MappedField`/
+`MappingOrigin`, `NormalizationDefect`) — a new `QBOEntityKind
+.importedBankStatementLine` case lets an imported line normalize into the same
+`LedgerTransaction` shape the QBO API path produces (§9.8's contract, proven
+against a second real source for the first time). **Not built in this pass:**
+confirm-and-correct UI (§9.4 — callers must construct already-`confirmed`
+`ColumnMapping`s), cross-foot validation (§9.5 — needs a stated statement
+total/ending balance this importer doesn't yet accept as input), learned-mapping
+persistence (stage 6), Tier 2 (on-device Vision) and Tier 3 (Claude vision)
+entirely. 15 new tests (`Tests/IntegrationsImportsTests/`), all offline —
+deterministic CSV parsing needs no live sandbox.
+
 ---
 
 ## 9.1 Pipeline stages

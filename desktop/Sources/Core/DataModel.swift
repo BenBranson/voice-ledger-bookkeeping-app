@@ -17,6 +17,14 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     case invoice = "Invoice"
     /// Added for `VL-DUP-PAY-001`.
     case payment = "Payment"
+    /// Added for Universal Ingestion Tier 1 (docs/phase-0/09_INGESTION_PIPELINE.md).
+    /// Not a real QBO entity — a raw line from an imported bank/card
+    /// statement, before it's compared against posted QBO activity. Kept in
+    /// this enum anyway because `LedgerTransaction.entityKind` is typed
+    /// against it and §4.1/§9.8's whole point is that a rule can't tell an
+    /// API-sourced record from an imported one by shape — giving imports a
+    /// separate parallel enum would defeat that.
+    case importedBankStatementLine = "ImportedBankStatementLine"
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.6's closed enum — confirmed against the

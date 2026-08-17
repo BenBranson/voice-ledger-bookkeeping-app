@@ -134,6 +134,15 @@ let package = Package(
             name: "DesignSystemTests",
             dependencies: ["DesignSystem"],
             path: "Tests/DesignSystemTests"
+        ),
+
+        // Universal Ingestion Tier 1 (docs/phase-0/09_INGESTION_PIPELINE.md
+        // §9.3) — CSV parsing and bank-statement normalization, no network,
+        // no live sandbox.
+        .testTarget(
+            name: "IntegrationsImportsTests",
+            dependencies: ["IntegrationsImports", "Core"],
+            path: "Tests/IntegrationsImportsTests"
         )
     ]
 )
