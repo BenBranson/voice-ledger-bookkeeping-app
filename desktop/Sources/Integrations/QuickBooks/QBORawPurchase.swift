@@ -5,16 +5,28 @@ import Foundation
 /// item 6, `testPurchasesRead`) for `Id`, `TxnDate`, `TotalAmt`, `DocNumber`,
 /// `PrivateNote`, `AccountRef`, `EntityRef`.
 ///
-/// **`isVoided` detection is NOT verified against a live sandbox — flagged,
-/// not silently assumed.** `?operation=void` on `Purchase` is confirmed
-/// unsupported (docs/phase-0/11_VERTICAL_SLICE.md §11.1), so the only way a
-/// real Purchase becomes voided is a manual void in the QBO UI directly. This
-/// session never performed that manual UI action and re-read the result, so
-/// `QBORawPurchase.isVoidedHeuristic` below is a documented assumption about
-/// QBO's general behavior (TotalAmt zeroed, memo marked), not a sandbox-proven
-/// fact. `CLAUDE.md` rule 6 requires sandbox proof before this can be trusted
-/// in a shipped feature — see the new spike item this finding adds to
-/// `docs/phase-0/SPIKE_QUEUE.md`.
+/// **`isVoided` detection: the `TotalAmt == 0` heuristic was tried and
+/// DISPROVEN against the live sandbox, 2026-08-17.** A live `sync-check` run
+/// (`VoiceLedgerDevTool`) against the real sandbox surfaced Purchase `#146` —
+/// the `VL-SPIKE-ZERO` edge-case fixture (`backend/spike/seeds/edge-cases.json`),
+/// a **legitimate, never-voided** $0 Purchase created specifically to test
+/// that normalization "must not crash or duplicate-match on $0." The
+/// heuristic flagged it `isVoided: true` anyway — a real false positive on
+/// real data, not a hypothetical one. `TotalAmt == 0` conflates "voided" with
+/// "genuinely a zero-dollar transaction," which is not a safe distinction to
+/// guess at. Per `CLAUDE.md` rule 6 ("no feature labeled Automatic without
+/// sandbox proof" — the inverse also holds: a heuristic sandbox-DISPROVEN
+/// stays disproven, it doesn't get to keep running because it compiles),
+/// `isVoidedHeuristic` below is now hardcoded to `false` rather than left
+/// shipping a heuristic known to misfire. This means Branch B's `isVoided`
+/// exclusion (docs/phase-0/11_VERTICAL_SLICE.md §11.1) currently can never
+/// fire against real synced data — the resolution path is real in the rule
+/// engine (see `RuleEngineGatingTests`/`DuplicatePostedExpenseRuleTests`) but
+/// not yet reachable end-to-end against QBO until a real signal is found.
+/// `docs/phase-0/SPIKE_QUEUE.md` item 51 (`testManualVoidPurchaseAPIShape`)
+/// still needs to run — void Purchase #151 manually in the QBO UI, resync,
+/// and see what actually changes (a `PrivateNote` marker, if any, is the next
+/// candidate signal; `TotalAmt` alone is now known not to be one).
 public struct QBORawPurchase: Decodable, Sendable {
     public let id: String
     public let txnDate: String
@@ -34,12 +46,13 @@ public struct QBORawPurchase: Decodable, Sendable {
         case entityRef = "EntityRef"
     }
 
-    /// See the type-level doc comment. `TotalAmt == 0` is the proxy; it is
-    /// deliberately NOT wired into normalization as ground truth-strength
-    /// until a spike test confirms it (see `QBOSyncClient.normalizePurchases`'s
-    /// call site for how this is surfaced instead of silently trusted).
+    /// See the type-level doc comment: `TotalAmt == 0` was tried and
+    /// DISPROVEN against the live sandbox (false-positived on a legitimate
+    /// $0 fixture, Purchase #146). Hardcoded `false` until spike item 51
+    /// finds a real signal — this is an honest "we don't know," not a
+    /// silent regression to the old (wrong) heuristic under another name.
     public var isVoidedHeuristic: Bool {
-        totalAmt == 0
+        false
     }
 }
 

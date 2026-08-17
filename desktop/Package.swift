@@ -64,13 +64,15 @@ let package = Package(
         .target(name: "DesignSystem", dependencies: [], path: "Sources/DesignSystem",
                 exclude: ["README.md"]),
 
-        // CLI used ONLY to verify Phase 1 step 1.2's exit gate: a live health
-        // check reachable from something running on the desktop, with no
-        // secret embedded. This is NOT the Connection Page (that's step 1.3,
-        // not yet approved) — it is the smallest thing that can prove the gate.
+        // CLI used ONLY to verify gate conditions: Phase 1 step 1.2's health
+        // check, and (as of 2026-08-16) a live-sandbox sync-and-evaluate
+        // diagnostic for step 1.6's slice (docs/VOICE_LEDGER_HANDOFF.md §13's
+        // "no live end-to-end run happened" gap). This is NOT the Connection
+        // Page or the real app (that's VoiceLedgerApp) — it is the smallest
+        // thing that can prove a gate against real data, text-only, no UI.
         .executableTarget(
             name: "VoiceLedgerDevTool",
-            dependencies: ["IntegrationsQuickBooks"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "DB"],
             path: "Sources/VoiceLedgerDevTool"
         ),
 

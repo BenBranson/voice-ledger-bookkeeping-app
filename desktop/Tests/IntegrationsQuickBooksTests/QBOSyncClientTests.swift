@@ -5,9 +5,12 @@ import Core
 
 /// No network access — decodes synthetic JSON in the real shape confirmed
 /// against the live sandbox by Wave 1's `testPurchasesRead`
-/// (docs/phase-0/SPIKE_QUEUE.md item 6). What ISN'T verified here — flagged,
-/// not hidden — is the `isVoided` heuristic itself; see
-/// `QBORawPurchase.swift`'s doc comment.
+/// (docs/phase-0/SPIKE_QUEUE.md item 6). `isVoided` detection has no
+/// reliable signal yet — the `TotalAmt == 0` heuristic was tried and
+/// DISPROVEN against the live sandbox 2026-08-17 (false-positived on a
+/// legitimate $0 fixture, Purchase #146); see `QBORawPurchase.swift`'s
+/// doc comment. `isVoided` is hardcoded `false` until spike item 51 finds
+/// a real signal.
 @Suite("QBOSyncClient normalization")
 struct QBOSyncClientTests {
     @Test("Decodes a real-shaped Purchase query response and normalizes vendor/date/amount/account/docNumber")
@@ -45,16 +48,17 @@ struct QBOSyncClientTests {
         #expect(normalized.isVoided == false) // TotalAmt != 0
     }
 
-    @Test("A TotalAmt of 0 is treated as voided by the (unverified) heuristic — documented, not hidden")
-    func zeroTotalAmtHeuristic() throws {
+    @Test("A TotalAmt of 0 is NOT treated as voided — the heuristic that once did this was disproven on real data (Purchase #146, the legitimate $0 VL-SPIKE-ZERO fixture)")
+    func zeroTotalAmtIsNotAssumedVoided() throws {
         let json = """
         {
-          "Id": "151", "TxnDate": "2026-07-14", "TotalAmt": 0,
-          "AccountRef": { "value": "35" }, "EntityRef": { "value": "62", "name": "Permian Supply" }
+          "Id": "146", "TxnDate": "2026-07-01", "TotalAmt": 0,
+          "AccountRef": { "value": "35" }, "EntityRef": { "value": "62", "name": "Permian Supply" },
+          "PrivateNote": "VL-SPIKE-ZERO"
         }
         """
         let raw = try JSONDecoder().decode(QBORawPurchase.self, from: Data(json.utf8))
-        #expect(QBOSyncClient.normalize(raw).isVoided == true)
+        #expect(QBOSyncClient.normalize(raw).isVoided == false)
     }
 
     @Test("Preferences decoding reads VendorAndPurchasesPrefs.UseCustomTxnNumbers")

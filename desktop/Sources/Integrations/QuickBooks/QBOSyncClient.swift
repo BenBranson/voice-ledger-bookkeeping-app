@@ -79,15 +79,14 @@ public struct QBOSyncClient: Sendable {
             totalAmount: Money(minorUnits: Self.minorUnits(from: raw.totalAmt), currency: .usd),
             paymentAccountID: raw.accountRef?.value,
             docNumber: raw.docNumber,
-            // See QBORawPurchase's doc comment: this heuristic is NOT
-            // sandbox-verified. Using it here (rather than hardcoding
-            // `false`) is a deliberate choice to make Branch B's
-            // isVoided-exclusion resolution path (§11.1) exercisable at
-            // all — the alternative, hardcoding false, would make that
-            // path silently untestable against real synced data, which is
-            // worse. Both the assumption and the alternative considered are
-            // recorded here so a future reader doesn't mistake this for
-            // verified behavior.
+            // See QBORawPurchase's doc comment: TotalAmt==0 was tried as
+            // this signal and DISPROVEN against the live sandbox 2026-08-17
+            // (false-positived on the legitimate $0 VL-SPIKE-ZERO fixture).
+            // isVoidedHeuristic is now hardcoded false — Branch B's
+            // isVoided-exclusion resolution path (§11.1) is real in the rule
+            // engine but not yet reachable end-to-end against real synced
+            // QBO data. Spike item 51 needs a real signal before this can
+            // move past `false`.
             isVoided: raw.isVoidedHeuristic,
             memo: raw.privateNote,
             provenance: .qboAPI(readAt: Date())
