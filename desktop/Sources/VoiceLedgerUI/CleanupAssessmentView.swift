@@ -133,6 +133,14 @@ public struct CleanupAssessmentView: View {
                                     .font(VLTypography.body())
                                     .foregroundStyle(VLColor.textSecondary)
                                 Spacer()
+                                // Same "Staged"/"Manual QBO" pill FindingsListView's
+                                // row already shows — this page was the one gap
+                                // where a finding with an Apply Fix available
+                                // looked identical to one that needs the full
+                                // guided procedure.
+                                if let action = finding.proposedActions.first {
+                                    VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                                }
                                 Text(finding.dollarExposure.description)
                                     .font(VLTypography.tabularNumeric())
                                     .foregroundStyle(VLColor.textPrimary)

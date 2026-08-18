@@ -112,6 +112,9 @@ public struct BalanceSheetIntegrityView: View {
                                     .font(VLTypography.body())
                                     .foregroundStyle(VLColor.textSecondary)
                                 Spacer()
+                                if let action = finding.proposedActions.first {
+                                    VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                                }
                                 Text(finding.dollarExposure.description)
                                     .font(VLTypography.tabularNumeric())
                                     .foregroundStyle(VLColor.textPrimary)
