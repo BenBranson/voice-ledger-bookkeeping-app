@@ -13,35 +13,36 @@ struct RootView: View {
         NavigationStack {
             content
                 .toolbar {
-                    ToolbarItem(placement: .automatic) {
-                        Button("Connection") { state.screen = .connection }
+                    // docs/VOICE_LEDGER_SPEC.md's Firm Cockpit: "Wrong-Client
+                    // Protection — active company and period pinned to every
+                    // screen." Every other screen showed only the environment
+                    // badge (sandbox/production) — never the company name or
+                    // period at all, a real gap once more than one client
+                    // connection exists. Placed on the shared toolbar (not
+                    // each screen individually) so it's automatically on
+                    // every one of them, present tense, no exceptions.
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: VLSpacing.xs) {
+                            Text(state.companyInfo?.companyName ?? "No company connected")
+                                .font(.headline)
+                            Text("·")
+                                .foregroundStyle(.secondary)
+                            Text("\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))")
+                                .foregroundStyle(.secondary)
+                            VLEnvironmentBadge(state.environment == .production ? .production : .sandbox)
+                        }
                     }
-                    ToolbarItem(placement: .automatic) {
+                    ToolbarItemGroup(placement: .automatic) {
+                        Button("Connection") { state.screen = .connection }
                         Button("Sync") { Task { await state.syncAndEvaluate() } }
                             .disabled(state.loadState == .loading)
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Month-End Close") { state.screen = .monthEndClose }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Profit & Loss") { state.screen = .profitAndLossReport }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
-                    }
-                    ToolbarItem(placement: .automatic) {
                         Button("Close Package") { state.screen = .closePackage }
                     }
                 }
