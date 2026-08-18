@@ -111,6 +111,36 @@ struct ClientStoreTests {
         #expect(loaded[0].status == .dismissed)
     }
 
+    @Test("Client memory rules round-trip: add then load returns the same rule")
+    func clientMemoryRulesRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let rule = ClientMemoryRule(ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), vendorName: "VL Spike Amex", createdBy: "Benjamin Branson")
+        try await store.addClientMemoryRule(rule)
+        let loaded = try await store.loadClientMemoryRules()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].id == rule.id)
+        #expect(loaded[0].vendorName == "VL Spike Amex")
+    }
+
+    @Test("Adding two different client memory rules keeps both")
+    func addingMultipleRulesKeepsBoth() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.addClientMemoryRule(ClientMemoryRule(ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), vendorName: "VL Spike Amex", createdBy: "Test"))
+        try await store.addClientMemoryRule(ClientMemoryRule(ruleID: RuleID(rawValue: "VL-PAYROLL-LUMP-001"), vendorName: "VL Spike ADP", createdBy: "Test"))
+        let loaded = try await store.loadClientMemoryRules()
+        #expect(loaded.count == 2)
+    }
+
+    @Test("removeClientMemoryRule is the reverse of addClientMemoryRule")
+    func removeClientMemoryRuleReversesAdd() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let rule = ClientMemoryRule(ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), vendorName: "VL Spike Amex", createdBy: "Test")
+        try await store.addClientMemoryRule(rule)
+        try await store.removeClientMemoryRule(id: rule.id)
+        let loaded = try await store.loadClientMemoryRules()
+        #expect(loaded.isEmpty)
+    }
+
     @Test("Two realms never see each other's findings — isolation is a directory boundary, not a query filter")
     func realmIsolation() async throws {
         let root = tempRoot()

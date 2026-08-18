@@ -44,6 +44,7 @@ struct RootView: View {
                         Button("Profit & Loss") { state.screen = .profitAndLossReport }
                         Button("Activity Log") { state.screen = .activityLog }
                         Button("Close Package") { state.screen = .closePackage }
+                        Button("Client Memory") { state.screen = .clientMemory }
                     }
                 }
         }
@@ -105,9 +106,16 @@ struct RootView: View {
                     writeAccessEnabled: state.writeAccessEnabled == true,
                     isApplyingFix: state.isApplyingFix,
                     applyFixError: state.applyFixError,
+                    hasClientMemoryRule: finding.vendorName.map { vendorName in
+                        state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
+                    } ?? false,
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
                     onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
                     onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },
+                    onRememberVendor: {
+                        guard let vendorName = finding.vendorName else { return }
+                        Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil) }
+                    },
                     onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } }
                 )
             } else {
@@ -289,6 +297,18 @@ struct RootView: View {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
             }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .clientMemory:
+            ClientMemoryView(
+                environment: state.environment == .production ? .production : .sandbox,
+                rules: state.clientMemoryRules,
+                onForget: { rule in Task { await state.removeClientMemoryRule(id: rule.id, actorName: actorName) } }
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }

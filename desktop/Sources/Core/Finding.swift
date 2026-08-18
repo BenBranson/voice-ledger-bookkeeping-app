@@ -167,6 +167,14 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
     public let proposedActions: [ProposedAction]
     public let provenance: [Provenance]
     public var status: FindingStatus
+    /// The vendor/payee this finding is about, when the rule that produced
+    /// it clearly has one — additive (`Codable` default via the init's
+    /// default value, same pattern as `LedgerTransaction.lines`/`syncToken`
+    /// earlier this project) so every existing rule's `Finding(...)` call
+    /// needed zero changes. Feeds `ClientMemoryRule` matching — a rule with
+    /// no single clear vendor (e.g. a Balance Sheet check) leaves this
+    /// `nil`, and `ClientMemoryRule` correctly never matches a `nil`.
+    public let vendorName: String?
 
     public init(
         id: String,
@@ -181,7 +189,8 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         evidence: [EvidenceItem],
         proposedActions: [ProposedAction],
         provenance: [Provenance],
-        status: FindingStatus = .open
+        status: FindingStatus = .open,
+        vendorName: String? = nil
     ) {
         self.id = id
         self.ruleID = ruleID
@@ -196,6 +205,7 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         self.proposedActions = proposedActions
         self.provenance = provenance
         self.status = status
+        self.vendorName = vendorName
     }
 }
 

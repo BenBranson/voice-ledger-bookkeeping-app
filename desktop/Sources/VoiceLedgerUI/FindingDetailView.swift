@@ -15,32 +15,39 @@ public struct FindingDetailView: View {
     private let writeAccessEnabled: Bool
     private let isApplyingFix: Bool
     private let applyFixError: String?
+    private let hasClientMemoryRule: Bool
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
     private let onSendClientQuestion: (String) -> Void
+    private let onRememberVendor: () -> Void
     private let onDismiss: () -> Void
 
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
     @State private var draftedQuestionText = ""
+    @State private var isConfirmingRememberVendor = false
 
     public init(
         finding: Finding,
         writeAccessEnabled: Bool,
         isApplyingFix: Bool,
         applyFixError: String?,
+        hasClientMemoryRule: Bool = false,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
         onSendClientQuestion: @escaping (String) -> Void,
+        onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void
     ) {
         self.finding = finding
         self.writeAccessEnabled = writeAccessEnabled
         self.isApplyingFix = isApplyingFix
         self.applyFixError = applyFixError
+        self.hasClientMemoryRule = hasClientMemoryRule
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
         self.onSendClientQuestion = onSendClientQuestion
+        self.onRememberVendor = onRememberVendor
         self.onDismiss = onDismiss
     }
 
@@ -56,10 +63,51 @@ public struct FindingDetailView: View {
                     actionSection(action)
                 }
                 clientQuestionSection
+                if let vendorName = finding.vendorName {
+                    clientMemorySection(vendorName)
+                }
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Memory, With
+    /// Approval" — see `ClientMemoryRule`'s doc comment for the full scope
+    /// and its deliberate conservatism (exact vendor match, scoped to one
+    /// rule, never bundled into Dismiss). This button only appears when the
+    /// finding has a clear vendor and no rule already covers it.
+    private func clientMemorySection(_ vendorName: String) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("CLIENT MEMORY")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+
+                if hasClientMemoryRule {
+                    Text("Findings like this for \(vendorName) are automatically dismissed per an existing client memory rule.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                } else if isConfirmingRememberVendor {
+                    Text("Every future \(finding.ruleID.rawValue) finding for \(vendorName) will be automatically dismissed, not just this one. You can remove this later.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                    HStack(spacing: VLSpacing.sm) {
+                        Button("Confirm — Always Dismiss for \(vendorName)") {
+                            onRememberVendor()
+                            isConfirmingRememberVendor = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Cancel") { isConfirmingRememberVendor = false }
+                            .buttonStyle(.bordered)
+                    }
+                } else {
+                    Button("Always Dismiss for \(vendorName)") { isConfirmingRememberVendor = true }
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
     }
 
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Question Builder" —

@@ -100,7 +100,8 @@ public enum PayrollLumpSumRule: Rule {
                 dollarExposure: purchase.totalAmount,
                 evidence: [EvidenceItem(transactionID: purchase.id, highlightedFields: ["vendor", "lineAccount"])],
                 proposedActions: [action],
-                provenance: [purchase.provenance]
+                provenance: [purchase.provenance],
+                vendorName: vendor
             ))
         }
 

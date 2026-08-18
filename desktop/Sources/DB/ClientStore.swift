@@ -35,6 +35,7 @@ public actor ClientStore {
     private var importedStatementLinesURL: URL { directory.appending(path: "imported-statement-lines.json") }
     private var checklistCompletionsURL: URL { directory.appending(path: "checklist-completions.json") }
     private var mappingHintsURL: URL { directory.appending(path: "mapping-hints.json") }
+    private var clientMemoryRulesURL: URL { directory.appending(path: "client-memory-rules.json") }
 
     // MARK: - Findings
 
@@ -161,6 +162,27 @@ public actor ClientStore {
         existing.removeAll { $0.id == id }
         existing.append(MappingHint(id: id, headers: headers, fields: fields, timesUsed: timesUsed, lastUsedAt: Date()))
         try save(existing, to: mappingHintsURL)
+    }
+
+    // MARK: - Client memory rules
+
+    public func loadClientMemoryRules() throws -> [ClientMemoryRule] {
+        try load([ClientMemoryRule].self, from: clientMemoryRulesURL, default: [])
+    }
+
+    public func addClientMemoryRule(_ rule: ClientMemoryRule) throws {
+        var existing = try loadClientMemoryRules()
+        existing.append(rule)
+        try save(existing, to: clientMemoryRulesURL)
+    }
+
+    /// The reversal for `addClientMemoryRule` — "with approval" cuts both
+    /// ways; a client memory rule the human no longer wants must be just as
+    /// easy to remove as it was to create.
+    public func removeClientMemoryRule(id: String) throws {
+        var existing = try loadClientMemoryRules()
+        existing.removeAll { $0.id == id }
+        try save(existing, to: clientMemoryRulesURL)
     }
 
     // MARK: - Activity log

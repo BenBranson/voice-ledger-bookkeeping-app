@@ -101,7 +101,8 @@ public enum UncategorizedTransactionRule: Rule {
                 dollarExposure: txn.totalAmount,
                 evidence: [EvidenceItem(transactionID: txn.id, highlightedFields: ["lineAccount"])],
                 proposedActions: [action],
-                provenance: [txn.provenance]
+                provenance: [txn.provenance],
+                vendorName: txn.vendorName
             ))
         }
 

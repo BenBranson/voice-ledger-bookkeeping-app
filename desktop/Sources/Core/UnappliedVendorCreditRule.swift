@@ -96,7 +96,8 @@ public enum UnappliedVendorCreditRule: Rule {
                 dollarExposure: credit.balance,
                 evidence: [EvidenceItem(transactionID: credit.id, highlightedFields: ["balance", "txnDate"])],
                 proposedActions: [action],
-                provenance: [credit.provenance]
+                provenance: [credit.provenance],
+                vendorName: vendorName
             ))
         }
 

@@ -26,6 +26,7 @@ public final class AppState {
         case balanceSheetReport
         case profitAndLossReport
         case closePackage
+        case clientMemory
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -109,6 +110,10 @@ public final class AppState {
     /// `.fileImporter` completion) reads this in-memory cache rather than
     /// hitting the store itself, since it has no `async` context to do so.
     public private(set) var mappingHints: [MappingHint] = []
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Memory, With
+    /// Approval" — loaded at launch and refreshed after every mutation,
+    /// same caching reason as `mappingHints`.
+    public private(set) var clientMemoryRules: [ClientMemoryRule] = []
 
     // Month-End Close checklist (Page 11) state.
     public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
@@ -151,6 +156,7 @@ public final class AppState {
             activityLog = try await store.loadActivityLog()
             checklistCompletions = try await store.loadChecklistCompletions()
             mappingHints = try await store.loadMappingHints()
+            clientMemoryRules = try await store.loadClientMemoryRules()
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -285,6 +291,30 @@ public final class AppState {
             }
             for (ruleID, currentIDs) in currentRunIDsByRule {
                 try await store.reconcileAgainstLatestRun(currentRunFindingIDs: currentIDs, ruleID: ruleID)
+            }
+
+            // Client Memory: an open finding matching an existing
+            // ClientMemoryRule is auto-dismissed right here, on every sync —
+            // this is what makes "always dismiss future Odessa Water
+            // transactions" actually apply to FUTURE occurrences, not just
+            // the one that existed when the rule was created. Never silent:
+            // each one gets its own Activity Log entry naming the rule.
+            let memoryRules = try await store.loadClientMemoryRules()
+            if !memoryRules.isEmpty {
+                let openFindings = try await store.loadFindings().filter { $0.status == .open }
+                for finding in openFindings {
+                    guard let matchedRule = memoryRules.first(where: { $0.matches(ruleID: finding.ruleID, findingVendorName: finding.vendorName) }) else { continue }
+                    try await store.dismissFinding(id: finding.id)
+                    try await store.appendActivityLogEntry(ActivityLogEntry(
+                        realmID: realmID,
+                        actor: .system,
+                        kind: .findingAutoDismissedByClientMemory,
+                        findingID: finding.id,
+                        ruleID: finding.ruleID,
+                        ruleVersion: finding.ruleVersion,
+                        note: "Matched client memory rule for \(matchedRule.vendorName) (created by \(matchedRule.createdBy))"
+                    ))
+                }
             }
 
             findings = try await store.loadFindings()
@@ -436,6 +466,68 @@ public final class AppState {
             loadState = .failed("\(error)")
         }
         screen = .list
+    }
+
+    /// The explicit "Remember this vendor" action — deliberately separate
+    /// from `dismissFinding`, never a checkbox bundled into it, per spec's
+    /// "never silently." Also retroactively dismisses every currently-open
+    /// finding that already matches (so the finding that prompted this
+    /// doesn't linger open until the next sync), each logged the same way
+    /// `syncAndEvaluate`'s per-sync auto-dismissal is.
+    public func createClientMemoryRule(ruleID: RuleID, vendorName: String, actorName: String, note: String?) async {
+        let rule = ClientMemoryRule(ruleID: ruleID, vendorName: vendorName, createdBy: actorName, note: note)
+        do {
+            try await store.addClientMemoryRule(rule)
+            try await store.appendActivityLogEntry(ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: .clientMemoryRuleCreated,
+                ruleID: ruleID,
+                note: "Always dismiss \(ruleID.rawValue) findings for \(vendorName)" + (note.map { " — \($0)" } ?? "")
+            ))
+
+            let matchingOpenFindings = try await store.loadFindings().filter { $0.status == .open && rule.matches(ruleID: $0.ruleID, findingVendorName: $0.vendorName) }
+            for finding in matchingOpenFindings {
+                try await store.dismissFinding(id: finding.id)
+                try await store.appendActivityLogEntry(ActivityLogEntry(
+                    realmID: realmID,
+                    actor: .system,
+                    kind: .findingAutoDismissedByClientMemory,
+                    findingID: finding.id,
+                    ruleID: finding.ruleID,
+                    ruleVersion: finding.ruleVersion,
+                    note: "Matched client memory rule for \(vendorName) (created by \(actorName))"
+                ))
+            }
+
+            clientMemoryRules = try await store.loadClientMemoryRules()
+            findings = try await store.loadFindings()
+            activityLog = try await store.loadActivityLog()
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// The reversal for `createClientMemoryRule`. Does NOT retroactively
+    /// un-dismiss findings that were already auto-dismissed by it — same
+    /// one-way posture `ClientStore.dismissFinding` already has, documented
+    /// there as a real, acknowledged gap rather than an oversight.
+    public func removeClientMemoryRule(id: String, actorName: String) async {
+        guard let rule = clientMemoryRules.first(where: { $0.id == id }) else { return }
+        do {
+            try await store.removeClientMemoryRule(id: id)
+            try await store.appendActivityLogEntry(ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: .clientMemoryRuleRemoved,
+                ruleID: rule.ruleID,
+                note: "No longer always dismissing \(rule.ruleID.rawValue) findings for \(rule.vendorName)"
+            ))
+            clientMemoryRules = try await store.loadClientMemoryRules()
+            activityLog = try await store.loadActivityLog()
+        } catch {
+            loadState = .failed("\(error)")
+        }
     }
 
     /// CLAUDE.md-adjacent honesty fix: every "Dismiss" button in the app

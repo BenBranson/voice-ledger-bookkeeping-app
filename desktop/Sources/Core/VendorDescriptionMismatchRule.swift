@@ -123,7 +123,8 @@ public enum VendorDescriptionMismatchRule: Rule {
                     EvidenceItem(transactionID: match.id, highlightedFields: ["vendor"])
                 ],
                 proposedActions: [action],
-                provenance: [line.provenance, match.provenance]
+                provenance: [line.provenance, match.provenance],
+                vendorName: postedVendor
             ))
         }
 

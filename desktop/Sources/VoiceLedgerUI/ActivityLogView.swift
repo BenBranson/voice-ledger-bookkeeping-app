@@ -75,6 +75,9 @@ private struct EntryRow: View {
         case .apiWriteApplied: return "API write applied"
         case .clientQuestionDrafted: return "Client question sent"
         case .findingDismissed: return "Finding dismissed"
+        case .clientMemoryRuleCreated: return "Client memory rule created"
+        case .clientMemoryRuleRemoved: return "Client memory rule removed"
+        case .findingAutoDismissedByClientMemory: return "Auto-dismissed (client memory)"
         }
     }
 

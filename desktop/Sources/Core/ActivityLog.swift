@@ -28,6 +28,17 @@ public enum ActivityKind: String, Codable, Sendable {
     /// `findingResolved` (the underlying problem is actually fixed). The
     /// `note` field carries the reason, when one was given.
     case findingDismissed
+    /// A `ClientMemoryRule` was created — an explicit, separate action, per
+    /// spec's "never silently." The `note` field carries the rule's vendor
+    /// name and covered ruleID for a readable log entry.
+    case clientMemoryRuleCreated
+    /// A `ClientMemoryRule` was removed — the reversal path.
+    case clientMemoryRuleRemoved
+    /// A finding was auto-dismissed because it matched an existing
+    /// `ClientMemoryRule` — distinct from a human dismissing one finding at
+    /// a time (`findingDismissed`), so the Activity Log can tell the two
+    /// apart. Never silent: this entry IS the record that it happened.
+    case findingAutoDismissedByClientMemory
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never
