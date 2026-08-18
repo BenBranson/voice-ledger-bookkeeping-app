@@ -19,4 +19,27 @@ public enum NormalizationDefect: Hashable, Sendable {
     /// A required field (`date` or `amount`) has no `ColumnMapping` at all.
     case requiredFieldUnmapped(target: MappedField)
     case emptyFile
+
+    /// The confirm screens previously interpolated `NormalizationDefect`
+    /// directly into an error string (`"\(result.defects)"`), which prints
+    /// Swift's default enum description (`ambiguousDateFormat(column: "Date",
+    /// sampleValues: [...])`) — technically informative, not something a
+    /// bookkeeper should have to read. A real, human-readable message per
+    /// case instead.
+    public var humanDescription: String {
+        switch self {
+        case .ambiguousDateFormat(let column, let sampleValues):
+            return "Column \"\(column)\" has an ambiguous date format (could be MM/DD or DD/MM) — sample values: \(sampleValues.joined(separator: ", "))"
+        case .unparsableDate(let row, let column, let value):
+            return "Row \(row + 1): could not parse \"\(value)\" in column \"\(column)\" as a date"
+        case .unparsableAmount(let row, let column, let value):
+            return "Row \(row + 1): could not parse \"\(value)\" in column \"\(column)\" as an amount"
+        case .requiredMappingUnconfirmed(let target):
+            return "The \(target) column mapping was not confirmed"
+        case .requiredFieldUnmapped(let target):
+            return "No column was mapped to \(target) — it's required"
+        case .emptyFile:
+            return "The file is empty"
+        }
+    }
 }

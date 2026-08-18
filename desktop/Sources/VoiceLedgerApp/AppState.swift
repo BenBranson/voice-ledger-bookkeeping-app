@@ -391,7 +391,7 @@ public final class AppState {
             statementAccountID: statementAccountID
         )
         guard result.defects.isEmpty else {
-            importError = "Import produced \(result.defects.count) issue(s): \(result.defects)"
+            importError = "Import produced \(result.defects.count) issue(s): " + result.defects.map(\.humanDescription).joined(separator: "; ")
             return
         }
         do {
@@ -427,7 +427,7 @@ public final class AppState {
             statementAccountID: statementAccountID
         )
         guard result.defects.isEmpty else {
-            importError = "Import produced \(result.defects.count) issue(s): \(result.defects)"
+            importError = "Import produced \(result.defects.count) issue(s): " + result.defects.map(\.humanDescription).joined(separator: "; ")
             return
         }
         do {

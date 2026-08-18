@@ -747,6 +747,10 @@ Spec: "Client Memory, With Approval — learns categories and patterns, but neve
 
 7 new tests (4 `ClientMemoryRule`, 3 `ClientStore`). 226/226 desktop tests passing.
 
+## Small polish: import error messages were raw Swift enum dumps
+
+`AppState.confirmCSVImport`/`confirmOFXImport` built the error banner via `"\(result.defects)"` — Swift's default `CustomStringConvertible` for an enum with associated values, e.g. `ambiguousDateFormat(column: "Date", sampleValues: ["03/04/2026"])`, shown directly to whoever is importing a statement. `NormalizationDefect.humanDescription` (new, 2 tests) gives each of the 6 cases a real sentence instead ("Column \"Date\" has an ambiguous date format (could be MM/DD or DD/MM) — sample values: ..."). The devtool's own CLI error output was deliberately left as the raw dump — a developer debugging CSV parsing wants the exact enum shape, not a friendlier sentence. 228/228 desktop tests passing.
+
 ## NOT STARTED
 
 **Corrected 2026-08-18 — this list went stale within the same night on two points, same as §19's own warning about handoff docs describes:** Universal Ingestion's "cross-foot validation + learned-mapping persistence" is no longer accurate as a single unbuilt unit — learned-mapping persistence (§9.6 stage 6, CSV only) IS built, cross-foot validation itself is still not (OFX's stated ending balance is extracted and shown, informational only — see above). "Reporting and Close Package" is also no longer accurate as fully unbuilt — Balance Sheet, P&L, and now a real (partial) Close Package page all exist; what's still missing from reporting is cash flow, general ledger, trial balance, and aging reports specifically, plus a branded/exportable document format.
