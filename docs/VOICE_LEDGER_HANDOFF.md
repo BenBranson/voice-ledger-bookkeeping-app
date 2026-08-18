@@ -725,6 +725,10 @@ Spec's Firm Cockpit: "Training Mode — every flag answers 'why was this flagged
 
 **A pattern worth naming, now that it's found three of these in one night**: a value that's computed once by every rule (`accountingPrinciple`, `reversal`) or a mechanism every rule already checks (`dismissedFindingIDs`) is not evidence it's reaching the user — only grepping the actual UI/AppState call sites proves that. Worth a deliberate pass over `Finding`/`ProposedAction`/`RuleIdentity`'s remaining fields (`provenance`, `evidence.highlightedFields` — already confirmed wired) next time this kind of audit is warranted, rather than assuming the rest are fine because these three weren't.
 
+## Fourth fix, same pass: FindingDetailView's "Source:" line was hardcoded, not derived from real data
+
+`FindingDetailView`'s header literally hardcoded `Text("Source: QBO API")` — wrong for `VL-RECON-MISSING-001`/`VL-VENDOR-MISMATCH-001`, whose evidence includes an imported statement line, not only QBO-read data. Now derived from `finding.provenance` (`.qboAPI`/`.importedFile`, deduplicated and joined) instead of a fixed string. 212/212 desktop tests passing.
+
 ## NOT STARTED
 
 **Corrected 2026-08-18 — this list went stale within the same night on two points, same as §19's own warning about handoff docs describes:** Universal Ingestion's "cross-foot validation + learned-mapping persistence" is no longer accurate as a single unbuilt unit — learned-mapping persistence (§9.6 stage 6, CSV only) IS built, cross-foot validation itself is still not (OFX's stated ending balance is extracted and shown, informational only — see above). "Reporting and Close Package" is also no longer accurate as fully unbuilt — Balance Sheet, P&L, and now a real (partial) Close Package page all exist; what's still missing from reporting is cash flow, general ledger, trial balance, and aging reports specifically, plus a branded/exportable document format.

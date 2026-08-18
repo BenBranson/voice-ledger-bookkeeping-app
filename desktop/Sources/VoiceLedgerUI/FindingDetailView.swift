@@ -119,7 +119,7 @@ public struct FindingDetailView: View {
                 Text("·")
                 Text("Detection: automatic")
                 Text("·")
-                Text("Source: QBO API")
+                Text("Source: \(sourceLabel)")
             }
             .font(VLTypography.caption())
             .foregroundStyle(VLColor.textMuted)
@@ -134,6 +134,21 @@ public struct FindingDetailView: View {
     /// .accountingPrinciple`, plain English, written once per rule) that
     /// had zero UI call sites until now — found by the same read-the-real-
     /// call-sites check that caught the Dismiss and reversal gaps.
+    /// Was hardcoded to `"QBO API"` — wrong for `VL-RECON-MISSING-001`/
+    /// `VL-VENDOR-MISMATCH-001`, whose evidence includes an imported
+    /// statement line, not just QBO-read data. Derived from the finding's
+    /// real `provenance` instead, same fix pattern as the other three gaps
+    /// found tonight (a real value existed, the UI just wasn't using it).
+    private var sourceLabel: String {
+        let sources = Set(finding.provenance.map { provenance -> String in
+            switch provenance {
+            case .qboAPI: return "QBO API"
+            case .importedFile: return "Imported file"
+            }
+        })
+        return sources.isEmpty ? "Unknown" : sources.sorted().joined(separator: " + ")
+    }
+
     private var accountingPrinciple: String? {
         RuleRegistry.all.first { $0.identity.id == finding.ruleID }?.identity.accountingPrinciple
     }
