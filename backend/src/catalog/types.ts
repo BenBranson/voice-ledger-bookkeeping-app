@@ -26,7 +26,8 @@ export type OperationName =
   | "readDeposits"
   | "readVendorCredits"
   | "readReport"
-  | "cdcSince";
+  | "cdcSince"
+  | "updatePurchaseLineAccount";
 
 /**
  * Whether an operation is classified read or write matters structurally:

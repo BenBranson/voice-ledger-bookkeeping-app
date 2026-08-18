@@ -3,8 +3,10 @@
  * docs/phase-0/03_SECURITY_THREAT_MODEL.md §3.3 lists everything this
  * process is responsible for; nothing outside that list belongs here.
  *
- * Phase 1 step 1.2 scope: OAuth, session, the fixed operation catalog,
- * READ operations only. See catalog/operations.ts's assertReadOnlyCatalog().
+ * Phase 1 step 1.2 scope: OAuth, session, the fixed operation catalog. As
+ * of 2026-08-17 the catalog has exactly one write-classified operation
+ * (`updatePurchaseLineAccount`, spike-verified and owner-approved) — see
+ * catalog/operations.ts's `assertCatalogWriteOpsAreApproved()`.
  */
 
 import "dotenv/config"; // local dev convenience only — loads .env if present; on Render, real env vars are set directly and this is a silent no-op
@@ -20,11 +22,11 @@ import { RateLimiter, rateLimitByRealm } from "./middleware/rateLimiter.js";
 import { healthRoutes, livenessRoute } from "./routes/health.js";
 import { oauthRoutes } from "./routes/oauth.js";
 import { operationsRoutes } from "./routes/operations.js";
-import { assertReadOnlyCatalog } from "./catalog/operations.js";
+import { assertCatalogWriteOpsAreApproved } from "./catalog/operations.js";
 import { logEvent } from "./logging/logger.js";
 
 function main(): void {
-  assertReadOnlyCatalog();
+  assertCatalogWriteOpsAreApproved();
 
   let appConfig;
   let qboCredentials;

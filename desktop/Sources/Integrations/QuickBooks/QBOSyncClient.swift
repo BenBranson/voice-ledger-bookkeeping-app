@@ -131,6 +131,46 @@ public struct QBOSyncClient: Sendable {
         return Self.flatten(decoded.rows, depth: 0)
     }
 
+    public struct UpdatePurchaseLineAccountParams: Encodable, Sendable {
+        public let purchaseId: String
+        public let lineId: String
+        public let expectedSyncToken: String
+        public let newAccountId: String
+        public init(purchaseId: String, lineId: String, expectedSyncToken: String, newAccountId: String) {
+            self.purchaseId = purchaseId
+            self.lineId = lineId
+            self.expectedSyncToken = expectedSyncToken
+            self.newAccountId = newAccountId
+        }
+    }
+
+    /// Voice Ledger's first QBO write. Refused by the backend (HTTP 403)
+    /// for any realm not in Write-Enabled mode — this call does not check
+    /// that itself first, since the backend's check is the authoritative
+    /// one (§10.4) and a client-side pre-check would just be a second,
+    /// spoofable copy of the same gate. Callers should still show a clear
+    /// error if this throws rather than a generic failure — a 403 here
+    /// specifically means "write access is off," not "something broke."
+    public func reclassifyPurchaseLine(
+        realmID: RealmID,
+        purchaseID: String,
+        lineID: String,
+        expectedSyncToken: String,
+        newAccountID: String
+    ) async throws -> WriteVerificationResult {
+        let data = try await backend.call(
+            .updatePurchaseLineAccount,
+            realmID: realmID,
+            params: UpdatePurchaseLineAccountParams(
+                purchaseId: purchaseID,
+                lineId: lineID,
+                expectedSyncToken: expectedSyncToken,
+                newAccountId: newAccountID
+            )
+        )
+        return try JSONDecoder().decode(WriteVerificationResult.self, from: data)
+    }
+
     /// A section row (`Header`/`Rows`/optional `Summary`) and a leaf data
     /// row (`ColData` + `type == "Data"`) are distinguished by which
     /// optional fields are present — see `QBORawReportRow`'s doc comment.

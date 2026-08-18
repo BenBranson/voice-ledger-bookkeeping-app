@@ -62,10 +62,7 @@ export class QBOClient {
 
   /**
    * Performs a GET against the QBO Accounting API for a given realm, with
-   * the pinned minor version attached. This is intentionally the ONLY verb
-   * exposed in Phase 1 step 1.2 — no write method exists on this class yet.
-   * Per the owner's Phase 1 approval: "No write operation enters the
-   * catalog until its spike test has passed."
+   * the pinned minor version attached.
    */
   async get(realmId: string, path: string, searchParams: Record<string, string> = {}): Promise<unknown> {
     const token = await this.accessToken(realmId);
@@ -83,6 +80,52 @@ export class QBOClient {
         Authorization: `Bearer ${token}`,
         Accept: "application/json"
       }
+    });
+    const latencyMs = Date.now() - startedAt;
+
+    if (response.status === 429) {
+      logEvent("rate_limited", { realmId, httpStatus: 429, latencyMs });
+      throw new QBOApiError("QBO rate limit hit", 429, realmId);
+    }
+
+    if (!response.ok) {
+      logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs });
+      throw new QBOApiError(`QBO returned HTTP ${response.status} for ${path}`, response.status, realmId);
+    }
+
+    logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion });
+    return response.json();
+  }
+
+  /**
+   * Performs a POST against the QBO Accounting API for a given realm.
+   * Added 2026-08-17, once the first write-classified catalog operation's
+   * capability spike passed (full-entity Purchase-line reclassification,
+   * round-trip verified live — no data loss across DocNumber, PrivateNote,
+   * or untouched lines) and the owner explicitly approved crossing this
+   * threshold. Callers of `.post()` — i.e. write-classified operations in
+   * `catalog/operations.ts` — are responsible for their own round-trip
+   * verification; this method itself does not know what "correct" looks
+   * like for any given entity, only how to make the request safely.
+   */
+  async post(realmId: string, path: string, body: unknown, searchParams: Record<string, string> = {}): Promise<unknown> {
+    const token = await this.accessToken(realmId);
+    const base = resolveApiBaseUrl(this.credentials.environment);
+    const url = new URL(`${base}/v3/company/${encodeURIComponent(realmId)}/${path}`);
+    url.searchParams.set("minorversion", String(this.credentials.minorVersion));
+    for (const [key, value] of Object.entries(searchParams)) {
+      url.searchParams.set(key, value);
+    }
+
+    const startedAt = Date.now();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
     });
     const latencyMs = Date.now() - startedAt;
 

@@ -40,4 +40,17 @@ public enum CatalogOperation: String, Sendable, CaseIterable {
     case readVendorCredits
     case readReport
     case cdcSince
+    /// Added 2026-08-17/18 — Voice Ledger's FIRST write-classified
+    /// operation, mirroring the backend's `updatePurchaseLineAccount`.
+    /// Added only after its capability spike passed (full-entity
+    /// Purchase-line reclassification, round-trip verified live) and the
+    /// owner explicitly approved crossing the Phase 1 (read-only) -> Phase
+    /// 2 (writes) threshold. Refused by the backend for any realm not in
+    /// Write-Enabled mode (`ConnectionView`'s toggle) — `CatalogOperation`
+    /// itself carries no read/write classification on the desktop side
+    /// (that lives in the backend's `operationClass`); the access-mode
+    /// gate is enforced server-side, not client-side, per
+    /// docs/phase-0/10_STAGING_APPROVAL_AUDIT.md §10.4's "the authoritative
+    /// flag lives in the backend" rule.
+    case updatePurchaseLineAccount
 }
