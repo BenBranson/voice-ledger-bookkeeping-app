@@ -73,6 +73,7 @@ private struct EntryRow: View {
         case .manualCompletionAttested: return "Manual completion attested"
         case .findingResolved: return "Finding resolved"
         case .apiWriteApplied: return "API write applied"
+        case .clientQuestionDrafted: return "Client question sent"
         }
     }
 

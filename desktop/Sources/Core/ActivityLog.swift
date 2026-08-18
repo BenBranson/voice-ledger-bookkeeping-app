@@ -19,6 +19,11 @@ public enum ActivityKind: String, Codable, Sendable {
     /// Unlike `manualCompletionAttested`, this IS QBO-confirmed — the `note`
     /// field carries the verification summary, not just a human's say-so.
     case apiWriteApplied
+    /// A client question was drafted (`ClientQuestionDrafter`) and the human
+    /// recorded it as sent — the `note` field carries the actual question
+    /// text. This records that a question was asked, not an answer; see
+    /// `ClientQuestionDrafter`'s doc comment for what's not built yet.
+    case clientQuestionDrafted
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never

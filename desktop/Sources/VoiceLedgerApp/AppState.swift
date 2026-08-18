@@ -432,6 +432,29 @@ public final class AppState {
         screen = .list
     }
 
+    /// Records that a `ClientQuestionDrafter`-drafted question was sent —
+    /// Voice Ledger never sends it itself (no email/messaging integration
+    /// exists), this only logs the human's own action, same "recorded, not
+    /// verified by the app" posture as `attestCompletion`.
+    public func recordClientQuestionSent(findingID: String, actorName: String, questionText: String) async {
+        guard let finding = finding(id: findingID) else { return }
+        let entry = ActivityLogEntry(
+            realmID: realmID,
+            actor: .user(actorName),
+            kind: .clientQuestionDrafted,
+            findingID: findingID,
+            ruleID: finding.ruleID,
+            ruleVersion: finding.ruleVersion,
+            note: questionText
+        )
+        do {
+            try await store.appendActivityLogEntry(entry)
+            activityLog = try await store.loadActivityLog()
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
     /// CLAUDE.md rule 2's "push" step for `.stagedAPI` actions — the only
     /// write path in the app. The caller (the view) is responsible for the
     /// "review" step: showing before/after and requiring an explicit tap,

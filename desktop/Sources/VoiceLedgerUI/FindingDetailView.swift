@@ -17,9 +17,12 @@ public struct FindingDetailView: View {
     private let applyFixError: String?
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
+    private let onSendClientQuestion: (String) -> Void
     private let onDismiss: () -> Void
 
     @State private var isConfirmingApplyFix = false
+    @State private var isDraftingClientQuestion = false
+    @State private var draftedQuestionText = ""
 
     public init(
         finding: Finding,
@@ -28,6 +31,7 @@ public struct FindingDetailView: View {
         applyFixError: String?,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
+        onSendClientQuestion: @escaping (String) -> Void,
         onDismiss: @escaping () -> Void
     ) {
         self.finding = finding
@@ -36,6 +40,7 @@ public struct FindingDetailView: View {
         self.applyFixError = applyFixError
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
+        self.onSendClientQuestion = onSendClientQuestion
         self.onDismiss = onDismiss
     }
 
@@ -47,10 +52,54 @@ public struct FindingDetailView: View {
                 if let action = finding.proposedActions.first {
                     actionSection(action)
                 }
+                clientQuestionSection
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Question Builder" —
+    /// see `ClientQuestionDrafter`'s doc comment for exactly what this is
+    /// and isn't (a template-generated starting draft, always shown
+    /// editable before anything is recorded as sent; no answer-tracking).
+    private var clientQuestionSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("CLIENT QUESTION")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+
+                if isDraftingClientQuestion {
+                    Text("A starting draft — edit freely before sending. Voice Ledger does not send this itself; \"Mark as Sent\" only records that you did.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                    TextEditor(text: $draftedQuestionText)
+                        .font(VLTypography.body())
+                        .frame(minHeight: 160)
+                        .padding(VLSpacing.xs)
+                        .background(VLColor.background)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+                    HStack(spacing: VLSpacing.sm) {
+                        Button("Mark as Sent") {
+                            onSendClientQuestion(draftedQuestionText)
+                            isDraftingClientQuestion = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(draftedQuestionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Button("Cancel") { isDraftingClientQuestion = false }
+                            .buttonStyle(.bordered)
+                    }
+                } else {
+                    Button("Draft Client Question") {
+                        draftedQuestionText = ClientQuestionDrafter.draft(finding: finding, clientName: nil)
+                        isDraftingClientQuestion = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
     }
 
     private var header: some View {

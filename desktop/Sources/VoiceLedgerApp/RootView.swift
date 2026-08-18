@@ -92,6 +92,7 @@ struct RootView: View {
                     applyFixError: state.applyFixError,
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
                     onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
+                    onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },
                     onDismiss: { state.screen = .list }
                 )
             } else {
