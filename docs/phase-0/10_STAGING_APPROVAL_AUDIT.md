@@ -219,6 +219,8 @@ kind of unverified-capability dependency `CLAUDE.md` rule 6 prohibits.
 
 ## 10.5a Response validation — HTTP 200 is not success ⚠ correction, 2026-08-16
 
+**Implemented 2026-08-18** — `backend/src/qbo/writeResponse.ts`'s `classifyWriteResponse`, wired into `updatePurchaseLineAccount`. See `docs/VOICE_LEDGER_HANDOFF.md` §15.A for the live-verification record and the one deliberate scope reduction from the design below (the `.rejected` clean-4xx variant isn't needed as a separate case, since `QBOClient.post()` already throws before this chokepoint ever sees a non-2xx body).
+
 **This is a correctness bug fix, not a new feature.** Wave 3's void-on-other-
 entities tests found two real anomalous-200 responses from QBO:
 - `Bill` void → HTTP 200 with a `SystemFault` body (a leaked Java exception

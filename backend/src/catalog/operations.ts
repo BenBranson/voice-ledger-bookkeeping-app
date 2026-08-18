@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import type { AnyOperationDefinition, OperationDefinition } from "./types.js";
+import { classifyWriteResponse } from "../qbo/writeResponse.js";
 
 function op<Params>(definition: OperationDefinition<Params>): AnyOperationDefinition {
   return definition as AnyOperationDefinition;
@@ -355,7 +356,26 @@ const updatePurchaseLineAccount = op({
     const modifiedLine = modified.Line.find((line: any) => line.Id === params.lineId);
     modifiedLine.AccountBasedExpenseLineDetail.AccountRef = { value: params.newAccountId };
 
-    await client.post(realmId, "purchase", modified);
+    const postResponse = await client.post(realmId, "purchase", modified);
+
+    // §10.5a: a 2xx status is not success — check the body BEFORE trusting
+    // anything happened. A real QBO fault embedded in a 200 (the Bill-void
+    // shape found in the void spike) is thrown immediately, with the
+    // actual QBO error message, rather than silently falling through to a
+    // round-trip verification that would just report an unexplained
+    // `verified: false`. An empty/unexpected body ("unknown") is NOT
+    // thrown here — it falls through to the same round-trip read below,
+    // which is this operation's own stand-in for the §10.6 resolution
+    // probe (not yet built as a separate mechanism) and can tell
+    // definitively whether the write actually applied.
+    const classified = classifyWriteResponse(postResponse, "Purchase");
+    if (classified.kind === "unknown" && classified.reason === "faultInside2xx") {
+      throw new OperationValidationError(
+        `QBO rejected the update to Purchase ${params.purchaseId} with a fault inside a 200 response: ${classified.fault.message}` +
+          (classified.fault.detail ? ` — ${classified.fault.detail}` : ""),
+        502
+      );
+    }
 
     // Step 3: round-trip verification via a FRESH read (not the update
     // response) — compares every field that must NOT have drifted, and

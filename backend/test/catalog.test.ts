@@ -231,6 +231,34 @@ describe("catalog", () => {
     }
   });
 
+  it("updatePurchaseLineAccount throws with the real QBO fault message when the POST response has a Fault embedded in a 200 — §10.5a, never silently falls through to an unexplained verified:false", async () => {
+    const beforeEntity = {
+      Id: "1",
+      SyncToken: "0",
+      Line: [{ Id: "1", AccountBasedExpenseLineDetail: { AccountRef: { value: "old-account" } } }]
+    };
+    const fakeClient = {
+      get: async () => ({ QueryResponse: { Purchase: [beforeEntity] } }),
+      post: async () => ({
+        Fault: { Error: [{ Message: "Business Validation Error", Detail: "Duplicate Document Number Error", code: "6140" }] }
+      })
+    } as unknown as QBOClient;
+
+    const result = await dispatch(
+      fakeClient,
+      "123456",
+      "updatePurchaseLineAccount",
+      { purchaseId: "1", lineId: "1", expectedSyncToken: "0", newAccountId: "new-account" },
+      true
+    );
+    expect(result.kind).toBe("operationError");
+    if (result.kind === "operationError") {
+      expect(result.message).toContain("Business Validation Error");
+      expect(result.message).toContain("Duplicate Document Number Error");
+      expect(result.httpStatus).toBe(502);
+    }
+  });
+
   it("updatePurchaseLineAccount refuses a stale SyncToken rather than blindly overwriting", async () => {
     const beforeEntity = {
       Id: "1",
