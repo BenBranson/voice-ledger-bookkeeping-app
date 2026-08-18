@@ -153,7 +153,8 @@ public enum RuleRegistry {
         VendorDescriptionMismatchRule.self,
         UndepositedFundsAgingRule.self,
         UnappliedVendorCreditRule.self,
-        ForcedReconciliationRule.self
+        ForcedReconciliationRule.self,
+        ReportTieOutRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

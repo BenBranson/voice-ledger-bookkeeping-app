@@ -85,6 +85,10 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-FORCED-RECON-001` — live-verified 2026-08-18 against a real
     /// forced reconciliation the owner performed in the sandbox UI.
     case forcedReconciliation
+    /// `VL-REPORT-TIE-001` — Balance Sheet A/R or A/P not tying to Aged
+    /// Receivables/Payables. Built 2026-08-18 once all four report parsers
+    /// existed in the same session.
+    case reportTieOut
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

@@ -226,6 +226,9 @@ case "sync-check":
             deposits: syncedDataSet.deposits,
             vendorCredits: syncedDataSet.vendorCredits,
             profitAndLossLines: profitAndLossLines,
+            balanceSheetLines: balanceSheetLines,
+            agedReceivablesLines: agedReceivablesLines,
+            agedPayablesLines: agedPayablesLines,
             coverage: syncedDataSet.coverage,
             companyFacts: syncedDataSet.companyFacts
         )

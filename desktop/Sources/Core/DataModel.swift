@@ -328,6 +328,17 @@ public struct NormalizedDataSet: Sendable {
     /// the rule treats empty as `.cannotEvaluate`, same posture as every
     /// other optional-coverage source in this dataset.
     public let profitAndLossLines: [ReportLine]
+    /// Added for `VL-REPORT-TIE-001`. Same "empty means not fetched, not
+    /// genuinely empty" posture as `profitAndLossLines` — a real company
+    /// always has SOME balance sheet lines once synced.
+    public let balanceSheetLines: [ReportLine]
+    /// Added for `VL-REPORT-TIE-001` — the Balance Sheet's A/R line should
+    /// tie out exactly to the sum of every unpaid invoice, which is what
+    /// Aged Receivables actually enumerates.
+    public let agedReceivablesLines: [AgingLine]
+    /// Added for `VL-REPORT-TIE-001` — same tie-out, for A/P against Aged
+    /// Payables.
+    public let agedPayablesLines: [AgingLine]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -340,6 +351,9 @@ public struct NormalizedDataSet: Sendable {
         deposits: [LedgerDeposit] = [],
         vendorCredits: [LedgerVendorCredit] = [],
         profitAndLossLines: [ReportLine] = [],
+        balanceSheetLines: [ReportLine] = [],
+        agedReceivablesLines: [AgingLine] = [],
+        agedPayablesLines: [AgingLine] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -351,6 +365,9 @@ public struct NormalizedDataSet: Sendable {
         self.deposits = deposits
         self.vendorCredits = vendorCredits
         self.profitAndLossLines = profitAndLossLines
+        self.balanceSheetLines = balanceSheetLines
+        self.agedReceivablesLines = agedReceivablesLines
+        self.agedPayablesLines = agedPayablesLines
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

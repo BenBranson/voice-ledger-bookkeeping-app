@@ -42,14 +42,14 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
     /// the cross-cutting Cleanup Assessment tool. The two sets overlapping
     /// is intentional (docs/backlog/CLEANUP_MODE.md's assessment is meant to
     /// span multiple pages' rules), not a bug.
-    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-UNDEP-001", "VL-FORCED-RECON-001"]
+    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-UNDEP-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001"]
 
     public enum LoadState: Equatable {
         case idle
@@ -348,6 +348,17 @@ public final class AppState {
             // means this one rule reports .cannotEvaluate, same as any
             // other optional-coverage source.
             let profitAndLossLines = (try? await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)) ?? []
+            // VL-REPORT-TIE-001 needs Balance Sheet + both aging reports, in
+            // the SAME NormalizedDataSet the rule receives — added
+            // 2026-08-18 immediately alongside the rule itself specifically
+            // to avoid repeating the vendorCredits/profitAndLossLines
+            // omission bugs found earlier this session in this exact spot.
+            // Each fetched independently and `try?`-wrapped: one report
+            // failing must not fail the whole sync, and must not silently
+            // make another report's rule look unrelatedly broken.
+            let balanceSheetLines = (try? await syncClient.fetchBalanceSheet(realmID: realmID, period: period)) ?? []
+            let agedReceivablesLines = (try? await syncClient.fetchAgedReceivables(realmID: realmID)) ?? []
+            let agedPayablesLines = (try? await syncClient.fetchAgedPayables(realmID: realmID)) ?? []
 
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
@@ -370,6 +381,9 @@ public final class AppState {
                 // "the app has always done this."
                 vendorCredits: syncedDataSet.vendorCredits,
                 profitAndLossLines: profitAndLossLines,
+                balanceSheetLines: balanceSheetLines,
+                agedReceivablesLines: agedReceivablesLines,
+                agedPayablesLines: agedPayablesLines,
                 coverage: syncedDataSet.coverage,
                 companyFacts: syncedDataSet.companyFacts
             )
