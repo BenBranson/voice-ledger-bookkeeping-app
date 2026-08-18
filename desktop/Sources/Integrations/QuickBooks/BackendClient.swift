@@ -46,6 +46,58 @@ public actor BackendClient {
         return try decoder.decode(HealthCheckResult.self, from: data)
     }
 
+    /// CLAUDE.md rule 4's access-mode gate, read side — `GET
+    /// /realms/:realmId/write-access`. Every connection starts Read-Only;
+    /// this reads the realm's current flag, never assumes it.
+    public func getWriteAccess(realmID: RealmID) async throws -> Bool {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/write-access")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(WriteAccessResponse.self, from: data).writeEnabled
+    }
+
+    /// The write side of the same gate — `PUT /realms/:realmId/write-access`.
+    /// A separate, explicit control-plane call, never a side effect of any
+    /// catalog operation — flipping this is a deliberate human action, not
+    /// something that happens implicitly.
+    @discardableResult
+    public func setWriteAccess(realmID: RealmID, enabled: Bool) async throws -> Bool {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/write-access")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONEncoder().encode(WriteAccessRequest(enabled: enabled))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(WriteAccessResponse.self, from: data).writeEnabled
+    }
+
     /// The one generic call this client makes — `POST
     /// /realms/:realmId/operations/:operationName`, mirroring
     /// `backend/src/routes/operations.ts`'s "entire surface." `operation` is
@@ -87,6 +139,14 @@ public actor BackendClient {
 /// none — mirrors the backend's `z.object({}).strict()` schema.
 public struct EmptyParams: Encodable, Sendable {
     public init() {}
+}
+
+struct WriteAccessRequest: Encodable, Sendable {
+    let enabled: Bool
+}
+
+struct WriteAccessResponse: Decodable, Sendable {
+    let writeEnabled: Bool
 }
 
 public struct HealthCheckResult: Codable, Sendable {

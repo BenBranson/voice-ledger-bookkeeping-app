@@ -58,9 +58,12 @@ struct RootView: View {
                     healthStatus: state.healthResult.map { Self.vlStatus(for: $0.status) },
                     healthDetail: state.healthCheckError ?? state.healthResult.map { "\($0.status.rawValue) — \($0.latencyMs)ms" },
                     lastCheckedAt: state.healthResult?.checkedAt,
-                    isChecking: state.isCheckingHealth
+                    isChecking: state.isCheckingHealth,
+                    writeEnabled: state.writeAccessEnabled,
+                    isTogglingWriteAccess: state.isTogglingWriteAccess
                 ),
-                onCheckHealth: { Task { await state.checkHealth() } }
+                onCheckHealth: { Task { await state.checkHealth() } },
+                onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } }
             )
 
         case .list:

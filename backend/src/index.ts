@@ -55,7 +55,7 @@ function main(): void {
   app.use(livenessRoute());
   app.use(oauthRoutes(qboCredentials, tokenStore, sessionStore));
   app.use(healthRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
-  app.use(operationsRoutes(qboClient, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
+  app.use(operationsRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
 
   app.listen(appConfig.port, () => {
     logEvent("server_started");

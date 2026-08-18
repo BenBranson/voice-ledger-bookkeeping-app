@@ -42,7 +42,8 @@ function migrate(db: Database.Database): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       last_health_check_at TEXT,
-      last_health_check_status TEXT
+      last_health_check_status TEXT,
+      write_enabled INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -55,4 +56,18 @@ function migrate(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_sessions_realm ON sessions(realm_id);
   `);
+
+  // `CREATE TABLE IF NOT EXISTS` above only defines the shape for a FRESH
+  // database — an existing `connections` table (every realm connected
+  // before this column was added) needs an explicit ALTER. SQLite has no
+  // `ADD COLUMN IF NOT EXISTS`, so check `table_info` first rather than
+  // risking a "duplicate column" error on a database that already has it.
+  const existingColumns = db.prepare("PRAGMA table_info(connections)").all() as { name: string }[];
+  if (!existingColumns.some((col) => col.name === "write_enabled")) {
+    // Every realm defaults to read-only (CLAUDE.md rule 4: "Every new
+    // client connection starts in Read-Only Mode") — the DEFAULT 0 on a
+    // fresh table and this explicit backfill for existing rows both say
+    // the same thing the same way.
+    db.exec("ALTER TABLE connections ADD COLUMN write_enabled INTEGER NOT NULL DEFAULT 0");
+  }
 }

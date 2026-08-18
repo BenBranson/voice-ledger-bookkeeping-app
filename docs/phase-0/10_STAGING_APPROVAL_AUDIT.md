@@ -168,6 +168,26 @@ Enforced in **three** places, deliberately redundant:
 The authoritative flag lives in the backend, not in the local database. A local
 flag is a flag a modified client could flip.
 
+**Item 3 — IMPLEMENTED 2026-08-17.** `connections.write_enabled` (SQLite,
+`backend/src/db/sqlite.ts`; migration-safe `ALTER TABLE` for realms
+connected before this column existed, verified against the real running
+backend's DB, not just a fresh test one), `TokenStore.isWriteEnabled`/
+`setWriteEnabled`, and `dispatcher.ts`'s `shouldBlockWrite` — checked
+structurally inside `dispatch()` itself, not left to each route handler to
+remember. `GET`/`PUT /realms/:realmId/write-access` (`routes/operations.ts`)
+expose it; the desktop `ConnectionView` toggle calls these directly. Live-
+verified end to end: GET returns `false` for a never-toggled realm, PUT
+flips it, a second GET confirms the flip, flipped back to `false` before
+moving on so the sandbox was left in its safe default state. **No write-
+classified catalog operation exists yet** — `assertReadOnlyCatalog()` still
+holds — so this gate currently blocks nothing in practice; it's built ahead
+of the first write operation needing it, the same "prove the mechanism
+before the thing that depends on it exists" approach used throughout this
+project (e.g. §11.1's `isVoided` exclusion, proven before any write path
+existed to trigger it). **Items 1 and 2 (`ClientScope.accessMode`, the
+preflight check) are not built** — no `StagedCorrection`/approval UI exists
+yet for them to gate.
+
 ---
 
 ## 10.5 Idempotency

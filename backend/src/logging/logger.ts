@@ -23,6 +23,7 @@ export type LogEvent =
   | "realm_authorization_denied"
   | "operation_invoked"
   | "operation_unreachable"
+  | "operation_write_disabled"
   | "operation_succeeded"
   | "operation_failed"
   | "rate_limited"

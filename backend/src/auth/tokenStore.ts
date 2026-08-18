@@ -19,6 +19,7 @@ export interface StoredConnection {
   readonly companyName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly writeEnabled: boolean;
 }
 
 interface CachedAccessToken {
@@ -35,6 +36,7 @@ interface ConnectionRow {
   refresh_token_ciphertext: string;
   created_at: string;
   updated_at: string;
+  write_enabled: number;
 }
 
 export class TokenStore {
@@ -100,8 +102,32 @@ export class TokenStore {
       environment: row.environment,
       companyName: row.company_name,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
+      writeEnabled: row.write_enabled === 1
     };
+  }
+
+  /**
+   * CLAUDE.md rule 4: "Every new client connection starts in Read-Only
+   * Mode; writes are enabled per-client, explicitly." This is the entire
+   * mechanism that rule describes — a per-realm flag, off by default
+   * (`saveRefreshToken`'s INSERT never sets it, so a fresh connection
+   * relies on the column's own `DEFAULT 0`), flippable only through this
+   * explicit call, never inferred from anything else.
+   */
+  isWriteEnabled(realmId: string): boolean {
+    const row = this.db
+      .prepare<{ realmId: string }, { write_enabled: number }>(
+        "SELECT write_enabled FROM connections WHERE realm_id = @realmId"
+      )
+      .get({ realmId });
+    return row?.write_enabled === 1;
+  }
+
+  setWriteEnabled(realmId: string, enabled: boolean): void {
+    this.db
+      .prepare("UPDATE connections SET write_enabled = @value, updated_at = @now WHERE realm_id = @realmId")
+      .run({ realmId, value: enabled ? 1 : 0, now: new Date().toISOString() });
   }
 
   cacheAccessToken(realmId: string, accessToken: string, expiresInSeconds: number): void {

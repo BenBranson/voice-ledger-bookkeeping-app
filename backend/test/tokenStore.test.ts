@@ -84,4 +84,22 @@ describe("TokenStore", () => {
     expect([a, b]).toEqual([1, 2]);
     expect(order).toEqual([1, 2]);
   });
+
+  it("a fresh connection defaults to write-disabled — CLAUDE.md rule 4: every new connection starts Read-Only", () => {
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    expect(store.isWriteEnabled("123456")).toBe(false);
+    expect(store.getConnection("123456")?.writeEnabled).toBe(false);
+  });
+
+  it("setWriteEnabled(true) then isWriteEnabled reflects it, and it round-trips back off", () => {
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    store.setWriteEnabled("123456", true);
+    expect(store.isWriteEnabled("123456")).toBe(true);
+    store.setWriteEnabled("123456", false);
+    expect(store.isWriteEnabled("123456")).toBe(false);
+  });
+
+  it("a realm with no connection row at all is write-disabled, not an error", () => {
+    expect(store.isWriteEnabled("never-connected-realm")).toBe(false);
+  });
 });

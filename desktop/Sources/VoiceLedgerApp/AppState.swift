@@ -63,6 +63,8 @@ public final class AppState {
     public private(set) var healthResult: HealthCheckResult?
     public private(set) var healthCheckError: String?
     public private(set) var isCheckingHealth = false
+    public private(set) var writeAccessEnabled: Bool?
+    public private(set) var isTogglingWriteAccess = false
 
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
@@ -170,13 +172,29 @@ public final class AppState {
         do {
             async let health = backend.healthCheck(realmID: realmID)
             async let info = syncClient.fetchCompanyInfo(realmID: realmID)
-            let (healthResultValue, infoValue) = try await (health, info)
+            async let writeAccess = backend.getWriteAccess(realmID: realmID)
+            let (healthResultValue, infoValue, writeAccessValue) = try await (health, info, writeAccess)
             healthResult = healthResultValue
             companyInfo = infoValue
+            writeAccessEnabled = writeAccessValue
         } catch {
             healthCheckError = "\(error)"
         }
         isCheckingHealth = false
+    }
+
+    /// CLAUDE.md rule 4's access-mode gate, desktop side. Optimistic UI is
+    /// deliberately avoided here — `writeAccessEnabled` only updates after
+    /// the backend confirms the new value, so a failed toggle doesn't leave
+    /// the UI showing a state that isn't actually true on the server.
+    public func setWriteAccess(_ enabled: Bool) async {
+        isTogglingWriteAccess = true
+        do {
+            writeAccessEnabled = try await backend.setWriteAccess(realmID: realmID, enabled: enabled)
+        } catch {
+            healthCheckError = "\(error)"
+        }
+        isTogglingWriteAccess = false
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,
