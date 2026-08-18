@@ -150,6 +150,20 @@ case "sync-check":
             print("  ...TOTAL: debit=\(total.debit?.description ?? "-") credit=\(total.credit?.description ?? "-")")
         }
 
+        let agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
+        print("Aged Receivables: \(agedReceivablesLines.count) lines")
+        for line in agedReceivablesLines.prefix(6) {
+            let indent = String(repeating: "  ", count: line.depth)
+            print("  \(indent)\(line.label): total=\(line.total?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+        }
+
+        let agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
+        print("Aged Payables: \(agedPayablesLines.count) lines")
+        for line in agedPayablesLines.prefix(6) {
+            let indent = String(repeating: "  ", count: line.depth)
+            print("  \(indent)\(line.label): total=\(line.total?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+        }
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(syncedDataSet.transactions.count)")

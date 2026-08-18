@@ -1,0 +1,50 @@
+import Foundation
+
+/// docs/VOICE_LEDGER_SPEC.md Page 12. `AgedReceivables`/`AgedPayables` —
+/// verified live 2026-08-18. Neither `ReportLine` (single amount) nor
+/// `TrialBalanceLine` (debit/credit) fit: this report has 6 money columns
+/// per row (Current, 1-30, 31-60, 61-90, 91-and-over, Total) keyed by
+/// customer or vendor name. Also verified live to mix leaf-row shapes
+/// within the SAME report: a customer/vendor with no sub-locations is a
+/// bare `ColData` row with no `type` tag at all (like Trial Balance), but
+/// a customer with sub-customers appears as a `Header`/`Rows`/`Summary`
+/// section whose nested rows ARE tagged `"type": "Data"` (like Balance
+/// Sheet). `QBOSyncClient.flattenAging`'s leaf rule — has `ColData`, no
+/// `Header`, no nested `Rows` — is deliberately structural, not
+/// type-tag-based, so it catches both shapes correctly rather than
+/// silently dropping whichever one it wasn't written to expect.
+public struct AgingLine: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let label: String
+    public let current: Money?
+    public let days1to30: Money?
+    public let days31to60: Money?
+    public let days61to90: Money?
+    public let days91AndOver: Money?
+    public let total: Money?
+    public let depth: Int
+    public let isSummary: Bool
+
+    public init(
+        label: String,
+        current: Money?,
+        days1to30: Money?,
+        days31to60: Money?,
+        days61to90: Money?,
+        days91AndOver: Money?,
+        total: Money?,
+        depth: Int,
+        isSummary: Bool
+    ) {
+        self.id = "\(depth)-\(label)-\(isSummary)-\(UUID().uuidString.prefix(8))"
+        self.label = label
+        self.current = current
+        self.days1to30 = days1to30
+        self.days31to60 = days31to60
+        self.days61to90 = days61to90
+        self.days91AndOver = days91AndOver
+        self.total = total
+        self.depth = depth
+        self.isSummary = isSummary
+    }
+}

@@ -44,6 +44,8 @@ struct RootView: View {
                         Button("Profit & Loss") { state.screen = .profitAndLossReport }
                         Button("Cash Flow") { state.screen = .cashFlowReport }
                         Button("Trial Balance") { state.screen = .trialBalanceReport }
+                        Button("Aged Receivables") { state.screen = .agedReceivablesReport }
+                        Button("Aged Payables") { state.screen = .agedPayablesReport }
                         Button("Activity Log") { state.screen = .activityLog }
                         Button("Close Package") { state.screen = .closePackage }
                         Button("Client Memory") { state.screen = .clientMemory }
@@ -325,6 +327,42 @@ struct RootView: View {
                 }
             }
 
+        case .agedReceivablesReport:
+            AgingReportView(
+                title: "Aged Receivables",
+                rowLabel: "Customer",
+                sourceDescription: "Read directly from QuickBooks' own Aged Receivables report, as of today (not period-scoped). Not a branded client-ready document — see the Close Package page for a consolidated summary.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.agedReceivablesLines,
+                isLoading: state.isLoadingAgedReceivables,
+                errorMessage: state.agedReceivablesError,
+                onRefresh: { Task { await state.loadAgedReceivables() } },
+                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Receivables", agingLines: state.agedReceivablesLines), format: format, suggestedFilename: "Aged Receivables") }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .agedPayablesReport:
+            AgingReportView(
+                title: "Aged Payables",
+                rowLabel: "Vendor",
+                sourceDescription: "Read directly from QuickBooks' own Aged Payables report, as of today (not period-scoped). Not a branded client-ready document — see the Close Package page for a consolidated summary.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.agedPayablesLines,
+                isLoading: state.isLoadingAgedPayables,
+                errorMessage: state.agedPayablesError,
+                onRefresh: { Task { await state.loadAgedPayables() } },
+                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Payables", agingLines: state.agedPayablesLines), format: format, suggestedFilename: "Aged Payables") }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
         case .closePackage:
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
@@ -520,6 +558,26 @@ struct RootView: View {
             rows: lines.map { line in
                 let label = line.label + (line.isSummary ? " (Total)" : "")
                 return [ExportCell(text: label), ExportCell.money(line.debit), ExportCell.money(line.credit)]
+            }
+        )
+    }
+
+    private static func exportTable(title: String, agingLines lines: [AgingLine]) -> ExportTable {
+        ExportTable(
+            title: title,
+            columns: ["Name", "Current", "1-30", "31-60", "61-90", "91+", "Total"],
+            rows: lines.map { line in
+                let indent = String(repeating: "    ", count: line.depth)
+                let label = indent + line.label + (line.isSummary ? " (Total)" : "")
+                return [
+                    ExportCell(text: label),
+                    ExportCell.money(line.current),
+                    ExportCell.money(line.days1to30),
+                    ExportCell.money(line.days31to60),
+                    ExportCell.money(line.days61to90),
+                    ExportCell.money(line.days91AndOver),
+                    ExportCell.money(line.total)
+                ]
             }
         )
     }

@@ -30,6 +30,8 @@ public final class AppState {
         case profitAndLossReport
         case cashFlowReport
         case trialBalanceReport
+        case agedReceivablesReport
+        case agedPayablesReport
         case closePackage
         case clientMemory
     }
@@ -136,6 +138,12 @@ public final class AppState {
     public private(set) var trialBalanceLines: [TrialBalanceLine] = []
     public private(set) var isLoadingTrialBalance = false
     public private(set) var trialBalanceError: String?
+    public private(set) var agedReceivablesLines: [AgingLine] = []
+    public private(set) var isLoadingAgedReceivables = false
+    public private(set) var agedReceivablesError: String?
+    public private(set) var agedPayablesLines: [AgingLine] = []
+    public private(set) var isLoadingAgedPayables = false
+    public private(set) var agedPayablesError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
@@ -240,6 +248,28 @@ public final class AppState {
             trialBalanceError = "\(error)"
         }
         isLoadingTrialBalance = false
+    }
+
+    public func loadAgedReceivables() async {
+        isLoadingAgedReceivables = true
+        agedReceivablesError = nil
+        do {
+            agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
+        } catch {
+            agedReceivablesError = "\(error)"
+        }
+        isLoadingAgedReceivables = false
+    }
+
+    public func loadAgedPayables() async {
+        isLoadingAgedPayables = true
+        agedPayablesError = nil
+        do {
+            agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
+        } catch {
+            agedPayablesError = "\(error)"
+        }
+        isLoadingAgedPayables = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

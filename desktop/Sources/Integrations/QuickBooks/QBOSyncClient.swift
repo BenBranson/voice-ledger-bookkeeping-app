@@ -161,6 +161,47 @@ public struct QBOSyncClient: Sendable {
         return Self.flattenTrialBalance(decoded.rows)
     }
 
+    /// Aged Receivables — verified live 2026-08-18. See `AgingLine`'s doc
+    /// comment: 6 money columns per row, and leaf rows appear in TWO
+    /// different shapes within the same real report (bare, untagged
+    /// `ColData` for a customer with no sub-locations; `type: "Data"` when
+    /// nested inside a customer-with-sub-customers section) — `flattenAging`
+    /// detects leaves structurally so both are caught.
+    public func fetchAgedReceivables(realmID: RealmID) async throws -> [AgingLine] {
+        try await fetchAgingReport(reportKind: "AgedReceivables", realmID: realmID)
+    }
+
+    /// Aged Payables — verified live 2026-08-18 to share `AgedReceivables`'s
+    /// exact shape (Vendor instead of Customer as the row key).
+    public func fetchAgedPayables(realmID: RealmID) async throws -> [AgingLine] {
+        try await fetchAgingReport(reportKind: "AgedPayables", realmID: realmID)
+    }
+
+    public struct ReadAgingReportParams: Encodable, Sendable {
+        public let reportKind: String
+        public init(reportKind: String) {
+            self.reportKind = reportKind
+        }
+    }
+
+    /// Deliberately no `startDate`/`endDate` sent at all (not even empty
+    /// strings — the backend's param schema requires either a real
+    /// `YYYY-MM-DD` or the key omitted entirely). Verified live that QBO's
+    /// aging reports work fine called this way and come back "as of today"
+    /// (their `Header` carries only an `EndPeriod`, defaulting to the
+    /// current date, no `StartPeriod` at all) — whether passing explicit
+    /// dates would change that behavior was not tested, since "as of now"
+    /// is the correct semantics for an aging report regardless.
+    private func fetchAgingReport(reportKind: String, realmID: RealmID) async throws -> [AgingLine] {
+        let data = try await backend.call(
+            .readReport,
+            realmID: realmID,
+            params: ReadAgingReportParams(reportKind: reportKind)
+        )
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return Self.flattenAging(decoded.rows, depth: 0)
+    }
+
     private func fetchReport(reportKind: String, realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
         let (startDate, endDate) = Self.dateRange(for: period)
         let data = try await backend.call(
@@ -269,6 +310,58 @@ public struct QBOSyncClient: Sendable {
             return Money(minorUnits: Self.minorUnits(from: Decimal(string: value) ?? 0), currency: .usd)
         }
         return TrialBalanceLine(label: label, debit: amount(at: 1), credit: amount(at: 2), isSummary: isSummary)
+    }
+
+    /// Aged Receivables/Payables — same structural leaf rule as
+    /// `flattenTrialBalance` (has `ColData`, no `Header`, no nested `Rows`)
+    /// rather than gating on `type`, because the real report mixes leaf
+    /// shapes: a customer/vendor with no sub-locations is bare `ColData`
+    /// with no `type` tag; a customer/vendor WITH sub-locations wraps them
+    /// in a `Header`/`Rows`/`Summary` section whose nested leaf rows ARE
+    /// tagged `"type": "Data"`. The structural rule catches both without
+    /// needing to special-case either.
+    static func flattenAging(_ rowList: QBORawReportRowList, depth: Int) -> [AgingLine] {
+        var lines: [AgingLine] = []
+        for row in rowList.row ?? [] {
+            if let header = row.header {
+                // Matches `flatten`'s convention for ReportLine: a section
+                // header's own row carries no real amount (its Summary row,
+                // appended after the children below, has the true rolled-up
+                // total) even though QBO's raw JSON happens to echo one.
+                lines.append(AgingLine(label: header.colData.first?.value ?? "", current: nil, days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: nil, depth: depth, isSummary: false))
+            }
+            if let nested = row.rows {
+                lines.append(contentsOf: flattenAging(nested, depth: depth + 1))
+            }
+            if row.header == nil, row.rows == nil, let colData = row.colData {
+                lines.append(Self.agingLine(from: colData, depth: depth, isSummary: false))
+            }
+            if let summary = row.summary {
+                lines.append(Self.agingLine(from: summary.colData, depth: depth, isSummary: true))
+            }
+        }
+        return lines
+    }
+
+    private static func agingLine(from colData: [QBORawReportColData], depth: Int, isSummary: Bool) -> AgingLine {
+        let label = colData.first?.value ?? ""
+        func amount(at index: Int) -> Money? {
+            guard colData.count > index else { return nil }
+            let value = colData[index].value
+            guard !value.isEmpty else { return nil }
+            return Money(minorUnits: Self.minorUnits(from: Decimal(string: value) ?? 0), currency: .usd)
+        }
+        return AgingLine(
+            label: label,
+            current: amount(at: 1),
+            days1to30: amount(at: 2),
+            days31to60: amount(at: 3),
+            days61to90: amount(at: 4),
+            days91AndOver: amount(at: 5),
+            total: amount(at: 6),
+            depth: depth,
+            isSummary: isSummary
+        )
     }
 
     private static func reportLine(from colData: [QBORawReportColData], depth: Int, isSummary: Bool) -> ReportLine {
