@@ -729,6 +729,10 @@ Spec's Firm Cockpit: "Training Mode — every flag answers 'why was this flagged
 
 `FindingDetailView`'s header literally hardcoded `Text("Source: QBO API")` — wrong for `VL-RECON-MISSING-001`/`VL-VENDOR-MISMATCH-001`, whose evidence includes an imported statement line, not only QBO-read data. Now derived from `finding.provenance` (`.qboAPI`/`.importedFile`, deduplicated and joined) instead of a fixed string. 212/212 desktop tests passing.
 
+## Next Best Action — still later the same night
+
+Spec's Firm Cockpit: "Next Best Action — the app says where to start." Firm Cockpit itself (every connected client on one screen) needs a multi-client rollup this app's architecture doesn't have — not attempted. What IS buildable standalone is the single-client decision logic Firm Cockpit would need per-client: `NextBestAction.compute` (Core, pure, 7 tests), a deterministic priority order (open high-severity findings, then an unimported bank statement — Type B pages can't run without one, then the next unlocked incomplete Month-End Close item, else `.allClear`). Rendered as a small banner (`NextBestActionView`, new) at the top of the main Findings List with a "Go" button that navigates to the relevant screen. 219/219 desktop tests passing.
+
 ## NOT STARTED
 
 **Corrected 2026-08-18 — this list went stale within the same night on two points, same as §19's own warning about handoff docs describes:** Universal Ingestion's "cross-foot validation + learned-mapping persistence" is no longer accurate as a single unbuilt unit — learned-mapping persistence (§9.6 stage 6, CSV only) IS built, cross-foot validation itself is still not (OFX's stated ending balance is extracted and shown, informational only — see above). "Reporting and Close Package" is also no longer accurate as fully unbuilt — Balance Sheet, P&L, and now a real (partial) Close Package page all exist; what's still missing from reporting is cash flow, general ledger, trial balance, and aging reports specifically, plus a branded/exportable document format.

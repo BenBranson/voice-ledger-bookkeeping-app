@@ -78,9 +78,23 @@ struct RootView: View {
                     environment: state.environment == .production ? .production : .sandbox,
                     coverageStatus: StatusMapping.status(for: coverageOutcome),
                     coverageDetail: coverageDetail,
-                    findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }
+                    findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) },
+                    nextBestAction: NextBestAction.compute(
+                        findings: state.findings,
+                        checklistCompletions: state.checklistCompletions,
+                        period: state.currentPeriod,
+                        hasImportedStatement: state.importedStatementLineCount > 0
+                    )
                 ),
-                onSelect: { finding in state.screen = .detail(findingID: finding.id) }
+                onSelect: { finding in state.screen = .detail(findingID: finding.id) },
+                onNavigateNextBestAction: { action in
+                    switch action {
+                    case .reviewHighSeverityFindings: break // already on the list screen
+                    case .importBankStatement: state.screen = .bankFeedCleanup
+                    case .completeChecklistItem: state.screen = .monthEndClose
+                    case .allClear: break
+                    }
+                }
             )
 
         case .detail(let findingID):

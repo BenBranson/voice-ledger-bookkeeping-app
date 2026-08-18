@@ -12,21 +12,25 @@ public struct FindingsListView: View {
         public let coverageStatus: VLStatus
         public let coverageDetail: String
         public let findings: [Finding]
+        public let nextBestAction: NextBestAction?
 
-        public init(environment: VLEnvironmentTone, coverageStatus: VLStatus, coverageDetail: String, findings: [Finding]) {
+        public init(environment: VLEnvironmentTone, coverageStatus: VLStatus, coverageDetail: String, findings: [Finding], nextBestAction: NextBestAction? = nil) {
             self.environment = environment
             self.coverageStatus = coverageStatus
             self.coverageDetail = coverageDetail
             self.findings = findings
+            self.nextBestAction = nextBestAction
         }
     }
 
     private let state: ViewState
     private let onSelect: (Finding) -> Void
+    private let onNavigateNextBestAction: (NextBestAction) -> Void
 
-    public init(state: ViewState, onSelect: @escaping (Finding) -> Void) {
+    public init(state: ViewState, onSelect: @escaping (Finding) -> Void, onNavigateNextBestAction: @escaping (NextBestAction) -> Void = { _ in }) {
         self.state = state
         self.onSelect = onSelect
+        self.onNavigateNextBestAction = onNavigateNextBestAction
     }
 
     public var body: some View {
@@ -38,6 +42,10 @@ public struct FindingsListView: View {
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
                     VLEnvironmentBadge(state.environment)
+                }
+
+                if let nextBestAction = state.nextBestAction {
+                    NextBestActionView(action: nextBestAction, onNavigate: { onNavigateNextBestAction(nextBestAction) })
                 }
 
                 VLCoverageStrip(
