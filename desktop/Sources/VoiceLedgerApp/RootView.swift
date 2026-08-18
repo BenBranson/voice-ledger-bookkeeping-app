@@ -158,6 +158,9 @@ struct RootView: View {
                 coverageStatus: missingPostingFindings.isEmpty ? .notChecked : .reviewNeeded,
                 missingPostingOutcomeDetail: "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4).",
                 findings: missingPostingFindings,
+                reconciliationSummary: state.importedStatementLineCount > 0
+                    ? ReconciliationSummary.compute(totalStatementLines: state.importedStatementLineCount, unmatchedFindings: missingPostingFindings)
+                    : nil,
                 importError: state.importError,
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
                 onImportTapped: { isImportingStatement = true }

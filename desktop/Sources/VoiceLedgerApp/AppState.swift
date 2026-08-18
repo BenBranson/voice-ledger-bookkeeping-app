@@ -56,6 +56,10 @@ public final class AppState {
     /// UI ask "which QBO account is this statement FOR?" (never inferred
     /// from the file). Empty until the first `syncAndEvaluate()` completes.
     public private(set) var accounts: [LedgerAccount] = []
+    /// All-time count of persisted imported statement lines for this realm
+    /// (not period-filtered) — feeds `ReconciliationSummary.compute`'s
+    /// `totalStatementLines`. Refreshed on every `syncAndEvaluate()`.
+    public private(set) var importedStatementLineCount: Int = 0
     public private(set) var loadState: LoadState = .idle
     public var screen: Screen = .connection
     public let environment: QBOEnvironment
@@ -249,6 +253,7 @@ public final class AppState {
             // (Universal Ingestion Tier 1) so VL-RECON-MISSING-001 sees them
             // on every sync, not just the run right after import.
             let importedLines = try await store.loadImportedStatementLines()
+            importedStatementLineCount = importedLines.count
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
                 period: syncedDataSet.period,

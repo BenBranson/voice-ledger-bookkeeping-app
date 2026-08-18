@@ -15,6 +15,7 @@ public struct BankFeedCleanupView: View {
     private let coverageStatus: VLStatus
     private let missingPostingOutcomeDetail: String
     private let findings: [Finding]
+    private let reconciliationSummary: ReconciliationSummary?
     private let importError: String?
     private let onSelectFinding: (Finding) -> Void
     private let onImportTapped: () -> Void
@@ -24,6 +25,7 @@ public struct BankFeedCleanupView: View {
         coverageStatus: VLStatus,
         missingPostingOutcomeDetail: String,
         findings: [Finding],
+        reconciliationSummary: ReconciliationSummary? = nil,
         importError: String?,
         onSelectFinding: @escaping (Finding) -> Void,
         onImportTapped: @escaping () -> Void
@@ -32,6 +34,7 @@ public struct BankFeedCleanupView: View {
         self.coverageStatus = coverageStatus
         self.missingPostingOutcomeDetail = missingPostingOutcomeDetail
         self.findings = findings
+        self.reconciliationSummary = reconciliationSummary
         self.importError = importError
         self.onSelectFinding = onSelectFinding
         self.onImportTapped = onImportTapped
@@ -58,6 +61,10 @@ public struct BankFeedCleanupView: View {
                     if let importError {
                         VLStatusPill(.urgent, label: importError)
                     }
+                }
+
+                if let reconciliationSummary {
+                    reconciliationSection(reconciliationSummary)
                 }
 
                 VLCard {
@@ -99,5 +106,54 @@ public struct BankFeedCleanupView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 5's "calculates difference," computed
+    /// from `VL-RECON-MISSING-001`'s own findings (`ReconciliationSummary`'s
+    /// doc comment) — not a separate page, folded in here since it's the
+    /// same underlying comparison this page already runs.
+    private func reconciliationSection(_ summary: ReconciliationSummary) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("RECONCILIATION SUMMARY")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                HStack(spacing: VLSpacing.md) {
+                    VStack(alignment: .leading) {
+                        Text("\(summary.totalStatementLines)")
+                            .font(VLTypography.metricLarge())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Statement lines")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("\(summary.matchedCount)")
+                            .font(VLTypography.metricLarge())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Matched")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("\(summary.unmatchedCount)")
+                            .font(VLTypography.metricLarge())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Unmatched")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    VStack(alignment: .leading) {
+                        Text(summary.unmatchedTotal?.description ?? "$0.00")
+                            .font(VLTypography.metricLarge())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Difference")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+            }
+        }
     }
 }
