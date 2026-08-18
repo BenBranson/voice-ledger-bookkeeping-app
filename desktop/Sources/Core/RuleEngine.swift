@@ -89,6 +89,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// Receivables/Payables. Built 2026-08-18 once all four report parsers
     /// existed in the same session.
     case reportTieOut
+    /// `VL-FEE-AVOIDABLE-001` — a keyword-matched late fee, overdraft, or
+    /// finance charge.
+    case avoidableFee
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

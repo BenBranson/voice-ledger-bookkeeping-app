@@ -454,7 +454,7 @@ stable; only the first is scoped in this phase (§11).
 | `VL-BS-DRCR-001` | Debit/credit pattern vs. account expectation | 8 | 3 |
 | `VL-SUB-INCREASE-001` | Recurring subscription increased | 3 | 3 |
 | `VL-SUB-UNUSED-001` | Recurring subscription appears unused | 3 | 3 |
-| `VL-FEE-AVOIDABLE-001` | Late fees, overdrafts, avoidable interest | 3 | 3 |
+| `VL-FEE-AVOIDABLE-001` | Late fees, overdrafts, avoidable interest. **Built 2026-08-18** (`desktop/Sources/Core/AvoidableFeeRule.swift`) — same keyword-matching pattern as `VL-PAYROLL-LUMP-001`, checking vendor name AND memo (both already synced, no new capability needed) for specific fee terms ("overdraft", "nsf", "late fee", "finance charge", etc. — deliberately not the bare word "fee" alone, which would false-positive on a legitimate vendor like "ABC Filing Fee Services"). **No live positive example exists in this sandbox** (checked against the real July data — none of the 24 transactions are fee-shaped); shipped on unit tests alone, honestly documented as such rather than claimed live-verified. | 3 | **Built** |
 | `VL-VEND-PRICE-001` | Vendor price increases | 3 | 3 |
 | `VL-VEND-DUPSVC-001` | Possible duplicate services | 3 | 3 |
 | `VL-PERSONAL-001` | Possible personal expense or owner draw | 3 | 3 |
