@@ -74,6 +74,7 @@ private struct EntryRow: View {
         case .findingResolved: return "Finding resolved"
         case .apiWriteApplied: return "API write applied"
         case .clientQuestionDrafted: return "Client question sent"
+        case .findingDismissed: return "Finding dismissed"
         }
     }
 

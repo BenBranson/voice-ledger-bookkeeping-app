@@ -63,6 +63,20 @@ public actor ClientStore {
         try save(existing, to: findingsURL)
     }
 
+    /// Marks a finding dismissed — the human's own call that this isn't
+    /// worth acting on, distinct from `.resolved` (the underlying problem
+    /// is actually fixed). Idempotent: dismissing an already-dismissed or
+    /// already-resolved finding is a silent no-op rather than an error, so
+    /// a caller never needs to check status first. No corresponding
+    /// "un-dismiss" exists yet — a real gap, not an oversight; see
+    /// `AppState.dismissFinding`'s doc comment.
+    public func dismissFinding(id: String) throws {
+        var existing = try loadFindings()
+        guard let index = existing.firstIndex(where: { $0.id == id }), existing[index].status == .open else { return }
+        existing[index].status = .dismissed
+        try save(existing, to: findingsURL)
+    }
+
     /// A finding present in `stillDetectedIDs`' complement (i.e. no longer
     /// re-detected this sync) but still `.open` is NOT auto-resolved here —
     /// only an explicit exclusion match (like `isVoided`, evaluated by the

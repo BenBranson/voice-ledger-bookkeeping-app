@@ -265,7 +265,13 @@ public final class AppState {
                 companyFacts: syncedDataSet.companyFacts
             )
 
-            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
+            // Loaded fresh, not read from `self.findings` — this must
+            // reflect exactly what's on disk right now, not whatever the
+            // last render happened to hold. A rule checks this set to skip
+            // reproducing a finding at all (`CLAUDE.md` rule 2's
+            // dismiss-is-real posture — not just hidden by a UI filter).
+            let dismissedFindingIDs = Set(try await store.loadFindings().filter { $0.status == .dismissed }.map(\.id))
+            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             var currentRunIDsByRule: [RuleID: Set<String>] = [:]
@@ -425,6 +431,37 @@ public final class AppState {
         )
         do {
             try await store.appendActivityLogEntry(entry)
+            activityLog = try await store.loadActivityLog()
+        } catch {
+            loadState = .failed("\(error)")
+        }
+        screen = .list
+    }
+
+    /// CLAUDE.md-adjacent honesty fix: every "Dismiss" button in the app
+    /// previously just navigated back to the list without persisting
+    /// anything — `Finding.status` never actually became `.dismissed`
+    /// anywhere, and `RuleContext.dismissedFindingIDs` was never fed from
+    /// real data, even though all 15 rules already check it. The very next
+    /// sync would silently re-show the exact same "dismissed" finding.
+    /// This closes that gap. No "un-dismiss" UI exists yet — a real gap,
+    /// not an oversight; `ClientStore.dismissFinding` stays a one-way
+    /// operation for now.
+    public func dismissFinding(findingID: String, actorName: String, reason: String?) async {
+        guard let finding = finding(id: findingID) else { return }
+        do {
+            try await store.dismissFinding(id: findingID)
+            let entry = ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: .findingDismissed,
+                findingID: findingID,
+                ruleID: finding.ruleID,
+                ruleVersion: finding.ruleVersion,
+                note: reason
+            )
+            try await store.appendActivityLogEntry(entry)
+            findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
         } catch {
             loadState = .failed("\(error)")

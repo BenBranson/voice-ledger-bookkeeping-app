@@ -72,6 +72,45 @@ struct ClientStoreTests {
         #expect(loaded[0].status == .resolved)
     }
 
+    @Test("dismissFinding marks an open finding dismissed")
+    func dismissFindingMarksDismissed() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
+        try await store.dismissFinding(id: "abc123")
+        let loaded = try await store.loadFindings()
+        #expect(loaded[0].status == .dismissed)
+    }
+
+    @Test("dismissFinding is a no-op for an unknown id — no crash, nothing created")
+    func dismissFindingUnknownIDIsNoOp() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.dismissFinding(id: "does-not-exist")
+        let loaded = try await store.loadFindings()
+        #expect(loaded.isEmpty)
+    }
+
+    @Test("dismissFinding does not override an already-resolved finding's status")
+    func dismissFindingDoesNotOverrideResolved() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        var finding = sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))
+        finding.status = .resolved
+        try await store.upsertFindings([finding])
+        try await store.dismissFinding(id: "abc123")
+        let loaded = try await store.loadFindings()
+        #expect(loaded[0].status == .resolved)
+    }
+
+    @Test("A re-detected finding upserted after being dismissed carries the dismissed status forward, not silently reopened")
+    func upsertPreservesDismissedStatus() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
+        try await store.dismissFinding(id: "abc123")
+        // Same rule redetects the exact same finding on the next sync.
+        try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
+        let loaded = try await store.loadFindings()
+        #expect(loaded[0].status == .dismissed)
+    }
+
     @Test("Two realms never see each other's findings — isolation is a directory boundary, not a query filter")
     func realmIsolation() async throws {
         let root = tempRoot()

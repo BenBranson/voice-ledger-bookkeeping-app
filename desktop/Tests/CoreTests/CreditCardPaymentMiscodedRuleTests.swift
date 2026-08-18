@@ -197,6 +197,31 @@ struct CreditCardPaymentMiscodedRuleTests {
         #expect(action.apiWriteDetails == nil)
     }
 
+    @Test("A dismissed finding ID is never reproduced — dismissedFindingIDs is a real suppression, not just a UI filter")
+    func dismissedFindingIsNotReproduced() {
+        let accounts = [
+            LedgerAccount(id: "cc-1", name: "Amex", accountType: .creditCard),
+            LedgerAccount(id: "exp-1", name: "Office Supplies", accountType: .expense)
+        ]
+        let txn = purchase(id: "1", vendor: "Amex", lineAccountIDs: ["exp-1"])
+        let firstRun = CreditCardPaymentMiscodedRule.evaluate(dataSet([txn], accounts: accounts), context: context())
+        guard case .findings(let findings) = firstRun, let findingID = findings.first?.id else {
+            Issue.record("expected a finding on the first run")
+            return
+        }
+
+        let dismissedContext = RuleContext(
+            period: period, materiality: .defaultPolicy,
+            companyFacts: CompanyFacts(customTxnNumbersForPurchases: false),
+            dismissedFindingIDs: [findingID]
+        )
+        let secondRun = CreditCardPaymentMiscodedRule.evaluate(dataSet([txn], accounts: accounts), context: dismissedContext)
+        guard case .pass = secondRun else {
+            Issue.record("expected .pass — the dismissed finding must not be reproduced")
+            return
+        }
+    }
+
     @Test("Keyword-only match never gets a staged fix even with lines and a SyncToken present — only structural matches qualify")
     func keywordOnlyMatchNeverGetsStagedFix() {
         let accounts = [LedgerAccount(id: "exp-1", name: "Office Supplies", accountType: .expense)]

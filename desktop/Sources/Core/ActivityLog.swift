@@ -24,6 +24,10 @@ public enum ActivityKind: String, Codable, Sendable {
     /// text. This records that a question was asked, not an answer; see
     /// `ClientQuestionDrafter`'s doc comment for what's not built yet.
     case clientQuestionDrafted
+    /// The human decided a finding isn't worth acting on — distinct from
+    /// `findingResolved` (the underlying problem is actually fixed). The
+    /// `note` field carries the reason, when one was given.
+    case findingDismissed
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never
