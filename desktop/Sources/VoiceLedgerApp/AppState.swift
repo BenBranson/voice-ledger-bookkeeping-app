@@ -81,6 +81,12 @@ public final class AppState {
         public let filename: String
         public let rawText: String
         public let transactionCount: Int
+        /// The file's own stated ending balance, shown to the user for a
+        /// manual comparison against their bank's own statement — not an
+        /// automated check (see `OFXBankStatementImporter.Result`'s doc
+        /// comment for why). `nil` when the file has no `<LEDGERBAL>`.
+        public let statedEndingBalance: Money?
+        public let statedAsOfDate: AccountingDate?
     }
     public enum PendingImport {
         case csv(PendingCSVImport)
@@ -286,7 +292,12 @@ public final class AppState {
                     importError = "\(url.lastPathComponent) has no <STMTTRN> transactions."
                     return
                 }
-                pendingImport = .ofx(PendingOFXImport(filename: url.lastPathComponent, rawText: text, transactionCount: count))
+                let ledgerBalance = OFXParser.parseLedgerBalance(text)
+                pendingImport = .ofx(PendingOFXImport(
+                    filename: url.lastPathComponent, rawText: text, transactionCount: count,
+                    statedEndingBalance: ledgerBalance.flatMap { OFXBankStatementImporter.parseOFXAmount($0.balanceAmount) },
+                    statedAsOfDate: ledgerBalance.flatMap { OFXBankStatementImporter.parseOFXDate($0.asOfDate) }
+                ))
             } else {
                 let rows = CSVParser.parse(text)
                 guard !rows.isEmpty else {

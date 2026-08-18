@@ -11,6 +11,15 @@ public enum OFXBankStatementImporter {
     public struct Result: Sendable {
         public let transactions: [LedgerTransaction]
         public let defects: [NormalizationDefect]
+        /// The file's own `<LEDGERBAL>`, when present — surfaced for the
+        /// human to compare against their own bank statement (§9.5's
+        /// cross-foot idea, scoped down to extraction only, per `CLAUDE.md`
+        /// rule 8: this importer does not compute a match/mismatch verdict
+        /// from it, since doing that correctly needs a beginning balance
+        /// this importer has no way to know). `nil` when the file has no
+        /// `<LEDGERBAL>` block at all.
+        public let statedEndingBalance: Money?
+        public let statedAsOfDate: AccountingDate?
     }
 
     /// - Parameters:
@@ -28,7 +37,7 @@ public enum OFXBankStatementImporter {
     ) -> Result {
         let rawTransactions = OFXParser.parseTransactions(ofxText)
         guard !rawTransactions.isEmpty else {
-            return Result(transactions: [], defects: [.emptyFile])
+            return Result(transactions: [], defects: [.emptyFile], statedEndingBalance: nil, statedAsOfDate: nil)
         }
 
         var transactions: [LedgerTransaction] = []
@@ -66,14 +75,21 @@ public enum OFXBankStatementImporter {
             ))
         }
 
-        return Result(transactions: transactions, defects: defects)
+        let ledgerBalance = OFXParser.parseLedgerBalance(ofxText)
+        let statedEndingBalance = ledgerBalance.flatMap { parseOFXAmount($0.balanceAmount) }
+        let statedAsOfDate = ledgerBalance.flatMap { parseOFXDate($0.asOfDate) }
+
+        return Result(
+            transactions: transactions, defects: defects,
+            statedEndingBalance: statedEndingBalance, statedAsOfDate: statedAsOfDate
+        )
     }
 
     /// `YYYYMMDD`, optionally followed by a time/timezone suffix
     /// (`YYYYMMDDHHMMSS[.XXX[:TZ]]`) per the OFX spec — only the date
     /// portion matters here (`LedgerTransaction.txnDate` has no time
     /// component, matching QBO's own `TxnDate`).
-    static func parseOFXDate(_ raw: String) -> AccountingDate? {
+    public static func parseOFXDate(_ raw: String) -> AccountingDate? {
         guard raw.count >= 8 else { return nil }
         let digits = raw.prefix(8)
         guard digits.allSatisfy(\.isNumber),
@@ -88,7 +104,7 @@ public enum OFXBankStatementImporter {
     /// money in — no parenthesized-negative or `$`-stripping heuristics
     /// needed the way the CSV importer requires (self-describing, not a
     /// human-formatted export).
-    static func parseOFXAmount(_ raw: String) -> Money? {
+    public static func parseOFXAmount(_ raw: String) -> Money? {
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
         guard let decimal = Decimal(string: trimmed) else { return nil }
         let minorUnits = NSDecimalNumber(decimal: decimal * 100).int64Value

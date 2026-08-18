@@ -87,4 +87,22 @@ struct OFXParserTests {
     func noTransactionBlocks() {
         #expect(OFXParser.parseTransactions("<OFX><SIGNONMSGSRSV1></SIGNONMSGSRSV1></OFX>").isEmpty)
     }
+
+    @Test("Extracts BALAMT/DTASOF from a LEDGERBAL block, no closing tags")
+    func parsesLedgerBalance() {
+        let text = """
+        <LEDGERBAL>
+        <BALAMT>1234.56
+        <DTASOF>20260731
+        </LEDGERBAL>
+        """
+        let balance = OFXParser.parseLedgerBalance(text)
+        #expect(balance?.balanceAmount == "1234.56")
+        #expect(balance?.asOfDate == "20260731")
+    }
+
+    @Test("A file with no LEDGERBAL block returns nil, not a defect")
+    func noLedgerBalanceBlock() {
+        #expect(OFXParser.parseLedgerBalance(Self.sgmlSample) == nil)
+    }
 }

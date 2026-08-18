@@ -191,6 +191,8 @@ struct RootView: View {
                     ImportOFXStatementView(
                         filename: pending.filename,
                         transactionCount: pending.transactionCount,
+                        statedEndingBalance: pending.statedEndingBalance,
+                        statedAsOfDate: pending.statedAsOfDate,
                         accounts: state.accounts,
                         onConfirm: { accountID in Task { await state.confirmOFXImport(statementAccountID: accountID) } },
                         onCancel: { state.cancelPendingImport() }

@@ -46,6 +46,24 @@ struct OFXBankStatementImporterTests {
         let result = OFXBankStatementImporter.import(ofxText: "", realmID: realm, documentID: docID, importedAt: Date())
         #expect(result.transactions.isEmpty)
         #expect(result.defects == [.emptyFile])
+        #expect(result.statedEndingBalance == nil)
+        #expect(result.statedAsOfDate == nil)
+    }
+
+    @Test("A file with a LEDGERBAL block surfaces statedEndingBalance/statedAsOfDate — extraction only, not compared against the transactions")
+    func surfacesStatedEndingBalance() {
+        let text = OFXParserTests.sgmlSample + "\n<LEDGERBAL>\n<BALAMT>5000.00\n<DTASOF>20260731\n</LEDGERBAL>"
+        let result = OFXBankStatementImporter.import(ofxText: text, realmID: realm, documentID: docID, importedAt: Date())
+        #expect(result.statedEndingBalance == Money(minorUnits: 500_000, currency: .usd))
+        #expect(result.statedAsOfDate == AccountingDate(year: 2026, month: 7, day: 31))
+    }
+
+    @Test("A file with no LEDGERBAL block leaves statedEndingBalance nil, not a defect")
+    func noLedgerBalanceLeavesFieldsNil() {
+        let result = OFXBankStatementImporter.import(ofxText: OFXParserTests.sgmlSample, realmID: realm, documentID: docID, importedAt: Date())
+        #expect(result.defects.isEmpty)
+        #expect(result.statedEndingBalance == nil)
+        #expect(result.statedAsOfDate == nil)
     }
 
     @Test("An unparsable date produces .unparsableDate and skips that transaction, not the whole file")

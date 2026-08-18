@@ -47,8 +47,22 @@ Fixed by adding an account-selection step to both confirm screens
 (`AppState.accounts`, populated from the last sync) — required before
 Import is enabled, never inferred or defaulted.
 
-**Still not built:** cross-foot validation (§9.5 — needs a stated statement
-total/ending balance neither importer accepts as input yet), learned-mapping
+**Partially built, 2026-08-18:** OFX's own `<LEDGERBAL>` (`BALAMT`/`DTASOF`) is
+now extracted (`OFXParser.parseLedgerBalance`) and shown on the OFX confirm
+screen for the human to compare against their own bank statement. This is
+extraction only (`CLAUDE.md` rule 8), not the automated cross-foot check
+§9.5 describes — a real automated check needs a **beginning** balance too
+(to compare against the sum of imported transactions), which neither the
+file nor this importer tracks anywhere; computing "sum of transactions ==
+ending − beginning" without one would mean assuming a beginning balance,
+which is exactly the kind of unverified-capability guess `CLAUDE.md` rule 6
+prohibits. CSV has no equivalent field to extract at all (CSV exports carry
+no stated balance by convention) — a real cross-foot check for CSV imports
+would need a manually-entered "statement ending balance" field, not
+attempted here.
+
+**Still not built:** the automated cross-foot check itself (§9.5 proper — a
+computed pass/fail, not just a displayed number), learned-mapping
 persistence (stage 6), Excel within Tier 1, and Tier 2 (on-device Vision) /
 Tier 3 (Claude vision) entirely.
 

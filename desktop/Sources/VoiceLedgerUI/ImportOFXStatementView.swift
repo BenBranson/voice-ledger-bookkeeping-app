@@ -9,6 +9,8 @@ import DesignSystem
 public struct ImportOFXStatementView: View {
     private let filename: String
     private let transactionCount: Int
+    private let statedEndingBalance: Money?
+    private let statedAsOfDate: AccountingDate?
     private let accounts: [LedgerAccount]
     private let onConfirm: (_ statementAccountID: String) -> Void
     private let onCancel: () -> Void
@@ -18,12 +20,16 @@ public struct ImportOFXStatementView: View {
     public init(
         filename: String,
         transactionCount: Int,
+        statedEndingBalance: Money? = nil,
+        statedAsOfDate: AccountingDate? = nil,
         accounts: [LedgerAccount],
         onConfirm: @escaping (_ statementAccountID: String) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.filename = filename
         self.transactionCount = transactionCount
+        self.statedEndingBalance = statedEndingBalance
+        self.statedAsOfDate = statedAsOfDate
         self.accounts = accounts
         self.onConfirm = onConfirm
         self.onCancel = onCancel
@@ -43,6 +49,23 @@ public struct ImportOFXStatementView: View {
                 Text("\(transactionCount) transaction\(transactionCount == 1 ? "" : "s") found — OFX/QFX is self-describing, so no column mapping is needed.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
+
+                if let statedEndingBalance {
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                            Text("STATEMENT'S OWN ENDING BALANCE")
+                                .font(VLTypography.eyebrow())
+                                .tracking(VLTypography.eyebrowTracking)
+                                .foregroundStyle(VLColor.textMuted)
+                            Text(statedAsOfDate.map { "\(statedEndingBalance.description) as of \($0.year)-\($0.month)-\($0.day)" } ?? statedEndingBalance.description)
+                                .font(VLTypography.tabularNumericEmphasis())
+                                .foregroundStyle(VLColor.textPrimary)
+                            Text("This is the file's own stated balance — compare it against your bank's statement yourself before confirming. Voice Ledger does not verify it against the imported transactions.")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        }
+                    }
+                }
 
                 VLCard {
                     VStack(alignment: .leading, spacing: VLSpacing.xs) {

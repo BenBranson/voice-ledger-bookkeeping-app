@@ -50,6 +50,27 @@ public enum OFXParser {
         }
     }
 
+    public struct RawLedgerBalance: Sendable, Equatable {
+        /// Signed decimal string, same convention as `RawTransaction.amount`.
+        public let balanceAmount: String
+        /// `YYYYMMDD[...]`, same format as `RawTransaction.datePosted`.
+        public let asOfDate: String
+    }
+
+    /// Extracts the single `<LEDGERBAL>` block's `BALAMT`/`DTASOF`, when
+    /// present. `nil` if the file has no `<LEDGERBAL>` at all (not every
+    /// bank includes one) — this is extraction only (`CLAUDE.md` rule 8):
+    /// nothing in this parser compares this value against the imported
+    /// transactions or computes a pass/fail from it. `nil` is a normal,
+    /// silent outcome here, not a defect — the caller decides whether to
+    /// show it.
+    public static func parseLedgerBalance(_ text: String) -> RawLedgerBalance? {
+        guard let block = extractBlocks(text, tag: "LEDGERBAL").first else { return nil }
+        let fields = extractLeafFields(block)
+        guard let balAmt = fields["BALAMT"], let dtAsOf = fields["DTASOF"] else { return nil }
+        return RawLedgerBalance(balanceAmount: balAmt, asOfDate: dtAsOf)
+    }
+
     static func extractBlocks(_ text: String, tag: String) -> [String] {
         guard let regex = try? NSRegularExpression(
             pattern: "<\(tag)>(.*?)</\(tag)>",
