@@ -22,6 +22,7 @@ FORBIDDEN_IMPORTS=(
   "Staging"
   "Voice"
   "DB"
+  "Exporting"
 )
 
 violations=0

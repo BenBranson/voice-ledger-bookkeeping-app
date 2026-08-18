@@ -32,19 +32,22 @@ public struct CleanupAssessmentView: View {
     private let coverageDetail: String
     private let summaries: [RuleSummary]
     private let onSelectFinding: (Finding) -> Void
+    private let onExport: (ReportExportFormat) -> Void
 
     public init(
         environment: VLEnvironmentTone,
         coverageStatus: VLStatus,
         coverageDetail: String,
         summaries: [RuleSummary],
-        onSelectFinding: @escaping (Finding) -> Void
+        onSelectFinding: @escaping (Finding) -> Void,
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
         self.coverageDetail = coverageDetail
         self.summaries = summaries
         self.onSelectFinding = onSelectFinding
+        self.onExport = onExport
     }
 
     private var totalFindingCount: Int { summaries.reduce(0) { $0 + $1.findings.count } }
@@ -62,6 +65,7 @@ public struct CleanupAssessmentView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    ExportMenuButton(onExport: onExport)
                     VLEnvironmentBadge(environment)
                 }
 

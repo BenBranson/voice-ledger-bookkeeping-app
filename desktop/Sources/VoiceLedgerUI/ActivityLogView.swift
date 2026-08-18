@@ -7,17 +7,25 @@ import DesignSystem
 /// rendered here in reverse-chronological order.
 public struct ActivityLogView: View {
     private let entries: [ActivityLogEntry]
+    private let onExport: (ReportExportFormat) -> Void
 
-    public init(entries: [ActivityLogEntry]) {
+    public init(entries: [ActivityLogEntry], onExport: @escaping (ReportExportFormat) -> Void = { _ in }) {
         self.entries = entries
+        self.onExport = onExport
     }
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
-                Text("Activity & Correction Log")
-                    .font(VLTypography.pageTitle())
-                    .foregroundStyle(VLColor.textPrimary)
+                HStack {
+                    Text("Activity & Correction Log")
+                        .font(VLTypography.pageTitle())
+                        .foregroundStyle(VLColor.textPrimary)
+                    Spacer()
+                    if !entries.isEmpty {
+                        ExportMenuButton(onExport: onExport)
+                    }
+                }
 
                 Text("Can prove: what Voice Ledger detected, proposed, and submitted; what you approved; before/after entity snapshots. Cannot prove: who changed something directly in QBO outside the app.")
                     .font(VLTypography.caption())

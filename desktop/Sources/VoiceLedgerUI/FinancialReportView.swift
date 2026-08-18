@@ -19,6 +19,7 @@ public struct FinancialReportView: View {
     private let isLoading: Bool
     private let errorMessage: String?
     private let onRefresh: () -> Void
+    private let onExport: (ReportExportFormat) -> Void
 
     public init(
         title: String,
@@ -27,7 +28,8 @@ public struct FinancialReportView: View {
         lines: [ReportLine],
         isLoading: Bool,
         errorMessage: String?,
-        onRefresh: @escaping () -> Void
+        onRefresh: @escaping () -> Void,
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
     ) {
         self.title = title
         self.sourceDescription = sourceDescription
@@ -36,6 +38,7 @@ public struct FinancialReportView: View {
         self.isLoading = isLoading
         self.errorMessage = errorMessage
         self.onRefresh = onRefresh
+        self.onExport = onExport
     }
 
     public var body: some View {
@@ -46,6 +49,9 @@ public struct FinancialReportView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    if !lines.isEmpty {
+                        ExportMenuButton(onExport: onExport)
+                    }
                     VLEnvironmentBadge(environment)
                 }
 

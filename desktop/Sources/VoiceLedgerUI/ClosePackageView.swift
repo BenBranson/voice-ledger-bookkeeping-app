@@ -14,9 +14,9 @@ import DesignSystem
 /// data. **Not built**: variance analysis, cash flow / general ledger /
 /// trial balance / aging reports, a tracked "corrections made" ledger
 /// distinct from the Activity Log, carry-forward items, client Q&A, and Ask
-/// Claude history (no Claude integration exists yet at all). Also not a
-/// branded, exportable PDF — this is an in-app read-only consolidated view,
-/// same as `FinancialReportView` and `BalanceSheetIntegrityView`.
+/// Claude history (no Claude integration exists yet at all). Exportable as
+/// CSV/XLSX/PDF (a plain table export of this same data, not a designed
+/// branded document) via the Export menu.
 public struct ClosePackageView: View {
     public struct ChecklistStatus {
         public let completed: Int
@@ -35,6 +35,7 @@ public struct ClosePackageView: View {
     private let balanceSheetLines: [ReportLine]
     private let profitAndLossLines: [ReportLine]
     private let recentActivity: [ActivityLogEntry]
+    private let onExport: (ReportExportFormat) -> Void
 
     public init(
         environment: VLEnvironmentTone,
@@ -44,7 +45,8 @@ public struct ClosePackageView: View {
         resolvedCleanupFindingsCount: Int,
         balanceSheetLines: [ReportLine],
         profitAndLossLines: [ReportLine],
-        recentActivity: [ActivityLogEntry]
+        recentActivity: [ActivityLogEntry],
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
     ) {
         self.environment = environment
         self.period = period
@@ -54,6 +56,7 @@ public struct ClosePackageView: View {
         self.balanceSheetLines = balanceSheetLines
         self.profitAndLossLines = profitAndLossLines
         self.recentActivity = recentActivity
+        self.onExport = onExport
     }
 
     public var body: some View {
@@ -64,10 +67,11 @@ public struct ClosePackageView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    ExportMenuButton(onExport: onExport)
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — not a branded exportable document, and not the full spec'd Close Package (no variance analysis, no cash flow/GL/trial balance/aging reports, no carry-forward items or client Q&A).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no variance analysis, no cash flow/GL/trial balance/aging reports, no carry-forward items or client Q&A).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 

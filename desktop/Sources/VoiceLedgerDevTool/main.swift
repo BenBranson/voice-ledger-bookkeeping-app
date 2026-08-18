@@ -3,6 +3,7 @@ import Core
 import IntegrationsQuickBooks
 import IntegrationsImports
 import DB
+import Exporting
 
 // Verifies gate conditions against real data. Deliberately NOT the
 // Connection Page or the real app (docs/VOICE_LEDGER_SPEC.md) — it's the
@@ -16,7 +17,7 @@ import DB
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "sync-check", "csv-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "sync-check", "csv-import-check", "export-sample"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -33,13 +34,45 @@ guard arguments.count >= 2, ["health", "sync-check", "csv-import-check"].contain
                               AppState.confirmCSVImport uses), then prints
                               VL-RECON-MISSING-001 and VL-VENDOR-MISMATCH-001
                               results. Does not write to QBO.
+      export-sample <outputDir>
+                              Writes sample.csv / sample.xlsx / sample.pdf to
+                              outputDir using CSVReportExporter/
+                              XLSXReportExporter/PDFReportExporter against a
+                              small synthetic ExportTable. No network, no
+                              realm needed — verifies the exporters produce
+                              real, openable files.
 
-    Required environment variables:
+    Required environment variables (not needed for export-sample):
       VOICE_LEDGER_BACKEND_URL     e.g. https://your-backend.onrender.com
       VOICE_LEDGER_SESSION_TOKEN   from the backend's /oauth/callback response
       VOICE_LEDGER_REALM_ID        the sandbox company's realmId
     """)
     exit(64) // EX_USAGE
+}
+
+if arguments[1] == "export-sample" {
+    guard arguments.count >= 3 else {
+        FileHandle.standardError.write("Usage: export-sample <outputDir>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    let outputDir = URL(fileURLWithPath: arguments[2])
+    try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+
+    let table = ExportTable(
+        title: "Sample Balance Sheet",
+        columns: ["Label", "Amount"],
+        rows: [
+            [ExportCell(text: "Checking"), ExportCell.money(Money(minorUnits: 1_234_567, currency: .usd))],
+            [ExportCell(text: "Accounts Payable, Net"), ExportCell.money(Money(minorUnits: -50_000, currency: .usd))],
+            [ExportCell(text: "Total Assets (Total)"), ExportCell.money(Money(minorUnits: 1_184_567, currency: .usd))]
+        ]
+    )
+
+    try? CSVReportExporter.export(table).write(to: outputDir.appendingPathComponent("sample.csv"))
+    try? XLSXReportExporter.export(table).write(to: outputDir.appendingPathComponent("sample.xlsx"))
+    try? PDFReportExporter.export(table).write(to: outputDir.appendingPathComponent("sample.pdf"))
+    print("Wrote sample.csv, sample.xlsx, sample.pdf to \(outputDir.path)")
+    exit(0)
 }
 
 guard let realmIDString = ProcessInfo.processInfo.environment["VOICE_LEDGER_REALM_ID"] else {

@@ -52,6 +52,11 @@ struct RootView: View {
             await state.loadFromDiskOnly()
             await state.checkHealth()
         }
+        .alert("Export Failed", isPresented: Binding(get: { state.exportError != nil }, set: { if !$0 { state.clearExportError() } })) {
+            Button("OK") { state.clearExportError() }
+        } message: {
+            Text(state.exportError ?? "")
+        }
     }
 
     @ViewBuilder
@@ -140,7 +145,10 @@ struct RootView: View {
             }
 
         case .activityLog:
-            ActivityLogView(entries: state.activityLog)
+            ActivityLogView(
+                entries: state.activityLog,
+                onExport: { format in state.exportTable(Self.exportTable(activityLog: state.activityLog), format: format, suggestedFilename: "Activity Log") }
+            )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Back") { state.screen = .list }
@@ -153,7 +161,8 @@ struct RootView: View {
                 coverageStatus: StatusMapping.status(for: coverageOutcome),
                 coverageDetail: coverageDetail,
                 summaries: cleanupAssessmentSummaries,
-                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
+                onExport: { format in state.exportTable(Self.exportTable(findingSummaries: cleanupAssessmentSummaries), format: format, suggestedFilename: "Cleanup Assessment") }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -255,7 +264,8 @@ struct RootView: View {
                 lines: state.balanceSheetLines,
                 isLoading: state.isLoadingBalanceSheet,
                 errorMessage: state.balanceSheetError,
-                onRefresh: { Task { await state.loadBalanceSheet() } }
+                onRefresh: { Task { await state.loadBalanceSheet() } },
+                onExport: { format in state.exportTable(Self.exportTable(title: "Balance Sheet", lines: state.balanceSheetLines), format: format, suggestedFilename: "Balance Sheet") }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -271,7 +281,8 @@ struct RootView: View {
                 lines: state.profitAndLossLines,
                 isLoading: state.isLoadingProfitAndLoss,
                 errorMessage: state.profitAndLossError,
-                onRefresh: { Task { await state.loadProfitAndLoss() } }
+                onRefresh: { Task { await state.loadProfitAndLoss() } },
+                onExport: { format in state.exportTable(Self.exportTable(title: "Profit & Loss", lines: state.profitAndLossLines), format: format, suggestedFilename: "Profit and Loss") }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -291,7 +302,23 @@ struct RootView: View {
                 resolvedCleanupFindingsCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
                 balanceSheetLines: state.balanceSheetLines,
                 profitAndLossLines: state.profitAndLossLines,
-                recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }
+                recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
+                onExport: { format in
+                    let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
+                    state.exportTable(
+                        Self.exportTable(
+                            period: state.currentPeriod,
+                            checklistCompleted: status.completed,
+                            checklistTotal: status.total,
+                            openCleanupCount: state.findings.filter { $0.status == .open && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                            resolvedCleanupCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                            balanceSheetLines: state.balanceSheetLines,
+                            profitAndLossLines: state.profitAndLossLines
+                        ),
+                        format: format,
+                        suggestedFilename: "Close Package"
+                    )
+                }
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -430,5 +457,86 @@ struct RootView: View {
             let samples = dataRows.prefix(3).compactMap { $0.indices.contains(index) ? $0[index] : nil }
             return ImportBankStatementView.ColumnPreview(index: index, header: header, sampleValues: samples)
         }
+    }
+
+    // MARK: - Export table builders
+    //
+    // Each report-style page already renders from real, already-computed
+    // state (ReportLine, Finding, ActivityLogEntry) — these just reshape
+    // that same data into the one generic `ExportTable` shape every format
+    // writer consumes, rather than each page inventing its own export path.
+
+    private static func exportTable(title: String, lines: [ReportLine]) -> ExportTable {
+        ExportTable(
+            title: title,
+            columns: ["Label", "Amount"],
+            rows: lines.map { line in
+                let indent = String(repeating: "    ", count: line.depth)
+                let label = indent + line.label + (line.isSummary ? " (Total)" : "")
+                return [ExportCell(text: label), ExportCell.money(line.amount)]
+            }
+        )
+    }
+
+    private static func exportTable(findingSummaries summaries: [CleanupAssessmentView.RuleSummary]) -> ExportTable {
+        var rows: [[ExportCell]] = []
+        for summary in summaries {
+            for finding in summary.findings {
+                rows.append([
+                    ExportCell(text: summary.title),
+                    ExportCell(text: finding.title),
+                    ExportCell(text: finding.severity.rawValue.capitalized),
+                    ExportCell(text: finding.confidence.rawValue.capitalized),
+                    ExportCell.money(finding.dollarExposure)
+                ])
+            }
+        }
+        return ExportTable(title: "Cleanup Assessment", columns: ["Rule", "Finding", "Severity", "Confidence", "Dollar Exposure"], rows: rows)
+    }
+
+    private static func exportTable(activityLog entries: [ActivityLogEntry]) -> ExportTable {
+        let dateFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter
+        }()
+        let rows = entries.sorted { $0.recordedAt > $1.recordedAt }.map { entry -> [ExportCell] in
+            let actor: String
+            switch entry.actor {
+            case .user(let name): actor = name
+            case .system: actor = "Voice Ledger"
+            }
+            return [
+                ExportCell(text: dateFormatter.string(from: entry.recordedAt)),
+                ExportCell(text: entry.kind.rawValue),
+                ExportCell(text: actor),
+                ExportCell(text: entry.note ?? "")
+            ]
+        }
+        return ExportTable(title: "Activity Log", columns: ["Date", "Kind", "Actor", "Note"], rows: rows)
+    }
+
+    private static func exportTable(
+        period: AccountingPeriod,
+        checklistCompleted: Int,
+        checklistTotal: Int,
+        openCleanupCount: Int,
+        resolvedCleanupCount: Int,
+        balanceSheetLines: [ReportLine],
+        profitAndLossLines: [ReportLine]
+    ) -> ExportTable {
+        var rows: [[ExportCell]] = [
+            [ExportCell(text: "Period"), ExportCell(text: "\(period.year)-\(String(format: "%02d", period.month))"), ExportCell(text: "")],
+            [ExportCell(text: "Month-End Checklist"), ExportCell(text: "\(checklistCompleted) of \(checklistTotal) complete"), ExportCell(text: "")],
+            [ExportCell(text: "Cleanup Assessment"), ExportCell(text: "\(openCleanupCount) open"), ExportCell(text: "\(resolvedCleanupCount) resolved")]
+        ]
+        for line in balanceSheetLines where line.isSummary {
+            rows.append([ExportCell(text: "Balance Sheet"), ExportCell(text: line.label), ExportCell.money(line.amount)])
+        }
+        for line in profitAndLossLines where line.isSummary {
+            rows.append([ExportCell(text: "Profit & Loss"), ExportCell(text: line.label), ExportCell.money(line.amount)])
+        }
+        return ExportTable(title: "Close Package", columns: ["Section", "Item", "Value"], rows: rows)
     }
 }

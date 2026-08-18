@@ -1,9 +1,12 @@
 import Foundation
 import Observation
+import AppKit
 import Core
 import IntegrationsQuickBooks
 import IntegrationsImports
 import DB
+import Exporting
+import VoiceLedgerUI
 
 /// Wires QBOSyncClient -> RuleEngine -> ClientStore -> the UI layer for the
 /// real end-to-end Branch B path (docs/phase-0/11_VERTICAL_SLICE.md §11.2,
@@ -528,6 +531,48 @@ public final class AppState {
         } catch {
             loadState = .failed("\(error)")
         }
+    }
+
+    /// Any error from the last export attempt — surfaced so the caller can
+    /// show it, rather than a silent failure if e.g. the chosen location
+    /// isn't writable.
+    public private(set) var exportError: String?
+
+    /// The one export entry point every report-style page calls through.
+    /// Presents a native `NSSavePanel` (the user picks the location and
+    /// clicks Save themselves — this is a normal local save action, not
+    /// something the app does on its own) then writes the chosen format's
+    /// bytes. `suggestedFilename` should NOT include an extension; one is
+    /// appended for the chosen format.
+    public func exportTable(_ table: ExportTable, format: ReportExportFormat, suggestedFilename: String) {
+        exportError = nil
+        let data: Data
+        let fileExtension: String
+        switch format {
+        case .csv:
+            data = CSVReportExporter.export(table)
+            fileExtension = "csv"
+        case .xlsx:
+            data = XLSXReportExporter.export(table)
+            fileExtension = "xlsx"
+        case .pdf:
+            data = PDFReportExporter.export(table)
+            fileExtension = "pdf"
+        }
+
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(suggestedFilename).\(fileExtension)"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            exportError = "Could not save \(url.lastPathComponent): \(error)"
+        }
+    }
+
+    public func clearExportError() {
+        exportError = nil
     }
 
     /// CLAUDE.md-adjacent honesty fix: every "Dismiss" button in the app

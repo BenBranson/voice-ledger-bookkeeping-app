@@ -20,6 +20,7 @@ let package = Package(
         .library(name: "DB", targets: ["DB"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "VoiceLedgerUI", targets: ["VoiceLedgerUI"]),
+        .library(name: "Exporting", targets: ["Exporting"]),
         .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"]),
         .executable(name: "VoiceLedgerApp", targets: ["VoiceLedgerApp"])
     ],
@@ -72,7 +73,7 @@ let package = Package(
         // thing that can prove a gate against real data, text-only, no UI.
         .executableTarget(
             name: "VoiceLedgerDevTool",
-            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "Exporting"],
             path: "Sources/VoiceLedgerDevTool"
         ),
 
@@ -89,13 +90,32 @@ let package = Package(
             path: "Sources/VoiceLedgerUI"
         ),
 
+        // CSV/XLSX/PDF export — takes a Core `ExportTable` and produces file
+        // bytes. XLSX is a hand-rolled minimal OOXML writer (no third-party
+        // zip/spreadsheet dependency): the ZIP container uses STORED
+        // (uncompressed) entries, which is a fully valid zip per spec and
+        // sidesteps needing a DEFLATE implementation entirely, since this
+        // writes files rather than reading arbitrary ones. PDF uses
+        // CoreGraphics/AppKit, both part of the macOS SDK already targeted.
+        .target(
+            name: "Exporting",
+            dependencies: ["Core"],
+            path: "Sources/Exporting"
+        ),
+
+        .testTarget(
+            name: "ExportingTests",
+            dependencies: ["Exporting", "Core"],
+            path: "Tests/ExportingTests"
+        ),
+
         // The actual running app: wires QBOSyncClient -> RuleEngine ->
         // ClientStore -> VoiceLedgerUI for the slice's real end-to-end path.
         // NOT visually verified in this session — no screenshot tool for a
         // native macOS window was available; see the final report.
         .executableTarget(
             name: "VoiceLedgerApp",
-            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "DesignSystem", "VoiceLedgerUI"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "DesignSystem", "VoiceLedgerUI", "Exporting"],
             path: "Sources/VoiceLedgerApp"
         ),
 
