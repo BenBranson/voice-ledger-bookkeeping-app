@@ -3,18 +3,39 @@ import Core
 import DesignSystem
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example, rendered:
-/// evidence, proposed action, and — since Branch B is the only path
-/// (§11.1) — a button straight to the guided procedure. No staged-write
-/// option is ever constructed here, matching acceptance criterion 12: not
-/// offered then disabled, genuinely absent.
+/// evidence, proposed action, and a button to act on it. Branch B
+/// (`.manualQBO`) goes straight to the guided procedure, matching
+/// acceptance criterion 12: never offered a write path it can't complete.
+/// `.stagedAPI` actions (first consumer: `VL-CC-PAYMENT-001`'s structural
+/// match) instead get an "Apply Fix" button — gated on `writeAccessEnabled`
+/// and a separate explicit confirmation step showing before/after, per
+/// CLAUDE.md rule 2's "detect -> draft -> review -> push."
 public struct FindingDetailView: View {
     private let finding: Finding
+    private let writeAccessEnabled: Bool
+    private let isApplyingFix: Bool
+    private let applyFixError: String?
     private let onStartProcedure: (ProposedAction) -> Void
+    private let onApplyFix: () -> Void
     private let onDismiss: () -> Void
 
-    public init(finding: Finding, onStartProcedure: @escaping (ProposedAction) -> Void, onDismiss: @escaping () -> Void) {
+    @State private var isConfirmingApplyFix = false
+
+    public init(
+        finding: Finding,
+        writeAccessEnabled: Bool,
+        isApplyingFix: Bool,
+        applyFixError: String?,
+        onStartProcedure: @escaping (ProposedAction) -> Void,
+        onApplyFix: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
         self.finding = finding
+        self.writeAccessEnabled = writeAccessEnabled
+        self.isApplyingFix = isApplyingFix
+        self.applyFixError = applyFixError
         self.onStartProcedure = onStartProcedure
+        self.onApplyFix = onApplyFix
         self.onDismiss = onDismiss
     }
 
@@ -108,15 +129,75 @@ public struct FindingDetailView: View {
                         .foregroundStyle(VLColor.textSecondary)
                 }
 
+                if let details = action.apiWriteDetails {
+                    applyFixSection(details)
+                } else {
+                    HStack(spacing: VLSpacing.sm) {
+                        Button("Approve") { onStartProcedure(action) }
+                            .buttonStyle(.borderedProminent)
+                        Button("Dismiss") { onDismiss() }
+                            .buttonStyle(.bordered)
+                    }
+                    .padding(.top, VLSpacing.xs)
+                }
+            }
+        }
+    }
+
+    /// The "review" step of CLAUDE.md rule 2's detect -> draft -> review ->
+    /// push: before/after account names are shown and a second explicit tap
+    /// is required (`isConfirmingApplyFix`) — approving isn't enough on its
+    /// own to send a write.
+    private func applyFixSection(_ details: StagedAPIWriteDetails) -> some View {
+        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+            if !writeAccessEnabled {
+                Text("Write access is off for this connection — enable it on the Connection page before applying this fix.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+            }
+
+            HStack(spacing: VLSpacing.sm) {
+                Text(details.currentAccountName)
+                    .strikethrough()
+                    .foregroundStyle(VLColor.textMuted)
+                Text("→")
+                    .foregroundStyle(VLColor.textMuted)
+                Text(details.suggestedAccountName)
+                    .foregroundStyle(VLColor.textPrimary)
+            }
+            .font(VLTypography.body())
+
+            if let applyFixError {
+                Text(applyFixError)
+                    .font(VLTypography.caption())
+                    .foregroundStyle(.red)
+            }
+
+            if isConfirmingApplyFix {
+                Text("This sends a real write to QBO. Confirm the account change above is correct.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
                 HStack(spacing: VLSpacing.sm) {
-                    Button("Approve") { onStartProcedure(action) }
+                    Button(isApplyingFix ? "Applying…" : "Confirm Apply Fix") {
+                        onApplyFix()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isApplyingFix)
+                    Button("Cancel") { isConfirmingApplyFix = false }
+                        .buttonStyle(.bordered)
+                        .disabled(isApplyingFix)
+                }
+            } else {
+                HStack(spacing: VLSpacing.sm) {
+                    Button("Apply Fix") { isConfirmingApplyFix = true }
                         .buttonStyle(.borderedProminent)
+                        .disabled(!writeAccessEnabled)
                     Button("Dismiss") { onDismiss() }
                         .buttonStyle(.bordered)
                 }
-                .padding(.top, VLSpacing.xs)
             }
         }
+        .padding(.top, VLSpacing.xs)
     }
 
     private func consequenceLines(_ consequences: [Consequence]) -> [String] {

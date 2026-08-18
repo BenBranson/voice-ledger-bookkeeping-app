@@ -51,9 +51,11 @@ public enum CreditCardPaymentMiscodedRule: Rule {
     public static func evaluate(_ input: NormalizedDataSet, context: RuleContext) -> RuleOutcome {
         let purchases = input.transactions.filter { $0.entityKind == .purchase && !$0.isVoided }
         let accountsByID = Dictionary(uniqueKeysWithValues: input.accounts.map { ($0.id, $0) })
-        let creditCardAccountNames = Set(
-            input.accounts.filter { $0.accountType == .creditCard }.map { $0.name.lowercased() }
+        let creditCardAccountsByLowercasedName = Dictionary(
+            input.accounts.filter { $0.accountType == .creditCard }.map { ($0.name.lowercased(), $0) },
+            uniquingKeysWith: { first, _ in first }
         )
+        let creditCardAccountNames = Set(creditCardAccountsByLowercasedName.keys)
 
         var findings: [Finding] = []
 
@@ -105,17 +107,44 @@ public enum CreditCardPaymentMiscodedRule: Rule {
                 doneCriteria: "The transaction is coded to the credit card's own liability account, not an expense account"
             )
 
+            // A staged API fix is only offered when the correct target
+            // account is unambiguous end-to-end: a structural (not keyword)
+            // vendor match, exactly one line (so there's no question which
+            // line to reclassify), a resolvable QBO Line.Id and SyncToken
+            // (both required by `updatePurchaseLineAccount`), and a real
+            // Credit Card account whose name matches the vendor. Anything
+            // short of that stays `.manualQBO` — a guided procedure, not an
+            // auto-suggested write.
+            var apiWriteDetails: StagedAPIWriteDetails?
+            if isStructuralMatch,
+               purchase.lines.count == 1,
+               let syncToken = purchase.syncToken,
+               let targetAccount = creditCardAccountsByLowercasedName[vendorLower] {
+                let line = purchase.lines[0]
+                let currentAccountName = accountsByID[line.accountID]?.name ?? line.accountID
+                apiWriteDetails = StagedAPIWriteDetails(
+                    purchaseID: purchase.id,
+                    lineID: line.id,
+                    expectedSyncToken: syncToken,
+                    currentAccountID: line.accountID,
+                    currentAccountName: currentAccountName,
+                    suggestedAccountID: targetAccount.id,
+                    suggestedAccountName: targetAccount.name
+                )
+            }
+
             let action = ProposedAction(
                 id: "recategorize-to-credit-card-liability",
                 title: "Recategorize to the credit card liability account",
-                resolution: .manualQBO,
+                resolution: apiWriteDetails != nil ? .stagedAPI : .manualQBO,
                 guidedProcedure: procedure,
                 consequences: [
                     .reporting("expenses decrease by \(purchase.totalAmount) once corrected — this spending was already counted when the card's own charges posted"),
                     .reconciliation("the credit card account's balance becomes accurate once the payment is coded against it"),
                     .auditTrail("Voice Ledger records your attestation; QBO's own record of the change is authoritative")
                 ],
-                reversal: .reversibleManually(procedure: "Change the category back in QBO if done in error")
+                reversal: .reversibleManually(procedure: "Change the category back in QBO if done in error"),
+                apiWriteDetails: apiWriteDetails
             )
 
             findings.append(Finding(

@@ -72,6 +72,7 @@ private struct EntryRow: View {
         case .findingDetected: return "Finding detected"
         case .manualCompletionAttested: return "Manual completion attested"
         case .findingResolved: return "Finding resolved"
+        case .apiWriteApplied: return "API write applied"
         }
     }
 

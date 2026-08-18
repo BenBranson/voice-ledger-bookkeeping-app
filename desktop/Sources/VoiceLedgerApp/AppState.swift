@@ -67,6 +67,10 @@ public final class AppState {
     public private(set) var writeAccessEnabled: Bool?
     public private(set) var isTogglingWriteAccess = false
 
+    // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
+    public private(set) var isApplyingFix = false
+    public private(set) var applyFixError: String?
+
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
         public let filename: String
@@ -382,5 +386,58 @@ public final class AppState {
             loadState = .failed("\(error)")
         }
         screen = .list
+    }
+
+    /// CLAUDE.md rule 2's "push" step for `.stagedAPI` actions — the only
+    /// write path in the app. The caller (the view) is responsible for the
+    /// "review" step: showing before/after and requiring an explicit tap,
+    /// gated on `writeAccessEnabled == true`. This method does not check
+    /// `writeAccessEnabled` itself — same reasoning as
+    /// `QBOSyncClient.reclassifyPurchaseLine`'s doc comment: the backend's
+    /// check is the authoritative one, a client-side pre-check would only
+    /// be a second, spoofable copy of it. `verified: false` is recorded as
+    /// an error, never silently treated as success (CLAUDE.md rule 5's
+    /// "green means verified" posture applied to writes, not just checks).
+    public func applyStagedFix(findingID: String, actorName: String) async {
+        guard let finding = finding(id: findingID),
+              let action = finding.proposedActions.first,
+              let details = action.apiWriteDetails else { return }
+
+        isApplyingFix = true
+        applyFixError = nil
+        do {
+            let result = try await syncClient.reclassifyPurchaseLine(
+                realmID: realmID,
+                purchaseID: details.purchaseID,
+                lineID: details.lineID,
+                expectedSyncToken: details.expectedSyncToken,
+                newAccountID: details.suggestedAccountID
+            )
+            guard result.verified else {
+                applyFixError = "QBO did not confirm the change — nothing was recorded as resolved. Re-sync and check the transaction directly before retrying."
+                isApplyingFix = false
+                return
+            }
+            let entry = ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: .apiWriteApplied,
+                findingID: findingID,
+                ruleID: finding.ruleID,
+                ruleVersion: finding.ruleVersion,
+                note: "Reclassified purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName), QBO-verified"
+            )
+            try await store.appendActivityLogEntry(entry)
+            activityLog = try await store.loadActivityLog()
+            isApplyingFix = false
+            // The finding only actually resolves once a resync sees the
+            // corrected account — same posture as attestCompletion's doc
+            // comment: this is not treated as proof by itself.
+            await syncAndEvaluate()
+            screen = .list
+        } catch {
+            applyFixError = "\(error)"
+            isApplyingFix = false
+        }
     }
 }

@@ -198,6 +198,19 @@ public enum ExtractionMethod: String, Hashable, Codable, Sendable {
 /// difference, by design. Only the fields the rules actually built so far
 /// need are modeled; this is deliberately not the full spec's transaction
 /// shape.
+/// One `AccountBasedExpenseLineDetail` line, identity-tracked. Added
+/// alongside `LedgerTransaction.lines` for the same reason — see that
+/// field's doc comment.
+public struct LedgerTransactionLine: Hashable, Codable, Sendable {
+    public let id: String
+    public let accountID: String
+
+    public init(id: String, accountID: String) {
+        self.id = id
+        self.accountID = accountID
+    }
+}
+
 public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
     public let id: String // QBO Id for API-sourced records; a derived stable ID for imports
     public let entityKind: QBOEntityKind
@@ -219,6 +232,23 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
     /// credit-card payment miscoded to an expense account requires knowing
     /// what the LINE was coded to, not just what account paid for it.
     public let lineAccountIDs: [String]
+    /// Added for `updatePurchaseLineAccount` (Voice Ledger's first write
+    /// operation): the write op needs QBO's own `Line.Id` to target a
+    /// specific line safely (an array index could silently hit the wrong
+    /// line if QBO ever reorders them). Deliberately additive alongside
+    /// `lineAccountIDs` rather than replacing it — three already-verified
+    /// rules (`VL-CC-PAYMENT-001`, `VL-PAYROLL-LUMP-001`,
+    /// `VL-CAT-UNCAT-001`) only need account IDs and were left untouched.
+    /// Both are populated from the same `raw.line` read in
+    /// `QBOSyncClient.normalize`, so they cannot drift from each other.
+    public let lines: [LedgerTransactionLine]
+    /// Also added for `updatePurchaseLineAccount` — the write op's stale-
+    /// object check needs a `SyncToken` to compare against. `nil` for
+    /// entity kinds/sources that don't carry one (e.g. an imported
+    /// statement line); a write attempt against a `nil` token is simply
+    /// refused by the caller before it reaches the network, never sent as
+    /// an empty string.
+    public let syncToken: String?
     public let provenance: Provenance
 
     public init(
@@ -232,6 +262,8 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
         isVoided: Bool,
         memo: String?,
         lineAccountIDs: [String] = [],
+        lines: [LedgerTransactionLine] = [],
+        syncToken: String? = nil,
         provenance: Provenance
     ) {
         self.id = id
@@ -244,6 +276,8 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
         self.isVoided = isVoided
         self.memo = memo
         self.lineAccountIDs = lineAccountIDs
+        self.lines = lines
+        self.syncToken = syncToken
         self.provenance = provenance
     }
 }

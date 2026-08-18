@@ -16,6 +16,8 @@ struct CreditCardPaymentMiscodedRuleTests {
         vendor: String,
         amountMinorUnits: Int64 = 50_000,
         lineAccountIDs: [String],
+        lines: [LedgerTransactionLine] = [],
+        syncToken: String? = nil,
         isVoided: Bool = false
     ) -> LedgerTransaction {
         LedgerTransaction(
@@ -29,6 +31,8 @@ struct CreditCardPaymentMiscodedRuleTests {
             isVoided: isVoided,
             memo: nil,
             lineAccountIDs: lineAccountIDs,
+            lines: lines,
+            syncToken: syncToken,
             provenance: .qboAPI(readAt: Date())
         )
     }
@@ -138,5 +142,76 @@ struct CreditCardPaymentMiscodedRuleTests {
         if case .pass = outcome {
             Issue.record("rule must not report .pass on partial coverage")
         }
+    }
+
+    @Test("Structural match + single line + SyncToken + a real matching Credit Card account -> .stagedAPI with fix details")
+    func structuralMatchSingleLineWithSyncTokenGetsStagedFix() {
+        let accounts = [
+            LedgerAccount(id: "cc-1", name: "Amex", accountType: .creditCard),
+            LedgerAccount(id: "exp-1", name: "Office Supplies", accountType: .expense)
+        ]
+        let txn = purchase(
+            id: "1", vendor: "Amex", lineAccountIDs: ["exp-1"],
+            lines: [LedgerTransactionLine(id: "0", accountID: "exp-1")],
+            syncToken: "3"
+        )
+        let outcome = CreditCardPaymentMiscodedRule.evaluate(dataSet([txn], accounts: accounts), context: context())
+
+        guard case .findings(let findings) = outcome, findings.count == 1,
+              let action = findings[0].proposedActions.first else {
+            Issue.record("expected one finding with one action")
+            return
+        }
+        #expect(action.resolution == .stagedAPI)
+        guard let details = action.apiWriteDetails else {
+            Issue.record("expected apiWriteDetails to be populated")
+            return
+        }
+        #expect(details.purchaseID == "1")
+        #expect(details.lineID == "0")
+        #expect(details.expectedSyncToken == "3")
+        #expect(details.currentAccountID == "exp-1")
+        #expect(details.currentAccountName == "Office Supplies")
+        #expect(details.suggestedAccountID == "cc-1")
+        #expect(details.suggestedAccountName == "Amex")
+    }
+
+    @Test("Structural match without a SyncToken (e.g. not yet populated by sync) stays .manualQBO — no fix details")
+    func structuralMatchMissingSyncTokenStaysManual() {
+        let accounts = [
+            LedgerAccount(id: "cc-1", name: "Amex", accountType: .creditCard),
+            LedgerAccount(id: "exp-1", name: "Office Supplies", accountType: .expense)
+        ]
+        let txn = purchase(
+            id: "1", vendor: "Amex", lineAccountIDs: ["exp-1"],
+            lines: [LedgerTransactionLine(id: "0", accountID: "exp-1")],
+            syncToken: nil
+        )
+        let outcome = CreditCardPaymentMiscodedRule.evaluate(dataSet([txn], accounts: accounts), context: context())
+
+        guard case .findings(let findings) = outcome, let action = findings.first?.proposedActions.first else {
+            Issue.record("expected one finding with one action")
+            return
+        }
+        #expect(action.resolution == .manualQBO)
+        #expect(action.apiWriteDetails == nil)
+    }
+
+    @Test("Keyword-only match never gets a staged fix even with lines and a SyncToken present — only structural matches qualify")
+    func keywordOnlyMatchNeverGetsStagedFix() {
+        let accounts = [LedgerAccount(id: "exp-1", name: "Office Supplies", accountType: .expense)]
+        let txn = purchase(
+            id: "1", vendor: "American Express", lineAccountIDs: ["exp-1"],
+            lines: [LedgerTransactionLine(id: "0", accountID: "exp-1")],
+            syncToken: "1"
+        )
+        let outcome = CreditCardPaymentMiscodedRule.evaluate(dataSet([txn], accounts: accounts), context: context())
+
+        guard case .findings(let findings) = outcome, let action = findings.first?.proposedActions.first else {
+            Issue.record("expected one finding with one action")
+            return
+        }
+        #expect(action.resolution == .manualQBO)
+        #expect(action.apiWriteDetails == nil)
     }
 }

@@ -328,6 +328,8 @@ public struct QBOSyncClient: Sendable {
             isVoided: raw.isVoided,
             memo: raw.privateNote,
             lineAccountIDs: raw.lineAccountIDs,
+            lines: Self.lines(from: raw.line),
+            syncToken: raw.syncToken,
             provenance: .qboAPI(readAt: Date())
         )
     }
@@ -338,6 +340,17 @@ public struct QBOSyncClient: Sendable {
     /// and potentially match). Excluding it entirely means the rule's
     /// `lineAccounts.count == purchase.lineAccountIDs.count` check catches
     /// it and skips the transaction rather than guessing.
+    /// A line with no `Id` (shouldn't happen on any real read — QBO always
+    /// assigns one — but the field is optional in the raw decode) or no
+    /// `AccountBasedExpenseLineDetail` is skipped, not guessed at, same
+    /// discipline as `lineAccountIDs` already uses.
+    static func lines(from rawLines: [QBORawPurchaseLine]?) -> [LedgerTransactionLine] {
+        (rawLines ?? []).compactMap { rawLine in
+            guard let lineID = rawLine.id, let accountID = rawLine.accountBasedExpenseLineDetail?.accountRef?.value else { return nil }
+            return LedgerTransactionLine(id: lineID, accountID: accountID)
+        }
+    }
+
     static func normalize(_ raw: QBORawAccount) -> LedgerAccount? {
         guard let type = LedgerAccountType(rawValue: raw.accountType) else { return nil }
         let balance = raw.currentBalance.map { Money(minorUnits: Self.minorUnits(from: $0), currency: .usd) } ?? .zero
@@ -363,6 +376,7 @@ public struct QBOSyncClient: Sendable {
             isVoided: raw.isVoided,
             memo: raw.privateNote,
             lineAccountIDs: raw.lineAccountIDs,
+            lines: Self.lines(from: raw.line),
             provenance: .qboAPI(readAt: Date())
         )
     }

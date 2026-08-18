@@ -23,6 +23,7 @@ import Foundation
 /// not just proven in the rule engine's offline tests.
 public struct QBORawPurchase: Decodable, Sendable {
     public let id: String
+    public let syncToken: String?
     public let txnDate: String
     public let totalAmt: Decimal
     public let docNumber: String?
@@ -34,6 +35,7 @@ public struct QBORawPurchase: Decodable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
+        case syncToken = "SyncToken"
         case txnDate = "TxnDate"
         case totalAmt = "TotalAmt"
         case docNumber = "DocNumber"
@@ -65,9 +67,14 @@ public struct QBORawPurchase: Decodable, Sendable {
 }
 
 public struct QBORawPurchaseLine: Decodable, Sendable {
+    /// QBO's own `Line.Id` — added for `updatePurchaseLineAccount`, which
+    /// needs stable line identity, not an array index, to target a
+    /// specific line safely.
+    public let id: String?
     public let accountBasedExpenseLineDetail: QBORawAccountBasedExpenseLineDetail?
 
     enum CodingKeys: String, CodingKey {
+        case id = "Id"
         case accountBasedExpenseLineDetail = "AccountBasedExpenseLineDetail"
     }
 }

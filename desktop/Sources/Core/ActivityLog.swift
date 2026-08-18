@@ -14,6 +14,11 @@ public enum ActivityKind: String, Codable, Sendable {
     case findingDetected
     case manualCompletionAttested
     case findingResolved
+    /// A `.stagedAPI` `ProposedAction` was executed via `updatePurchaseLineAccount`
+    /// and QBO's round-trip verification confirmed the change (`verified: true`).
+    /// Unlike `manualCompletionAttested`, this IS QBO-confirmed — the `note`
+    /// field carries the verification summary, not just a human's say-so.
+    case apiWriteApplied
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never

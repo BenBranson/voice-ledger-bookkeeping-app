@@ -84,6 +84,41 @@ public enum ReversalPlan: Hashable, Codable, Sendable {
     case irreversible
 }
 
+/// The concrete parameters for `updatePurchaseLineAccount`, attached to a
+/// `ProposedAction` whose `resolution == .stagedAPI`. A rule populates this
+/// only when it can identify the fix unambiguously — see
+/// `CreditCardPaymentMiscodedRule`'s doc comment on when it does and
+/// doesn't. This is the "draft" in CLAUDE.md rule 2's "detect -> draft ->
+/// review -> push" — the UI still requires an explicit human confirmation
+/// (and the realm must be in Write-Enabled mode) before anything is sent.
+public struct StagedAPIWriteDetails: Hashable, Codable, Sendable {
+    public let purchaseID: String
+    public let lineID: String
+    public let expectedSyncToken: String
+    public let currentAccountID: String
+    public let currentAccountName: String
+    public let suggestedAccountID: String
+    public let suggestedAccountName: String
+
+    public init(
+        purchaseID: String,
+        lineID: String,
+        expectedSyncToken: String,
+        currentAccountID: String,
+        currentAccountName: String,
+        suggestedAccountID: String,
+        suggestedAccountName: String
+    ) {
+        self.purchaseID = purchaseID
+        self.lineID = lineID
+        self.expectedSyncToken = expectedSyncToken
+        self.currentAccountID = currentAccountID
+        self.currentAccountName = currentAccountName
+        self.suggestedAccountID = suggestedAccountID
+        self.suggestedAccountName = suggestedAccountName
+    }
+}
+
 public struct ProposedAction: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let title: String
@@ -91,6 +126,7 @@ public struct ProposedAction: Identifiable, Hashable, Codable, Sendable {
     public let guidedProcedure: GuidedProcedure?
     public let consequences: [Consequence]
     public let reversal: ReversalPlan
+    public let apiWriteDetails: StagedAPIWriteDetails?
 
     public init(
         id: String,
@@ -98,7 +134,8 @@ public struct ProposedAction: Identifiable, Hashable, Codable, Sendable {
         resolution: ResolutionKind,
         guidedProcedure: GuidedProcedure?,
         consequences: [Consequence],
-        reversal: ReversalPlan
+        reversal: ReversalPlan,
+        apiWriteDetails: StagedAPIWriteDetails? = nil
     ) {
         self.id = id
         self.title = title
@@ -106,6 +143,7 @@ public struct ProposedAction: Identifiable, Hashable, Codable, Sendable {
         self.guidedProcedure = guidedProcedure
         self.consequences = consequences
         self.reversal = reversal
+        self.apiWriteDetails = apiWriteDetails
     }
 }
 

@@ -84,7 +84,11 @@ struct RootView: View {
             if let finding = state.finding(id: findingID) {
                 FindingDetailView(
                     finding: finding,
+                    writeAccessEnabled: state.writeAccessEnabled == true,
+                    isApplyingFix: state.isApplyingFix,
+                    applyFixError: state.applyFixError,
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
+                    onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
                     onDismiss: { state.screen = .list }
                 )
             } else {
