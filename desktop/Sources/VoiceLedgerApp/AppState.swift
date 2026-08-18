@@ -76,6 +76,11 @@ public final class AppState {
         public let filename: String
         public let allRows: [[String]]
         public let hasHeaderRow: Bool
+        /// From a `MappingHint` matching this file's exact header row, when
+        /// one exists — empty when there's no match, meaning the confirm
+        /// screen starts blank as before. See `MappingHint`'s doc comment.
+        public let suggestedFields: [MappedField]
+        public let appliedHint: (id: MappingHintID, timesUsed: Int)?
     }
     public struct PendingOFXImport {
         public let filename: String
@@ -94,6 +99,11 @@ public final class AppState {
     }
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
+    /// Loaded on launch and refreshed after every confirmed CSV import —
+    /// `selectFileForImport` (synchronous, called from inside a
+    /// `.fileImporter` completion) reads this in-memory cache rather than
+    /// hitting the store itself, since it has no `async` context to do so.
+    public private(set) var mappingHints: [MappingHint] = []
 
     // Month-End Close checklist (Page 11) state.
     public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
@@ -135,6 +145,7 @@ public final class AppState {
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
             checklistCompletions = try await store.loadChecklistCompletions()
+            mappingHints = try await store.loadMappingHints()
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -304,7 +315,12 @@ public final class AppState {
                     importError = "\(url.lastPathComponent) is empty."
                     return
                 }
-                pendingImport = .csv(PendingCSVImport(filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true))
+                let matchedHint = mappingHints.first { $0.id == MappingHint.makeID(headers: rows[0]) }
+                pendingImport = .csv(PendingCSVImport(
+                    filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true,
+                    suggestedFields: matchedHint?.fields ?? [],
+                    appliedHint: matchedHint.map { (id: $0.id, timesUsed: $0.timesUsed) }
+                ))
             }
         } catch {
             importError = "Could not read \(url.lastPathComponent): \(error)"
@@ -338,6 +354,17 @@ public final class AppState {
         }
         do {
             try await store.upsertImportedStatementLines(result.transactions)
+            // §9.6 stage 6: learn this mapping for next time, keyed on the
+            // header row exactly as it appeared. Only meaningful when the
+            // file actually has a header row to fingerprint against.
+            if pending.hasHeaderRow, let headerRow = pending.allRows.first {
+                var fields = Array(repeating: MappedField.unmapped, count: headerRow.count)
+                for mapping in mappings where mapping.sourceColumn < fields.count {
+                    fields[mapping.sourceColumn] = mapping.target
+                }
+                try await store.upsertMappingHint(headers: headerRow, fields: fields)
+                mappingHints = try await store.loadMappingHints()
+            }
             pendingImport = nil
             await syncAndEvaluate()
         } catch {

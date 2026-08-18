@@ -61,10 +61,27 @@ no stated balance by convention) — a real cross-foot check for CSV imports
 would need a manually-entered "statement ending balance" field, not
 attempted here.
 
+**Built, 2026-08-18: learned-mapping persistence (stage 6), CSV only.**
+`MappingHint` (Core) is matched by an EXACT header-row fingerprint
+(`MappingHint.makeID` — case/whitespace-insensitive, but order- and
+text-sensitive: a reordered or renamed column is a different hint, never
+fuzzy-matched onto an old one). `ClientStore.upsertMappingHint` persists it
+per-realm, incrementing `timesUsed` and replacing `fields` with whatever was
+just confirmed (a correction sticks, not silently overridden by the older
+mapping). `AppState` caches all hints in memory (loaded at launch, refreshed
+after every confirmed import) since `selectFileForImport` runs synchronously
+inside a `.fileImporter` completion with no `async` context to query the
+store directly. `ImportBankStatementView` pre-fills the pickers from a
+matching hint — still shown as an editable, unconfirmed suggestion
+(`MappingOrigin.learned`, its first real use), with a visible note saying
+so; the mapping actually sent to `confirmCSVImport` is always whatever's in
+the pickers at Confirm time, whether that's the suggestion, a correction, or
+(no matching hint) a blank slate. OFX has no column mapping step at all
+(self-describing tags), so there is nothing to learn there.
+
 **Still not built:** the automated cross-foot check itself (§9.5 proper — a
-computed pass/fail, not just a displayed number), learned-mapping
-persistence (stage 6), Excel within Tier 1, and Tier 2 (on-device Vision) /
-Tier 3 (Claude vision) entirely.
+computed pass/fail, not just a displayed number), Excel within Tier 1, and
+Tier 2 (on-device Vision) / Tier 3 (Claude vision) entirely.
 
 ---
 

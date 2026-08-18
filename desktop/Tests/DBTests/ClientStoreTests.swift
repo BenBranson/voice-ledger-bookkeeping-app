@@ -179,4 +179,45 @@ struct ClientStoreTests {
         let loaded = try await store.loadChecklistCompletions()
         #expect(loaded.isEmpty)
     }
+
+    @Test("Mapping hints round-trip: upsert then load returns the learned fields")
+    func mappingHintsRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let headers = ["Date", "Description", "Amount"]
+        try await store.upsertMappingHint(headers: headers, fields: [.date, .description, .amount])
+        let loaded = try await store.loadMappingHints()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].headers == headers)
+        #expect(loaded[0].fields == [.date, .description, .amount])
+        #expect(loaded[0].timesUsed == 1)
+    }
+
+    @Test("Re-upserting the same header shape increments timesUsed and replaces fields, rather than accumulating duplicates")
+    func mappingHintUpsertIncrementsAndReplaces() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let headers = ["Date", "Description", "Amount"]
+        try await store.upsertMappingHint(headers: headers, fields: [.date, .description, .amount])
+        // A correction: the human decides "Description" should actually be ignored this time.
+        try await store.upsertMappingHint(headers: headers, fields: [.date, .ignored, .amount])
+        let loaded = try await store.loadMappingHints()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].timesUsed == 2)
+        #expect(loaded[0].fields == [.date, .ignored, .amount])
+    }
+
+    @Test("A header row differing only in case/whitespace still matches the same hint id")
+    func mappingHintIDIsCaseAndWhitespaceInsensitive() {
+        let a = MappingHint.makeID(headers: ["Date", "Description", "Amount"])
+        let b = MappingHint.makeID(headers: [" date ", "DESCRIPTION", "amount"])
+        #expect(a == b)
+    }
+
+    @Test("A different header shape (reordered or renamed) produces a different hint id — never fuzzy-matched")
+    func mappingHintIDDiffersForDifferentHeaderShape() {
+        let a = MappingHint.makeID(headers: ["Date", "Description", "Amount"])
+        let reordered = MappingHint.makeID(headers: ["Description", "Date", "Amount"])
+        let renamed = MappingHint.makeID(headers: ["Date", "Memo", "Amount"])
+        #expect(a != reordered)
+        #expect(a != renamed)
+    }
 }

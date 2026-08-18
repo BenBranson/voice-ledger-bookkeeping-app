@@ -183,6 +183,8 @@ struct RootView: View {
                     ImportBankStatementView(
                         filename: pending.filename,
                         columns: Self.columnPreviews(for: pending),
+                        suggestedFields: pending.suggestedFields,
+                        appliedHint: pending.appliedHint,
                         accounts: state.accounts,
                         onConfirm: { mappings, accountID in Task { await state.confirmCSVImport(mappings: mappings, statementAccountID: accountID) } },
                         onCancel: { state.cancelPendingImport() }

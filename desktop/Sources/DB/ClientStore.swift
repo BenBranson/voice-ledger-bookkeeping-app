@@ -34,6 +34,7 @@ public actor ClientStore {
     private var activityLogURL: URL { directory.appending(path: "activity-log.json") }
     private var importedStatementLinesURL: URL { directory.appending(path: "imported-statement-lines.json") }
     private var checklistCompletionsURL: URL { directory.appending(path: "checklist-completions.json") }
+    private var mappingHintsURL: URL { directory.appending(path: "mapping-hints.json") }
 
     // MARK: - Findings
 
@@ -126,6 +127,26 @@ public actor ClientStore {
         var existing = try loadChecklistCompletions()
         existing.removeAll { $0.itemID == itemID && $0.period == period }
         try save(existing, to: checklistCompletionsURL)
+    }
+
+    // MARK: - Learned column mappings (§9.6 stage 6)
+
+    public func loadMappingHints() throws -> [MappingHint] {
+        try load([MappingHint].self, from: mappingHintsURL, default: [])
+    }
+
+    /// Upserts by `MappingHint.makeID(headers:)` — a reimport of a file
+    /// with the identical header row increments `timesUsed` and replaces
+    /// `fields` with whatever was just confirmed (a correction to a
+    /// previously-learned mapping sticks; it is not silently overridden by
+    /// the older one).
+    public func upsertMappingHint(headers: [String], fields: [MappedField]) throws {
+        let id = MappingHint.makeID(headers: headers)
+        var existing = try loadMappingHints()
+        let timesUsed = (existing.first { $0.id == id }?.timesUsed ?? 0) + 1
+        existing.removeAll { $0.id == id }
+        existing.append(MappingHint(id: id, headers: headers, fields: fields, timesUsed: timesUsed, lastUsedAt: Date()))
+        try save(existing, to: mappingHintsURL)
     }
 
     // MARK: - Activity log

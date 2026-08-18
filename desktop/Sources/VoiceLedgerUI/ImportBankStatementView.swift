@@ -3,12 +3,16 @@ import Core
 import DesignSystem
 
 /// docs/phase-0/09_INGESTION_PIPELINE.md §9.4: "column mapping with a
-/// confirm-and-correct step, never a silent guess." The minimal real
-/// version of that screen — one `Picker` per CSV column, defaulting every
-/// column to `.unmapped` (never a suggested guess pre-selected as if
-/// confirmed), Import disabled until `.date` and `.amount` are both
-/// assigned. No learned-mapping suggestions yet (stage 6) — every import
-/// starts from a blank slate.
+/// confirm-and-correct step, never a silent guess." One `Picker` per CSV
+/// column; Import disabled until `.date` and `.amount` are both assigned.
+///
+/// **Stage 6 (§9.6), learned mappings:** if a prior import of a file with
+/// this EXACT header row was confirmed before, `suggestedFields` pre-fills
+/// the pickers from that — still shown as an editable suggestion, not
+/// silently applied. The mapping actually sent to `onConfirm` always
+/// reflects whatever is in the pickers at Confirm time, whether that's the
+/// suggestion, a correction to it, or (with no matching hint) a blank
+/// slate the human filled in themselves.
 public struct ImportBankStatementView: View {
     public struct ColumnPreview: Identifiable {
         public let index: Int
@@ -31,8 +35,13 @@ public struct ImportBankStatementView: View {
     /// to compare an imported line against the right posted transactions
     /// at all (both match on `paymentAccountID`).
     private let accounts: [LedgerAccount]
+    /// From a matching `MappingHint`, when one was found for this exact
+    /// header row — `nil` means no hint matched, so every picker starts at
+    /// `.unmapped` as before.
+    private let appliedHint: (id: MappingHintID, timesUsed: Int)?
     private let onConfirm: ([ColumnMapping], _ statementAccountID: String) -> Void
     private let onCancel: () -> Void
+    private let initialSuggestedFields: [MappedField]
 
     @State private var selections: [MappedField]
     @State private var selectedAccountID: String?
@@ -40,16 +49,21 @@ public struct ImportBankStatementView: View {
     public init(
         filename: String,
         columns: [ColumnPreview],
+        suggestedFields: [MappedField] = [],
+        appliedHint: (id: MappingHintID, timesUsed: Int)? = nil,
         accounts: [LedgerAccount],
         onConfirm: @escaping ([ColumnMapping], _ statementAccountID: String) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.filename = filename
         self.columns = columns
+        self.appliedHint = appliedHint
         self.accounts = accounts
         self.onConfirm = onConfirm
         self.onCancel = onCancel
-        self._selections = State(initialValue: Array(repeating: .unmapped, count: columns.count))
+        let initialSelections = suggestedFields.count == columns.count ? suggestedFields : Array(repeating: .unmapped, count: columns.count)
+        self.initialSuggestedFields = initialSelections
+        self._selections = State(initialValue: initialSelections)
         self._selectedAccountID = State(initialValue: nil)
     }
 
@@ -88,6 +102,12 @@ public struct ImportBankStatementView: View {
                             .labelsHidden()
                         }
                     }
+                }
+
+                if let appliedHint {
+                    Text("Pre-filled from a previous import with this exact column layout (used \(appliedHint.timesUsed) time\(appliedHint.timesUsed == 1 ? "" : "s") before) — review before confirming.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
                 }
 
                 Text("Assign each column below, then confirm. Nothing is guessed for you — an unmapped column is skipped, not silently dropped.")
@@ -142,7 +162,19 @@ public struct ImportBankStatementView: View {
                         let mappings = columns.enumerated().compactMap { index, column -> ColumnMapping? in
                             let field = selections[index]
                             guard field != .unmapped else { return nil }
-                            return ColumnMapping(sourceColumn: column.index, sourceHeader: column.header, target: field, origin: .userSpecified, confirmed: true)
+                            // Still exactly what's showing in the picker at
+                            // Confirm time — if the human left the hint's
+                            // suggestion in place, that's an unchanged
+                            // .learned reuse; if they picked anything else
+                            // (including for a column the hint didn't
+                            // suggest), it's a fresh .userSpecified choice.
+                            let origin: MappingOrigin
+                            if let appliedHint, index < initialSuggestedFields.count, initialSuggestedFields[index] == field {
+                                origin = .learned(hintID: appliedHint.id, timesUsed: appliedHint.timesUsed)
+                            } else {
+                                origin = .userSpecified
+                            }
+                            return ColumnMapping(sourceColumn: column.index, sourceHeader: column.header, target: field, origin: origin, confirmed: true)
                         }
                         onConfirm(mappings, accountID)
                     }
