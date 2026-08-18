@@ -17,7 +17,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "sync-check", "csv-import-check", "export-sample"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -41,6 +41,12 @@ guard arguments.count >= 2, ["health", "sync-check", "csv-import-check", "export
                               small synthetic ExportTable. No network, no
                               realm needed — verifies the exporters produce
                               real, openable files.
+      xlsx-import-check <xlsxPath>
+                              Runs XLSXParser.parse against a real .xlsx file
+                              on disk and prints every parsed row. No network,
+                              no realm needed — verifies the ZIP/DEFLATE
+                              reader and OOXML parsing against a real file,
+                              not just this project's own writer's output.
 
     Required environment variables (not needed for export-sample):
       VOICE_LEDGER_BACKEND_URL     e.g. https://your-backend.onrender.com
@@ -73,6 +79,25 @@ if arguments[1] == "export-sample" {
     try? PDFReportExporter.export(table).write(to: outputDir.appendingPathComponent("sample.pdf"))
     print("Wrote sample.csv, sample.xlsx, sample.pdf to \(outputDir.path)")
     exit(0)
+}
+
+if arguments[1] == "xlsx-import-check" {
+    guard arguments.count >= 3 else {
+        FileHandle.standardError.write("Usage: xlsx-import-check <xlsxPath>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    do {
+        let data = try Data(contentsOf: URL(fileURLWithPath: arguments[2]))
+        let rows = try XLSXParser.parse(data)
+        print("Parsed \(rows.count) rows:")
+        for row in rows {
+            print("  \(row)")
+        }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("xlsx-import-check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
 }
 
 guard let realmIDString = ProcessInfo.processInfo.environment["VOICE_LEDGER_REALM_ID"] else {

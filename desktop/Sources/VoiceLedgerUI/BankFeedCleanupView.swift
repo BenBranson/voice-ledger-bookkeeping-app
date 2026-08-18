@@ -3,10 +3,11 @@ import Core
 import DesignSystem
 
 /// docs/VOICE_LEDGER_SPEC.md Page 4 (Type B): "analyzes posted QBO activity
-/// and compares it against your imported CSV/OFX/QFX statement; detects
-/// duplicates and missing postings." **Minimal slice**: only
-/// `VL-RECON-MISSING-001` (missing postings), CSV only (no OFX/QFX/Excel),
-/// no drag-and-drop (file picker only), no cross-foot validation (§9.5).
+/// and compares it against your imported CSV/OFX/QFX/Excel statement;
+/// detects duplicates and missing postings." **Minimal slice**: only
+/// `VL-RECON-MISSING-001` (missing postings), CSV/OFX/QFX/XLSX (no legacy
+/// .xls), no drag-and-drop (file picker only), no cross-foot validation
+/// (§9.5, except OFX's informational stated-ending-balance display).
 /// The confirm-and-correct column-mapping step (§9.4) is real —
 /// `ImportBankStatementView`, presented by the app layer after
 /// `onImportTapped` picks a file.
@@ -56,7 +57,7 @@ public struct BankFeedCleanupView: View {
                     .foregroundStyle(VLColor.textMuted)
 
                 HStack {
-                    Button("Import Statement (CSV)…") { onImportTapped() }
+                    Button("Import Statement (CSV/OFX/QFX/XLSX)…") { onImportTapped() }
                         .buttonStyle(.borderedProminent)
                     if let importError {
                         VLStatusPill(.urgent, label: importError)

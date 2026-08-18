@@ -439,10 +439,10 @@ public final class AppState {
     /// human-confirmed mapping/account.
     public func selectFileForImport(url: URL) {
         importError = nil
+        let ext = url.pathExtension.lowercased()
         do {
-            let text = try String(contentsOf: url, encoding: .utf8)
-            let ext = url.pathExtension.lowercased()
             if ext == "ofx" || ext == "qfx" {
+                let text = try String(contentsOf: url, encoding: .utf8)
                 let count = OFXParser.parseTransactions(text).count
                 guard count > 0 else {
                     importError = "\(url.lastPathComponent) has no <STMTTRN> transactions."
@@ -454,7 +454,27 @@ public final class AppState {
                     statedEndingBalance: ledgerBalance.flatMap { OFXBankStatementImporter.parseOFXAmount($0.balanceAmount) },
                     statedAsOfDate: ledgerBalance.flatMap { OFXBankStatementImporter.parseOFXDate($0.asOfDate) }
                 ))
+            } else if ext == "xlsx" || ext == "xls" {
+                // .xlsx is a binary (ZIP) container, not UTF-8 text — read
+                // as Data, not String, unlike every other format here.
+                let data = try Data(contentsOf: url)
+                let rows = try XLSXParser.parse(data)
+                guard !rows.isEmpty else {
+                    importError = "\(url.lastPathComponent) has no rows on its first sheet."
+                    return
+                }
+                let matchedHint = mappingHints.first { $0.id == MappingHint.makeID(headers: rows[0]) }
+                // Reuses PendingCSVImport/confirmCSVImport unchanged — once
+                // parsed into `[[String]]`, an .xlsx statement and a .csv
+                // one are the same shape all the way through the existing
+                // confirm-and-correct + BankStatementCSVImporter pipeline.
+                pendingImport = .csv(PendingCSVImport(
+                    filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true,
+                    suggestedFields: matchedHint?.fields ?? [],
+                    appliedHint: matchedHint.map { (id: $0.id, timesUsed: $0.timesUsed) }
+                ))
             } else {
+                let text = try String(contentsOf: url, encoding: .utf8)
                 let rows = CSVParser.parse(text)
                 guard !rows.isEmpty else {
                     importError = "\(url.lastPathComponent) is empty."
@@ -467,6 +487,8 @@ public final class AppState {
                     appliedHint: matchedHint.map { (id: $0.id, timesUsed: $0.timesUsed) }
                 ))
             }
+        } catch XLSXParser.ParseError.unsupportedLegacyFormat {
+            importError = "\(url.lastPathComponent) is a legacy .xls file (pre-2007 format), which isn't supported. Please re-save it as .xlsx or export as CSV."
         } catch {
             importError = "Could not read \(url.lastPathComponent): \(error)"
         }
