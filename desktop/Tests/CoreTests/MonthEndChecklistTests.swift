@@ -47,4 +47,26 @@ struct MonthEndChecklistTests {
             }
         }
     }
+
+    @Test("completionStatus counts only completions matching the given period")
+    func completionStatusCountsOnlyMatchingPeriod() {
+        let period = AccountingPeriod(year: 2026, month: 7)
+        let otherPeriod = AccountingPeriod(year: 2026, month: 6)
+        let completions = [
+            ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "resolve-cleanup-assessment"), period: period, completedBy: "A"),
+            ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "review-balance-sheet-integrity"), period: period, completedBy: "A"),
+            // A completion for a different period must not count toward this period's total.
+            ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "review-bank-feed"), period: otherPeriod, completedBy: "A")
+        ]
+        let status = MonthEndChecklist.completionStatus(completions: completions, period: period)
+        #expect(status.completed == 2)
+        #expect(status.total == MonthEndChecklist.defaultItems.count)
+    }
+
+    @Test("completionStatus is zero-of-total for a period with no completions at all")
+    func completionStatusZeroForNoCompletions() {
+        let status = MonthEndChecklist.completionStatus(completions: [], period: AccountingPeriod(year: 2026, month: 7))
+        #expect(status.completed == 0)
+        #expect(status.total == MonthEndChecklist.defaultItems.count)
+    }
 }

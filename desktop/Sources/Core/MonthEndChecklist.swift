@@ -105,4 +105,15 @@ public enum MonthEndChecklist {
     public static func isUnlocked(_ item: ChecklistItem, completedItemIDs: Set<ChecklistItemID>) -> Bool {
         item.prerequisiteIDs.allSatisfy { completedItemIDs.contains($0) }
     }
+
+    /// How many of `defaultItems` have a completion recorded for `period` —
+    /// the deterministic count the Close Package summary (and any future
+    /// "X of Y complete" display) reads, rather than each caller re-deriving
+    /// it from raw completions (`CLAUDE.md` rule 1: this is a count, not a
+    /// judgment call, but it's still real Swift computing it once).
+    public static func completionStatus(completions: [ChecklistItemCompletion], period: AccountingPeriod) -> (completed: Int, total: Int) {
+        let completedIDs = Set(completions.filter { $0.period == period }.map(\.itemID))
+        let completed = defaultItems.filter { completedIDs.contains($0.id) }.count
+        return (completed, defaultItems.count)
+    }
 }

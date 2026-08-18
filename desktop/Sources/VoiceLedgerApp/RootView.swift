@@ -41,6 +41,9 @@ struct RootView: View {
                     ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
+                    ToolbarItem(placement: .automatic) {
+                        Button("Close Package") { state.screen = .closePackage }
+                    }
                 }
         }
         .task {
@@ -220,7 +223,7 @@ struct RootView: View {
         case .balanceSheetReport:
             FinancialReportView(
                 title: "Balance Sheet",
-                sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — that's the Close Package, not built yet.",
+                sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
                 lines: state.balanceSheetLines,
                 isLoading: state.isLoadingBalanceSheet,
@@ -236,13 +239,37 @@ struct RootView: View {
         case .profitAndLossReport:
             FinancialReportView(
                 title: "Profit & Loss",
-                sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — that's the Close Package, not built yet.",
+                sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
                 lines: state.profitAndLossLines,
                 isLoading: state.isLoadingProfitAndLoss,
                 errorMessage: state.profitAndLossError,
                 onRefresh: { Task { await state.loadProfitAndLoss() } }
             )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .closePackage:
+            ClosePackageView(
+                environment: state.environment == .production ? .production : .sandbox,
+                period: state.currentPeriod,
+                checklistStatus: {
+                    let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
+                    return ClosePackageView.ChecklistStatus(completed: status.completed, total: status.total)
+                }(),
+                openCleanupFindingsCount: state.findings.filter { $0.status == .open && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                resolvedCleanupFindingsCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                balanceSheetLines: state.balanceSheetLines,
+                profitAndLossLines: state.profitAndLossLines,
+                recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }
+            )
+            .task {
+                if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
+                if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }

@@ -25,6 +25,7 @@ public final class AppState {
         case monthEndClose
         case balanceSheetReport
         case profitAndLossReport
+        case closePackage
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
