@@ -144,6 +144,23 @@ public struct QBOSyncClient: Sendable {
         try await fetchReport(reportKind: "CashFlow", realmID: realmID, period: period)
     }
 
+    /// Trial Balance — deliberately NOT `fetchReport`/`ReportLine`. Verified
+    /// live 2026-08-18 that this report's leaf rows have a `Debit` and a
+    /// `Credit` column (never both populated) instead of a single signed
+    /// amount, and carry no `type` field at all — see `TrialBalanceLine`'s
+    /// doc comment for why reusing the other three reports' decoder here
+    /// would silently drop every real account row.
+    public func fetchTrialBalance(realmID: RealmID, period: AccountingPeriod) async throws -> [TrialBalanceLine] {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let data = try await backend.call(
+            .readReport,
+            realmID: realmID,
+            params: ReadReportParams(reportKind: "TrialBalance", startDate: startDate, endDate: endDate)
+        )
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return Self.flattenTrialBalance(decoded.rows)
+    }
+
     private func fetchReport(reportKind: String, realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
         let (startDate, endDate) = Self.dateRange(for: period)
         let data = try await backend.call(
@@ -215,6 +232,43 @@ public struct QBOSyncClient: Sendable {
             }
         }
         return lines
+    }
+
+    /// Trial Balance's leaf rows carry no `type` field (unlike BalanceSheet/
+    /// P&L/CashFlow's `"type": "Data"`), so a row is a leaf here whenever it
+    /// has `colData` and neither `header` nor nested `rows` — not gated on
+    /// `type` at all. Verified live: this sandbox's real TrialBalance is
+    /// flat (54 leaf rows, one closing `Summary`, zero section nesting),
+    /// but the recursive walk here handles nested sections too in case a
+    /// different company's report groups by account type.
+    static func flattenTrialBalance(_ rowList: QBORawReportRowList) -> [TrialBalanceLine] {
+        var lines: [TrialBalanceLine] = []
+        for row in rowList.row ?? [] {
+            if let header = row.header {
+                lines.append(TrialBalanceLine(label: header.colData.first?.value ?? "", debit: nil, credit: nil, isSummary: false))
+            }
+            if let nested = row.rows {
+                lines.append(contentsOf: flattenTrialBalance(nested))
+            }
+            if row.header == nil, row.rows == nil, let colData = row.colData {
+                lines.append(Self.trialBalanceLine(from: colData, isSummary: false))
+            }
+            if let summary = row.summary {
+                lines.append(Self.trialBalanceLine(from: summary.colData, isSummary: true))
+            }
+        }
+        return lines
+    }
+
+    private static func trialBalanceLine(from colData: [QBORawReportColData], isSummary: Bool) -> TrialBalanceLine {
+        let label = colData.first?.value ?? ""
+        func amount(at index: Int) -> Money? {
+            guard colData.count > index else { return nil }
+            let value = colData[index].value
+            guard !value.isEmpty else { return nil }
+            return Money(minorUnits: Self.minorUnits(from: Decimal(string: value) ?? 0), currency: .usd)
+        }
+        return TrialBalanceLine(label: label, debit: amount(at: 1), credit: amount(at: 2), isSummary: isSummary)
     }
 
     private static func reportLine(from colData: [QBORawReportColData], depth: Int, isSummary: Bool) -> ReportLine {

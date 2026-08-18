@@ -143,6 +143,60 @@ struct QBOReportTests {
         #expect(lines[6].amount == Money(minorUnits: -1_001_571_449, currency: .usd))
     }
 
+    /// Real-shaped fixture (trimmed to 3 of the real 54 leaf rows), from the
+    /// exact live sandbox `TrialBalance` response checked 2026-08-18 while
+    /// adding `QBOSyncClient.fetchTrialBalance`: leaf rows carry NO `type`
+    /// field at all (unlike BalanceSheet/P&L/CashFlow's `"type": "Data"`),
+    /// and have 3 columns (Account, Debit, Credit) with a value in exactly
+    /// one of the two money columns. This is exactly the shape that would
+    /// have been silently dropped by the existing `flatten()` (gated on
+    /// `type == "Data"`) — the reason `flattenTrialBalance` exists as its
+    /// own function rather than a reuse.
+    static let trialBalanceSampleJSON = """
+    {
+      "Rows": {
+        "Row": [
+          { "ColData": [{ "value": "Checking", "id": "35" }, { "value": "" }, { "value": "3063.76" }] },
+          { "ColData": [{ "value": "Savings", "id": "36" }, { "value": "800.00" }, { "value": "" }] },
+          {
+            "Summary": { "ColData": [{ "value": "TOTAL" }, { "value": "10057055.33" }, { "value": "10057055.33" }] },
+            "type": "Section",
+            "group": "GrandTotal"
+          }
+        ]
+      }
+    }
+    """
+
+    @Test("Flattens a real-shaped TrialBalance report — untagged leaf rows with debit-XOR-credit columns, not dropped")
+    func flattensTrialBalanceReport() throws {
+        let report = try JSONDecoder().decode(QBORawReport.self, from: Data(Self.trialBalanceSampleJSON.utf8))
+        let lines = QBOSyncClient.flattenTrialBalance(report.rows)
+
+        #expect(lines.count == 3)
+
+        #expect(lines[0].label == "Checking")
+        #expect(lines[0].debit == nil)
+        #expect(lines[0].credit == Money(minorUnits: 306_376, currency: .usd))
+        #expect(lines[0].isSummary == false)
+
+        #expect(lines[1].label == "Savings")
+        #expect(lines[1].debit == Money(minorUnits: 80_000, currency: .usd))
+        #expect(lines[1].credit == nil)
+
+        #expect(lines[2].label == "TOTAL")
+        #expect(lines[2].isSummary == true)
+        #expect(lines[2].debit == Money(minorUnits: 1_005_705_533, currency: .usd))
+        #expect(lines[2].credit == Money(minorUnits: 1_005_705_533, currency: .usd))
+    }
+
+    @Test("An empty TrialBalance (no rows) flattens to an empty list, not a crash")
+    func emptyTrialBalanceFlattensToEmptyList() throws {
+        let json = "{ \"Rows\": { \"Row\": [] } }"
+        let report = try JSONDecoder().decode(QBORawReport.self, from: Data(json.utf8))
+        #expect(QBOSyncClient.flattenTrialBalance(report.rows).isEmpty)
+    }
+
     @Test("A leaf row with an empty amount string produces a nil amount, not a crash or zero")
     func emptyAmountStringProducesNilAmount() throws {
         let json = """

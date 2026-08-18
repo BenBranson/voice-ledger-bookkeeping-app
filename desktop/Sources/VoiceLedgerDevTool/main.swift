@@ -141,6 +141,15 @@ case "sync-check":
             print("  \(indent)\(line.label): \(line.amount?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
         }
 
+        let trialBalanceLines = try await syncClient.fetchTrialBalance(realmID: realmID, period: period)
+        print("Trial Balance: \(trialBalanceLines.count) lines")
+        for line in trialBalanceLines.prefix(8) {
+            print("  \(line.label): debit=\(line.debit?.description ?? "-") credit=\(line.credit?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+        }
+        if let total = trialBalanceLines.last(where: { $0.isSummary }) {
+            print("  ...TOTAL: debit=\(total.debit?.description ?? "-") credit=\(total.credit?.description ?? "-")")
+        }
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(syncedDataSet.transactions.count)")

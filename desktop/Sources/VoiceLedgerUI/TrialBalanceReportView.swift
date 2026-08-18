@@ -1,0 +1,107 @@
+import SwiftUI
+import Core
+import DesignSystem
+
+/// docs/VOICE_LEDGER_SPEC.md Page 12 (Type A). Deliberately a separate view
+/// from `FinancialReportView` — see `TrialBalanceLine`'s doc comment for
+/// why Trial Balance's debit/credit-column shape isn't the same as Balance
+/// Sheet/P&L/Cash Flow's single-amount section tree. This report is flat
+/// (verified live: no section nesting in a real trial balance), so there's
+/// no depth-based indentation here.
+public struct TrialBalanceReportView: View {
+    private let sourceDescription: String
+    private let environment: VLEnvironmentTone
+    private let lines: [TrialBalanceLine]
+    private let isLoading: Bool
+    private let errorMessage: String?
+    private let onRefresh: () -> Void
+    private let onExport: (ReportExportFormat) -> Void
+
+    public init(
+        sourceDescription: String,
+        environment: VLEnvironmentTone,
+        lines: [TrialBalanceLine],
+        isLoading: Bool,
+        errorMessage: String?,
+        onRefresh: @escaping () -> Void,
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
+    ) {
+        self.sourceDescription = sourceDescription
+        self.environment = environment
+        self.lines = lines
+        self.isLoading = isLoading
+        self.errorMessage = errorMessage
+        self.onRefresh = onRefresh
+        self.onExport = onExport
+    }
+
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: VLSpacing.md) {
+                HStack {
+                    Text("Trial Balance")
+                        .font(VLTypography.pageTitle())
+                        .foregroundStyle(VLColor.textPrimary)
+                    Spacer()
+                    if !lines.isEmpty {
+                        ExportMenuButton(onExport: onExport)
+                    }
+                    VLEnvironmentBadge(environment)
+                }
+
+                HStack {
+                    Text(sourceDescription)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    Button(isLoading ? "Loading…" : "Refresh") { onRefresh() }
+                        .disabled(isLoading)
+                }
+
+                if let errorMessage {
+                    VLCard(accentRail: VLColor.violet) {
+                        Text(errorMessage)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                    }
+                }
+
+                if lines.isEmpty && !isLoading && errorMessage == nil {
+                    VLCard {
+                        Text("No report loaded yet. Tap Refresh.")
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                } else {
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                            HStack {
+                                Text("Account").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                Spacer()
+                                Text("Debit").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).frame(width: 120, alignment: .trailing)
+                                Text("Credit").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).frame(width: 120, alignment: .trailing)
+                            }
+                            ForEach(lines) { line in
+                                HStack {
+                                    Text(line.label)
+                                        .font(line.isSummary ? VLTypography.cardTitle() : VLTypography.body())
+                                        .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
+                                    Spacer()
+                                    Text(line.debit?.description ?? "")
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
+                                        .frame(width: 120, alignment: .trailing)
+                                    Text(line.credit?.description ?? "")
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
+                                        .frame(width: 120, alignment: .trailing)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(VLSpacing.pageGutter)
+        }
+        .background(VLColor.background)
+    }
+}

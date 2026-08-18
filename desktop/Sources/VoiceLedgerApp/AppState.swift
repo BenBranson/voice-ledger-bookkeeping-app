@@ -29,6 +29,7 @@ public final class AppState {
         case balanceSheetReport
         case profitAndLossReport
         case cashFlowReport
+        case trialBalanceReport
         case closePackage
         case clientMemory
     }
@@ -132,6 +133,9 @@ public final class AppState {
     public private(set) var cashFlowLines: [ReportLine] = []
     public private(set) var isLoadingCashFlow = false
     public private(set) var cashFlowError: String?
+    public private(set) var trialBalanceLines: [TrialBalanceLine] = []
+    public private(set) var isLoadingTrialBalance = false
+    public private(set) var trialBalanceError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
@@ -225,6 +229,17 @@ public final class AppState {
             cashFlowError = "\(error)"
         }
         isLoadingCashFlow = false
+    }
+
+    public func loadTrialBalance() async {
+        isLoadingTrialBalance = true
+        trialBalanceError = nil
+        do {
+            trialBalanceLines = try await syncClient.fetchTrialBalance(realmID: realmID, period: period)
+        } catch {
+            trialBalanceError = "\(error)"
+        }
+        isLoadingTrialBalance = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

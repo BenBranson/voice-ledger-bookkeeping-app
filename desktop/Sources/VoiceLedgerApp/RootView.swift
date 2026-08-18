@@ -43,6 +43,7 @@ struct RootView: View {
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
                         Button("Profit & Loss") { state.screen = .profitAndLossReport }
                         Button("Cash Flow") { state.screen = .cashFlowReport }
+                        Button("Trial Balance") { state.screen = .trialBalanceReport }
                         Button("Activity Log") { state.screen = .activityLog }
                         Button("Close Package") { state.screen = .closePackage }
                         Button("Client Memory") { state.screen = .clientMemory }
@@ -308,6 +309,22 @@ struct RootView: View {
                 }
             }
 
+        case .trialBalanceReport:
+            TrialBalanceReportView(
+                sourceDescription: "Read directly from QuickBooks' own Trial Balance report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.trialBalanceLines,
+                isLoading: state.isLoadingTrialBalance,
+                errorMessage: state.trialBalanceError,
+                onRefresh: { Task { await state.loadTrialBalance() } },
+                onExport: { format in state.exportTable(Self.exportTable(trialBalanceLines: state.trialBalanceLines), format: format, suggestedFilename: "Trial Balance") }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
         case .closePackage:
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
@@ -492,6 +509,17 @@ struct RootView: View {
                 let indent = String(repeating: "    ", count: line.depth)
                 let label = indent + line.label + (line.isSummary ? " (Total)" : "")
                 return [ExportCell(text: label), ExportCell.money(line.amount)]
+            }
+        )
+    }
+
+    private static func exportTable(trialBalanceLines lines: [TrialBalanceLine]) -> ExportTable {
+        ExportTable(
+            title: "Trial Balance",
+            columns: ["Account", "Debit", "Credit"],
+            rows: lines.map { line in
+                let label = line.label + (line.isSummary ? " (Total)" : "")
+                return [ExportCell(text: label), ExportCell.money(line.debit), ExportCell.money(line.credit)]
             }
         )
     }
