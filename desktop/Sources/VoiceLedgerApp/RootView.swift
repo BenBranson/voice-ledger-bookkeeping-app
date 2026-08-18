@@ -42,6 +42,7 @@ struct RootView: View {
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
                         Button("Profit & Loss") { state.screen = .profitAndLossReport }
+                        Button("Cash Flow") { state.screen = .cashFlowReport }
                         Button("Activity Log") { state.screen = .activityLog }
                         Button("Close Package") { state.screen = .closePackage }
                         Button("Client Memory") { state.screen = .clientMemory }
@@ -283,6 +284,23 @@ struct RootView: View {
                 errorMessage: state.profitAndLossError,
                 onRefresh: { Task { await state.loadProfitAndLoss() } },
                 onExport: { format in state.exportTable(Self.exportTable(title: "Profit & Loss", lines: state.profitAndLossLines), format: format, suggestedFilename: "Profit and Loss") }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .cashFlowReport:
+            FinancialReportView(
+                title: "Cash Flow",
+                sourceDescription: "Read directly from QuickBooks' own Statement of Cash Flows report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.cashFlowLines,
+                isLoading: state.isLoadingCashFlow,
+                errorMessage: state.cashFlowError,
+                onRefresh: { Task { await state.loadCashFlow() } },
+                onExport: { format in state.exportTable(Self.exportTable(title: "Cash Flow", lines: state.cashFlowLines), format: format, suggestedFilename: "Cash Flow") }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

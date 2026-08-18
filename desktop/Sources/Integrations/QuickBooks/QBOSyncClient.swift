@@ -132,6 +132,18 @@ public struct QBOSyncClient: Sendable {
         try await fetchReport(reportKind: "ProfitAndLoss", realmID: realmID, period: period)
     }
 
+    /// Cash Flow — verified live 2026-08-18 to share the same recursive
+    /// `Header`/`Rows`/`Summary`/`ColData` + `type == "Data"` leaf shape as
+    /// Balance Sheet and Profit & Loss (single "Total" money column), so the
+    /// same decoder and `flatten` function apply unchanged. **Not** the same
+    /// shape as Trial Balance or the aged-receivables/payables reports — see
+    /// those reports' own notes in docs/VOICE_LEDGER_HANDOFF.md before
+    /// reusing this function for them; their leaf rows carry no `type` tag
+    /// at all and `flatten` would silently drop every one of them.
+    public func fetchCashFlow(realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
+        try await fetchReport(reportKind: "CashFlow", realmID: realmID, period: period)
+    }
+
     private func fetchReport(reportKind: String, realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
         let (startDate, endDate) = Self.dateRange(for: period)
         let data = try await backend.call(

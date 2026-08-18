@@ -77,6 +77,72 @@ struct QBOReportTests {
         #expect(QBOSyncClient.flatten(report.rows, depth: 0).isEmpty)
     }
 
+    /// Real-shaped fixture, mirroring the live sandbox `CashFlow` report
+    /// checked 2026-08-18 while adding `QBOSyncClient.fetchCashFlow`: same
+    /// recursive `Header`/`Rows`/`Summary`/`ColData` + `type == "Data"` leaf
+    /// shape as BalanceSheet, plus `group`/`type: "Section"` fields on
+    /// section rows that BalanceSheet's fixture doesn't exercise — these
+    /// must decode without error even though `flatten` never reads them.
+    static let cashFlowSampleJSON = """
+    {
+      "Rows": {
+        "Row": [
+          {
+            "Header": { "ColData": [{ "value": "OPERATING ACTIVITIES" }, { "value": "" }] },
+            "Rows": {
+              "Row": [
+                {
+                  "ColData": [{ "value": "Net Income" }, { "value": "-10015914.49" }],
+                  "type": "Data",
+                  "group": "NetIncome"
+                },
+                {
+                  "Header": { "ColData": [{ "value": "Adjustments to reconcile Net Income" }, { "value": "" }] },
+                  "Rows": {
+                    "Row": [
+                      { "ColData": [{ "value": "Accounts Receivable (A/R)", "id": "84" }, { "value": "-200.00" }], "type": "Data" },
+                      { "ColData": [{ "value": "Accounts Payable (A/P)", "id": "33" }, { "value": "400.00" }], "type": "Data" }
+                    ]
+                  },
+                  "Summary": { "ColData": [{ "value": "Total Adjustments" }, { "value": "200.00" }] },
+                  "type": "Section",
+                  "group": "OperatingAdjustments"
+                }
+              ]
+            },
+            "Summary": { "ColData": [{ "value": "Net cash provided by operating activities" }, { "value": "-10015714.49" }] },
+            "type": "Section",
+            "group": "OperatingActivities"
+          }
+        ]
+      }
+    }
+    """
+
+    @Test("Flattens a real-shaped CashFlow report, including a negative leaf amount and section-level group/type fields")
+    func flattensCashFlowReport() throws {
+        let report = try JSONDecoder().decode(QBORawReport.self, from: Data(Self.cashFlowSampleJSON.utf8))
+        let lines = QBOSyncClient.flatten(report.rows, depth: 0)
+
+        #expect(lines.count == 7)
+        #expect(lines[0].label == "OPERATING ACTIVITIES")
+        #expect(lines[1].label == "Net Income")
+        #expect(lines[1].amount == Money(minorUnits: -1_001_591_449, currency: .usd))
+        #expect(lines[2].label == "Adjustments to reconcile Net Income")
+        #expect(lines[3].label == "Accounts Receivable (A/R)")
+        #expect(lines[3].amount == Money(minorUnits: -20_000, currency: .usd))
+        #expect(lines[4].label == "Accounts Payable (A/P)")
+        #expect(lines[4].amount == Money(minorUnits: 40_000, currency: .usd))
+        // "Total Adjustments" closes out the nested Adjustments section
+        // (depth 1) right after its two children, before the outer
+        // OPERATING ACTIVITIES section's own Summary line closes at depth 0.
+        #expect(lines[5].label == "Total Adjustments")
+        #expect(lines[5].isSummary == true)
+        #expect(lines[6].label == "Net cash provided by operating activities")
+        #expect(lines[6].isSummary == true)
+        #expect(lines[6].amount == Money(minorUnits: -1_001_571_449, currency: .usd))
+    }
+
     @Test("A leaf row with an empty amount string produces a nil amount, not a crash or zero")
     func emptyAmountStringProducesNilAmount() throws {
         let json = """
