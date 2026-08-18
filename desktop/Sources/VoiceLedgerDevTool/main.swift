@@ -164,6 +164,16 @@ case "sync-check":
             print("  \(indent)\(line.label): total=\(line.total?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
         }
 
+        let generalLedgerLines = try await syncClient.fetchGeneralLedger(realmID: realmID, period: period)
+        print("General Ledger: \(generalLedgerLines.count) lines")
+        for line in generalLedgerLines.prefix(10) {
+            if line.isAccountHeader {
+                print("  [\(line.label)]")
+            } else {
+                print("    \(line.label) \(line.transactionType ?? "") \(line.name ?? "") amount=\(line.amount?.description ?? "-") balance=\(line.balance?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+            }
+        }
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(syncedDataSet.transactions.count)")

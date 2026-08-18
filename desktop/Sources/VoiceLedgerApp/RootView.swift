@@ -46,6 +46,7 @@ struct RootView: View {
                         Button("Trial Balance") { state.screen = .trialBalanceReport }
                         Button("Aged Receivables") { state.screen = .agedReceivablesReport }
                         Button("Aged Payables") { state.screen = .agedPayablesReport }
+                        Button("General Ledger") { state.screen = .generalLedgerReport }
                         Button("Activity Log") { state.screen = .activityLog }
                         Button("Close Package") { state.screen = .closePackage }
                         Button("Client Memory") { state.screen = .clientMemory }
@@ -363,6 +364,22 @@ struct RootView: View {
                 }
             }
 
+        case .generalLedgerReport:
+            GeneralLedgerReportView(
+                sourceDescription: "Read directly from QuickBooks' own General Ledger report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.generalLedgerLines,
+                isLoading: state.isLoadingGeneralLedger,
+                errorMessage: state.generalLedgerError,
+                onRefresh: { Task { await state.loadGeneralLedger() } },
+                onExport: { format in state.exportTable(Self.exportTable(generalLedgerLines: state.generalLedgerLines), format: format, suggestedFilename: "General Ledger") }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
         case .closePackage:
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
@@ -577,6 +594,25 @@ struct RootView: View {
                     ExportCell.money(line.days61to90),
                     ExportCell.money(line.days91AndOver),
                     ExportCell.money(line.total)
+                ]
+            }
+        )
+    }
+
+    private static func exportTable(generalLedgerLines lines: [GeneralLedgerLine]) -> ExportTable {
+        ExportTable(
+            title: "General Ledger",
+            columns: ["Date/Label", "Type", "Num", "Name", "Memo", "Split", "Amount", "Balance"],
+            rows: lines.map { line in
+                [
+                    ExportCell(text: line.label),
+                    ExportCell(text: line.transactionType ?? ""),
+                    ExportCell(text: line.docNumber ?? ""),
+                    ExportCell(text: line.name ?? ""),
+                    ExportCell(text: line.memo ?? ""),
+                    ExportCell(text: line.split ?? ""),
+                    ExportCell.money(line.amount),
+                    ExportCell.money(line.balance)
                 ]
             }
         )

@@ -177,6 +177,23 @@ public struct QBOSyncClient: Sendable {
         try await fetchAgingReport(reportKind: "AgedPayables", realmID: realmID)
     }
 
+    /// General Ledger — verified live 2026-08-18. See `GeneralLedgerLine`'s
+    /// doc comment: an 8-column transaction ledger grouped by account, not
+    /// a label+amount tree, but its leaf rows ARE tagged `"type": "Data"`
+    /// like BalanceSheet/P&L/CashFlow, so `flattenGeneralLedger` gates on
+    /// that the same way `flatten` does — only the per-row column
+    /// extraction differs.
+    public func fetchGeneralLedger(realmID: RealmID, period: AccountingPeriod) async throws -> [GeneralLedgerLine] {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let data = try await backend.call(
+            .readReport,
+            realmID: realmID,
+            params: ReadReportParams(reportKind: "GeneralLedger", startDate: startDate, endDate: endDate)
+        )
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return Self.flattenGeneralLedger(decoded.rows, depth: 0)
+    }
+
     public struct ReadAgingReportParams: Encodable, Sendable {
         public let reportKind: String
         public init(reportKind: String) {
@@ -359,6 +376,54 @@ public struct QBOSyncClient: Sendable {
             days61to90: amount(at: 4),
             days91AndOver: amount(at: 5),
             total: amount(at: 6),
+            depth: depth,
+            isSummary: isSummary
+        )
+    }
+
+    /// Same `type == "Data"` leaf gate as `flatten`, different column
+    /// extraction: `ColData` order is [Date-or-label, Transaction Type,
+    /// Num, Name, Memo/Description, Split, Amount, Balance] — verified
+    /// live against a real "Beginning Balance" row and a real posted
+    /// transaction row within the same account section.
+    static func flattenGeneralLedger(_ rowList: QBORawReportRowList, depth: Int) -> [GeneralLedgerLine] {
+        var lines: [GeneralLedgerLine] = []
+        for row in rowList.row ?? [] {
+            if let header = row.header {
+                lines.append(GeneralLedgerLine(label: header.colData.first?.value ?? "", transactionType: nil, docNumber: nil, name: nil, memo: nil, split: nil, amount: nil, balance: nil, depth: depth, isSummary: false, isAccountHeader: true))
+            }
+            if let nested = row.rows {
+                lines.append(contentsOf: flattenGeneralLedger(nested, depth: depth + 1))
+            }
+            if row.type == "Data", let colData = row.colData {
+                lines.append(Self.generalLedgerLine(from: colData, depth: depth, isSummary: false))
+            }
+            if let summary = row.summary {
+                lines.append(Self.generalLedgerLine(from: summary.colData, depth: depth, isSummary: true))
+            }
+        }
+        return lines
+    }
+
+    private static func generalLedgerLine(from colData: [QBORawReportColData], depth: Int, isSummary: Bool) -> GeneralLedgerLine {
+        func text(at index: Int) -> String? {
+            guard colData.count > index else { return nil }
+            let value = colData[index].value
+            return value.isEmpty ? nil : value
+        }
+        func amount(at index: Int) -> Money? {
+            guard let value = text(at: index) else { return nil }
+            return Money(minorUnits: Self.minorUnits(from: Decimal(string: value) ?? 0), currency: .usd)
+        }
+        return GeneralLedgerLine(
+            label: colData.first?.value ?? "",
+            transactionType: text(at: 1),
+            docNumber: text(at: 2),
+            name: text(at: 3),
+            memo: text(at: 4),
+            split: text(at: 5),
+            amount: amount(at: 6),
+            balance: amount(at: 7),
             depth: depth,
             isSummary: isSummary
         )

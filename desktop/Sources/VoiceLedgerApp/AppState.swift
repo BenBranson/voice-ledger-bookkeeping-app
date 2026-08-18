@@ -32,6 +32,7 @@ public final class AppState {
         case trialBalanceReport
         case agedReceivablesReport
         case agedPayablesReport
+        case generalLedgerReport
         case closePackage
         case clientMemory
     }
@@ -144,6 +145,9 @@ public final class AppState {
     public private(set) var agedPayablesLines: [AgingLine] = []
     public private(set) var isLoadingAgedPayables = false
     public private(set) var agedPayablesError: String?
+    public private(set) var generalLedgerLines: [GeneralLedgerLine] = []
+    public private(set) var isLoadingGeneralLedger = false
+    public private(set) var generalLedgerError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
@@ -270,6 +274,17 @@ public final class AppState {
             agedPayablesError = "\(error)"
         }
         isLoadingAgedPayables = false
+    }
+
+    public func loadGeneralLedger() async {
+        isLoadingGeneralLedger = true
+        generalLedgerError = nil
+        do {
+            generalLedgerLines = try await syncClient.fetchGeneralLedger(realmID: realmID, period: period)
+        } catch {
+            generalLedgerError = "\(error)"
+        }
+        isLoadingGeneralLedger = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

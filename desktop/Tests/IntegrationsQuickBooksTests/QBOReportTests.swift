@@ -274,6 +274,72 @@ struct QBOReportTests {
         #expect(QBOSyncClient.flattenAging(report.rows, depth: 0).isEmpty)
     }
 
+    /// Real-shaped fixture, from the exact live sandbox `GeneralLedger`
+    /// response checked 2026-08-18 while adding
+    /// `QBOSyncClient.fetchGeneralLedger`: one account section (Checking),
+    /// its synthetic "Beginning Balance" row, one real posted transaction
+    /// row (the forced-reconciliation adjustment from
+    /// `VL-FORCED-RECON-001`'s own live verification, reused here since it
+    /// was already real data), and the section's closing Summary.
+    static let generalLedgerSampleJSON = """
+    {
+      "Rows": {
+        "Row": [
+          {
+            "Header": { "ColData": [{ "value": "Checking", "id": "35" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }] },
+            "Rows": {
+              "Row": [
+                { "ColData": [{ "value": "Beginning Balance" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "1201.00" }], "type": "Data" },
+                { "ColData": [{ "value": "2026-07-31" }, { "value": "Check", "id": "228" }, { "value": "ADJ" }, { "value": "", "id": "" }, { "value": "Reconcile Adjustment" }, { "value": "Reconciliation Discrepancies", "id": "91" }, { "value": "-4264.76" }, { "value": "-3063.76" }], "type": "Data" }
+              ]
+            },
+            "Summary": { "ColData": [{ "value": "Total for Checking" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "" }, { "value": "-4264.76" }, { "value": "" }] },
+            "type": "Section"
+          }
+        ]
+      }
+    }
+    """
+
+    @Test("Flattens a real-shaped GeneralLedger report — account header, Beginning Balance, a real posted transaction, and the closing Summary")
+    func flattensGeneralLedgerReport() throws {
+        let report = try JSONDecoder().decode(QBORawReport.self, from: Data(Self.generalLedgerSampleJSON.utf8))
+        let lines = QBOSyncClient.flattenGeneralLedger(report.rows, depth: 0)
+
+        #expect(lines.count == 4)
+
+        #expect(lines[0].label == "Checking")
+        #expect(lines[0].isAccountHeader == true)
+        #expect(lines[0].depth == 0)
+
+        #expect(lines[1].label == "Beginning Balance")
+        #expect(lines[1].isAccountHeader == false)
+        #expect(lines[1].depth == 1)
+        #expect(lines[1].balance == Money(minorUnits: 120_100, currency: .usd))
+        #expect(lines[1].amount == nil)
+
+        #expect(lines[2].label == "2026-07-31")
+        #expect(lines[2].transactionType == "Check")
+        #expect(lines[2].docNumber == "ADJ")
+        #expect(lines[2].name == nil)
+        #expect(lines[2].memo == "Reconcile Adjustment")
+        #expect(lines[2].split == "Reconciliation Discrepancies")
+        #expect(lines[2].amount == Money(minorUnits: -426_476, currency: .usd))
+        #expect(lines[2].balance == Money(minorUnits: -306_376, currency: .usd))
+
+        #expect(lines[3].label == "Total for Checking")
+        #expect(lines[3].isSummary == true)
+        #expect(lines[3].depth == 0)
+        #expect(lines[3].amount == Money(minorUnits: -426_476, currency: .usd))
+    }
+
+    @Test("An empty GeneralLedger (no rows) flattens to an empty list, not a crash")
+    func emptyGeneralLedgerFlattensToEmptyList() throws {
+        let json = "{ \"Rows\": { \"Row\": [] } }"
+        let report = try JSONDecoder().decode(QBORawReport.self, from: Data(json.utf8))
+        #expect(QBOSyncClient.flattenGeneralLedger(report.rows, depth: 0).isEmpty)
+    }
+
     @Test("A leaf row with an empty amount string produces a nil amount, not a crash or zero")
     func emptyAmountStringProducesNilAmount() throws {
         let json = """
