@@ -1,6 +1,7 @@
 import Foundation
 import Core
 import IntegrationsQuickBooks
+import IntegrationsImports
 import DB
 
 // Verifies gate conditions against real data. Deliberately NOT the
@@ -15,16 +16,23 @@ import DB
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "sync-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "sync-check", "csv-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
     Commands:
       health                 Run the live health check against a connected realm.
-      sync-check <yr> <mo>   Sync + evaluate VL-DUP-EXP-001 against the live
+      sync-check <yr> <mo>   Sync + evaluate all rules against the live
                               sandbox for a period and print what was found.
                               Does not write to QBO. Persists findings/activity
                               log locally via ClientStore, same as the real app.
+      csv-import-check <csvPath> <statementAccountID> <yr> <mo>
+                              Runs the REAL CSVParser -> BankStatementCSVImporter
+                              -> ClientStore -> RuleEngine pipeline against a
+                              real CSV file for a period (same code path
+                              AppState.confirmCSVImport uses), then prints
+                              VL-RECON-MISSING-001 and VL-VENDOR-MISMATCH-001
+                              results. Does not write to QBO.
 
     Required environment variables:
       VOICE_LEDGER_BACKEND_URL     e.g. https://your-backend.onrender.com
@@ -131,6 +139,85 @@ case "sync-check":
         exit(0)
     } catch {
         FileHandle.standardError.write("sync-check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "csv-import-check":
+    guard arguments.count >= 6,
+          let year = Int(arguments[4]), let month = Int(arguments[5]) else {
+        FileHandle.standardError.write("Usage: csv-import-check <csvPath> <statementAccountID> <year> <month>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    let csvPath = arguments[2]
+    let statementAccountID = arguments[3]
+    do {
+        let csvText = try String(contentsOfFile: csvPath, encoding: .utf8)
+        let rows = CSVParser.parse(csvText)
+        guard !rows.isEmpty else {
+            FileHandle.standardError.write("\(csvPath) is empty.\n".data(using: .utf8)!)
+            exit(2)
+        }
+        let mappings = [
+            ColumnMapping(sourceColumn: 0, sourceHeader: rows[0][0], target: .date, origin: .userSpecified, confirmed: true),
+            ColumnMapping(sourceColumn: 1, sourceHeader: rows[0][1], target: .description, origin: .userSpecified, confirmed: true),
+            ColumnMapping(sourceColumn: 2, sourceHeader: rows[0][2], target: .amount, origin: .userSpecified, confirmed: true)
+        ]
+        let documentID = ImportedDocumentID(rawValue: "\(csvPath)-\(Date().timeIntervalSince1970)")
+        let importResult = BankStatementCSVImporter.import(
+            rows: rows, mappings: mappings, hasHeaderRow: true,
+            realmID: realmID, documentID: documentID, importedAt: Date(),
+            statementAccountID: statementAccountID
+        )
+        guard importResult.defects.isEmpty else {
+            FileHandle.standardError.write("Import produced defects: \(importResult.defects)\n".data(using: .utf8)!)
+            exit(2)
+        }
+        print("Imported \(importResult.transactions.count) statement line(s) from \(csvPath):")
+        for line in importResult.transactions {
+            print("  \(line.vendorName ?? "?") \(line.txnDate) \(line.totalAmount) acct=\(line.paymentAccountID ?? "-")")
+        }
+
+        let tempStoreRoot = FileManager.default.temporaryDirectory.appending(path: "voiceledger-devtool-csv-import-check")
+        let store = try ClientStore(realmID: realmID, rootDirectory: tempStoreRoot)
+        try await store.upsertImportedStatementLines(importResult.transactions)
+
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let backend = BackendClient(configuration: configuration)
+        let syncClient = QBOSyncClient(backend: backend)
+        let period = AccountingPeriod(year: year, month: month)
+        let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
+
+        let importedLines = try await store.loadImportedStatementLines()
+        let dataSet = NormalizedDataSet(
+            realmID: syncedDataSet.realmID, period: syncedDataSet.period,
+            transactions: syncedDataSet.transactions + importedLines,
+            accounts: syncedDataSet.accounts, vendors: syncedDataSet.vendors,
+            deposits: syncedDataSet.deposits, coverage: syncedDataSet.coverage,
+            companyFacts: syncedDataSet.companyFacts
+        )
+
+        let engine = RuleEngine(rules: RuleRegistry.all)
+        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
+        let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
+
+        for ruleID in ["VL-RECON-MISSING-001", "VL-VENDOR-MISMATCH-001"] {
+            guard let result = evaluation.results[RuleID(rawValue: ruleID)] else { continue }
+            print("\nRule \(ruleID):")
+            switch result.outcome {
+            case .pass(let coverage, let checked):
+                print("  PASS — coverage=\(coverage), checked=\(checked)")
+            case .cannotEvaluate(let reason):
+                print("  CANNOT EVALUATE — \(reason)")
+            case .findings(let findings):
+                print("  \(findings.count) finding(s):")
+                for f in findings {
+                    print("    [\(f.id.prefix(12))...] \(f.title) — confidence=\(f.confidence.rawValue) severity=\(f.severity.rawValue)")
+                }
+            }
+        }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("csv-import-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
     }
 

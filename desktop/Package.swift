@@ -72,7 +72,7 @@ let package = Package(
         // thing that can prove a gate against real data, text-only, no UI.
         .executableTarget(
             name: "VoiceLedgerDevTool",
-            dependencies: ["Core", "IntegrationsQuickBooks", "DB"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB"],
             path: "Sources/VoiceLedgerDevTool"
         ),
 
