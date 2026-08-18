@@ -82,6 +82,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// cleanup workflow, added by explicit owner request 2026-08-17. Not
     /// in the original 27-rule backlog table; tracked directly here.
     case unappliedVendorCredit
+    /// `VL-FORCED-RECON-001` — live-verified 2026-08-18 against a real
+    /// forced reconciliation the owner performed in the sandbox UI.
+    case forcedReconciliation
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

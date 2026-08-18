@@ -27,6 +27,12 @@ public enum QBOEntityKind: String, Hashable, Codable, Sendable {
     /// API-sourced record from an imported one by shape — giving imports a
     /// separate parallel enum would defeat that.
     case importedBankStatementLine = "ImportedBankStatementLine"
+    /// Added for `VL-FORCED-RECON-001` — not a QBO entity type at all, but
+    /// `SourceDependency` needed some value to name "this rule's input is
+    /// the P&L report, not a transaction list," and adding a case here
+    /// (rather than a separate dependency type) keeps `SourceDependency`
+    /// itself a single closed shape.
+    case report = "Report"
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.6's closed enum — confirmed against the
@@ -312,6 +318,16 @@ public struct NormalizedDataSet: Sendable {
     public let deposits: [LedgerDeposit]
     /// Added for `VL-VENDCREDIT-UNAPPLIED-001`.
     public let vendorCredits: [LedgerVendorCredit]
+    /// Added for `VL-FORCED-RECON-001`. Live-verified 2026-08-18: a forced
+    /// reconciliation's discrepancy adjustment does NOT show up on
+    /// `Account.CurrentBalance` (confirmed 0 despite a real $4,264.76
+    /// adjustment) and posts no queryable `JournalEntry` either — the ONLY
+    /// place it's visible via the API is the P&L report, as an "Other
+    /// Expenses" line literally named "Reconciliation Discrepancies".
+    /// Empty means "not fetched this sync," not "genuinely empty P&L" —
+    /// the rule treats empty as `.cannotEvaluate`, same posture as every
+    /// other optional-coverage source in this dataset.
+    public let profitAndLossLines: [ReportLine]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -323,6 +339,7 @@ public struct NormalizedDataSet: Sendable {
         vendors: [LedgerVendor] = [],
         deposits: [LedgerDeposit] = [],
         vendorCredits: [LedgerVendorCredit] = [],
+        profitAndLossLines: [ReportLine] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -333,6 +350,7 @@ public struct NormalizedDataSet: Sendable {
         self.vendors = vendors
         self.deposits = deposits
         self.vendorCredits = vendorCredits
+        self.profitAndLossLines = profitAndLossLines
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

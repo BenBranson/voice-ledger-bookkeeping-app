@@ -135,15 +135,35 @@ case "sync-check":
         }
 
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
-        let dataSet = try await syncClient.sync(realmID: realmID, period: period)
-        print("  transactions read: \(dataSet.transactions.count)")
-        print("  accounts read: \(dataSet.accounts.count)")
-        print("  vendors read: \(dataSet.vendors.count)")
-        print("  coverage: \(dataSet.coverage)")
-        print("  customTxnNumbersForPurchases: \(dataSet.companyFacts.customTxnNumbersForPurchases)")
-        for txn in dataSet.transactions.sorted(by: { $0.id < $1.id }) {
+        let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
+        print("  transactions read: \(syncedDataSet.transactions.count)")
+        print("  accounts read: \(syncedDataSet.accounts.count)")
+        print("  vendors read: \(syncedDataSet.vendors.count)")
+        print("  coverage: \(syncedDataSet.coverage)")
+        print("  customTxnNumbersForPurchases: \(syncedDataSet.companyFacts.customTxnNumbersForPurchases)")
+        for txn in syncedDataSet.transactions.sorted(by: { $0.id < $1.id }) {
             print("    #\(txn.id) \(txn.vendorName ?? "?") \(txn.txnDate) \(txn.totalAmount) doc=\(txn.docNumber ?? "-") voided=\(txn.isVoided) acct=\(txn.paymentAccountID ?? "-") lineAccts=\(txn.lineAccountIDs)")
         }
+
+        // Mirrors AppState.syncAndEvaluate(): `syncClient.sync()`'s dataset
+        // doesn't carry the report lines already fetched above (they're a
+        // separate call) — merge them in so rules that depend on
+        // `.report` (VL-FORCED-RECON-001) actually see them here too. A
+        // real bug (vendorCredits silently dropped the same way) was found
+        // in AppState's copy of this exact reconstruction on 2026-08-18;
+        // this devtool command must not carry the same class of bug.
+        let dataSet = NormalizedDataSet(
+            realmID: syncedDataSet.realmID,
+            period: syncedDataSet.period,
+            transactions: syncedDataSet.transactions,
+            accounts: syncedDataSet.accounts,
+            vendors: syncedDataSet.vendors,
+            deposits: syncedDataSet.deposits,
+            vendorCredits: syncedDataSet.vendorCredits,
+            profitAndLossLines: profitAndLossLines,
+            coverage: syncedDataSet.coverage,
+            companyFacts: syncedDataSet.companyFacts
+        )
 
         let engine = RuleEngine(rules: RuleRegistry.all)
         let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)

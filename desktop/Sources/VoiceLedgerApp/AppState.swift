@@ -37,14 +37,14 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
     /// the cross-cutting Cleanup Assessment tool. The two sets overlapping
     /// is intentional (docs/backlog/CLEANUP_MODE.md's assessment is meant to
     /// span multiple pages' rules), not a bug.
-    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-UNDEP-001"]
+    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-UNDEP-001", "VL-FORCED-RECON-001"]
 
     public enum LoadState: Equatable {
         case idle
@@ -263,6 +263,17 @@ public final class AppState {
             // on every sync, not just the run right after import.
             let importedLines = try await store.loadImportedStatementLines()
             importedStatementLineCount = importedLines.count
+
+            // VL-FORCED-RECON-001 needs the P&L report (see that rule's doc
+            // comment for why — the only API surface that shows a forced
+            // reconciliation's discrepancy). Fetched here, not just on the
+            // P&L page's own lazy Refresh, so the rule runs on every sync
+            // rather than only after someone happens to visit that page.
+            // A fetch failure here does NOT fail the whole sync — it just
+            // means this one rule reports .cannotEvaluate, same as any
+            // other optional-coverage source.
+            let profitAndLossLines = (try? await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)) ?? []
+
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
                 period: syncedDataSet.period,
@@ -270,6 +281,20 @@ public final class AppState {
                 accounts: syncedDataSet.accounts,
                 vendors: syncedDataSet.vendors,
                 deposits: syncedDataSet.deposits,
+                // Real bug, found 2026-08-18 while wiring VL-FORCED-RECON-001:
+                // this was missing entirely, silently defaulting to `[]` via
+                // NormalizedDataSet's init default. VL-VENDCREDIT-UNAPPLIED-001
+                // has been returning a FALSE `.pass` in the live app this
+                // whole time — `input.coverage` reflects the overall sync
+                // (which succeeds), not whether vendor credits specifically
+                // were carried through, so the rule had no way to tell
+                // "genuinely zero vendor credits" from "never given any."
+                // Only ever caught via the devtool CLI, which built its
+                // NormalizedDataSet correctly — this exact class of gap is
+                // why "the CLI proved it once" is not the same claim as
+                // "the app has always done this."
+                vendorCredits: syncedDataSet.vendorCredits,
+                profitAndLossLines: profitAndLossLines,
                 coverage: syncedDataSet.coverage,
                 companyFacts: syncedDataSet.companyFacts
             )
