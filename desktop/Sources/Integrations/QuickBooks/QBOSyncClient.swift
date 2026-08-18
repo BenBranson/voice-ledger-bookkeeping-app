@@ -121,11 +121,23 @@ public struct QBOSyncClient: Sendable {
     /// report read is comparatively expensive and not every screen needs
     /// it every sync.
     public func fetchBalanceSheet(realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
+        try await fetchReport(reportKind: "BalanceSheet", realmID: realmID, period: period)
+    }
+
+    /// Profit & Loss — verified live to share the exact same recursive
+    /// section shape as Balance Sheet (`Header`/`Rows`/optional `Summary`,
+    /// leaf rows as `ColData` + `type == "Data"`), so the same decoder and
+    /// `flatten` function apply unchanged.
+    public func fetchProfitAndLoss(realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
+        try await fetchReport(reportKind: "ProfitAndLoss", realmID: realmID, period: period)
+    }
+
+    private func fetchReport(reportKind: String, realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {
         let (startDate, endDate) = Self.dateRange(for: period)
         let data = try await backend.call(
             .readReport,
             realmID: realmID,
-            params: ReadReportParams(reportKind: "BalanceSheet", startDate: startDate, endDate: endDate)
+            params: ReadReportParams(reportKind: reportKind, startDate: startDate, endDate: endDate)
         )
         let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
         return Self.flatten(decoded.rows, depth: 0)

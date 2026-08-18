@@ -36,6 +36,9 @@ struct RootView: View {
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
                     }
                     ToolbarItem(placement: .automatic) {
+                        Button("Profit & Loss") { state.screen = .profitAndLossReport }
+                    }
+                    ToolbarItem(placement: .automatic) {
                         Button("Activity Log") { state.screen = .activityLog }
                     }
                 }
@@ -207,12 +210,30 @@ struct RootView: View {
             }
 
         case .balanceSheetReport:
-            BalanceSheetReportView(
+            FinancialReportView(
+                title: "Balance Sheet",
+                sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — that's the Close Package, not built yet.",
                 environment: state.environment == .production ? .production : .sandbox,
                 lines: state.balanceSheetLines,
                 isLoading: state.isLoadingBalanceSheet,
                 errorMessage: state.balanceSheetError,
                 onRefresh: { Task { await state.loadBalanceSheet() } }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .profitAndLossReport:
+            FinancialReportView(
+                title: "Profit & Loss",
+                sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — that's the Close Package, not built yet.",
+                environment: state.environment == .production ? .production : .sandbox,
+                lines: state.profitAndLossLines,
+                isLoading: state.isLoadingProfitAndLoss,
+                errorMessage: state.profitAndLossError,
+                onRefresh: { Task { await state.loadProfitAndLoss() } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

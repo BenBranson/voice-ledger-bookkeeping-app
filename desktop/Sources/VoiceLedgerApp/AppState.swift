@@ -24,6 +24,7 @@ public final class AppState {
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport
+        case profitAndLossReport
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -91,6 +92,9 @@ public final class AppState {
     public private(set) var balanceSheetLines: [ReportLine] = []
     public private(set) var isLoadingBalanceSheet = false
     public private(set) var balanceSheetError: String?
+    public private(set) var profitAndLossLines: [ReportLine] = []
+    public private(set) var isLoadingProfitAndLoss = false
+    public private(set) var profitAndLossError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
@@ -160,6 +164,17 @@ public final class AppState {
             balanceSheetError = "\(error)"
         }
         isLoadingBalanceSheet = false
+    }
+
+    public func loadProfitAndLoss() async {
+        isLoadingProfitAndLoss = true
+        profitAndLossError = nil
+        do {
+            profitAndLossLines = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
+        } catch {
+            profitAndLossError = "\(error)"
+        }
+        isLoadingProfitAndLoss = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

@@ -86,6 +86,13 @@ case "sync-check":
             print("  \(indent)\(line.label): \(line.amount?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
         }
 
+        let profitAndLossLines = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
+        print("Profit & Loss: \(profitAndLossLines.count) lines")
+        for line in profitAndLossLines.prefix(8) {
+            let indent = String(repeating: "  ", count: line.depth)
+            print("  \(indent)\(line.label): \(line.amount?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
+        }
+
         print("Syncing Purchase + Account + Preferences for \(realmID.rawValue), \(year)-\(month)...")
         let dataSet = try await syncClient.sync(realmID: realmID, period: period)
         print("  transactions read: \(dataSet.transactions.count)")
