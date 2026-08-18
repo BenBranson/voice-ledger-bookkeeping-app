@@ -49,6 +49,9 @@ public struct FindingDetailView: View {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
                 header
                 evidenceSection
+                if let principle = accountingPrinciple {
+                    whyThisMattersSection(principle)
+                }
                 if let action = finding.proposedActions.first {
                     actionSection(action)
                 }
@@ -120,6 +123,32 @@ public struct FindingDetailView: View {
             }
             .font(VLTypography.caption())
             .foregroundStyle(VLColor.textMuted)
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Training Mode — every flag
+    /// answers 'why was this flagged?' with the underlying accounting
+    /// principle, not just the rule." **This is that answer, not the rest
+    /// of Training Mode** (no broader tutorial/help system exists). Another
+    /// case of a field every rule already computes (`RuleIdentity
+    /// .accountingPrinciple`, plain English, written once per rule) that
+    /// had zero UI call sites until now — found by the same read-the-real-
+    /// call-sites check that caught the Dismiss and reversal gaps.
+    private var accountingPrinciple: String? {
+        RuleRegistry.all.first { $0.identity.id == finding.ruleID }?.identity.accountingPrinciple
+    }
+
+    private func whyThisMattersSection(_ principle: String) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("WHY THIS MATTERS")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text(principle)
+                    .font(VLTypography.body())
+                    .foregroundStyle(VLColor.textPrimary)
+            }
         }
     }
 
