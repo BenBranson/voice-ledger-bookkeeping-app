@@ -178,6 +178,10 @@ public struct FindingDetailView: View {
                         .foregroundStyle(VLColor.textSecondary)
                 }
 
+                Text("Reversal: \(reversalLine(action.reversal))")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
+
                 if let details = action.apiWriteDetails {
                     applyFixSection(details)
                 } else {
@@ -247,6 +251,17 @@ public struct FindingDetailView: View {
             }
         }
         .padding(.top, VLSpacing.xs)
+    }
+
+    /// `ProposedAction.reversal` was computed by every rule but never
+    /// rendered anywhere — a real gap, found the same way `dismissedFindingIDs`'s
+    /// wiring gap was: reading the actual call sites rather than assuming a
+    /// value that exists in `Core` is necessarily reaching the screen.
+    private func reversalLine(_ reversal: ReversalPlan) -> String {
+        switch reversal {
+        case .reversibleManually(let procedure): return procedure
+        case .irreversible: return "This cannot be undone once done."
+        }
     }
 
     private func consequenceLines(_ consequences: [Consequence]) -> [String] {
