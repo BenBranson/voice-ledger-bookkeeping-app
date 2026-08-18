@@ -180,7 +180,7 @@ public struct QBOSyncClient: Sendable {
                 newAccountId: newAccountID
             )
         )
-        return try JSONDecoder().decode(WriteVerificationResult.self, from: data)
+        return try WriteVerificationResult.parse(from: data)
     }
 
     /// A section row (`Header`/`Rows`/optional `Summary`) and a leaf data

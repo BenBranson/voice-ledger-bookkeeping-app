@@ -63,6 +63,22 @@ private struct EntryRow: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
                 }
+                if entry.beforeSnapshotJSON != nil || entry.afterSnapshotJSON != nil {
+                    DisclosureGroup("Before / after entity snapshot") {
+                        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                            if let before = entry.beforeSnapshotJSON {
+                                Text("BEFORE").font(VLTypography.eyebrow()).foregroundStyle(VLColor.textMuted)
+                                Text(before).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            }
+                            if let after = entry.afterSnapshotJSON {
+                                Text("AFTER").font(VLTypography.eyebrow()).foregroundStyle(VLColor.textMuted)
+                                Text(after).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            }
+                        }
+                        .padding(.top, VLSpacing.xs)
+                    }
+                    .font(VLTypography.caption())
+                }
             }
         }
     }

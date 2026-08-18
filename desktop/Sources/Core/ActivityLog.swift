@@ -57,6 +57,14 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
     public let ruleVersion: RuleVersion?
     public let procedure: GuidedProcedure?
     public let note: String?
+    /// The QBO entity's full state immediately before/after a `.stagedAPI`
+    /// write — `WriteVerificationResult.beforeSnapshotJSON`/
+    /// `afterSnapshotJSON`, carried through to the permanent record. `nil`
+    /// for every entry that isn't an `apiWriteApplied` write (which is
+    /// most of them) — additive fields, same pattern used repeatedly
+    /// elsewhere in this project.
+    public let beforeSnapshotJSON: String?
+    public let afterSnapshotJSON: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -68,7 +76,9 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
         ruleID: RuleID? = nil,
         ruleVersion: RuleVersion? = nil,
         procedure: GuidedProcedure? = nil,
-        note: String? = nil
+        note: String? = nil,
+        beforeSnapshotJSON: String? = nil,
+        afterSnapshotJSON: String? = nil
     ) {
         self.id = id
         self.realmID = realmID
@@ -80,5 +90,7 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
         self.ruleVersion = ruleVersion
         self.procedure = procedure
         self.note = note
+        self.beforeSnapshotJSON = beforeSnapshotJSON
+        self.afterSnapshotJSON = afterSnapshotJSON
     }
 }

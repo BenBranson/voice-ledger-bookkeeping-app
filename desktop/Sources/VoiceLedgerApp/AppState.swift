@@ -621,7 +621,9 @@ public final class AppState {
                 findingID: findingID,
                 ruleID: finding.ruleID,
                 ruleVersion: finding.ruleVersion,
-                note: "Reclassified purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName), QBO-verified"
+                note: "Reclassified purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName), QBO-verified",
+                beforeSnapshotJSON: result.beforeSnapshotJSON,
+                afterSnapshotJSON: result.afterSnapshotJSON
             )
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()

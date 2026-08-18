@@ -20,7 +20,7 @@ struct WriteVerificationResultTests {
           "after": {}
         }
         """
-        let result = try JSONDecoder().decode(WriteVerificationResult.self, from: Data(json.utf8))
+        let result = try WriteVerificationResult.parse(from: Data(json.utf8))
         #expect(result.verified == true)
         #expect(result.purchaseID == "227")
         #expect(result.oldAccountID == "1150040001")
@@ -44,7 +44,7 @@ struct WriteVerificationResultTests {
           "otherLinesUnchanged": false
         }
         """
-        let result = try JSONDecoder().decode(WriteVerificationResult.self, from: Data(json.utf8))
+        let result = try WriteVerificationResult.parse(from: Data(json.utf8))
         #expect(result.verified == false)
         #expect(result.unexpectedFieldChanges == ["DocNumber", "TotalAmt"])
         #expect(result.otherLinesUnchanged == false)
@@ -64,8 +64,48 @@ struct WriteVerificationResultTests {
           "otherLinesUnchanged": false
         }
         """
-        let result = try JSONDecoder().decode(WriteVerificationResult.self, from: Data(json.utf8))
+        let result = try WriteVerificationResult.parse(from: Data(json.utf8))
         #expect(result.oldAccountID == nil)
         #expect(result.newSyncToken == nil)
+    }
+
+    @Test("before/after entity snapshots are preserved as JSON text, not silently dropped — docs/VOICE_LEDGER_HANDOFF.md's Activity Log requirement")
+    func preservesBeforeAfterSnapshots() throws {
+        let json = """
+        {
+          "verified": true,
+          "purchaseId": "227",
+          "lineId": "1",
+          "oldAccountId": "1150040001",
+          "newAccountId": "1150040014",
+          "newSyncToken": "1",
+          "unexpectedFieldChanges": [],
+          "otherLinesUnchanged": true,
+          "before": {"Id": "227", "SyncToken": "0"},
+          "after": {"Id": "227", "SyncToken": "1"}
+        }
+        """
+        let result = try WriteVerificationResult.parse(from: Data(json.utf8))
+        #expect(result.beforeSnapshotJSON?.contains("\"SyncToken\":\"0\"") == true)
+        #expect(result.afterSnapshotJSON?.contains("\"SyncToken\":\"1\"") == true)
+    }
+
+    @Test("Missing before/after keys parse as nil, not a crash")
+    func missingSnapshotsParseAsNil() throws {
+        let json = """
+        {
+          "verified": false,
+          "purchaseId": "227",
+          "lineId": "1",
+          "oldAccountId": null,
+          "newAccountId": "1150040014",
+          "newSyncToken": null,
+          "unexpectedFieldChanges": ["DocNumber"],
+          "otherLinesUnchanged": false
+        }
+        """
+        let result = try WriteVerificationResult.parse(from: Data(json.utf8))
+        #expect(result.beforeSnapshotJSON == nil)
+        #expect(result.afterSnapshotJSON == nil)
     }
 }
