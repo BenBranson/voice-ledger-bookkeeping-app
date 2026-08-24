@@ -397,13 +397,49 @@ public final class AppState {
             let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
+            // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh
+            // critic found this used to collapse `.cannotEvaluate` into the
+            // same "empty current-run set" as a genuine `.pass` — so a
+            // transient failure (e.g. `try?` swallowing a P&L fetch error
+            // elsewhere in this method) would resolve every open finding
+            // for that rule with the Activity Log claiming "the underlying
+            // issue appears to be fixed," which is false: the rule never
+            // actually re-ran the check. `.cannotEvaluate` is excluded from
+            // `currentRunIDsByRule` entirely, so `reconcileAgainstLatestRun`
+            // is simply not called for that rule this cycle — its findings
+            // stay exactly as they were until a sync actually re-evaluates
+            // them, rather than being resolved on a false pretense.
+            // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh
+            // critic also found `ActivityKind.findingDetected` — labeled,
+            // documented, tested for round-trip — was never actually
+            // produced anywhere, the same "case exists but no real call
+            // site" gap round 10 found for `findingResolved`. Loaded once
+            // up front (not re-read per rule) so a finding already on disk
+            // from a prior sync is never mistaken for new.
+            let priorFindingIDs = Set(try await store.loadFindings().map(\.id))
+
             var currentRunIDsByRule: [RuleID: Set<String>] = [:]
             for (ruleID, result) in evaluation.results {
-                if case .findings(let ruleFindings) = result.outcome {
+                switch result.outcome {
+                case .findings(let ruleFindings):
                     try await store.upsertFindings(ruleFindings)
                     currentRunIDsByRule[ruleID] = Set(ruleFindings.map(\.id))
-                } else {
+                    for finding in ruleFindings where !priorFindingIDs.contains(finding.id) {
+                        try await store.appendActivityLogEntry(ActivityLogEntry(
+                            realmID: realmID,
+                            actor: .system,
+                            kind: .findingDetected,
+                            findingID: finding.id,
+                            ruleID: finding.ruleID,
+                            ruleVersion: finding.ruleVersion,
+                            findingSummary: finding.title,
+                            note: nil
+                        ))
+                    }
+                case .pass:
                     currentRunIDsByRule[ruleID] = []
+                case .cannotEvaluate:
+                    break
                 }
             }
             for (ruleID, currentIDs) in currentRunIDsByRule {
