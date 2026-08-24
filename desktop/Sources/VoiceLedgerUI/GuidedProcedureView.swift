@@ -8,12 +8,19 @@ import DesignSystem
 /// is no staging state to show in Branch B (§11.1).
 public struct GuidedProcedureView: View {
     private let procedure: GuidedProcedure
+    /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): `AppState
+    /// .attestCompletion` used to navigate back to the finding's list
+    /// unconditionally, even when the underlying write threw — the
+    /// bookkeeper believed their attestation was recorded when it wasn't.
+    /// Now the caller stays on this screen and shows this instead.
+    private let attestError: String?
     @State private var note: String = ""
     private let onAttest: (String?) -> Void
     private let onCancel: () -> Void
 
-    public init(procedure: GuidedProcedure, onAttest: @escaping (String?) -> Void, onCancel: @escaping () -> Void) {
+    public init(procedure: GuidedProcedure, attestError: String? = nil, onAttest: @escaping (String?) -> Void, onCancel: @escaping () -> Void) {
         self.procedure = procedure
+        self.attestError = attestError
         self.onAttest = onAttest
         self.onCancel = onCancel
     }
@@ -85,6 +92,11 @@ public struct GuidedProcedureView: View {
                             .foregroundStyle(VLColor.textMuted)
                         TextField("Optional note", text: $note, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
+                        if let attestError {
+                            Text(attestError)
+                                .font(VLTypography.caption())
+                                .foregroundStyle(.red)
+                        }
                         HStack(spacing: VLSpacing.sm) {
                             Button("I completed this in QBO") {
                                 onAttest(note.isEmpty ? nil : note)

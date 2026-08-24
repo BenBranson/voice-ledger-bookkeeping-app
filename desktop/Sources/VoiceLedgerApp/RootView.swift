@@ -116,6 +116,7 @@ struct RootView: View {
                     writeAccessEnabled: state.writeAccessEnabled == true,
                     isApplyingFix: state.applyingFixFindingID == findingID,
                     applyFixError: state.applyFixError?.findingID == findingID ? state.applyFixError?.message : nil,
+                    dismissError: state.findingActionError?.findingID == findingID ? state.findingActionError?.message : nil,
                     hasClientMemoryRule: finding.vendorName.map { vendorName in
                         state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
                     } ?? false,
@@ -139,6 +140,7 @@ struct RootView: View {
                let procedure = action.guidedProcedure {
                 GuidedProcedureView(
                     procedure: procedure,
+                    attestError: state.findingActionError?.findingID == findingID ? state.findingActionError?.message : nil,
                     onAttest: { note in
                         Task { await state.attestCompletion(findingID: findingID, actorName: actorName, note: note) }
                     },

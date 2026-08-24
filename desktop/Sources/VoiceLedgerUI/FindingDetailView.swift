@@ -15,6 +15,13 @@ public struct FindingDetailView: View {
     private let writeAccessEnabled: Bool
     private let isApplyingFix: Bool
     private let applyFixError: String?
+    /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): `AppState
+    /// .dismissFinding` used to navigate back to the list unconditionally,
+    /// even when the underlying write threw — a bookkeeper who clicked
+    /// Dismiss during a real I/O error saw the SAME screen transition as a
+    /// success, with the finding actually still open. Now the caller stays
+    /// on this screen and shows this instead, mirroring `applyFixError`.
+    private let dismissError: String?
     private let hasClientMemoryRule: Bool
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
@@ -32,6 +39,7 @@ public struct FindingDetailView: View {
         writeAccessEnabled: Bool,
         isApplyingFix: Bool,
         applyFixError: String?,
+        dismissError: String? = nil,
         hasClientMemoryRule: Bool = false,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
@@ -43,6 +51,7 @@ public struct FindingDetailView: View {
         self.writeAccessEnabled = writeAccessEnabled
         self.isApplyingFix = isApplyingFix
         self.applyFixError = applyFixError
+        self.dismissError = dismissError
         self.hasClientMemoryRule = hasClientMemoryRule
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
@@ -348,6 +357,13 @@ public struct FindingDetailView: View {
                 // neither approved nor dismissed — had none stated anywhere.
                 // Shown only when the rule populated `riskIfIgnored`; nil
                 // for the other 16 rules, no change to their screens.
+                if let dismissError {
+                    Text(dismissError)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.red)
+                        .padding(.top, VLSpacing.xs)
+                }
+
                 if let riskIfIgnored = finding.riskIfIgnored {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         Text("IF LEFT OPEN")

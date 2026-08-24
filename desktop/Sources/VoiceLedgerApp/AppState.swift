@@ -105,6 +105,17 @@ public final class AppState {
     // actually about the finding it's showing.
     public private(set) var applyFixError: (findingID: String, message: String)?
 
+    /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): a fresh critic
+    /// found `attestCompletion`/`dismissFinding` both unconditionally did
+    /// `screen = .list` after their `do`/`catch`, including when the catch
+    /// fired — so a bookkeeper whose dismiss/attest write actually threw
+    /// (a real `ClientStore` I/O error) was bounced back to the list
+    /// exactly as if it had succeeded, with the only trace being
+    /// `loadState.failed`, which no view anywhere reads or renders. Same
+    /// per-finding scoping pattern as `applyFixError`, reused for these two
+    /// actions rather than a third near-identical field.
+    public private(set) var findingActionError: (findingID: String, message: String)?
+
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
         public let filename: String
@@ -668,13 +679,19 @@ public final class AppState {
             findingSummary: finding.title,
             note: note
         )
+        findingActionError = nil
         do {
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
+            screen = .list
         } catch {
-            loadState = .failed("\(error)")
+            // Gauntlet Loop, Gauntlet B round 15 (2026-08-24): stay on the
+            // procedure screen rather than navigating to .list — the
+            // attestation was NOT recorded, and leaving looked identical
+            // to success. `loadState.failed` was also set here before, but
+            // no view anywhere reads that case; this is the real signal.
+            findingActionError = (findingID: findingID, message: "Your attestation wasn't recorded: \(error). Try again before leaving this screen.")
         }
-        screen = .list
     }
 
     /// The explicit "Remember this vendor" action — deliberately separate
@@ -793,6 +810,7 @@ public final class AppState {
     /// operation for now.
     public func dismissFinding(findingID: String, actorName: String, reason: String?) async {
         guard let finding = finding(id: findingID) else { return }
+        findingActionError = nil
         do {
             try await store.dismissFinding(id: findingID)
             let entry = ActivityLogEntry(
@@ -808,10 +826,15 @@ public final class AppState {
             try await store.appendActivityLogEntry(entry)
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
+            screen = .list
         } catch {
-            loadState = .failed("\(error)")
+            // Gauntlet Loop, Gauntlet B round 15 (2026-08-24): stay on the
+            // finding's detail screen rather than navigating to .list —
+            // the dismissal did NOT happen, and leaving looked identical
+            // to success (the finding stayed open on disk, but the
+            // bookkeeper had no way to know that without re-opening it).
+            findingActionError = (findingID: findingID, message: "This finding wasn't dismissed: \(error). Try again.")
         }
-        screen = .list
     }
 
     /// Records that a `ClientQuestionDrafter`-drafted question was sent —
