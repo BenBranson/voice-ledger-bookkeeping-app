@@ -52,6 +52,16 @@ public actor ClientStore {
             // Preserve status (open/resolved/dismissed) across a resync
             // that re-detects the same finding — a new detection of an
             // already-resolved problem should not silently reopen it.
+            // Known landmine (Gauntlet Loop, Gauntlet B round 12,
+            // 2026-08-24, `ResolvedFindingRecurrenceTests.swift`,
+            // `docs/VOICE_LEDGER_HANDOFF.md`): this also means a GENUINE
+            // recurrence (the rule re-detects the identical
+            // affected-transaction set — same id — because the underlying
+            // problem actually came back, e.g. an un-voided transaction) is
+            // silently swallowed the same way, with no Activity Log trace
+            // and a now-false "appears to be fixed" note left standing.
+            // Deliberately not fixed here — this is a resolve/reopen
+            // semantics decision, not a rendering/logging gap.
             if let prior = byID[finding.id], prior.status != .open {
                 var carried = finding
                 carried.status = prior.status

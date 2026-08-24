@@ -503,9 +503,22 @@ struct RootView: View {
 
     /// This app hasn't synced yet on first launch, so there's no
     /// `RuleOutcome` to map directly — `coverage` alone is enough for the
-    /// list page's coverage strip. A real per-rule outcome (with the
-    /// engine's `.cannotEvaluate` reason) is available immediately after a
-    /// sync, via `state.coverage`.
+    /// list page's coverage strip. Gauntlet Loop, Gauntlet B round 12
+    /// (2026-08-24): a critic found this comment's second sentence was
+    /// simply false, and corrected it — `state.coverage` (`Coverage`,
+    /// `.complete`/`.partial`) is computed purely from QBO paging counts of
+    /// purchases/bills/invoices/payments (`QBOSyncClient.sync`); it has no
+    /// relationship to any individual rule's `RuleOutcome.cannotEvaluate`.
+    /// A rule like `VL-FORCED-RECON-001`/`VL-REPORT-TIE-001` can return
+    /// `.cannotEvaluate` (e.g. its P&L/Balance Sheet report `try?`-fetch
+    /// failed this sync) while `state.coverage == .complete` and this
+    /// strip shows "Synced" — that per-rule reason is discarded at
+    /// `AppState.syncAndEvaluate()`'s `case .cannotEvaluate: break` and has
+    /// no UI surface anywhere today. Confirmed real, left undocumented as
+    /// a known gap rather than fixed here — surfacing it is a UI feature
+    /// addition, out of this hardening run's explicit scope ("no new
+    /// pages/features"). `coverageOutcome` below maps ONLY the overall
+    /// sync-level coverage, not any rule's own outcome.
     private var coverageOutcome: RuleOutcome {
         switch state.coverage {
         case .complete: return .pass(coverage: .complete, checkedCount: state.findings.count)
