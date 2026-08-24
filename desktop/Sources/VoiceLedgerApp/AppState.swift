@@ -92,7 +92,18 @@ public final class AppState {
     // operation that has nothing to do with B — including blocking B's own
     // real fix while A's write is still in flight or stuck. Now keyed by
     // `findingID` so a view only ever shows "applying" for its own finding.
-    public private(set) var applyingFixFindingID: String?
+    //
+    // Gauntlet Loop, Gauntlet B round 20 (2026-08-24): the round-14 fix
+    // above only closed the DISPLAY-side bleed — this remained a single
+    // `String?`, so the round-19 fix to `findingActionInFlightIDs` was
+    // never ported here. Starting Apply Fix on Finding A, then navigating
+    // to Finding B and starting Apply Fix on B too (nothing prevented
+    // this), overwrote A's marker with B's; A's re-enabled button then let
+    // a double-tap launch a SECOND concurrent QBO write against the same
+    // purchase line with the same (now stale) `expectedSyncToken` — a real
+    // production write racing itself, not a cosmetic duplicate log entry.
+    // A `Set<String>` tracks each finding's in-flight write independently.
+    public private(set) var applyingFixFindingIDs: Set<String> = []
     // Gauntlet Loop, Gauntlet B round 13 (2026-08-24): this used to be a
     // bare `String?`, not scoped to a finding — a rejected/failed write on
     // Finding A left the error string standing until the NEXT
@@ -706,11 +717,16 @@ public final class AppState {
     ///
     /// `applyStagedFix` deliberately does NOT route through this — its
     /// verified/rejected two-branch outcome, its own `syncAndEvaluate()`
-    /// call, and its own `applyingFixFindingID` (driving the "Applying…"
-    /// button label, not just a disabled state) were each independently
-    /// hardened across rounds 13/14/18 already; folding it in here would
-    /// be a larger, riskier rewrite of already-correct code for no new
-    /// safety, not a simplification.
+    /// call, and its own `applyingFixFindingIDs` (driving the "Applying…"
+    /// button label, not just a disabled state) mean folding it in here
+    /// would be a larger, riskier rewrite of already-distinct control flow
+    /// for no real simplification. Gauntlet Loop, Gauntlet B round 20
+    /// (2026-08-24): an earlier version of this comment claimed
+    /// `applyStagedFix`'s concurrency handling was "already hardened" —
+    /// false with respect to cross-finding interference specifically; it
+    /// had the identical `Set`-vs-`String?` bug this method's own
+    /// `findingActionInFlightIDs` was just fixed for, ported over
+    /// separately to `applyingFixFindingIDs` in the same round.
     ///
     /// - `navigateToListIfScreenMatches`: when non-nil, success navigates
     ///   to `.list` only if this returns true for the CURRENT `screen` at
@@ -999,11 +1015,15 @@ public final class AppState {
         guard let finding = finding(id: findingID),
               let action = finding.proposedActions.first,
               let details = action.apiWriteDetails,
-              applyingFixFindingID != findingID else { return }
+              !applyingFixFindingIDs.contains(findingID) else { return }
 
-        applyingFixFindingID = findingID
-        applyFixError = nil
-        findingActionError = nil
+        applyingFixFindingIDs.insert(findingID)
+        // Gauntlet Loop, Gauntlet B round 20 (2026-08-24): scoped to THIS
+        // finding, matching `performFindingAction`'s entry clearing —
+        // unconditional clears here would wipe a different, still-valid
+        // finding's error the instant Apply Fix started on this one.
+        if applyFixError?.findingID == findingID { applyFixError = nil }
+        if findingActionError?.findingID == findingID { findingActionError = nil }
         do {
             let result = try await syncClient.reclassifyPurchaseLine(
                 realmID: realmID,
@@ -1026,7 +1046,7 @@ public final class AppState {
                     note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — QBO did not confirm the change."
                 ))
                 activityLog = try await store.loadActivityLog()
-                applyingFixFindingID = nil
+                applyingFixFindingIDs.remove(findingID)
                 return
             }
             let entry = ActivityLogEntry(
@@ -1043,7 +1063,7 @@ public final class AppState {
             )
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
-            applyingFixFindingID = nil
+            applyingFixFindingIDs.remove(findingID)
             // The finding only actually resolves once a resync sees the
             // corrected account — same posture as attestCompletion's doc
             // comment: this is not treated as proof by itself.
@@ -1073,7 +1093,7 @@ public final class AppState {
                 note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — the call failed before QBO could respond: \(error)"
             ))
             activityLog = (try? await store.loadActivityLog()) ?? activityLog
-            applyingFixFindingID = nil
+            applyingFixFindingIDs.remove(findingID)
         }
     }
 }

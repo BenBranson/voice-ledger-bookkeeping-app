@@ -114,7 +114,7 @@ struct RootView: View {
                 FindingDetailView(
                     finding: finding,
                     writeAccessEnabled: state.writeAccessEnabled == true,
-                    isApplyingFix: state.applyingFixFindingID == findingID,
+                    isApplyingFix: state.applyingFixFindingIDs.contains(findingID),
                     applyFixError: state.applyFixError?.findingID == findingID ? state.applyFixError?.message : nil,
                     findingActionError: state.findingActionError?.findingID == findingID ? state.findingActionError?.message : nil,
                     isFindingActionInFlight: state.findingActionInFlightIDs.contains(findingID),
