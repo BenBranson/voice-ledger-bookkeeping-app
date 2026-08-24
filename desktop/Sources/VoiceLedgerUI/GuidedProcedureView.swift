@@ -14,13 +14,19 @@ public struct GuidedProcedureView: View {
     /// bookkeeper believed their attestation was recorded when it wasn't.
     /// Now the caller stays on this screen and shows this instead.
     private let attestError: String?
+    /// Gauntlet Loop, Gauntlet B round 18 (2026-08-24): `attestCompletion`
+    /// had no in-flight marker, so this button had nothing to disable — a
+    /// rapid double-tap fired two concurrent calls, producing two
+    /// `manualCompletionAttested` Activity Log entries for one click.
+    private let isAttesting: Bool
     @State private var note: String = ""
     private let onAttest: (String?) -> Void
     private let onCancel: () -> Void
 
-    public init(procedure: GuidedProcedure, attestError: String? = nil, onAttest: @escaping (String?) -> Void, onCancel: @escaping () -> Void) {
+    public init(procedure: GuidedProcedure, attestError: String? = nil, isAttesting: Bool = false, onAttest: @escaping (String?) -> Void, onCancel: @escaping () -> Void) {
         self.procedure = procedure
         self.attestError = attestError
+        self.isAttesting = isAttesting
         self.onAttest = onAttest
         self.onCancel = onCancel
     }
@@ -102,6 +108,7 @@ public struct GuidedProcedureView: View {
                                 onAttest(note.isEmpty ? nil : note)
                             }
                             .buttonStyle(.borderedProminent)
+                            .disabled(isAttesting)
                             Button("Cancel") { onCancel() }
                                 .buttonStyle(.bordered)
                         }

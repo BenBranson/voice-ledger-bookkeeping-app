@@ -27,6 +27,14 @@ public struct FindingDetailView: View {
     /// since `AppState` only ever has one such action in flight/failed per
     /// finding at a time.
     private let findingActionError: String?
+    /// Gauntlet Loop, Gauntlet B round 18 (2026-08-24): `dismissFinding`,
+    /// `attestCompletion` (on `GuidedProcedureView`), `createClientMemoryRule`,
+    /// and `recordClientQuestionSent` had no in-flight marker at all, unlike
+    /// `applyStagedFix`'s `isApplyingFix` — so their buttons had nothing to
+    /// disable, and an ordinary rapid double-tap fired two concurrent
+    /// calls, producing duplicate Activity Log entries (or duplicate
+    /// `ClientMemoryRule` rows) for one click.
+    private let isFindingActionInFlight: Bool
     private let hasClientMemoryRule: Bool
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
@@ -45,6 +53,7 @@ public struct FindingDetailView: View {
         isApplyingFix: Bool,
         applyFixError: String?,
         findingActionError: String? = nil,
+        isFindingActionInFlight: Bool = false,
         hasClientMemoryRule: Bool = false,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
@@ -57,6 +66,7 @@ public struct FindingDetailView: View {
         self.isApplyingFix = isApplyingFix
         self.applyFixError = applyFixError
         self.findingActionError = findingActionError
+        self.isFindingActionInFlight = isFindingActionInFlight
         self.hasClientMemoryRule = hasClientMemoryRule
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
@@ -134,7 +144,7 @@ public struct FindingDetailView: View {
                             isConfirmingRememberVendor = false
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(isApplyingFix)
+                        .disabled(isApplyingFix || isFindingActionInFlight)
                         Button("Cancel") { isConfirmingRememberVendor = false }
                             .buttonStyle(.bordered)
                     }
@@ -176,7 +186,7 @@ public struct FindingDetailView: View {
                             isDraftingClientQuestion = false
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(draftedQuestionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isApplyingFix)
+                        .disabled(draftedQuestionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isApplyingFix || isFindingActionInFlight)
                         Button("Cancel") { isDraftingClientQuestion = false }
                             .buttonStyle(.bordered)
                     }
@@ -408,6 +418,7 @@ public struct FindingDetailView: View {
                                 .buttonStyle(.borderedProminent)
                             Button("Dismiss") { onDismiss() }
                                 .buttonStyle(.bordered)
+                                .disabled(isFindingActionInFlight)
                         }
                         // Gauntlet Loop, Gauntlet B critic pass (2026-08-23):
                         // Dismiss is a single click with no confirmation and
@@ -480,6 +491,7 @@ public struct FindingDetailView: View {
                         .disabled(!writeAccessEnabled)
                     Button("Dismiss") { onDismiss() }
                         .buttonStyle(.bordered)
+                        .disabled(isFindingActionInFlight)
                 }
             }
         }

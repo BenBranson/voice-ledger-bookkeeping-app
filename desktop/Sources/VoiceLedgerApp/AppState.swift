@@ -115,6 +115,19 @@ public final class AppState {
     /// per-finding scoping pattern as `applyFixError`, reused for these two
     /// actions rather than a third near-identical field.
     public private(set) var findingActionError: (findingID: String, message: String)?
+    /// Gauntlet Loop, Gauntlet B round 18 (2026-08-24): unlike `applyStagedFix`
+    /// (which already tracked `applyingFixFindingID`), `dismissFinding`,
+    /// `attestCompletion`, `createClientMemoryRule`, and
+    /// `recordClientQuestionSent` had no in-flight marker at all, so their
+    /// buttons had nothing to disable — an ordinary rapid double-tap fired
+    /// two concurrent calls. `ClientStore.dismissFinding` is idempotent at
+    /// the status level, but `AppState.dismissFinding` still appended a
+    /// second `ActivityLogEntry(kind: .findingDismissed)` unconditionally;
+    /// `attestCompletion`/`recordClientQuestionSent`/`createClientMemoryRule`
+    /// had no idempotency guard at any layer, so a double-tap produced two
+    /// genuinely duplicate log entries or two duplicate `ClientMemoryRule`
+    /// rows — a false record in the Activity & Correction Log.
+    public private(set) var findingActionInFlight: String?
 
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
@@ -667,7 +680,8 @@ public final class AppState {
     /// `syncAndEvaluate()` call, when the isVoided exclusion actually fires
     /// (acceptance criterion 14) — this method does not touch finding status.
     public func attestCompletion(findingID: String, actorName: String, note: String?) async {
-        guard let finding = finding(id: findingID), let action = finding.proposedActions.first else { return }
+        guard let finding = finding(id: findingID), let action = finding.proposedActions.first,
+              findingActionInFlight != findingID else { return }
         let entry = ActivityLogEntry(
             realmID: realmID,
             actor: .user(actorName),
@@ -687,11 +701,23 @@ public final class AppState {
         // `findingActionError` itself further down).
         findingActionError = nil
         applyFixError = nil
+        findingActionInFlight = findingID
         do {
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
-            screen = .list
+            findingActionInFlight = nil
+            // Gauntlet Loop, Gauntlet B round 18 (2026-08-24): only
+            // navigate away if the user is STILL on the screen this
+            // attestation started from — a fresh critic found this used to
+            // overwrite `screen` unconditionally, so a bookkeeper who
+            // navigated elsewhere (the toolbar stays live during any
+            // in-flight write) while this awaited would get yanked back to
+            // `.list` off wherever they'd actually gone, with no warning.
+            if case .procedure(let currentFindingID, _) = screen, currentFindingID == findingID {
+                screen = .list
+            }
         } catch {
+            findingActionInFlight = nil
             // Gauntlet Loop, Gauntlet B round 15 (2026-08-24): stay on the
             // procedure screen rather than navigating to .list — the
             // attestation was NOT recorded, and leaving looked identical
@@ -720,10 +746,12 @@ public final class AppState {
     // passing it lets the error render on that finding's own screen,
     // scoped the same way `dismissError`/`attestError` already are.
     public func createClientMemoryRule(ruleID: RuleID, vendorName: String, actorName: String, note: String?, triggeringFindingID: String? = nil) async {
+        if let triggeringFindingID, findingActionInFlight == triggeringFindingID { return }
         let rule = ClientMemoryRule(ruleID: ruleID, vendorName: vendorName, createdBy: actorName, note: note)
-        if triggeringFindingID != nil {
+        if let triggeringFindingID {
             findingActionError = nil
             applyFixError = nil
+            findingActionInFlight = triggeringFindingID
         }
         do {
             try await store.addClientMemoryRule(rule)
@@ -753,9 +781,11 @@ public final class AppState {
             clientMemoryRules = try await store.loadClientMemoryRules()
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
+            if triggeringFindingID != nil { findingActionInFlight = nil }
         } catch {
             loadState = .failed("\(error)")
             if let triggeringFindingID {
+                findingActionInFlight = nil
                 findingActionError = (findingID: triggeringFindingID, message: "This vendor wasn't remembered: \(error). Try again.")
             }
         }
@@ -850,9 +880,10 @@ public final class AppState {
     /// not an oversight; `ClientStore.dismissFinding` stays a one-way
     /// operation for now.
     public func dismissFinding(findingID: String, actorName: String, reason: String?) async {
-        guard let finding = finding(id: findingID) else { return }
+        guard let finding = finding(id: findingID), findingActionInFlight != findingID else { return }
         findingActionError = nil
         applyFixError = nil
+        findingActionInFlight = findingID
         do {
             try await store.dismissFinding(id: findingID)
             let entry = ActivityLogEntry(
@@ -868,8 +899,15 @@ public final class AppState {
             try await store.appendActivityLogEntry(entry)
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
-            screen = .list
+            findingActionInFlight = nil
+            // Gauntlet Loop, Gauntlet B round 18 (2026-08-24): only
+            // navigate away if the user is STILL viewing this finding —
+            // see `attestCompletion`'s matching comment for why.
+            if case .detail(let currentFindingID) = screen, currentFindingID == findingID {
+                screen = .list
+            }
         } catch {
+            findingActionInFlight = nil
             // Gauntlet Loop, Gauntlet B round 15 (2026-08-24): stay on the
             // finding's detail screen rather than navigating to .list —
             // the dismissal did NOT happen, and leaving looked identical
@@ -884,9 +922,10 @@ public final class AppState {
     /// exists), this only logs the human's own action, same "recorded, not
     /// verified by the app" posture as `attestCompletion`.
     public func recordClientQuestionSent(findingID: String, actorName: String, questionText: String) async {
-        guard let finding = finding(id: findingID) else { return }
+        guard let finding = finding(id: findingID), findingActionInFlight != findingID else { return }
         findingActionError = nil
         applyFixError = nil
+        findingActionInFlight = findingID
         let entry = ActivityLogEntry(
             realmID: realmID,
             actor: .user(actorName),
@@ -900,7 +939,9 @@ public final class AppState {
         do {
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
+            findingActionInFlight = nil
         } catch {
+            findingActionInFlight = nil
             loadState = .failed("\(error)")
             findingActionError = (findingID: findingID, message: "This question wasn't recorded as sent: \(error). Try again.")
         }
@@ -919,7 +960,8 @@ public final class AppState {
     public func applyStagedFix(findingID: String, actorName: String) async {
         guard let finding = finding(id: findingID),
               let action = finding.proposedActions.first,
-              let details = action.apiWriteDetails else { return }
+              let details = action.apiWriteDetails,
+              applyingFixFindingID != findingID else { return }
 
         applyingFixFindingID = findingID
         applyFixError = nil
@@ -968,7 +1010,18 @@ public final class AppState {
             // corrected account — same posture as attestCompletion's doc
             // comment: this is not treated as proof by itself.
             await syncAndEvaluate()
-            screen = .list
+            // Gauntlet Loop, Gauntlet B round 18 (2026-08-24): only
+            // navigate away if the user is STILL viewing this finding —
+            // this is the widest window of any of the finding-action
+            // methods (a real QBO network round-trip plus a full
+            // `syncAndEvaluate()`), so it was the most reachable instance
+            // of the navigation-hijack a fresh critic found: the app's
+            // toolbar stays fully live during any in-flight write, so a
+            // bookkeeper who navigated elsewhere while this awaited would
+            // otherwise get yanked back to `.list` with no warning.
+            if case .detail(let currentFindingID) = screen, currentFindingID == findingID {
+                screen = .list
+            }
         } catch {
             applyFixError = (findingID: findingID, message: "\(error)")
             try? await store.appendActivityLogEntry(ActivityLogEntry(
