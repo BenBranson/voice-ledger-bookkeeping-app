@@ -188,9 +188,60 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                     highlighted = ["amount", "date", "paymentAccount"]
                 }
 
+                // Gauntlet Loop, Gauntlet B (2026-08-23): real VALUES for
+                // each highlighted field, not just the field names — a
+                // bookkeeper could not previously tell what "amount, date,
+                // paymentAccount" actually matched to without opening QBO.
+                // Captured here, at detection time, rather than looked up
+                // live by the view (see `EvidenceItem.fieldValues`'s doc
+                // comment for why that matters for a persisted finding).
+                func fieldValues(for txn: LedgerTransaction) -> [String: String] {
+                    var values: [String: String] = [
+                        "amount": txn.totalAmount.description,
+                        "date": Self.formatted(txn.txnDate),
+                        "vendor": vendorA
+                    ]
+                    if let account = txn.paymentAccountID {
+                        values["paymentAccount"] = account
+                    }
+                    if let doc = txn.docNumber, !doc.isEmpty {
+                        values["docNumber"] = doc
+                    }
+                    return values
+                }
+
                 let evidence = [
-                    EvidenceItem(transactionID: a.id, highlightedFields: highlighted),
-                    EvidenceItem(transactionID: b.id, highlightedFields: highlighted)
+                    EvidenceItem(transactionID: a.id, highlightedFields: highlighted, fieldValues: fieldValues(for: a)),
+                    EvidenceItem(transactionID: b.id, highlightedFields: highlighted, fieldValues: fieldValues(for: b))
+                ]
+
+                // Gauntlet Loop, Gauntlet B (2026-08-23): a deterministic
+                // plain-English sentence naming the vendor and what actually
+                // matched — the evidence rows alone required a bookkeeper to
+                // mentally assemble the story themselves. No AI involved (see
+                // `Finding.narrative`'s doc comment) — branched per tier so
+                // it stays accurate to what that tier actually checked (T2
+                // never claims a date/account match; T3 never claims an
+                // exact date).
+                let narrative: String
+                switch tier.id {
+                case "T2":
+                    narrative = "Two purchases from \(vendorA) for \(exposure) share the same reference number (\(a.docNumber ?? "")) — dated \(Self.formatted(a.txnDate)) and \(Self.formatted(b.txnDate))."
+                case "T3":
+                    let days = AccountingDate.daysBetween(a.txnDate, b.txnDate)
+                    narrative = "Two purchases from \(vendorA) for \(exposure) were posted \(days) day\(days == 1 ? "" : "s") apart (\(Self.formatted(a.txnDate)) and \(Self.formatted(b.txnDate))), both from \(a.paymentAccountID ?? "the same account") — close enough to likely be the same expense entered twice."
+                default: // T1
+                    narrative = "Two purchases from \(vendorA) for \(exposure) were both posted on \(Self.formatted(a.txnDate)), from \(a.paymentAccountID ?? "the same account") — this looks like the same expense recorded twice."
+                }
+
+                // Gauntlet Loop, Gauntlet B (2026-08-23): spec'd at
+                // docs/phase-0/05_FINDING_SCHEMA.md §5.1, referenced in
+                // docs/phase-0/11_VERTICAL_SLICE.md's mapping table as the
+                // "Before proceeding" note — never actually built until now.
+                let preApprovalChecklist = [
+                    "Open both transactions (\(a.id) and \(b.id)) in QuickBooks Online and view them side by side",
+                    "Pull up the actual bank or card statement for \(a.paymentAccountID ?? "the account") and confirm whether one or two withdrawals actually occurred",
+                    "Do not assume either transaction is \"the duplicate\" before checking — only the bank statement can tell you that"
                 ]
 
                 // Gauntlet Loop, Gauntlet A round 4 (2026-08-23): the
@@ -250,7 +301,11 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                     // title showed a negative number contradicting its own
                     // (correctly positive) dollarExposure field right next
                     // to it in the same Finding.
-                    title: "Possible duplicate expense — \(exposure)",
+                    // Gauntlet Loop, Gauntlet B (2026-08-23): name the
+                    // vendor in the title itself — a list of findings titled
+                    // only by dollar amount gave no way to tell them apart
+                    // at a glance without opening each one.
+                    title: "Possible duplicate expense — \(vendorA), \(exposure)",
                     severity: severity,
                     confidence: tier.confidence,
                     dollarExposure: exposure,
@@ -271,7 +326,9 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                     // false positive from this rule on any later sync — the
                     // owner's explicit "stop flagging this" instruction
                     // would be silently ignored forever.
-                    vendorName: vendorA
+                    vendorName: vendorA,
+                    narrative: narrative,
+                    preApprovalChecklist: preApprovalChecklist
                 ))
             }
         }
@@ -292,5 +349,14 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
             return .pass(coverage: input.coverage, checkedCount: purchases.count)
         }
         return .findings(findings)
+    }
+
+    /// Matches the existing convention used for date interpolation
+    /// elsewhere in this project's rules (`CreditCardPaymentMiscodedRule`,
+    /// `PayrollLumpSumRule`) rather than inventing a new format —
+    /// `AccountingDate` has no `CustomStringConvertible` conformance of its
+    /// own, so an un-formatted `"\(date)"` would print the raw struct.
+    private static func formatted(_ date: AccountingDate) -> String {
+        "\(date.year)-\(date.month)-\(date.day)"
     }
 }

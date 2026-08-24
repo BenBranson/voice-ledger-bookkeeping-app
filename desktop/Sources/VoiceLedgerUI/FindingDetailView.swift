@@ -171,6 +171,18 @@ public struct FindingDetailView: View {
             }
             .font(VLTypography.caption())
             .foregroundStyle(VLColor.textMuted)
+            // Gauntlet Loop, Gauntlet B (2026-08-23): a deterministic,
+            // Core-computed plain-English sentence — see `Finding.narrative`'s
+            // doc comment for why this is not the AI kill switch's
+            // territory (no AI integration exists in this codebase at all
+            // yet). Rules that haven't been given one yet leave this nil,
+            // rendering nothing extra — no regression for the other 16.
+            if let narrative = finding.narrative {
+                Text(narrative)
+                    .font(VLTypography.body())
+                    .foregroundStyle(VLColor.textSecondary)
+                    .padding(.top, VLSpacing.xxs)
+            }
         }
     }
 
@@ -223,17 +235,41 @@ public struct FindingDetailView: View {
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)
                 ForEach(finding.evidence, id: \.transactionID) { item in
-                    HStack {
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         Text("Transaction \(item.transactionID)")
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
-                        Spacer()
-                        if !item.highlightedFields.isEmpty {
-                            Text(item.highlightedFields.joined(separator: ", "))
-                                .font(VLTypography.caption())
-                                .foregroundStyle(VLColor.textMuted)
+                        // Gauntlet Loop, Gauntlet B (2026-08-23): show the
+                        // ACTUAL VALUE for each matched field, not just its
+                        // name — "amount, date, paymentAccount" required
+                        // opening QBO to find out what those fields actually
+                        // contained. Falls back to field names alone
+                        // (previous behavior) when a rule hasn't been given
+                        // `fieldValues` yet, so the other 16 rules render
+                        // exactly as before.
+                        if item.fieldValues.isEmpty {
+                            if !item.highlightedFields.isEmpty {
+                                Text(item.highlightedFields.joined(separator: ", "))
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            }
+                        } else {
+                            ForEach(item.highlightedFields, id: \.self) { field in
+                                if let value = item.fieldValues[field] {
+                                    HStack {
+                                        Text(Self.evidenceFieldLabel(field))
+                                            .font(VLTypography.caption())
+                                            .foregroundStyle(VLColor.textMuted)
+                                        Spacer()
+                                        Text(value)
+                                            .font(VLTypography.tabularNumeric())
+                                            .foregroundStyle(VLColor.textSecondary)
+                                    }
+                                }
+                            }
                         }
                     }
+                    .padding(.vertical, VLSpacing.xxs)
                 }
                 HStack {
                     Text("Dollar exposure")
@@ -244,6 +280,14 @@ public struct FindingDetailView: View {
                         .foregroundStyle(VLColor.textPrimary)
                 }
             }
+        }
+    }
+
+    private static func evidenceFieldLabel(_ field: String) -> String {
+        switch field {
+        case "paymentAccount": return "Payment account"
+        case "docNumber": return "Reference number"
+        default: return field.capitalized
         }
     }
 
@@ -273,6 +317,30 @@ public struct FindingDetailView: View {
                 Text("Reversal: \(reversalLine(action.reversal))")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
+
+                // Gauntlet Loop, Gauntlet B (2026-08-23): spec'd at
+                // docs/phase-0/05_FINDING_SCHEMA.md §5.1 as the "Before
+                // proceeding" note — never rendered anywhere until now.
+                // Shown only when the rule populated it; empty for the
+                // other 16 rules, so no change to their screens.
+                if !finding.preApprovalChecklist.isEmpty {
+                    VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                        Text("BEFORE YOU PROCEED")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        ForEach(finding.preApprovalChecklist, id: \.self) { step in
+                            HStack(alignment: .top, spacing: VLSpacing.xs) {
+                                Text("☐")
+                                    .foregroundStyle(VLColor.textMuted)
+                                Text(step)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textSecondary)
+                            }
+                        }
+                    }
+                    .padding(.top, VLSpacing.xs)
+                }
 
                 if let details = action.apiWriteDetails {
                     applyFixSection(details)

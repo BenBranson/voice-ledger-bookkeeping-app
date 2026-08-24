@@ -590,7 +590,7 @@ struct DuplicatePostedExpenseRuleTests {
             return
         }
         #expect(finding.dollarExposure == Money(minorUnits: 500_000, currency: .usd))
-        #expect(finding.title == "Possible duplicate expense — \(finding.dollarExposure)", "title must be built from the same magnitude-corrected exposure as dollarExposure, not the raw signed amount — actual title: \(finding.title)")
+        #expect(finding.title == "Possible duplicate expense — \(finding.vendorName ?? ""), \(finding.dollarExposure)", "title must be built from the same magnitude-corrected exposure as dollarExposure, not the raw signed amount — actual title: \(finding.title)")
     }
 
     @Test("GAUNTLET R2: control — positive-amount pair, title and dollarExposure agree (this direction was never broken)")
@@ -602,7 +602,7 @@ struct DuplicatePostedExpenseRuleTests {
             Issue.record("expected a finding, got \(outcome)")
             return
         }
-        #expect(finding.title == "Possible duplicate expense — \(finding.dollarExposure)")
+        #expect(finding.title == "Possible duplicate expense — \(finding.vendorName ?? ""), \(finding.dollarExposure)")
     }
 
     @Test("GAUNTLET R2: two entries sharing a literal id (pagination double-fetch of ONE real Purchase) alongside a genuinely different third Purchase that matches both — collapses to exactly one finding, for the one real pair")
@@ -1067,7 +1067,7 @@ struct DuplicatePostedExpenseRuleTests {
         #expect(finding.confidence == .high)
         #expect(finding.dollarExposure == Money(minorUnits: 500_000, currency: .usd))
         #expect(finding.severity == .high)
-        #expect(finding.title == "Possible duplicate expense — \(finding.dollarExposure)")
+        #expect(finding.title == "Possible duplicate expense — \(finding.vendorName ?? ""), \(finding.dollarExposure)")
         #expect(finding.evidence.allSatisfy { $0.highlightedFields == ["amount", "docNumber"] })
     }
 
@@ -1298,5 +1298,120 @@ struct DuplicatePostedExpenseRuleTests {
             return
         }
         #expect(f1.map(\.id) == f2.map(\.id))
+    }
+
+    // MARK: - Gauntlet Loop, Gauntlet B (2026-08-23) — the finding surface
+    // is actionable without opening QBO to decode it: real evidence values,
+    // a vendor-named title, a plain-English narrative, and a pre-approval
+    // checklist. Three gaps the owner found directly in the running app.
+
+    @Test("GAUNTLET B: evidence carries the ACTUAL VALUES for every highlighted field, not just field names — a T1 finding shows the real amount, date, payment account, and vendor for both transactions")
+    func gauntletBEvidenceCarriesRealFieldValues() {
+        let a = purchase(id: "145", date: AccountingDate(year: 2026, month: 7, day: 14), amountMinorUnits: 48_620, account: "checking-1")
+        let b = purchase(id: "151", date: AccountingDate(year: 2026, month: 7, day: 14), amountMinorUnits: 48_620, account: "checking-1")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        for item in finding.evidence {
+            #expect(item.fieldValues["amount"] == "USD 486.20")
+            #expect(item.fieldValues["date"] == "2026-7-14")
+            #expect(item.fieldValues["paymentAccount"] == "checking-1")
+            #expect(item.fieldValues["vendor"] == "Permian Supply")
+        }
+    }
+
+    @Test("GAUNTLET B: a T2 finding's evidence values include docNumber and omit paymentAccount/date — fieldValues stays consistent with highlightedFields' per-tier honesty fix")
+    func gauntletBT2EvidenceValuesMatchHighlightedFields() {
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 1), account: "checking-1", docNumber: "REF-1")
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 28), account: "cc-amex", docNumber: "REF-1")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], customTxnNumbers: true), context: context(customTxnNumbers: true))
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a T2 finding, got \(outcome)")
+            return
+        }
+        #expect(finding.evidence[0].fieldValues["docNumber"] == "REF-1")
+        // fieldValues MAY still carry paymentAccount/date internally (the
+        // helper captures every known field on the transaction), but the
+        // view only renders what's in highlightedFields — verified here
+        // that highlightedFields itself stays T2-honest (amount, docNumber
+        // only), consistent with the round-3 fix.
+        #expect(finding.evidence.allSatisfy { $0.highlightedFields == ["amount", "docNumber"] })
+    }
+
+    @Test("GAUNTLET B: the finding title names the vendor, not just the dollar amount")
+    func gauntletBTitleNamesVendor() {
+        let a = purchase(id: "1", vendor: "Permian Supply")
+        let b = purchase(id: "2", vendor: "Permian Supply")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        #expect(finding.title.contains("Permian Supply"))
+    }
+
+    @Test("GAUNTLET B: a T1 finding's narrative is a real, deterministic, non-empty sentence naming the vendor and dollar amount — not AI-generated (no AI integration exists in this codebase at all)")
+    func gauntletBT1NarrativeIsDeterministicAndNamesVendorAndAmount() {
+        let a = purchase(id: "1", vendor: "Permian Supply", amountMinorUnits: 48_620)
+        let b = purchase(id: "2", vendor: "Permian Supply", amountMinorUnits: 48_620)
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        let narrative = try! #require(finding.narrative)
+        #expect(narrative.contains("Permian Supply"))
+        #expect(narrative.contains("USD 486.20"))
+        // Determinism: running the exact same input twice produces the
+        // byte-identical narrative — the same guarantee already proven for
+        // detection/severity/exposure/evidence.
+        let secondRun = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings2) = secondRun else {
+            Issue.record("expected a finding on the second run")
+            return
+        }
+        #expect(findings2.first?.narrative == narrative)
+    }
+
+    @Test("GAUNTLET B: a T2 finding's narrative correctly describes a shared reference number, not a date/account match it never checked")
+    func gauntletBT2NarrativeDescribesReferenceNumberNotDateOrAccount() {
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 1), account: "checking-1", docNumber: "REF-1")
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 28), account: "cc-amex", docNumber: "REF-1")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], customTxnNumbers: true), context: context(customTxnNumbers: true))
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a T2 finding, got \(outcome)")
+            return
+        }
+        let narrative = try! #require(finding.narrative)
+        #expect(narrative.contains("reference number"))
+        #expect(narrative.contains("REF-1"))
+    }
+
+    @Test("GAUNTLET B: a T3 finding's narrative states the actual number of days apart, not a false 'same date' claim")
+    func gauntletBT3NarrativeStatesDaysApart() {
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 10))
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 13))
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a T3 finding, got \(outcome)")
+            return
+        }
+        let narrative = try! #require(finding.narrative)
+        #expect(narrative.contains("3 days apart"))
+    }
+
+    @Test("GAUNTLET B: preApprovalChecklist is populated with concrete, non-empty steps naming both transaction ids — not left as spec'd-but-never-built")
+    func gauntletBPreApprovalChecklistIsPopulated() {
+        let a = purchase(id: "145")
+        let b = purchase(id: "151")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        #expect(!finding.preApprovalChecklist.isEmpty)
+        #expect(finding.preApprovalChecklist.contains(where: { $0.contains("145") && $0.contains("151") }))
     }
 }

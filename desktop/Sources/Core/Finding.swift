@@ -45,10 +45,25 @@ public enum Severity: String, Hashable, Codable, Sendable, Comparable {
 public struct EvidenceItem: Hashable, Codable, Sendable {
     public let transactionID: String
     public let highlightedFields: [String]
+    /// Gauntlet Loop, Gauntlet B (2026-08-23): the ACTUAL value for each
+    /// name in `highlightedFields`, captured by the rule at detection time
+    /// — "amount, date, paymentAccount" tells a bookkeeper which fields
+    /// matched but not what they matched to, forcing a trip to QBO just to
+    /// see the numbers. Deliberately captured here rather than looked up
+    /// live by the view: `Finding` is persisted to `findings.json` and
+    /// reloaded after an app restart with no live transaction data around
+    /// (`AppState` keeps no queryable transaction cache after sync), so a
+    /// live-lookup-based UI would silently show blank evidence for any
+    /// finding loaded outside the sync that produced it. Additive with an
+    /// empty default — every existing `EvidenceItem(...)` call site across
+    /// the other 16 rules is unaffected and simply renders field names only
+    /// until each is given the same treatment.
+    public let fieldValues: [String: String]
 
-    public init(transactionID: String, highlightedFields: [String]) {
+    public init(transactionID: String, highlightedFields: [String], fieldValues: [String: String] = [:]) {
         self.transactionID = transactionID
         self.highlightedFields = highlightedFields
+        self.fieldValues = fieldValues
     }
 }
 
@@ -175,6 +190,28 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
     /// no single clear vendor (e.g. a Balance Sheet check) leaves this
     /// `nil`, and `ClientMemoryRule` correctly never matches a `nil`.
     public let vendorName: String?
+    /// Gauntlet Loop, Gauntlet B (2026-08-23): a deterministic, Core-computed
+    /// plain-English sentence stating what was found — "Two purchases from
+    /// Permian Supply for $486.20 were posted..." — as opposed to `title`,
+    /// which is a short label for list rows. This is NOT the AI kill
+    /// switch's territory: there is currently no AI/Claude integration in
+    /// this codebase at all, and even once one exists, `explanation:
+    /// GeneratedProse?` (spec'd separately, not yet built) is where AI-
+    /// authored prose would live — this field must keep rendering exactly
+    /// the same whether or not that ever ships or is switched off, the same
+    /// way `ClientQuestionDrafter`'s template prose already does elsewhere
+    /// in this app. Additive, `nil` for every rule that hasn't been given
+    /// one yet.
+    public let narrative: String?
+    /// Gauntlet Loop, Gauntlet B (2026-08-23): spec'd at
+    /// `docs/phase-0/05_FINDING_SCHEMA.md` §5.1 ("view both transactions in
+    /// QBO") and referenced in `docs/phase-0/11_VERTICAL_SLICE.md`'s finding
+    /// mapping table as the "Before proceeding" note — never actually
+    /// carried into the shipped `Finding` type until now. Steps a human
+    /// should do BEFORE approving/proceeding, not part of the guided
+    /// procedure itself (which is what to do AFTER deciding to act).
+    /// Additive, empty for every rule that hasn't been given one yet.
+    public let preApprovalChecklist: [String]
 
     public init(
         id: String,
@@ -190,7 +227,9 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         proposedActions: [ProposedAction],
         provenance: [Provenance],
         status: FindingStatus = .open,
-        vendorName: String? = nil
+        vendorName: String? = nil,
+        narrative: String? = nil,
+        preApprovalChecklist: [String] = []
     ) {
         self.id = id
         self.ruleID = ruleID
@@ -206,6 +245,8 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         self.provenance = provenance
         self.status = status
         self.vendorName = vendorName
+        self.narrative = narrative
+        self.preApprovalChecklist = preApprovalChecklist
     }
 }
 
