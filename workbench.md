@@ -42,8 +42,8 @@ A critique of the form "this would look more capable if it claimed more" is reje
 | # | Workstream | Gauntlet | Status | Round | Current gap |
 |---|---|---|---|---|---|
 | 1 | Rule logic robustness (`DuplicatePostedExpenseRule.swift`) | A | **DONE — 2 consecutive clean rounds** | 6 | None — closed out |
-| 2 | Evidence values + vendor + narrative sentence | B | **Round 2 found 1 more gap (fixed) — round 3 running to confirm** | 3 | Awaiting round 3 |
-| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty | B | **Round 2 found 1 more gap (fixed) — round 3 running to confirm** | 3 | Awaiting round 3 |
+| 2 | Evidence values + vendor + narrative sentence | B | **Round 3 found 1 more gap in a second Finding consumer (fixed) — round 4 running to confirm** | 4 | Awaiting round 4 |
+| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty + ClientQuestionDrafter | B | **Round 3 found 1 more gap in a second Finding consumer (fixed) — round 4 running to confirm** | 4 | Awaiting round 4 |
 | 4 | Honesty/false-green audit across the slice | C | Not started | 0 | — |
 | 5 | Integration/smoothing pass | — | Not started | 0 | — |
 | 6 | (bonus, discovered mid-run) `VL-DUP-EXP-002` hardening | — | **Done** | — | None |
@@ -117,5 +117,10 @@ A critique of the form "this would look more capable if it claimed more" is reje
   - Minor, explicitly not a finding: `Money.description` has no thousands separator for large amounts (checked directly with $999,999.99) — fully unambiguous, just harder to eyeball; correctly judged a formatting nit outside "can't act without opening QBO," not reported as a gap.
 
   Round 3 (fresh critic) now running — round 2 found a real gap, so this isn't yet a clean round for Gauntlet B.
+
+- **2026-08-23 — Gauntlet B, round 3 (fresh critic) — found a real gap in a SECOND consumer of `Finding`, not the finding-detail screen itself.** Confirmed the T2 cross-account checklist fix holds (including a nil-vs-real paymentAccountID split and T2+T3 in the same run with zero cross-contamination between findings' new fields). Then checked `ClientQuestionDrafter` — the "Draft Client Question" feature, a completely separate consumer of `Finding` — and found it had never been touched by any of the last 7 fixes: it still used the tier-invariant `RuleIdentity.accountingPrinciple` instead of the new tier-accurate `narrative`. Traced the real drafted output for a genuine T2 fixture: the email sent to the CLIENT stated the two postings shared "date, and payment account" — which for that specific T2 match never happened. A second, compounding problem: the draft gave the client no transaction-identifying detail (no date, no reference number, no transaction id) — since every match in this rule requires equal dollar amounts, a client with more than one same-amount purchase from that vendor has no way to know which pair is being asked about. **Fixed**: `ClientQuestionDrafter.draft` now prefers `finding.narrative` over `accountingPrinciple` when available (falls back for the other 16 rules unaffected), and a related bug this surfaced — the drafted title line duplicating the dollar figure now that `VL-DUP-EXP-001`'s own title embeds it — fixed alongside (append the exposure only when the title doesn't already contain it). 4 new tests (9 total for `ClientQuestionDrafterTests`), 371/371 full suite (before scratch cleanup), clean build.
+  - This is a useful, generalizable lesson for the loop: hardening a screen's OWN rendering code isn't sufficient when a Finding's fields feed a second, independent consumer — worth checking for other such consumers (e.g. anything else that reads `Finding` and formats it for a different audience) before considering Gauntlet B fully closed.
+
+  Round 4 (fresh critic) now running — round 3 found a real gap, so this isn't yet a clean round for Gauntlet B.
 
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*

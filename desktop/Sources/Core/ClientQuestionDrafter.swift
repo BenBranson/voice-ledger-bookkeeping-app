@@ -31,8 +31,32 @@ public enum ClientQuestionDrafter {
         lines.append("")
         lines.append("While reviewing your books for \(periodLabel), I found something I'd like to confirm with you before making any changes:")
         lines.append("")
-        lines.append("\(finding.title) — \(finding.dollarExposure.description)")
-        if let principle = ruleIdentity?.accountingPrinciple {
+        // Gauntlet Loop, Gauntlet B round 3 critic pass (2026-08-23): some
+        // rules' titles (e.g. VL-DUP-EXP-001, since its own Gauntlet B pass)
+        // already embed the dollar figure — appending it again produced a
+        // literal duplicate ("...USD 486.20 — USD 486.20") in the drafted
+        // email. Append only when the title doesn't already carry it.
+        let exposureText = finding.dollarExposure.description
+        lines.append(finding.title.contains(exposureText) ? finding.title : "\(finding.title) — \(exposureText)")
+        // Gauntlet Loop, Gauntlet B round 3 critic pass (2026-08-23): prefer
+        // the rule's tier-aware, transaction-specific `narrative` over the
+        // rule-level (tier-invariant) `accountingPrinciple` when available.
+        // `accountingPrinciple` is written once per rule and can describe
+        // fields a specific tier never actually checked — confirmed live for
+        // VL-DUP-EXP-001's T2 (reference-number match), whose
+        // `accountingPrinciple` mentions "date, and payment account" even
+        // though T2 checks neither, meaning the OLD drafted text stated a
+        // match to the client that didn't happen. `narrative` also names
+        // real transaction dates/amounts, giving the client something to
+        // identify which two postings are being asked about — the title +
+        // dollar figure alone can't, since every match in a duplicate-style
+        // rule already requires equal amounts. Falls back to
+        // `accountingPrinciple` for the other 16 rules that haven't been
+        // given a `narrative` yet — no change to their drafted text.
+        if let narrative = finding.narrative {
+            lines.append("")
+            lines.append(narrative)
+        } else if let principle = ruleIdentity?.accountingPrinciple {
             lines.append("")
             lines.append("Why this matters: \(principle)")
         }

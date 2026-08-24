@@ -51,4 +51,56 @@ struct ClientQuestionDrafterTests {
         let text = ClientQuestionDrafter.draft(finding: sampleFinding(ruleID: "VL-NOT-A-REAL-RULE"), clientName: nil)
         #expect(!text.contains("Why this matters:"))
     }
+
+    // MARK: - Gauntlet Loop, Gauntlet B round 3 critic pass (2026-08-23) —
+    // ClientQuestionDrafter is a second real consumer of Finding, and it
+    // was still using the tier-invariant accountingPrinciple even after
+    // narrative/riskIfIgnored/fieldValues were added for the finding
+    // detail screen — for VL-DUP-EXP-001's T2 tier specifically, that meant
+    // stating a date/account match to the CLIENT that never happened.
+
+    func sampleFindingWithNarrative(narrative: String, title: String = "Possible duplicate expense — Permian Supply, USD 486.20") -> Finding {
+        Finding(
+            id: "abc123",
+            ruleID: RuleID(rawValue: "VL-DUP-EXP-001"),
+            ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0),
+            realmID: RealmID(rawValue: "realm-a"),
+            period: AccountingPeriod(year: 2026, month: 7),
+            title: title,
+            severity: .high,
+            confidence: .high,
+            dollarExposure: Money(minorUnits: 48_620, currency: .usd),
+            evidence: [],
+            proposedActions: [],
+            provenance: [],
+            narrative: narrative
+        )
+    }
+
+    @Test("When a finding has a narrative, the draft uses it instead of the tier-invariant accountingPrinciple — so a T2-style match never states a date/account overlap that didn't happen")
+    func narrativePreferredOverAccountingPrinciple() {
+        let narrative = "Two purchases from Permian Supply for USD 486.20 share the same reference number (REF-1) — dated 2026-7-1 and 2026-7-28."
+        let text = ClientQuestionDrafter.draft(finding: sampleFindingWithNarrative(narrative: narrative), clientName: nil)
+        #expect(text.contains(narrative))
+        #expect(!text.contains("Why this matters:"), "the tier-invariant accountingPrinciple line should not appear when a tier-accurate narrative is available")
+    }
+
+    @Test("A finding with no narrative falls back to accountingPrinciple exactly as before — no regression for the other 16 rules")
+    func fallsBackToAccountingPrincipleWhenNoNarrative() {
+        let text = ClientQuestionDrafter.draft(finding: sampleFinding(), clientName: nil) // sampleFinding() has narrative: nil (default)
+        #expect(text.contains("Why this matters:"))
+    }
+
+    @Test("A title that already embeds the dollar exposure (as VL-DUP-EXP-001's now does) is not followed by a duplicate dollar figure")
+    func titleAlreadyContainingExposureIsNotDuplicated() {
+        let narrative = "Two purchases from Permian Supply for USD 486.20 were both posted on 2026-7-14, from Checking — this looks like the same expense recorded twice."
+        let text = ClientQuestionDrafter.draft(finding: sampleFindingWithNarrative(narrative: narrative), clientName: nil)
+        #expect(!text.contains("USD 486.20 — USD 486.20"), "the dollar figure must not appear twice back-to-back")
+    }
+
+    @Test("A title that does NOT already embed the dollar exposure still gets it appended — no regression for rules whose title is amount-agnostic")
+    func titleWithoutExposureStillGetsItAppended() {
+        let text = ClientQuestionDrafter.draft(finding: sampleFinding(), clientName: nil) // "Credit card payment coded to Office Supplies — $750.00" doesn't contain "USD 750.00"
+        #expect(text.contains("Credit card payment coded to Office Supplies — $750.00 — USD 750.00"))
+    }
 }
