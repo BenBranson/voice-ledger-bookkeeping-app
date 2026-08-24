@@ -65,6 +65,24 @@ public struct EvidenceItem: Hashable, Codable, Sendable {
         self.highlightedFields = highlightedFields
         self.fieldValues = fieldValues
     }
+
+    // Gauntlet Loop, Gauntlet B round 7 (2026-08-24): Swift's synthesized
+    // Decodable does NOT fall back to an init parameter's default value for
+    // a non-optional property — it throws `keyNotFound` on any
+    // findings.json written before this field existed. Confirmed by
+    // decoding real pre-Gauntlet-B-shaped JSON. A manual `init(from:)`
+    // using `decodeIfPresent(...) ?? default` is required for genuine
+    // backward compatibility; `encode(to:)` stays compiler-synthesized.
+    private enum CodingKeys: String, CodingKey {
+        case transactionID, highlightedFields, fieldValues
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        transactionID = try container.decode(String.self, forKey: .transactionID)
+        highlightedFields = try container.decode([String].self, forKey: .highlightedFields)
+        fieldValues = try container.decodeIfPresent([String: String].self, forKey: .fieldValues) ?? [:]
+    }
 }
 
 /// docs/phase-0/10_STAGING_APPROVAL_AUDIT.md §10.2's `ApprovalRecord`
@@ -258,6 +276,41 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         self.narrative = narrative
         self.preApprovalChecklist = preApprovalChecklist
         self.riskIfIgnored = riskIfIgnored
+    }
+
+    // Gauntlet Loop, Gauntlet B round 7 (2026-08-24): same backward-
+    // compatibility gap as `EvidenceItem.fieldValues` — `preApprovalChecklist`
+    // is a non-optional `[String]`, so synthesized `Decodable` throws
+    // `keyNotFound` on any findings.json written before this field existed,
+    // rather than falling back to the init parameter's `[]` default.
+    // `vendorName`/`narrative`/`riskIfIgnored` are `Optional`, which Swift's
+    // synthesis DOES correctly default to `nil` on a missing key — only the
+    // non-optional-with-a-default fields need this manual override.
+    private enum CodingKeys: String, CodingKey {
+        case id, ruleID, ruleVersion, realmID, period, title, severity, confidence
+        case dollarExposure, evidence, proposedActions, provenance, status
+        case vendorName, narrative, preApprovalChecklist, riskIfIgnored
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        ruleID = try container.decode(RuleID.self, forKey: .ruleID)
+        ruleVersion = try container.decode(RuleVersion.self, forKey: .ruleVersion)
+        realmID = try container.decode(RealmID.self, forKey: .realmID)
+        period = try container.decode(AccountingPeriod.self, forKey: .period)
+        title = try container.decode(String.self, forKey: .title)
+        severity = try container.decode(Severity.self, forKey: .severity)
+        confidence = try container.decode(Confidence.self, forKey: .confidence)
+        dollarExposure = try container.decode(Money.self, forKey: .dollarExposure)
+        evidence = try container.decode([EvidenceItem].self, forKey: .evidence)
+        proposedActions = try container.decode([ProposedAction].self, forKey: .proposedActions)
+        provenance = try container.decode([Provenance].self, forKey: .provenance)
+        status = try container.decode(FindingStatus.self, forKey: .status)
+        vendorName = try container.decodeIfPresent(String.self, forKey: .vendorName)
+        narrative = try container.decodeIfPresent(String.self, forKey: .narrative)
+        preApprovalChecklist = try container.decodeIfPresent([String].self, forKey: .preApprovalChecklist) ?? []
+        riskIfIgnored = try container.decodeIfPresent(String.self, forKey: .riskIfIgnored)
     }
 }
 
