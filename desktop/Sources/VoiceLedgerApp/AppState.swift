@@ -679,7 +679,14 @@ public final class AppState {
             findingSummary: finding.title,
             note: note
         )
+        // Gauntlet Loop, Gauntlet B round 16 (2026-08-24): clears BOTH
+        // error slots, not just this method's own — a fresh critic found
+        // that a stale `applyFixError` from a previously-failed Apply Fix
+        // on this same finding could otherwise resurface here, attributed
+        // to nothing the user just did (this method touches only
+        // `findingActionError` itself further down).
         findingActionError = nil
+        applyFixError = nil
         do {
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
@@ -700,8 +707,24 @@ public final class AppState {
     /// finding that already matches (so the finding that prompted this
     /// doesn't linger open until the next sync), each logged the same way
     /// `syncAndEvaluate`'s per-sync auto-dismissal is.
-    public func createClientMemoryRule(ruleID: RuleID, vendorName: String, actorName: String, note: String?) async {
+    // Gauntlet Loop, Gauntlet B round 16 (2026-08-24): a fresh critic found
+    // "Remember this vendor" and "Send client question" are literally
+    // adjacent buttons on the SAME `FindingDetailView` screen as Dismiss —
+    // round 15's boundary excluding them from the same fix was wrong by
+    // its own stated criterion. Both used to fail with zero signal: the
+    // local confirm/draft UI collapsed unconditionally on tap regardless
+    // of outcome, and the only trace of a real failure was the unread
+    // `loadState.failed`. `triggeringFindingID` is optional (this method
+    // isn't inherently about one finding — it can auto-dismiss several) —
+    // when the caller knows which finding's button was actually tapped,
+    // passing it lets the error render on that finding's own screen,
+    // scoped the same way `dismissError`/`attestError` already are.
+    public func createClientMemoryRule(ruleID: RuleID, vendorName: String, actorName: String, note: String?, triggeringFindingID: String? = nil) async {
         let rule = ClientMemoryRule(ruleID: ruleID, vendorName: vendorName, createdBy: actorName, note: note)
+        if triggeringFindingID != nil {
+            findingActionError = nil
+            applyFixError = nil
+        }
         do {
             try await store.addClientMemoryRule(rule)
             try await store.appendActivityLogEntry(ActivityLogEntry(
@@ -732,6 +755,9 @@ public final class AppState {
             activityLog = try await store.loadActivityLog()
         } catch {
             loadState = .failed("\(error)")
+            if let triggeringFindingID {
+                findingActionError = (findingID: triggeringFindingID, message: "This vendor wasn't remembered: \(error). Try again.")
+            }
         }
     }
 
@@ -811,6 +837,7 @@ public final class AppState {
     public func dismissFinding(findingID: String, actorName: String, reason: String?) async {
         guard let finding = finding(id: findingID) else { return }
         findingActionError = nil
+        applyFixError = nil
         do {
             try await store.dismissFinding(id: findingID)
             let entry = ActivityLogEntry(
@@ -843,6 +870,8 @@ public final class AppState {
     /// verified by the app" posture as `attestCompletion`.
     public func recordClientQuestionSent(findingID: String, actorName: String, questionText: String) async {
         guard let finding = finding(id: findingID) else { return }
+        findingActionError = nil
+        applyFixError = nil
         let entry = ActivityLogEntry(
             realmID: realmID,
             actor: .user(actorName),
@@ -858,6 +887,7 @@ public final class AppState {
             activityLog = try await store.loadActivityLog()
         } catch {
             loadState = .failed("\(error)")
+            findingActionError = (findingID: findingID, message: "This question wasn't recorded as sent: \(error). Try again.")
         }
     }
 
@@ -878,6 +908,7 @@ public final class AppState {
 
         applyingFixFindingID = findingID
         applyFixError = nil
+        findingActionError = nil
         do {
             let result = try await syncClient.reclassifyPurchaseLine(
                 realmID: realmID,

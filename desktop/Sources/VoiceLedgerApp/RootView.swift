@@ -116,7 +116,7 @@ struct RootView: View {
                     writeAccessEnabled: state.writeAccessEnabled == true,
                     isApplyingFix: state.applyingFixFindingID == findingID,
                     applyFixError: state.applyFixError?.findingID == findingID ? state.applyFixError?.message : nil,
-                    dismissError: state.findingActionError?.findingID == findingID ? state.findingActionError?.message : nil,
+                    findingActionError: state.findingActionError?.findingID == findingID ? state.findingActionError?.message : nil,
                     hasClientMemoryRule: finding.vendorName.map { vendorName in
                         state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
                     } ?? false,
@@ -125,7 +125,7 @@ struct RootView: View {
                     onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },
                     onRememberVendor: {
                         guard let vendorName = finding.vendorName else { return }
-                        Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil) }
+                        Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }
                     },
                     onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } }
                 )
