@@ -127,7 +127,21 @@ public final class AppState {
     /// had no idempotency guard at any layer, so a double-tap produced two
     /// genuinely duplicate log entries or two duplicate `ClientMemoryRule`
     /// rows — a false record in the Activity & Correction Log.
-    public private(set) var findingActionInFlight: String?
+    ///
+    /// Gauntlet Loop, Gauntlet B round 19 (2026-08-24), fixed after
+    /// consolidation surfaced it clearly: this used to be a single
+    /// `String?`, which can only ever name ONE finding as "in flight" —
+    /// starting an action on Finding B while Finding A's was still
+    /// genuinely in flight would overwrite A's marker with B's, so A's
+    /// completion later cleared B's still-running marker (unconditionally,
+    /// `= nil`), re-enabling B's buttons and letting a double-tap on B
+    /// launch a second concurrent write while the first was still
+    /// outstanding — the exact duplicate-`ActivityLogEntry` bug this field
+    /// exists to prevent, now reachable across two different findings
+    /// instead of just one. A `Set<String>` tracks each finding
+    /// independently; two genuinely different findings' actions can be in
+    /// flight at once without interfering with each other.
+    public private(set) var findingActionInFlightIDs: Set<String> = []
 
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
@@ -713,18 +727,24 @@ public final class AppState {
         failureMessage: (Error) -> String,
         _ work: () async throws -> Void
     ) async {
-        guard findingActionInFlight != findingID else { return }
-        findingActionError = nil
-        applyFixError = nil
-        findingActionInFlight = findingID
+        guard !findingActionInFlightIDs.contains(findingID) else { return }
+        // Gauntlet Loop, Gauntlet B round 19 (2026-08-24): scoped to THIS
+        // finding only — clearing unconditionally would wipe a different,
+        // still-valid finding's error the instant an unrelated action
+        // started on this one. Still clears a stale error for the SAME
+        // finding left by a DIFFERENT prior action (round 16's original
+        // intent), since that comparison is exactly `.findingID == findingID`.
+        if findingActionError?.findingID == findingID { findingActionError = nil }
+        if applyFixError?.findingID == findingID { applyFixError = nil }
+        findingActionInFlightIDs.insert(findingID)
         do {
             try await work()
-            findingActionInFlight = nil
+            findingActionInFlightIDs.remove(findingID)
             if let screenMatches, screenMatches(screen) {
                 screen = .list
             }
         } catch {
-            findingActionInFlight = nil
+            findingActionInFlightIDs.remove(findingID)
             findingActionError = (findingID: findingID, message: failureMessage(error))
         }
     }
