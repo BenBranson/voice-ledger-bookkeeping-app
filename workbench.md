@@ -201,4 +201,22 @@ A critique of the form "this would look more capable if it claimed more" is reje
   - **Gauntlet B is now closed for this run**, per explicit owner direction after being asked "whats left to build" and choosing "do what you recommend." 23 rounds, roughly 30 real bugs found and fixed directly on `VL-DUP-EXP-001`'s finding surface and the sync pipeline that feeds it (evidence rendering, per-tier honesty, Decodable backward compatibility across `Finding`/`EvidenceItem`/`LedgerTransaction`, Activity Log completeness and honesty, and an extended run on failure/concurrency handling that culminated in fixing a real concurrent-write race against production QuickBooks). Three landmines remain deliberately undecided/deferred, each verified real and each failing this run's own scope test for a different, defensible reason: a resolved-finding-that-genuinely-recurs semantics decision (round 12, needs the owner), and two different-page instances of the same shapes already fixed here (`pendingImport`/`importError` on Bank Feed Cleanup, round 21; `removeClientMemoryRule`'s two gaps on Client Memory, rounds 17/23) — all three documented in `docs/VOICE_LEDGER_HANDOFF.md` with enough detail to pick up directly whenever those pages are next worked on.
   - **Next: Gauntlet C** (the honesty/false-green audit against §18's invariants and the four green preconditions) on this same `VL-DUP-EXP-001` slice -- the third gauntlet from the owner's original request, not yet started at all.
 
+---
+
+## Gauntlet C now running — honesty/false-green audit
+
+**Started:** 2026-08-24, immediately after Gauntlet B closed at round 23.
+
+**The bar** (from the skill, scoped to `VL-DUP-EXP-001` and its finding surface only — same scope as Gauntlet B): can a fresh critic construct ANY of the following?
+- A path where a page renders green with missing/partial/stale coverage for this rule
+- A percentage/health score shown without its denominator
+- A capability labeled "Automatic" whose matrix row is still ASSUMED
+- Severity, confidence, and status collapsed into one signal anywhere this rule's findings render
+- An HTTP 2xx response treated as success without body validation, anywhere this rule's data path touches QBO
+- A cross-client (cross-`realmId`) leak reachable through this rule's findings, Activity Log entries, or Client Memory rules
+- A terminology overclaim (backup, Books Review, Audit Log) anywhere this rule's surface renders
+- A screenshot/OCR-sourced value reaching a write or a green status without human verification (N/A if this rule has no such path — confirm, don't assume)
+
+**Any successful construction is a bug, not a design discussion.** No stop condition based on "good enough" — runs until a critic fails to break anything across 2 consecutive rounds, per the skill.
+
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*
