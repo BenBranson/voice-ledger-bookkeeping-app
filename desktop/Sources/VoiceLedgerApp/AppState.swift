@@ -429,6 +429,7 @@ public final class AppState {
                         findingID: finding.id,
                         ruleID: finding.ruleID,
                         ruleVersion: finding.ruleVersion,
+                        findingSummary: finding.title,
                         note: "Matched client memory rule for \(matchedRule.vendorName) (created by \(matchedRule.createdBy))"
                     ))
                 }
@@ -596,6 +597,7 @@ public final class AppState {
             ruleID: finding.ruleID,
             ruleVersion: finding.ruleVersion,
             procedure: action.guidedProcedure,
+            findingSummary: finding.title,
             note: note
         )
         do {
@@ -635,6 +637,7 @@ public final class AppState {
                     findingID: finding.id,
                     ruleID: finding.ruleID,
                     ruleVersion: finding.ruleVersion,
+                    findingSummary: finding.title,
                     note: "Matched client memory rule for \(vendorName) (created by \(actorName))"
                 ))
             }
@@ -731,6 +734,7 @@ public final class AppState {
                 findingID: findingID,
                 ruleID: finding.ruleID,
                 ruleVersion: finding.ruleVersion,
+                findingSummary: finding.title,
                 note: reason
             )
             try await store.appendActivityLogEntry(entry)
@@ -755,6 +759,7 @@ public final class AppState {
             findingID: findingID,
             ruleID: finding.ruleID,
             ruleVersion: finding.ruleVersion,
+            findingSummary: finding.title,
             note: questionText
         )
         do {
@@ -802,6 +807,7 @@ public final class AppState {
                 findingID: findingID,
                 ruleID: finding.ruleID,
                 ruleVersion: finding.ruleVersion,
+                findingSummary: finding.title,
                 note: "Reclassified purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName), QBO-verified",
                 beforeSnapshotJSON: result.beforeSnapshotJSON,
                 afterSnapshotJSON: result.afterSnapshotJSON

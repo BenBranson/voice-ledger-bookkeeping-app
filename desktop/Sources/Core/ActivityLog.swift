@@ -5,6 +5,13 @@ import Foundation
 public enum Actor: Hashable, Codable, Sendable {
     case user(String)
     case system
+
+    public var displayLabel: String {
+        switch self {
+        case .user(let name): return "By \(name)"
+        case .system: return "By Voice Ledger"
+        }
+    }
 }
 
 /// Only the cases this slice's Branch B path produces — the full spec's
@@ -39,6 +46,25 @@ public enum ActivityKind: String, Codable, Sendable {
     /// a time (`findingDismissed`), so the Activity Log can tell the two
     /// apart. Never silent: this entry IS the record that it happened.
     case findingAutoDismissedByClientMemory
+
+    /// A human-readable label, shared by every renderer of this enum.
+    /// Gauntlet Loop, Gauntlet B round 5 (2026-08-24): `ClosePackageView`
+    /// was rendering `entry.kind.rawValue` directly — the raw case name
+    /// (e.g. "findingDismissed"), not even a formatted label — so this
+    /// centralizes the mapping `ActivityLogView` already had.
+    public var humanLabel: String {
+        switch self {
+        case .findingDetected: return "Finding detected"
+        case .manualCompletionAttested: return "Manual completion attested"
+        case .findingResolved: return "Finding resolved"
+        case .apiWriteApplied: return "API write applied"
+        case .clientQuestionDrafted: return "Client question sent"
+        case .findingDismissed: return "Finding dismissed"
+        case .clientMemoryRuleCreated: return "Client memory rule created"
+        case .clientMemoryRuleRemoved: return "Client memory rule removed"
+        case .findingAutoDismissedByClientMemory: return "Auto-dismissed (client memory)"
+        }
+    }
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never
@@ -56,6 +82,16 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
     public let ruleID: RuleID?
     public let ruleVersion: RuleVersion?
     public let procedure: GuidedProcedure?
+    /// A snapshot of `Finding.title` (or `.vendorName`) taken at the moment
+    /// this entry is written — not a live lookup. Gauntlet Loop, Gauntlet B
+    /// round 5 (2026-08-24): every entry carried `findingID`/`ruleID` as
+    /// data, but no renderer (`ActivityLogView`, `ClosePackageView`, the
+    /// exported Activity Log) ever displayed either, so a "Finding
+    /// dismissed" row with no `note` was completely unidentifiable — two
+    /// dismissals on the same day looked identical, in-app and in the
+    /// exported Close Package alike. `nil` for entries that predate this
+    /// field or aren't about a specific finding (e.g. `clientMemoryRuleCreated`).
+    public let findingSummary: String?
     public let note: String?
     /// The QBO entity's full state immediately before/after a `.stagedAPI`
     /// write — `WriteVerificationResult.beforeSnapshotJSON`/
@@ -76,6 +112,7 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
         ruleID: RuleID? = nil,
         ruleVersion: RuleVersion? = nil,
         procedure: GuidedProcedure? = nil,
+        findingSummary: String? = nil,
         note: String? = nil,
         beforeSnapshotJSON: String? = nil,
         afterSnapshotJSON: String? = nil
@@ -89,6 +126,7 @@ public struct ActivityLogEntry: Identifiable, Codable, Sendable {
         self.ruleID = ruleID
         self.ruleVersion = ruleVersion
         self.procedure = procedure
+        self.findingSummary = findingSummary
         self.note = note
         self.beforeSnapshotJSON = beforeSnapshotJSON
         self.afterSnapshotJSON = afterSnapshotJSON

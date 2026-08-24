@@ -666,12 +666,13 @@ struct RootView: View {
             }
             return [
                 ExportCell(text: dateFormatter.string(from: entry.recordedAt)),
-                ExportCell(text: entry.kind.rawValue),
+                ExportCell(text: entry.kind.humanLabel),
                 ExportCell(text: actor),
+                ExportCell(text: entry.findingSummary ?? ""),
                 ExportCell(text: entry.note ?? "")
             ]
         }
-        return ExportTable(title: "Activity Log", columns: ["Date", "Kind", "Actor", "Note"], rows: rows)
+        return ExportTable(title: "Activity Log", columns: ["Date", "Kind", "Actor", "Finding", "Note"], rows: rows)
     }
 
     private static func exportTable(

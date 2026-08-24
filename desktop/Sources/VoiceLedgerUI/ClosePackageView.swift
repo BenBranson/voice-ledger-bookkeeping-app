@@ -170,12 +170,22 @@ public struct ClosePackageView: View {
                         .foregroundStyle(VLColor.textMuted)
                 } else {
                     ForEach(recentActivity.prefix(10), id: \.id) { entry in
-                        HStack {
-                            Text(entry.kind.rawValue)
-                                .font(VLTypography.caption())
-                                .foregroundStyle(VLColor.textPrimary)
-                            Spacer()
-                            Text(entry.recordedAt, style: .date)
+                        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                            HStack {
+                                Text(entry.kind.humanLabel)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textPrimary)
+                                Spacer()
+                                Text(entry.recordedAt, style: .date)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            }
+                            if let summary = entry.findingSummary {
+                                Text(summary)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textSecondary)
+                            }
+                            Text(entry.actor.displayLabel)
                                 .font(VLTypography.caption())
                                 .foregroundStyle(VLColor.textMuted)
                         }

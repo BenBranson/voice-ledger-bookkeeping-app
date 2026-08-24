@@ -66,6 +66,11 @@ private struct EntryRow: View {
                 Text(actorLabel)
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
+                if let summary = entry.findingSummary {
+                    Text(summary)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textPrimary)
+                }
                 if let note = entry.note {
                     Text(note)
                         .font(VLTypography.caption())
@@ -91,24 +96,7 @@ private struct EntryRow: View {
         }
     }
 
-    private var kindLabel: String {
-        switch entry.kind {
-        case .findingDetected: return "Finding detected"
-        case .manualCompletionAttested: return "Manual completion attested"
-        case .findingResolved: return "Finding resolved"
-        case .apiWriteApplied: return "API write applied"
-        case .clientQuestionDrafted: return "Client question sent"
-        case .findingDismissed: return "Finding dismissed"
-        case .clientMemoryRuleCreated: return "Client memory rule created"
-        case .clientMemoryRuleRemoved: return "Client memory rule removed"
-        case .findingAutoDismissedByClientMemory: return "Auto-dismissed (client memory)"
-        }
-    }
+    private var kindLabel: String { entry.kind.humanLabel }
 
-    private var actorLabel: String {
-        switch entry.actor {
-        case .user(let name): return "By \(name)"
-        case .system: return "By Voice Ledger"
-        }
-    }
+    private var actorLabel: String { entry.actor.displayLabel }
 }
