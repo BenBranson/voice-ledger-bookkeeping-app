@@ -45,6 +45,13 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                 if a.isVoided || b.isVoided { continue }
                 if context.gatedTransactionIDs.contains(a.id) || context.gatedTransactionIDs.contains(b.id) { continue }
 
+                // Gauntlet Loop hardening applied 2026-08-23, carried over
+                // from VL-DUP-EXP-001's own hardening pass (same rule
+                // shape, same class of gap found there first): a literal
+                // `id` collision is a data-pipeline anomaly, never two
+                // distinct real records — `id` is QBO's own primary key.
+                guard a.id != b.id else { continue }
+
                 guard let vendorA = a.vendorName, vendorA == b.vendorName else { continue }
                 guard a.totalAmount == b.totalAmount else { continue }
 
@@ -54,7 +61,16 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
 
                 guard AccountingDate.daysBetween(a.txnDate, b.txnDate) <= nearDateWindowDays else { continue }
 
-                guard a.totalAmount >= context.materiality.absoluteFloor else { continue }
+                // Compare/report on MAGNITUDE, not signed value — carried
+                // over from VL-DUP-EXP-001's hardening: a negative-amount
+                // Purchase pair (a vendor rebate/correction posted directly
+                // as a negative Purchase) would otherwise bypass the
+                // materiality floor by sign alone, regardless of size.
+                let exposure = a.totalAmount.minorUnits < 0
+                    ? Money(minorUnits: -a.totalAmount.minorUnits, currency: a.totalAmount.currency)
+                    : a.totalAmount
+
+                guard exposure >= context.materiality.absoluteFloor else { continue }
 
                 let pairKey: Set<String> = [a.id, b.id]
                 guard !consideredPairs.contains(pairKey) else { continue }
@@ -70,11 +86,17 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                 )
                 if context.dismissedFindingIDs.contains(findingID) { continue }
 
-                let severity = Severity.derive(dollarExposure: a.totalAmount, materiality: context.materiality)
+                let severity = Severity.derive(dollarExposure: exposure, materiality: context.materiality)
 
+                // Evidence deliberately does NOT include "paymentAccount" —
+                // carried over from VL-DUP-EXP-001's own T2 hardening fix:
+                // this rule's own defining condition (above) REQUIRES the
+                // two payment accounts to differ, so claiming
+                // "paymentAccount" as matched evidence would be an outright
+                // false statement, not merely incomplete.
                 let evidence = [
-                    EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "paymentAccount"]),
-                    EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "paymentAccount"])
+                    EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date"]),
+                    EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date"])
                 ]
 
                 let procedure = GuidedProcedure(
@@ -98,8 +120,8 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                     resolution: .manualQBO,
                     guidedProcedure: procedure,
                     consequences: [
-                        .reconciliation("removes \(a.totalAmount) from uncleared activity on one account, once confirmed and voided in QBO"),
-                        .reporting("expenses decrease by \(a.totalAmount), once confirmed and voided in QBO"),
+                        .reconciliation("removes \(exposure) from uncleared activity on one account, once confirmed and voided in QBO"),
+                        .reporting("expenses decrease by \(exposure), once confirmed and voided in QBO"),
                         .auditTrail("Voice Ledger records your attestation; QBO's own record of the void is authoritative")
                     ],
                     reversal: .reversibleManually(procedure: "Un-void in QBO if done in error")
@@ -111,13 +133,18 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                     ruleVersion: identity.version,
                     realmID: input.realmID,
                     period: input.period,
-                    title: "Possible duplicate expense across accounts — \(a.totalAmount)",
+                    title: "Possible duplicate expense across accounts — \(exposure)",
                     severity: severity,
                     confidence: .medium,
-                    dollarExposure: a.totalAmount,
+                    dollarExposure: exposure,
                     evidence: evidence,
                     proposedActions: [action],
-                    provenance: [a.provenance, b.provenance]
+                    provenance: [a.provenance, b.provenance],
+                    // Carried over from VL-DUP-EXP-001's hardening: every
+                    // sibling rule with a clear single vendor sets this so
+                    // Client Memory's "Always Dismiss for <vendor>" can
+                    // actually match a finding from this rule.
+                    vendorName: vendorA
                 ))
             }
         }

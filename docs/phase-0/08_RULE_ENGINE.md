@@ -169,6 +169,47 @@ before data assembly, relationship-class rules for a transaction's scope run
 first; a fired relationship rule adds its `RuleID`s to that transaction's gate
 set before categorization-class rules are considered for it.
 
+**Known landmine, found and verified 2026-08-23 (Gauntlet Loop hardening
+pass on `VL-DUP-EXP-001`), not yet fixed — documented here rather than
+fixed speculatively, per this doc's own discipline of not guessing ahead
+of real need.** The actually-shipped gating set (`RuleEngineActor.swift`'s
+`gatedTransactionIDs`, and `RuleContext.gatedTransactionIDs`) is a bare
+`Set<String>` of raw QBO `Id` values, with **no entity-kind tag** — a
+simplification from this section's illustrative `Set<RuleID>`-per-rule
+sketch above, made when the first (and so far only) relationship rule,
+`VL-CC-PAYMENT-001`, was actually built. QBO's `Id` is unique only *within
+one entity type* (a `Purchase` #12 and a `Bill` #12 can both legitimately
+exist), so once a SECOND relationship-class rule is added that gates a
+non-`Purchase` entity kind, a categorization rule for a *different* entity
+kind with a numerically-colliding `Id` would be wrongly gated — a silent
+false negative, with a misleading `GatingOutcome` audit entry attributing
+the exclusion to the wrong entity.
+
+**Confirmed NOT live today**: `VL-CC-PAYMENT-001`
+(`CreditCardPaymentMiscodedRule.swift`) is the only `ruleClass:
+.relationship` rule that exists, and its own `evaluate()` filters strictly
+to `entityKind == .purchase` — it can only ever insert genuine `Purchase`
+IDs into the gate set, and QBO guarantees those are unique among
+themselves. Every one of the 8 current consumers
+(`DuplicatePostedExpenseRule`, `CrossAccountDuplicateExpenseRule`,
+`DuplicateBillRule`, `DuplicateInvoiceRule`, `DuplicatePaymentRule`,
+`VendorDescriptionMismatchRule`, `UncategorizedTransactionRule`,
+`PayrollLumpSumRule`) does the identical entity-kind-blind
+`gatedTransactionIDs.contains(id)` check — all verified live during this
+pass, not assumed.
+
+**Fix, when needed** (not built now): change the gate set's element type
+to carry entity kind alongside the raw id (e.g. a `Hashable` key of
+`(entityKind: QBOEntityKind, id: String)`), update the 8 consumer call
+sites to check the tagged key instead of the bare string, and add a
+regression test to `RuleEngineGatingTests.swift` proving two different
+entity kinds with numerically-identical ids don't collide. Do this
+**when the next relationship-class rule touching a non-`Purchase` entity
+is actually built** — fixing it now, against a hypothetical shape, risks
+guessing wrong about what that rule will actually need; fixing it then
+means verifying against the real thing, matching this whole document's
+own stated preference throughout.
+
 ---
 
 ## 8.2b Per-tier rule introspection (general capability, not a `VL-DUP-EXP-001` special case)

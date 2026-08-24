@@ -112,6 +112,58 @@ struct CrossAccountDuplicateExpenseRuleTests {
         }
     }
 
+    // MARK: - Hardening carried over from VL-DUP-EXP-001's Gauntlet Loop pass
+    // (2026-08-23) — same rule shape, same class of gaps found there first.
+
+    @Test("GAUNTLET: Finding.vendorName is populated, so Client Memory's 'Always Dismiss for <vendor>' can match a VL-DUP-EXP-002 finding")
+    func gauntletVendorNameIsPopulated() {
+        let a = purchase(id: "1", vendor: "Permian Supply", account: "checking-1")
+        let b = purchase(id: "2", vendor: "Permian Supply", account: "amex-1")
+        let outcome = CrossAccountDuplicateExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding")
+            return
+        }
+        #expect(finding.vendorName == "Permian Supply")
+    }
+
+    @Test("GAUNTLET: two entries sharing a literal id are excluded — a data-pipeline anomaly, never two distinct real records")
+    func gauntletSameIDAnomalyExcluded() {
+        let a = purchase(id: "999", account: "checking-1")
+        let b = purchase(id: "999", account: "amex-1")
+        let outcome = CrossAccountDuplicateExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .pass = outcome else {
+            Issue.record("expected .pass — a.id == b.id can never represent two distinct QBO records, got \(outcome)")
+            return
+        }
+    }
+
+    @Test("GAUNTLET: a large NEGATIVE-amount cross-account pair is compared on magnitude, not sign — it still fires and clears the materiality floor")
+    func gauntletNegativeAmountComparedOnMagnitude() {
+        let a = purchase(id: "1", amountMinorUnits: -500_000, account: "checking-1")
+        let b = purchase(id: "2", amountMinorUnits: -500_000, account: "amex-1")
+        let outcome = CrossAccountDuplicateExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome else {
+            Issue.record("expected a finding for a $5,000-magnitude pair regardless of sign, got \(outcome)")
+            return
+        }
+        #expect(findings.count == 1)
+        #expect(findings[0].dollarExposure == Money(minorUnits: 500_000, currency: .usd))
+        #expect(findings[0].title == "Possible duplicate expense across accounts — \(findings[0].dollarExposure)")
+    }
+
+    @Test("GAUNTLET: evidence never claims 'paymentAccount' as matched — this rule's own defining condition REQUIRES the two accounts to differ, so claiming it matched would be an outright false statement")
+    func gauntletEvidenceDoesNotClaimPaymentAccountMatched() {
+        let a = purchase(id: "1", account: "checking-1")
+        let b = purchase(id: "2", account: "amex-1")
+        let outcome = CrossAccountDuplicateExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding")
+            return
+        }
+        #expect(finding.evidence.allSatisfy { !$0.highlightedFields.contains("paymentAccount") })
+    }
+
     @Test("The rule never claims .pass on incomplete coverage")
     func neverClaimsPassOnPartialCoverage() {
         let outcome = CrossAccountDuplicateExpenseRule.evaluate(
