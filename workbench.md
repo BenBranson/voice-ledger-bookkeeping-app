@@ -42,8 +42,8 @@ A critique of the form "this would look more capable if it claimed more" is reje
 | # | Workstream | Gauntlet | Status | Round | Current gap |
 |---|---|---|---|---|---|
 | 1 | Rule logic robustness (`DuplicatePostedExpenseRule.swift`) | A | **DONE — 2 consecutive clean rounds** | 6 | None — closed out |
-| 2 | Evidence values + vendor + narrative sentence | B | **Round 1 found 3 more gaps, all fixed — round 2 running to confirm** | 2 | Awaiting round 2 |
-| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty | B | **Round 1 found 3 more gaps, all fixed — round 2 running to confirm** | 2 | Awaiting round 2 |
+| 2 | Evidence values + vendor + narrative sentence | B | **Round 2 found 1 more gap (fixed) — round 3 running to confirm** | 3 | Awaiting round 3 |
+| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty | B | **Round 2 found 1 more gap (fixed) — round 3 running to confirm** | 3 | Awaiting round 3 |
 | 4 | Honesty/false-green audit across the slice | C | Not started | 0 | — |
 | 5 | Integration/smoothing pass | — | Not started | 0 | — |
 | 6 | (bonus, discovered mid-run) `VL-DUP-EXP-002` hardening | — | **Done** | — | None |
@@ -112,5 +112,10 @@ A critique of the form "this would look more capable if it claimed more" is reje
   3. **Nothing said what happens if a finding is left open** (neither approved nor dismissed) — the Gauntlet B bar explicitly asks this and it wasn't addressed in round 1's build. **Fixed**: new `Finding.riskIfIgnored: String?` (additive, spec'd at §5.1), populated with the concrete ongoing consequence, rendered in its own "IF LEFT OPEN" section.
   - Minor/considered-not-fixed: the critic flagged the unpadded date format ("2026-7-14") as looking unpolished — considered, deliberately left as-is, since fixing it only in this rule would create a NEW inconsistency with two sibling rules' identical date-formatting convention; a shared date-formatting utility applied consistently is the right fix, correctly out of scope for a one-rule pass. `Money.description`'s own doc comment self-flags as provisional/non-final UI text — genuinely real, but shared infrastructure used by every rule and report in the app, far outside this pass's scope; noted, not touched.
   - 3 new Core tests, 85 rule tests total, 361/361 full suite, clean build. Round 2 (fresh critic) now running to confirm these hold up.
+
+- **2026-08-23 — Gauntlet B, round 2 (fresh critic) — 1 more real gap, precise and code-traced.** Confirmed all 6 of round 1's fixes (3 original + 3 critic-found) hold up under real traced fixture output, including an extreme fixture (apostrophe/ampersand vendor name, $999,999.99 — nothing broke), and confirmed the Dismiss/IF-LEFT-OPEN text can never be seen on an already-resolved finding (routing only reaches the detail view from already-`.open`-filtered lists). Found one more: **T2's pre-approval checklist named only one payment account (`a`'s) unconditionally — correct for T1/T3, whose match conditions REQUIRE a shared account, but T2 (DocNumber match) never compares accounts at all, so a T2 pair can legitimately span two different accounts. Nothing on screen (evidence deliberately omits paymentAccount for T2) would have told a bookkeeper a second account was even involved** — they'd check one statement, possibly the wrong one. **Fixed**: the checklist's statement-check step now names both accounts when they differ, keeping the original single-account wording when they match (the common T1/T3 case, and the common T2 case too in practice). 2 new regression tests (both-different and same-account cases). 87 rule tests, 369/369 full suite (before scratch cleanup), clean build.
+  - Minor, explicitly not a finding: `Money.description` has no thousands separator for large amounts (checked directly with $999,999.99) — fully unambiguous, just harder to eyeball; correctly judged a formatting nit outside "can't act without opening QBO," not reported as a gap.
+
+  Round 3 (fresh critic) now running — round 2 found a real gap, so this isn't yet a clean round for Gauntlet B.
 
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*

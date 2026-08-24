@@ -1463,4 +1463,32 @@ struct DuplicatePostedExpenseRuleTests {
         #expect(risk.contains("USD 486.20"))
         #expect(!risk.isEmpty)
     }
+
+    @Test("GAUNTLET B (round 2 critic pass): a T2 finding whose pair spans TWO DIFFERENT payment accounts names BOTH accounts in the pre-approval checklist's statement-check step — T2's own match condition never requires a shared account, so naming only one would send a bookkeeper to check the wrong statement")
+    func gauntletBRound2T2ChecklistNamesBothAccountsWhenTheyDiffer() {
+        let checkingAccount = LedgerAccount(id: "checking-1", name: "Checking", accountType: .bank)
+        let savingsAccount = LedgerAccount(id: "savings-2", name: "Savings", accountType: .bank)
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 1), account: "checking-1", docNumber: "REF-99")
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 20), account: "savings-2", docNumber: "REF-99")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], customTxnNumbers: true, accounts: [checkingAccount, savingsAccount]), context: context(customTxnNumbers: true))
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a T2 finding, got \(outcome)")
+            return
+        }
+        #expect(finding.confidence == .high) // confirms this is T2
+        #expect(finding.preApprovalChecklist.contains(where: { $0.contains("Checking") && $0.contains("Savings") }))
+    }
+
+    @Test("GAUNTLET B (round 2 critic pass): a T2 finding whose pair shares the SAME payment account keeps the single-account checklist wording — no regression for the common case")
+    func gauntletBRound2T2ChecklistNamesOneAccountWhenTheyMatch() {
+        let checkingAccount = LedgerAccount(id: "checking-1", name: "Checking", accountType: .bank)
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 1), account: "checking-1", docNumber: "REF-99")
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 20), account: "checking-1", docNumber: "REF-99")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], customTxnNumbers: true, accounts: [checkingAccount]), context: context(customTxnNumbers: true))
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a T2 finding, got \(outcome)")
+            return
+        }
+        #expect(finding.preApprovalChecklist.contains(where: { $0.contains("Checking") && !$0.contains("BOTH") }))
+    }
 }

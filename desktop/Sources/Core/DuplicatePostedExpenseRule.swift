@@ -261,9 +261,28 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                 // docs/phase-0/05_FINDING_SCHEMA.md §5.1, referenced in
                 // docs/phase-0/11_VERTICAL_SLICE.md's mapping table as the
                 // "Before proceeding" note — never actually built until now.
+                //
+                // Gauntlet Loop, Gauntlet B round 2 critic pass (2026-08-23):
+                // the statement-check step originally named only `a`'s
+                // account unconditionally — correct for T1/T3, whose match
+                // conditions REQUIRE `a`/`b` to share one account, but T2
+                // (reference/DocNumber match, above) never compares
+                // paymentAccountID at all, so a T2 pair can legitimately
+                // span two different accounts. Naming only one would send a
+                // bookkeeper to check a single statement while the second
+                // transaction posted somewhere else entirely, with nothing
+                // else on screen (evidence deliberately omits paymentAccount
+                // for T2 — see the per-tier highlighting fix) surfacing that
+                // a second account might even be involved.
+                let statementCheckStep: String
+                if a.paymentAccountID != b.paymentAccountID {
+                    statementCheckStep = "Pull up the actual bank or card statements for BOTH \(accountLabel(a.paymentAccountID)) AND \(accountLabel(b.paymentAccountID)) — these two postings are on different accounts — and confirm whether one or two withdrawals actually occurred"
+                } else {
+                    statementCheckStep = "Pull up the actual bank or card statement for \(accountLabel(a.paymentAccountID)) and confirm whether one or two withdrawals actually occurred"
+                }
                 let preApprovalChecklist = [
                     "Open both transactions (\(a.id) and \(b.id)) in QuickBooks Online and view them side by side",
-                    "Pull up the actual bank or card statement for \(accountLabel(a.paymentAccountID)) and confirm whether one or two withdrawals actually occurred",
+                    statementCheckStep,
                     "Do not assume either transaction is \"the duplicate\" before checking — only the bank statement can tell you that"
                 ]
 
