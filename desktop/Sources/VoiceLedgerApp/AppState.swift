@@ -82,7 +82,17 @@ public final class AppState {
     public private(set) var isTogglingWriteAccess = false
 
     // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
-    public private(set) var isApplyingFix = false
+    // Gauntlet Loop, Gauntlet B round 14 (2026-08-24): this used to be a
+    // bare `Bool`, not scoped to a finding — same bleed class round 13
+    // fixed for `applyFixError`, one line away in `RootView.swift`. A
+    // bookkeeper could start Apply Fix on Finding A (a real in-flight QBO
+    // network round-trip, not instant), navigate to unrelated Finding B
+    // via any toolbar/back button (none are disabled mid-write), and see
+    // B's Apply Fix button falsely show "Applying…" and disabled for an
+    // operation that has nothing to do with B — including blocking B's own
+    // real fix while A's write is still in flight or stuck. Now keyed by
+    // `findingID` so a view only ever shows "applying" for its own finding.
+    public private(set) var applyingFixFindingID: String?
     // Gauntlet Loop, Gauntlet B round 13 (2026-08-24): this used to be a
     // bare `String?`, not scoped to a finding — a rejected/failed write on
     // Finding A left the error string standing until the NEXT
@@ -843,7 +853,7 @@ public final class AppState {
               let action = finding.proposedActions.first,
               let details = action.apiWriteDetails else { return }
 
-        isApplyingFix = true
+        applyingFixFindingID = findingID
         applyFixError = nil
         do {
             let result = try await syncClient.reclassifyPurchaseLine(
@@ -867,7 +877,7 @@ public final class AppState {
                     note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — QBO did not confirm the change."
                 ))
                 activityLog = try await store.loadActivityLog()
-                isApplyingFix = false
+                applyingFixFindingID = nil
                 return
             }
             let entry = ActivityLogEntry(
@@ -884,7 +894,7 @@ public final class AppState {
             )
             try await store.appendActivityLogEntry(entry)
             activityLog = try await store.loadActivityLog()
-            isApplyingFix = false
+            applyingFixFindingID = nil
             // The finding only actually resolves once a resync sees the
             // corrected account — same posture as attestCompletion's doc
             // comment: this is not treated as proof by itself.
@@ -903,7 +913,7 @@ public final class AppState {
                 note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — the call failed before QBO could respond: \(error)"
             ))
             activityLog = (try? await store.loadActivityLog()) ?? activityLog
-            isApplyingFix = false
+            applyingFixFindingID = nil
         }
     }
 }
