@@ -72,6 +72,19 @@ public final class AppState {
     public private(set) var loadState: LoadState = .idle
     public var screen: Screen = .connection
     public let environment: QBOEnvironment
+    /// Gauntlet Loop, Gauntlet B round 21 (2026-08-24): `syncAndEvaluate()`'s
+    /// own re-entrancy guard — deliberately NOT `loadState == .loading`,
+    /// because several unrelated methods independently write
+    /// `loadState = .failed(...)` on their own catch paths. If one of
+    /// those fired while a sync was genuinely still in flight, checking
+    /// `loadState` would have been fooled into thinking no sync was
+    /// running, letting a second, truly concurrent `syncAndEvaluate()`
+    /// start — two overlapping runs could read `priorFindingIDs`/
+    /// `dismissedFindingIDs` before each other's writes land, producing
+    /// duplicate `findingDetected`/`findingResolved` Activity Log entries.
+    /// This flag is written ONLY by `syncAndEvaluate()` itself, so nothing
+    /// else can clobber it mid-sync.
+    private var isSyncInFlight = false
 
     // Connection Page (step 1.3) state.
     public private(set) var companyInfo: CompanyConnectionInfo?
@@ -180,6 +193,24 @@ public final class AppState {
         case csv(PendingCSVImport)
         case ofx(PendingOFXImport)
     }
+    /// Known gap (Gauntlet Loop, Gauntlet B round 21, 2026-08-24,
+    /// deliberately NOT fixed here): the same "single scalar meant for one
+    /// in-flight operation, actually shared across however many a user can
+    /// start" shape that `applyingFixFindingIDs`/`findingActionInFlightIDs`
+    /// had before rounds 19/20 fixed them. `ImportBankStatementView`'s
+    /// Cancel is never disabled while `confirmCSVImport`/`confirmOFXImport`
+    /// awaits — cancel this import, start a second one on a different
+    /// file, and the FIRST import's `Task` resuming later unconditionally
+    /// overwrites `pendingImport`/`importError` with `nil`/its own value,
+    /// silently discarding the second import's confirm-sheet state (or a
+    /// real newer error) with zero indication anything happened. Correctly
+    /// out of scope for THIS hardening run: Bank Feed Cleanup (Page 4) is
+    /// a genuinely different page from `FindingDetailView`/`VL-DUP-EXP-001`'s
+    /// finding surface — the same scope test round 17 applied to
+    /// `removeClientMemoryRule`. Needs the identical `Set`/keyed-by-id
+    /// treatment (or a simpler "only one import confirm sheet can be open,
+    /// disable Cancel while confirming" guard) whenever Bank Feed Cleanup
+    /// itself is hardened.
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
     /// Loaded on launch and refreshed after every confirmed CSV import —
@@ -396,6 +427,12 @@ public final class AppState {
     /// makes the isVoided exclusion resolve a finding (§11.1) — see
     /// `ClientStore.reconcileAgainstLatestRun`.
     public func syncAndEvaluate() async {
+        // Gauntlet Loop, Gauntlet B round 21 (2026-08-24): this had no
+        // re-entrancy guard at all — see `isSyncInFlight`'s doc comment for
+        // why `loadState` itself can't be trusted for this check.
+        guard !isSyncInFlight else { return }
+        isSyncInFlight = true
+        defer { isSyncInFlight = false }
         loadState = .loading
         do {
             let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
