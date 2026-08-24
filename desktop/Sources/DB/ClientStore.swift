@@ -81,11 +81,25 @@ public actor ClientStore {
     /// a caller never needs to check status first. No corresponding
     /// "un-dismiss" exists yet — a real gap, not an oversight; see
     /// `AppState.dismissFinding`'s doc comment.
-    public func dismissFinding(id: String) throws {
+    ///
+    /// Returns whether this call actually changed the finding's status.
+    /// Gauntlet Loop, Gauntlet B round 22 (2026-08-24): `AppState
+    /// .dismissFinding` used to log a `.findingDismissed` Activity Log
+    /// entry unconditionally after calling this, even on the silent-no-op
+    /// path — reachable when a manual dismiss races a concurrent sync (a
+    /// resync's `isVoided` exclusion, or the client-memory auto-dismiss
+    /// loop, resolving/dismissing the same finding first). The Activity
+    /// Log would then contain a false, user-attributed claim for a finding
+    /// whose real on-disk status was actually system-driven — the exact
+    /// class of dishonesty rounds 10/11 fixed for `findingResolved`, here
+    /// on the write side instead of the read side.
+    @discardableResult
+    public func dismissFinding(id: String) throws -> Bool {
         var existing = try loadFindings()
-        guard let index = existing.firstIndex(where: { $0.id == id }), existing[index].status == .open else { return }
+        guard let index = existing.firstIndex(where: { $0.id == id }), existing[index].status == .open else { return false }
         existing[index].status = .dismissed
         try save(existing, to: findingsURL)
+        return true
     }
 
     /// A finding present in `stillDetectedIDs`' complement (i.e. no longer

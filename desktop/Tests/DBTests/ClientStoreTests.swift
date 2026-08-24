@@ -104,32 +104,52 @@ struct ClientStoreTests {
         #expect(resolved.isEmpty)
     }
 
-    @Test("dismissFinding marks an open finding dismissed")
+    @Test("dismissFinding marks an open finding dismissed and returns true")
     func dismissFindingMarksDismissed() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
         try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
-        try await store.dismissFinding(id: "abc123")
+        let changed = try await store.dismissFinding(id: "abc123")
+        #expect(changed == true)
         let loaded = try await store.loadFindings()
         #expect(loaded[0].status == .dismissed)
     }
 
-    @Test("dismissFinding is a no-op for an unknown id — no crash, nothing created")
+    @Test("dismissFinding is a no-op for an unknown id — no crash, nothing created, returns false")
     func dismissFindingUnknownIDIsNoOp() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
-        try await store.dismissFinding(id: "does-not-exist")
+        let changed = try await store.dismissFinding(id: "does-not-exist")
+        #expect(changed == false)
         let loaded = try await store.loadFindings()
         #expect(loaded.isEmpty)
     }
 
-    @Test("dismissFinding does not override an already-resolved finding's status")
+    @Test("dismissFinding does not override an already-resolved finding's status, and returns false")
     func dismissFindingDoesNotOverrideResolved() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
         var finding = sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))
         finding.status = .resolved
         try await store.upsertFindings([finding])
-        try await store.dismissFinding(id: "abc123")
+        let changed = try await store.dismissFinding(id: "abc123")
+        #expect(changed == false)
         let loaded = try await store.loadFindings()
         #expect(loaded[0].status == .resolved)
+    }
+
+    // Gauntlet Loop, Gauntlet B round 22 (2026-08-24): a fresh critic found
+    // AppState.dismissFinding used to log a .findingDismissed Activity Log
+    // entry even when this call was a silent no-op (e.g. a concurrent sync
+    // already resolved/dismissed the same finding) — a false, user-
+    // attributed claim in the one audit trail the app promises is
+    // trustworthy. This return value is what AppState now gates that log
+    // entry on.
+    @Test("Calling dismissFinding a second time on an already-dismissed finding returns false — the return value distinguishes a real change from a no-op, so a caller never logs a false record")
+    func secondDismissCallReturnsFalse() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
+        let firstCall = try await store.dismissFinding(id: "abc123")
+        let secondCall = try await store.dismissFinding(id: "abc123")
+        #expect(firstCall == true)
+        #expect(secondCall == false)
     }
 
     @Test("A re-detected finding upserted after being dismissed carries the dismissed status forward, not silently reopened")

@@ -575,17 +575,27 @@ public final class AppState {
                 let openFindings = try await store.loadFindings().filter { $0.status == .open }
                 for finding in openFindings {
                     guard let matchedRule = memoryRules.first(where: { $0.matches(ruleID: finding.ruleID, findingVendorName: finding.vendorName) }) else { continue }
-                    try await store.dismissFinding(id: finding.id)
-                    try await store.appendActivityLogEntry(ActivityLogEntry(
-                        realmID: realmID,
-                        actor: .system,
-                        kind: .findingAutoDismissedByClientMemory,
-                        findingID: finding.id,
-                        ruleID: finding.ruleID,
-                        ruleVersion: finding.ruleVersion,
-                        findingSummary: finding.title,
-                        note: "Matched client memory rule for \(matchedRule.vendorName) (created by \(matchedRule.createdBy))"
-                    ))
+                    // Gauntlet Loop, Gauntlet B round 22 (2026-08-24): same
+                    // fix as `dismissFinding` — only log when this call
+                    // actually changed the status. A concurrent manual
+                    // Dismiss on the same finding (nothing prevents that;
+                    // `isSyncInFlight` only guards a second sync) could
+                    // have already dismissed it between the `.filter` above
+                    // and this call, making `store.dismissFinding` a
+                    // genuine no-op that shouldn't be logged as if the
+                    // client memory rule was what did it.
+                    if try await store.dismissFinding(id: finding.id) {
+                        try await store.appendActivityLogEntry(ActivityLogEntry(
+                            realmID: realmID,
+                            actor: .system,
+                            kind: .findingAutoDismissedByClientMemory,
+                            findingID: finding.id,
+                            ruleID: finding.ruleID,
+                            ruleVersion: finding.ruleVersion,
+                            findingSummary: finding.title,
+                            note: "Matched client memory rule for \(matchedRule.vendorName) (created by \(matchedRule.createdBy))"
+                        ))
+                    }
                 }
             }
 
@@ -861,17 +871,21 @@ public final class AppState {
 
             let matchingOpenFindings = try await self.store.loadFindings().filter { $0.status == .open && rule.matches(ruleID: $0.ruleID, findingVendorName: $0.vendorName) }
             for finding in matchingOpenFindings {
-                try await self.store.dismissFinding(id: finding.id)
-                try await self.store.appendActivityLogEntry(ActivityLogEntry(
-                    realmID: self.realmID,
-                    actor: .system,
-                    kind: .findingAutoDismissedByClientMemory,
-                    findingID: finding.id,
-                    ruleID: finding.ruleID,
-                    ruleVersion: finding.ruleVersion,
-                    findingSummary: finding.title,
-                    note: "Matched client memory rule for \(vendorName) (created by \(actorName))"
-                ))
+                // Gauntlet Loop, Gauntlet B round 22 (2026-08-24): same fix
+                // as `dismissFinding`/`syncAndEvaluate`'s auto-dismiss loop
+                // — only log when this call actually changed the status.
+                if try await self.store.dismissFinding(id: finding.id) {
+                    try await self.store.appendActivityLogEntry(ActivityLogEntry(
+                        realmID: self.realmID,
+                        actor: .system,
+                        kind: .findingAutoDismissedByClientMemory,
+                        findingID: finding.id,
+                        ruleID: finding.ruleID,
+                        ruleVersion: finding.ruleVersion,
+                        findingSummary: finding.title,
+                        note: "Matched client memory rule for \(vendorName) (created by \(actorName))"
+                    ))
+                }
             }
 
             self.clientMemoryRules = try await self.store.loadClientMemoryRules()
@@ -1004,8 +1018,19 @@ public final class AppState {
             navigateToListIfScreenMatches: { if case .detail(let currentFindingID) = $0 { return currentFindingID == findingID }; return false },
             failureMessage: { "This finding wasn't dismissed: \($0). Try again." }
         ) {
-            try await self.store.dismissFinding(id: findingID)
-            try await self.store.appendActivityLogEntry(entry)
+            // Gauntlet Loop, Gauntlet B round 22 (2026-08-24): only logs
+            // when this call actually changed the finding's status. If a
+            // concurrent sync (an `isVoided` exclusion, or the client-
+            // memory auto-dismiss loop) already resolved/dismissed it
+            // first, `store.dismissFinding` is a genuine no-op — logging
+            // `.findingDismissed` anyway would plant a false, user-
+            // attributed claim in the Activity Log for what was actually a
+            // system-driven change. The finding still ends up not-open
+            // either way, so the user's intent is satisfied; only the
+            // false record is what's being avoided.
+            if try await self.store.dismissFinding(id: findingID) {
+                try await self.store.appendActivityLogEntry(entry)
+            }
             self.findings = try await self.store.loadFindings()
             self.activityLog = try await self.store.loadActivityLog()
         }
