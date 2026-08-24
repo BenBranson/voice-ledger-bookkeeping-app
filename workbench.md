@@ -133,4 +133,8 @@ A critique of the form "this would look more capable if it claimed more" is reje
 
   Round 6 (fresh critic) now running — round 5 found a real gap, so this isn't yet a clean round for Gauntlet B.
 
+- **2026-08-24 — Gauntlet B, round 6 (fresh critic) — FIRST CLEAN ROUND.** Independently re-verified all 6 `AppState.swift` call sites populate `ActivityLogEntry.findingSummary` correctly (traced by reading each one), checked `ClientMemoryRule` as a possible second derived-record gap (confirmed fine — keyed on `(ruleID, vendorName)` by explicit design, two findings collapsing into one memory rule is intended, not a bug), re-checked the live `CleanupAssessmentView` list and `FindingsListView` row (both confirmed sufficient to triage — `finding.title` already carries vendor+amount, and both route through to `FindingDetailView` rather than being terminal artifacts, so they don't need inline `narrative`), and re-read all three `RootView.swift` export builders. Ran the real `DuplicatePostedExpenseRuleTests` (87/87) and `ActivityLogTests` (4/4) suites as evidence. **No new bug found.** First clean round after 5 straight rounds that each found something real.
+
+  Round 7 (fresh critic, explicitly briefed to independently verify — not rubber-stamp — round 6's clean verdict) now running — need a SECOND consecutive clean round before Gauntlet B is considered done, per the same stop condition used for Gauntlet A.
+
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*
