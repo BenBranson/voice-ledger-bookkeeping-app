@@ -85,14 +85,28 @@ public actor ClientStore {
     /// resolution path (§11.1) is explicit: a finding resolves because the
     /// rule stopped producing it (the exclusion fired), which
     /// `reconcileAgainstLatestRun` below makes visible.
-    public func reconcileAgainstLatestRun(currentRunFindingIDs: Set<String>, ruleID: RuleID) throws {
+    /// Returns the findings this call actually resolved, so the caller can
+    /// log each one. Gauntlet Loop, Gauntlet B round 10 (2026-08-24): this
+    /// used to just flip `status` with no return value — `ActivityKind
+    /// .findingResolved` existed in `Core/ActivityLog.swift` with its own
+    /// label but was never actually produced anywhere, so a finding could
+    /// silently vanish from the open list (an exclusion like `isVoided`
+    /// firing) with zero record of when or why, unlike a human dismissal
+    /// (`AppState.dismissFinding`), which always logs. A bookkeeper reading
+    /// the Activity & Correction Log — or a client asking why a finding
+    /// disappeared — had nothing to point to.
+    @discardableResult
+    public func reconcileAgainstLatestRun(currentRunFindingIDs: Set<String>, ruleID: RuleID) throws -> [Finding] {
         var existing = try loadFindings()
+        var resolved: [Finding] = []
         for i in existing.indices where existing[i].ruleID == ruleID && existing[i].status == .open {
             if !currentRunFindingIDs.contains(existing[i].id) {
                 existing[i].status = .resolved
+                resolved.append(existing[i])
             }
         }
         try save(existing, to: findingsURL)
+        return resolved
     }
 
     // MARK: - Imported statement lines (Universal Ingestion Tier 1)

@@ -407,7 +407,19 @@ public final class AppState {
                 }
             }
             for (ruleID, currentIDs) in currentRunIDsByRule {
-                try await store.reconcileAgainstLatestRun(currentRunFindingIDs: currentIDs, ruleID: ruleID)
+                let resolvedFindings = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: currentIDs, ruleID: ruleID)
+                for finding in resolvedFindings {
+                    try await store.appendActivityLogEntry(ActivityLogEntry(
+                        realmID: realmID,
+                        actor: .system,
+                        kind: .findingResolved,
+                        findingID: finding.id,
+                        ruleID: finding.ruleID,
+                        ruleVersion: finding.ruleVersion,
+                        findingSummary: finding.title,
+                        note: "No longer detected on this sync — the underlying issue appears to be fixed."
+                    ))
+                }
             }
 
             // Client Memory: an open finding matching an existing

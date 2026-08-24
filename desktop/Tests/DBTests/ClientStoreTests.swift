@@ -72,6 +72,38 @@ struct ClientStoreTests {
         #expect(loaded[0].status == .resolved)
     }
 
+    // Gauntlet Loop, Gauntlet B round 10 (2026-08-24): a fresh critic found
+    // that ActivityKind.findingResolved existed in Core/ActivityLog.swift
+    // with its own label but was never actually produced anywhere — a
+    // finding could silently vanish from the open list (an exclusion like
+    // isVoided firing) with zero Activity Log record of when or why, unlike
+    // a human dismissal (which always logs via AppState.dismissFinding).
+    // reconcileAgainstLatestRun now returns the findings it resolved so
+    // AppState.syncAndEvaluate() can log one findingResolved entry per
+    // resolution, the same way it already does for auto-dismissal.
+    @Test("reconcileAgainstLatestRun returns the findings it actually resolved, so the caller (AppState) can log each one — this is what the round 10 Activity Log fix depends on")
+    func reconcileReturnsResolvedFindings() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let ruleID = RuleID(rawValue: "VL-DUP-EXP-001")
+        try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
+
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID)
+        #expect(resolved.count == 1)
+        #expect(resolved[0].id == "abc123")
+        #expect(resolved[0].status == .resolved, "the returned copy already reflects the new status, not the pre-resolve one")
+    }
+
+    @Test("reconcileAgainstLatestRun returns an empty array when nothing resolved — a still-current finding is not reported as resolved")
+    func reconcileReturnsEmptyWhenNothingResolved() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let ruleID = RuleID(rawValue: "VL-DUP-EXP-001")
+        let finding = sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))
+        try await store.upsertFindings([finding])
+
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [finding.id], ruleID: ruleID)
+        #expect(resolved.isEmpty)
+    }
+
     @Test("dismissFinding marks an open finding dismissed")
     func dismissFindingMarksDismissed() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
