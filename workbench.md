@@ -42,8 +42,8 @@ A critique of the form "this would look more capable if it claimed more" is reje
 | # | Workstream | Gauntlet | Status | Round | Current gap |
 |---|---|---|---|---|---|
 | 1 | Rule logic robustness (`DuplicatePostedExpenseRule.swift`) | A | **DONE — 2 consecutive clean rounds** | 6 | None — closed out |
-| 2 | Evidence values + vendor + narrative sentence | B | **Built, critic round 1 running in background** | 1 | Awaiting fresh-critic actionability check |
-| 3 | Pre-approval checklist | B | **Built, critic round 1 running in background** | 1 | Awaiting fresh-critic actionability check |
+| 2 | Evidence values + vendor + narrative sentence | B | **Round 1 found 3 more gaps, all fixed — round 2 running to confirm** | 2 | Awaiting round 2 |
+| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty | B | **Round 1 found 3 more gaps, all fixed — round 2 running to confirm** | 2 | Awaiting round 2 |
 | 4 | Honesty/false-green audit across the slice | C | Not started | 0 | — |
 | 5 | Integration/smoothing pass | — | Not started | 0 | — |
 | 6 | (bonus, discovered mid-run) `VL-DUP-EXP-002` hardening | — | **Done** | — | None |
@@ -105,5 +105,12 @@ A critique of the form "this would look more capable if it claimed more" is reje
   - `Finding.preApprovalChecklist: [String]` (new) — spec'd at `05_FINDING_SCHEMA.md` §5.1, referenced but never built until now. Populated with concrete steps naming the real transaction ids.
   - `FindingDetailView.swift` updated to render all of the above, gracefully degrading to the old field-names-only display for the other 16 rules that haven't been given `fieldValues`/`narrative`/`preApprovalChecklist` yet (no regression to their screens).
   - 8 new Core tests + build + 358/358 full suite passing. A fresh Gauntlet B critic is now checking this against real traced rendering output (no macOS screenshot tool available in this environment, so the critic reconstructs literal on-screen strings by running real fixtures and tracing them through the actual view code line by line — a stricter substitute than a screenshot, not a weaker one).
+
+- **2026-08-23 — Gauntlet B, round 1 (fresh critic) — 3 more real gaps found, all fixed.** The critic confirmed the three originally-known fixes were real (traced actual computed `Finding` values through the actual view code for T1/T2/T3, including boundary cases like exactly 1 day apart), then found three more by actually trying to write the decision a bookkeeper would make:
+  1. **The payment account shown was a raw QBO account id** ("35"), not a bank name — appeared in the evidence table, narrative sentence, AND the pre-approval checklist's own "go check the statement for ___" instruction. **Fixed**: resolves via `input.accounts` (already synced, same lookup `CreditCardPaymentMiscodedRule` already does), falling back to the raw id only when genuinely unresolvable.
+  2. **Dismiss had no stated consequence and no confirmation** — the Approve path got dollar-denominated consequences; Dismiss (equally consequential — it's a permanent, silent suppression of that exact finding on every future sync) got nothing. **Fixed**: added a caption stating exactly that, next to the button.
+  3. **Nothing said what happens if a finding is left open** (neither approved nor dismissed) — the Gauntlet B bar explicitly asks this and it wasn't addressed in round 1's build. **Fixed**: new `Finding.riskIfIgnored: String?` (additive, spec'd at §5.1), populated with the concrete ongoing consequence, rendered in its own "IF LEFT OPEN" section.
+  - Minor/considered-not-fixed: the critic flagged the unpadded date format ("2026-7-14") as looking unpolished — considered, deliberately left as-is, since fixing it only in this rule would create a NEW inconsistency with two sibling rules' identical date-formatting convention; a shared date-formatting utility applied consistently is the right fix, correctly out of scope for a one-rule pass. `Money.description`'s own doc comment self-flags as provisional/non-final UI text — genuinely real, but shared infrastructure used by every rule and report in the app, far outside this pass's scope; noted, not touched.
+  - 3 new Core tests, 85 rule tests total, 361/361 full suite, clean build. Round 2 (fresh critic) now running to confirm these hold up.
 
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*

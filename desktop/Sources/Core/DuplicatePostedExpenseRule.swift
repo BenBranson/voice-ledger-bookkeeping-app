@@ -21,11 +21,21 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
         ruleClass: .categorization,
         page: .page3Transactions,
         accountingPrinciple: "Each economic event should be recorded once. Two postings sharing vendor, amount, date, and payment account are presumptively the same event recorded twice, which overstates expense and understates cash or accounts payable.",
-        sourceDependencies: [SourceDependency(entity: .purchase)]
+        // Gauntlet Loop, Gauntlet B (2026-08-23): added `.account` — the
+        // narrative/evidence/checklist all name the payment account, and a
+        // human needs its real name (e.g. "Checking"), not QBO's raw
+        // internal account id. `.entities`/`sourceDependencies` are
+        // documentation metadata only (never an engine-enforced gate,
+        // confirmed by reading `RuleEngineActor.swift` — nothing reads this
+        // set to decide coverage), so this is safe to add; `input.accounts`
+        // is already populated on every sync regardless, the same data
+        // `CreditCardPaymentMiscodedRule` already resolves account names
+        // from.
+        sourceDependencies: [SourceDependency(entity: .purchase), SourceDependency(entity: .account)]
     )
 
     public static let requirements = DataRequirements(
-        entities: [.purchase],
+        entities: [.purchase, .account],
         requiredCoverage: .complete
     )
 
@@ -55,6 +65,19 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
 
     public static func evaluate(_ input: NormalizedDataSet, context: RuleContext) -> RuleOutcome {
         let purchases = input.transactions.filter { $0.entityKind == .purchase }
+
+        // Gauntlet Loop, Gauntlet B (2026-08-23): resolve a payment account
+        // id to its real name — same lookup pattern already used by
+        // `CreditCardPaymentMiscodedRule`. Falls back to the raw id only
+        // when the account genuinely isn't in `input.accounts` (should be
+        // rare — every account this rule could ever reference came from the
+        // same sync that populated this list), so this never renders
+        // "unknown"/blank for a real account.
+        let accountsByID = Dictionary(uniqueKeysWithValues: input.accounts.map { ($0.id, $0) })
+        func accountLabel(_ accountID: String?) -> String {
+            guard let accountID else { return "an unrecorded account" }
+            return accountsByID[accountID]?.name ?? accountID
+        }
 
         var findings: [Finding] = []
         var consideredPairs: Set<Set<String>> = []
@@ -201,8 +224,8 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                         "date": Self.formatted(txn.txnDate),
                         "vendor": vendorA
                     ]
-                    if let account = txn.paymentAccountID {
-                        values["paymentAccount"] = account
+                    if txn.paymentAccountID != nil {
+                        values["paymentAccount"] = accountLabel(txn.paymentAccountID)
                     }
                     if let doc = txn.docNumber, !doc.isEmpty {
                         values["docNumber"] = doc
@@ -229,9 +252,9 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                     narrative = "Two purchases from \(vendorA) for \(exposure) share the same reference number (\(a.docNumber ?? "")) — dated \(Self.formatted(a.txnDate)) and \(Self.formatted(b.txnDate))."
                 case "T3":
                     let days = AccountingDate.daysBetween(a.txnDate, b.txnDate)
-                    narrative = "Two purchases from \(vendorA) for \(exposure) were posted \(days) day\(days == 1 ? "" : "s") apart (\(Self.formatted(a.txnDate)) and \(Self.formatted(b.txnDate))), both from \(a.paymentAccountID ?? "the same account") — close enough to likely be the same expense entered twice."
+                    narrative = "Two purchases from \(vendorA) for \(exposure) were posted \(days) day\(days == 1 ? "" : "s") apart (\(Self.formatted(a.txnDate)) and \(Self.formatted(b.txnDate))), both from \(accountLabel(a.paymentAccountID)) — close enough to likely be the same expense entered twice."
                 default: // T1
-                    narrative = "Two purchases from \(vendorA) for \(exposure) were both posted on \(Self.formatted(a.txnDate)), from \(a.paymentAccountID ?? "the same account") — this looks like the same expense recorded twice."
+                    narrative = "Two purchases from \(vendorA) for \(exposure) were both posted on \(Self.formatted(a.txnDate)), from \(accountLabel(a.paymentAccountID)) — this looks like the same expense recorded twice."
                 }
 
                 // Gauntlet Loop, Gauntlet B (2026-08-23): spec'd at
@@ -240,9 +263,18 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                 // "Before proceeding" note — never actually built until now.
                 let preApprovalChecklist = [
                     "Open both transactions (\(a.id) and \(b.id)) in QuickBooks Online and view them side by side",
-                    "Pull up the actual bank or card statement for \(a.paymentAccountID ?? "the account") and confirm whether one or two withdrawals actually occurred",
+                    "Pull up the actual bank or card statement for \(accountLabel(a.paymentAccountID)) and confirm whether one or two withdrawals actually occurred",
                     "Do not assume either transaction is \"the duplicate\" before checking — only the bank statement can tell you that"
                 ]
+
+                // Gauntlet Loop, Gauntlet B critic pass (2026-08-23): spec'd
+                // at docs/phase-0/05_FINDING_SCHEMA.md §5.1 as
+                // `riskIfIgnored: RiskStatement` — a fresh critic checking
+                // the finding surface explicitly asked "does the finding say
+                // what happens if ignored?" and found the answer was no.
+                // Deterministic, states the concrete, ongoing consequence of
+                // leaving this open rather than approving or dismissing it.
+                let riskIfIgnored = "This finding will keep reappearing on every future sync until it's resolved or dismissed. Until then, \(exposure) may be sitting in your books as a duplicate expense — overstating spend and understating cash or accounts payable by that amount."
 
                 // Gauntlet Loop, Gauntlet A round 4 (2026-08-23): the
                 // original wording named `b.id` as "the duplicate Purchase"
@@ -328,7 +360,8 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
                     // would be silently ignored forever.
                     vendorName: vendorA,
                     narrative: narrative,
-                    preApprovalChecklist: preApprovalChecklist
+                    preApprovalChecklist: preApprovalChecklist,
+                    riskIfIgnored: riskIfIgnored
                 ))
             }
         }
@@ -356,6 +389,17 @@ public enum DuplicatePostedExpenseRule: MultiTierRule {
     /// `PayrollLumpSumRule`) rather than inventing a new format —
     /// `AccountingDate` has no `CustomStringConvertible` conformance of its
     /// own, so an un-formatted `"\(date)"` would print the raw struct.
+    ///
+    /// Gauntlet Loop, Gauntlet B critic pass (2026-08-23): a fresh critic
+    /// flagged this unpadded numeric form ("2026-7-14") as reading less
+    /// polished than a spelled-out date ("July 14, 2026") could. Considered
+    /// and deliberately left as-is: this exact format is shared with
+    /// `CreditCardPaymentMiscodedRule`/`PayrollLumpSumRule`'s own guided-
+    /// procedure text — changing it only here would swap one inconsistency
+    /// (unpolished but uniform) for a worse one (polished in this rule,
+    /// mismatched everywhere else a date appears). A shared date-formatting
+    /// utility, applied consistently across every rule, is the right fix —
+    /// out of scope for a pass on this one rule alone.
     private static func formatted(_ date: AccountingDate) -> String {
         "\(date.year)-\(date.month)-\(date.day)"
     }

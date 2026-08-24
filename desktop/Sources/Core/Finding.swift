@@ -212,6 +212,15 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
     /// procedure itself (which is what to do AFTER deciding to act).
     /// Additive, empty for every rule that hasn't been given one yet.
     public let preApprovalChecklist: [String]
+    /// Gauntlet Loop, Gauntlet B critic pass (2026-08-23): spec'd at
+    /// `docs/phase-0/05_FINDING_SCHEMA.md` §5.1 as `riskIfIgnored:
+    /// RiskStatement` — a fresh critic explicitly checked "does the finding
+    /// say what happens if ignored?" and found nothing did. States the
+    /// concrete, ongoing consequence of leaving a finding open (neither
+    /// approved nor dismissed) — distinct from `ProposedAction.consequences`,
+    /// which describes what happens if you DO act. Additive, `nil` for every
+    /// rule that hasn't been given one yet.
+    public let riskIfIgnored: String?
 
     public init(
         id: String,
@@ -229,7 +238,8 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         status: FindingStatus = .open,
         vendorName: String? = nil,
         narrative: String? = nil,
-        preApprovalChecklist: [String] = []
+        preApprovalChecklist: [String] = [],
+        riskIfIgnored: String? = nil
     ) {
         self.id = id
         self.ruleID = ruleID
@@ -247,6 +257,7 @@ public struct Finding: Identifiable, Hashable, Codable, Sendable {
         self.vendorName = vendorName
         self.narrative = narrative
         self.preApprovalChecklist = preApprovalChecklist
+        self.riskIfIgnored = riskIfIgnored
     }
 }
 

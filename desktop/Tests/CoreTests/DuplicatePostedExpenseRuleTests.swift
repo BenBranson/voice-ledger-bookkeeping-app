@@ -45,11 +45,12 @@ struct DuplicatePostedExpenseRuleTests {
         )
     }
 
-    func dataSet(_ transactions: [LedgerTransaction], coverage: Coverage = .complete, customTxnNumbers: Bool = false) -> NormalizedDataSet {
+    func dataSet(_ transactions: [LedgerTransaction], coverage: Coverage = .complete, customTxnNumbers: Bool = false, accounts: [LedgerAccount] = []) -> NormalizedDataSet {
         NormalizedDataSet(
             realmID: realm,
             period: period,
             transactions: transactions,
+            accounts: accounts,
             coverage: coverage,
             companyFacts: CompanyFacts(customTxnNumbersForPurchases: customTxnNumbers)
         )
@@ -1413,5 +1414,53 @@ struct DuplicatePostedExpenseRuleTests {
         }
         #expect(!finding.preApprovalChecklist.isEmpty)
         #expect(finding.preApprovalChecklist.contains(where: { $0.contains("145") && $0.contains("151") }))
+    }
+
+    // MARK: - Gauntlet Loop, Gauntlet B critic pass (2026-08-23) — a fresh
+    // critic found three more real gaps after the first round of fixes:
+    // the payment account shown was a raw QBO account id, not its real
+    // name; Dismiss had no stated consequence; and nothing said what
+    // happens if a finding is left open.
+
+    @Test("GAUNTLET B (critic pass): when the real account is present in input.accounts, evidence/narrative/checklist all show its NAME, not the raw QBO account id")
+    func gauntletBCriticAccountNameResolvedWhenAvailable() {
+        let a = purchase(id: "1", date: AccountingDate(year: 2026, month: 7, day: 14), account: "35")
+        let b = purchase(id: "2", date: AccountingDate(year: 2026, month: 7, day: 14), account: "35")
+        let checkingAccount = LedgerAccount(id: "35", name: "Checking", accountType: .bank)
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], accounts: [checkingAccount]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        #expect(finding.evidence.allSatisfy { $0.fieldValues["paymentAccount"] == "Checking" })
+        #expect(finding.narrative?.contains("Checking") == true)
+        #expect(finding.narrative?.contains("35") == false, "the raw account id must not leak into the narrative once a real name is available")
+        #expect(finding.preApprovalChecklist.contains(where: { $0.contains("Checking") }))
+    }
+
+    @Test("GAUNTLET B (critic pass): when the account is NOT present in input.accounts (e.g. accounts weren't synced), evidence/narrative fall back to the raw id rather than showing nothing")
+    func gauntletBCriticAccountFallsBackToRawIDWhenUnresolved() {
+        let a = purchase(id: "1", account: "checking-1")
+        let b = purchase(id: "2", account: "checking-1")
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b], accounts: []), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        #expect(finding.evidence.allSatisfy { $0.fieldValues["paymentAccount"] == "checking-1" })
+    }
+
+    @Test("GAUNTLET B (critic pass): riskIfIgnored is populated with a concrete, non-empty statement naming the real dollar amount")
+    func gauntletBCriticRiskIfIgnoredIsPopulated() {
+        let a = purchase(id: "1", amountMinorUnits: 48_620)
+        let b = purchase(id: "2", amountMinorUnits: 48_620)
+        let outcome = DuplicatePostedExpenseRule.evaluate(dataSet([a, b]), context: context())
+        guard case .findings(let findings) = outcome, let finding = findings.first else {
+            Issue.record("expected a finding, got \(outcome)")
+            return
+        }
+        let risk = try! #require(finding.riskIfIgnored)
+        #expect(risk.contains("USD 486.20"))
+        #expect(!risk.isEmpty)
     }
 }

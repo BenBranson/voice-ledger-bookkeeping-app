@@ -342,14 +342,49 @@ public struct FindingDetailView: View {
                     .padding(.top, VLSpacing.xs)
                 }
 
+                // Gauntlet Loop, Gauntlet B critic pass (2026-08-23): a
+                // fresh critic found the Approve path had dollar-denominated
+                // consequences (above) while leaving the finding OPEN —
+                // neither approved nor dismissed — had none stated anywhere.
+                // Shown only when the rule populated `riskIfIgnored`; nil
+                // for the other 16 rules, no change to their screens.
+                if let riskIfIgnored = finding.riskIfIgnored {
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        Text("IF LEFT OPEN")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        Text(riskIfIgnored)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                    }
+                    .padding(.top, VLSpacing.xs)
+                }
+
                 if let details = action.apiWriteDetails {
                     applyFixSection(details)
                 } else {
-                    HStack(spacing: VLSpacing.sm) {
-                        Button("Approve") { onStartProcedure(action) }
-                            .buttonStyle(.borderedProminent)
-                        Button("Dismiss") { onDismiss() }
-                            .buttonStyle(.bordered)
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        HStack(spacing: VLSpacing.sm) {
+                            Button("Approve") { onStartProcedure(action) }
+                                .buttonStyle(.borderedProminent)
+                            Button("Dismiss") { onDismiss() }
+                                .buttonStyle(.bordered)
+                        }
+                        // Gauntlet Loop, Gauntlet B critic pass (2026-08-23):
+                        // Dismiss is a single click with no confirmation and
+                        // no adjacent text at all — unlike "Always Dismiss
+                        // for <vendor>" (Client Memory), which DOES get a
+                        // confirm step. A bookkeeper had no way to know from
+                        // the screen that Dismiss permanently suppresses
+                        // re-detection of this exact transaction pair
+                        // (`AppState.dismissFinding` feeds the id into
+                        // `RuleContext.dismissedFindingIDs`, which every
+                        // rule checks on every future sync) — not a snooze,
+                        // not FYI-only.
+                        Text("Dismiss suppresses this exact finding permanently — it will not reappear on future syncs unless something about these two transactions changes.")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
                     }
                     .padding(.top, VLSpacing.xs)
                 }
