@@ -618,6 +618,22 @@ struct RootView: View {
         )
     }
 
+    // Gauntlet Loop, Gauntlet B round 4 critic pass (2026-08-23): a fresh
+    // critic checked whether a THIRD (and fourth) consumer of `Finding`
+    // had also been missed by the finding-detail-screen fixes, beyond
+    // `FindingDetailView` and `ClientQuestionDrafter` — and found this one.
+    // This export is a TERMINAL artifact (a PDF/XLSX handed to a client or
+    // kept as a sales document, per `CLEANUP_MODE.md`'s "doubles as a sales
+    // document"), not a clickable in-app row — there is no path back into
+    // `FindingDetailView` from the exported file. Two genuinely distinct
+    // findings from the same rule, same vendor, same dollar amount but
+    // different dates (a real, buildable scenario for VL-DUP-EXP-001) used
+    // to render as byte-for-byte identical rows once exported — real,
+    // verified by constructing exactly that pair and diffing the two rows.
+    // Adding `finding.narrative` (empty string for the 16 rules that don't
+    // have one yet, same graceful-degradation pattern used everywhere else
+    // this pass) keeps exported rows distinguishable and self-explanatory
+    // once they leave the app.
     private static func exportTable(findingSummaries summaries: [CleanupAssessmentView.RuleSummary]) -> ExportTable {
         var rows: [[ExportCell]] = []
         for summary in summaries {
@@ -627,11 +643,12 @@ struct RootView: View {
                     ExportCell(text: finding.title),
                     ExportCell(text: finding.severity.rawValue.capitalized),
                     ExportCell(text: finding.confidence.rawValue.capitalized),
-                    ExportCell.money(finding.dollarExposure)
+                    ExportCell.money(finding.dollarExposure),
+                    ExportCell(text: finding.narrative ?? "")
                 ])
             }
         }
-        return ExportTable(title: "Cleanup Assessment", columns: ["Rule", "Finding", "Severity", "Confidence", "Dollar Exposure"], rows: rows)
+        return ExportTable(title: "Cleanup Assessment", columns: ["Rule", "Finding", "Severity", "Confidence", "Dollar Exposure", "Details"], rows: rows)
     }
 
     private static func exportTable(activityLog entries: [ActivityLogEntry]) -> ExportTable {

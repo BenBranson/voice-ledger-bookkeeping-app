@@ -42,8 +42,8 @@ A critique of the form "this would look more capable if it claimed more" is reje
 | # | Workstream | Gauntlet | Status | Round | Current gap |
 |---|---|---|---|---|---|
 | 1 | Rule logic robustness (`DuplicatePostedExpenseRule.swift`) | A | **DONE — 2 consecutive clean rounds** | 6 | None — closed out |
-| 2 | Evidence values + vendor + narrative sentence | B | **Round 3 found 1 more gap in a second Finding consumer (fixed) — round 4 running to confirm** | 4 | Awaiting round 4 |
-| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty + ClientQuestionDrafter | B | **Round 3 found 1 more gap in a second Finding consumer (fixed) — round 4 running to confirm** | 4 | Awaiting round 4 |
+| 2 | Evidence values + vendor + narrative sentence | B | **Round 4 found 1 more gap in a THIRD/FOURTH Finding consumer (fixed) — round 5 running to confirm** | 5 | Awaiting round 5 |
+| 3 | Pre-approval checklist + risk-if-ignored + Dismiss honesty + ClientQuestionDrafter + Cleanup Assessment export | B | **Round 4 found 1 more gap in a THIRD/FOURTH Finding consumer (fixed) — round 5 running to confirm** | 5 | Awaiting round 5 |
 | 4 | Honesty/false-green audit across the slice | C | Not started | 0 | — |
 | 5 | Integration/smoothing pass | — | Not started | 0 | — |
 | 6 | (bonus, discovered mid-run) `VL-DUP-EXP-002` hardening | — | **Done** | — | None |
@@ -122,5 +122,10 @@ A critique of the form "this would look more capable if it claimed more" is reje
   - This is a useful, generalizable lesson for the loop: hardening a screen's OWN rendering code isn't sufficient when a Finding's fields feed a second, independent consumer — worth checking for other such consumers (e.g. anything else that reads `Finding` and formats it for a different audience) before considering Gauntlet B fully closed.
 
   Round 4 (fresh critic) now running — round 3 found a real gap, so this isn't yet a clean round for Gauntlet B.
+
+- **2026-08-23 — Gauntlet B, round 4 (fresh critic) — asked "is there a THIRD consumer of Finding nobody's checked," and found one.** Grepped the whole `Sources/` tree for every reader of `Finding.title`/`.evidence`/`.vendorName`/`.narrative`/`.riskIfIgnored`/`.preApprovalChecklist` (34 hits) and traced each candidate. `CleanupAssessmentView`'s finding rows are just a click-through into the already-fixed `FindingDetailView` — fine. But `RootView.swift`'s `exportTable(findingSummaries:)` — the function that builds the actual PDF/XLSX exported from the Cleanup Assessment page, a **terminal artifact** the project's own backlog doc says "doubles as a sales document," with no click-through back into the app — only ever read `title`/`severity`/`confidence`/`dollarExposure`, never `narrative`. Constructed two genuinely distinct real duplicate-expense findings (same vendor, same amount, different dates) and confirmed their exported rows were byte-for-byte identical — someone reading the exported file (a client, or the owner pricing an engagement) could not tell these were two separate incidents or know which transactions either referred to. **Fixed**: added a "Details" column populated with `finding.narrative ?? ""` (empty for the 16 rules without one yet, same degrade-gracefully pattern as everywhere else). No dedicated regression test possible — `RootView.swift` is in the `VoiceLedgerApp` executable target, which has no test target (a pre-existing architectural limitation, not introduced by this fix); verified by direct code inspection and a full clean build/test instead. 367/367 full suite (unchanged — this fix lives in an untestable target), clean build.
+  - **Pattern worth noting explicitly**: every one of the last 3 rounds found a genuinely NEW consumer of `Finding` that the previous rounds' fixes hadn't reached, rather than a variation on an already-found issue. Round 5 is specifically checking whether that pattern continues or has actually run out.
+
+  Round 5 (fresh critic) now running — round 4 found a real gap, so this isn't yet a clean round for Gauntlet B.
 
 *(Updated live as rounds complete — reload this file rather than asking for a status update.)*
