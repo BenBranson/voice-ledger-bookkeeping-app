@@ -286,6 +286,38 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
         self.syncToken = syncToken
         self.provenance = provenance
     }
+
+    // Gauntlet Loop, Gauntlet B round 8 (2026-08-24): the identical
+    // backward-compatibility bug found and fixed in `Finding`/`EvidenceItem`
+    // (see their `init(from:)` comments) — `lineAccountIDs`/`lines` are
+    // non-optional with a default only on the `init(...)` parameter, which
+    // synthesized `Decodable` does not honor for a missing key. Worse here
+    // than for `Finding`: `ClientStore.loadImportedStatementLines()` is
+    // called un-guarded inside `AppState.syncAndEvaluate()`'s main `do`
+    // block, so a decode failure fails the ENTIRE sync silently (no error
+    // ever rendered), not just the findings list. `syncToken` is `Optional`
+    // and needs no fix — Swift's synthesis already defaults it to `nil`.
+    private enum CodingKeys: String, CodingKey {
+        case id, entityKind, vendorName, txnDate, totalAmount, paymentAccountID
+        case docNumber, isVoided, memo, lineAccountIDs, lines, syncToken, provenance
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        entityKind = try container.decode(QBOEntityKind.self, forKey: .entityKind)
+        vendorName = try container.decodeIfPresent(String.self, forKey: .vendorName)
+        txnDate = try container.decode(AccountingDate.self, forKey: .txnDate)
+        totalAmount = try container.decode(Money.self, forKey: .totalAmount)
+        paymentAccountID = try container.decodeIfPresent(String.self, forKey: .paymentAccountID)
+        docNumber = try container.decodeIfPresent(String.self, forKey: .docNumber)
+        isVoided = try container.decode(Bool.self, forKey: .isVoided)
+        memo = try container.decodeIfPresent(String.self, forKey: .memo)
+        lineAccountIDs = try container.decodeIfPresent([String].self, forKey: .lineAccountIDs) ?? []
+        lines = try container.decodeIfPresent([LedgerTransactionLine].self, forKey: .lines) ?? []
+        syncToken = try container.decodeIfPresent(String.self, forKey: .syncToken)
+        provenance = try container.decode(Provenance.self, forKey: .provenance)
+    }
 }
 
 /// docs/phase-0/08_RULE_ENGINE.md §8.2b, §11.2. Cached company-level facts a
