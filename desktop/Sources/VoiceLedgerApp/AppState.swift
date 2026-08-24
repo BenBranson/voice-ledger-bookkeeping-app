@@ -765,6 +765,21 @@ public final class AppState {
     /// un-dismiss findings that were already auto-dismissed by it — same
     /// one-way posture `ClientStore.dismissFinding` already has, documented
     /// there as a real, acknowledged gap rather than an oversight.
+    ///
+    /// Known gap (Gauntlet Loop, Gauntlet B round 17, 2026-08-24, deliberately
+    /// NOT fixed here): this has the identical silent-failure shape rounds
+    /// 13-16 fixed everywhere on `VL-DUP-EXP-001`'s own finding surface —
+    /// on failure it only sets the unread `loadState.failed`, and its only
+    /// caller, `ClientMemoryView` (via `RootView.swift`'s `onForget`), has
+    /// no error parameter to render one even if this method grew one.
+    /// Correctly out of scope for THIS run: `ClientMemoryView` is a
+    /// separate page (`.clientMemory`), not `FindingDetailView` or any type
+    /// this rule's finding surface renders — unlike round 16's finding
+    /// (buttons literally ON `FindingDetailView`), this one doesn't meet
+    /// this run's own scope test. Needs its own error field (not
+    /// `findingActionError` — this method isn't scoped to a finding, it
+    /// acts on a `ClientMemoryRule.id`) and its own UI plumbing in
+    /// `ClientMemoryView.swift` whenever that page is hardened.
     public func removeClientMemoryRule(id: String, actorName: String) async {
         guard let rule = clientMemoryRules.first(where: { $0.id == id }) else { return }
         do {

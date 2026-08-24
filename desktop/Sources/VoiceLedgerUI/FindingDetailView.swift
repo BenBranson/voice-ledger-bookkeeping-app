@@ -69,6 +69,21 @@ public struct FindingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
                 header
+                // Gauntlet Loop, Gauntlet B round 17 (2026-08-24): a fresh
+                // critic found this used to render inside `actionSection`,
+                // ABOVE `clientQuestionSection`/`clientMemorySection` in
+                // page order — a bookkeeper who scrolled down to draft a
+                // client question or remember a vendor, and that specific
+                // action failed, would see the error appear off-screen
+                // above their scroll position with no auto-scroll and no
+                // per-section inline error. Moved to a fixed position
+                // right below the title, visible regardless of which
+                // action further down the page actually failed.
+                if let findingActionError {
+                    Text(findingActionError)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.red)
+                }
                 evidenceSection
                 if let principle = accountingPrinciple {
                     whyThisMattersSection(principle)
@@ -108,11 +123,18 @@ public struct FindingDetailView: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
                     HStack(spacing: VLSpacing.sm) {
+                        // Gauntlet Loop, Gauntlet B round 17 (2026-08-24):
+                        // disabled while an Apply Fix write is in flight for
+                        // THIS finding — a fresh critic found tapping this
+                        // mid-write would clear `findingActionError` before
+                        // Apply Fix's own outcome was known, hiding a real,
+                        // still-unresolved error.
                         Button("Confirm — Always Dismiss for \(vendorName)") {
                             onRememberVendor()
                             isConfirmingRememberVendor = false
                         }
                         .buttonStyle(.borderedProminent)
+                        .disabled(isApplyingFix)
                         Button("Cancel") { isConfirmingRememberVendor = false }
                             .buttonStyle(.bordered)
                     }
@@ -147,12 +169,14 @@ public struct FindingDetailView: View {
                         .background(VLColor.background)
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
                     HStack(spacing: VLSpacing.sm) {
+                        // Same reasoning as `clientMemorySection`'s "Confirm"
+                        // button — round 17.
                         Button("Mark as Sent") {
                             onSendClientQuestion(draftedQuestionText)
                             isDraftingClientQuestion = false
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(draftedQuestionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(draftedQuestionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isApplyingFix)
                         Button("Cancel") { isDraftingClientQuestion = false }
                             .buttonStyle(.bordered)
                     }
@@ -362,13 +386,6 @@ public struct FindingDetailView: View {
                 // neither approved nor dismissed — had none stated anywhere.
                 // Shown only when the rule populated `riskIfIgnored`; nil
                 // for the other 16 rules, no change to their screens.
-                if let findingActionError {
-                    Text(findingActionError)
-                        .font(VLTypography.caption())
-                        .foregroundStyle(.red)
-                        .padding(.top, VLSpacing.xs)
-                }
-
                 if let riskIfIgnored = finding.riskIfIgnored {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         Text("IF LEFT OPEN")
