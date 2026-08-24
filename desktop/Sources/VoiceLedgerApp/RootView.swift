@@ -115,7 +115,7 @@ struct RootView: View {
                     finding: finding,
                     writeAccessEnabled: state.writeAccessEnabled == true,
                     isApplyingFix: state.isApplyingFix,
-                    applyFixError: state.applyFixError,
+                    applyFixError: state.applyFixError?.findingID == findingID ? state.applyFixError?.message : nil,
                     hasClientMemoryRule: finding.vendorName.map { vendorName in
                         state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
                     } ?? false,

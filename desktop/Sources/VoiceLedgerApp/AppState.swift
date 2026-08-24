@@ -83,7 +83,17 @@ public final class AppState {
 
     // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
     public private(set) var isApplyingFix = false
-    public private(set) var applyFixError: String?
+    // Gauntlet Loop, Gauntlet B round 13 (2026-08-24): this used to be a
+    // bare `String?`, not scoped to a finding — a rejected/failed write on
+    // Finding A left the error string standing until the NEXT
+    // `applyStagedFix` call (for any finding), since navigating between
+    // findings never cleared it. A bookkeeper who saw the error on A, went
+    // back, and opened unrelated Finding B would see A's stale error
+    // rendered on B — including a reference to A's own transaction id,
+    // actively misattributed guidance rather than a merely-missing one.
+    // Now keyed by `findingID` so a view only ever renders an error that's
+    // actually about the finding it's showing.
+    public private(set) var applyFixError: (findingID: String, message: String)?
 
     // Universal Ingestion Tier 1 — Bank Feed Cleanup (Page 4) import state.
     public struct PendingCSVImport {
@@ -844,7 +854,19 @@ public final class AppState {
                 newAccountID: details.suggestedAccountID
             )
             guard result.verified else {
-                applyFixError = "QBO did not confirm the change — nothing was recorded as resolved. Re-sync and check the transaction directly before retrying."
+                let message = "QBO did not confirm the change — nothing was recorded as resolved. Re-sync and check the transaction directly before retrying."
+                applyFixError = (findingID: findingID, message: message)
+                try await store.appendActivityLogEntry(ActivityLogEntry(
+                    realmID: realmID,
+                    actor: .user(actorName),
+                    kind: .apiWriteRejected,
+                    findingID: findingID,
+                    ruleID: finding.ruleID,
+                    ruleVersion: finding.ruleVersion,
+                    findingSummary: finding.title,
+                    note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — QBO did not confirm the change."
+                ))
+                activityLog = try await store.loadActivityLog()
                 isApplyingFix = false
                 return
             }
@@ -869,7 +891,18 @@ public final class AppState {
             await syncAndEvaluate()
             screen = .list
         } catch {
-            applyFixError = "\(error)"
+            applyFixError = (findingID: findingID, message: "\(error)")
+            try? await store.appendActivityLogEntry(ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: .apiWriteRejected,
+                findingID: findingID,
+                ruleID: finding.ruleID,
+                ruleVersion: finding.ruleVersion,
+                findingSummary: finding.title,
+                note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — the call failed before QBO could respond: \(error)"
+            ))
+            activityLog = (try? await store.loadActivityLog()) ?? activityLog
             isApplyingFix = false
         }
     }

@@ -46,6 +46,18 @@ public enum ActivityKind: String, Codable, Sendable {
     /// a time (`findingDismissed`), so the Activity Log can tell the two
     /// apart. Never silent: this entry IS the record that it happened.
     case findingAutoDismissedByClientMemory
+    /// A `.stagedAPI` write was attempted but QBO either did not confirm it
+    /// (`verified: false`) or the call itself threw — distinct from
+    /// `apiWriteApplied` the same way `findingDismissed` is distinct from
+    /// `findingResolved`: this is "an attempt happened and did NOT
+    /// succeed," not silence. Gauntlet Loop, Gauntlet B round 13
+    /// (2026-08-24): a fresh critic found `applyStagedFix`'s rejected/
+    /// thrown branches produced zero Activity Log record at all, so
+    /// `ActivityLogView`'s own claim to "prove what Voice Ledger ...
+    /// submitted" was false for exactly the writes that mattered most to
+    /// prove (the ones that didn't go through). The `note` field carries
+    /// the rejection/error detail.
+    case apiWriteRejected
 
     /// A human-readable label, shared by every renderer of this enum.
     /// Gauntlet Loop, Gauntlet B round 5 (2026-08-24): `ClosePackageView`
@@ -58,6 +70,7 @@ public enum ActivityKind: String, Codable, Sendable {
         case .manualCompletionAttested: return "Manual completion attested"
         case .findingResolved: return "Finding resolved"
         case .apiWriteApplied: return "API write applied"
+        case .apiWriteRejected: return "API write not confirmed"
         case .clientQuestionDrafted: return "Client question sent"
         case .findingDismissed: return "Finding dismissed"
         case .clientMemoryRuleCreated: return "Client memory rule created"

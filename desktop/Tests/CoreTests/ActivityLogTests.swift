@@ -35,13 +35,22 @@ struct ActivityLogTests {
     func everyActivityKindHasAHumanLabel() {
         let kinds: [ActivityKind] = [
             .findingDetected, .manualCompletionAttested, .findingResolved, .apiWriteApplied,
-            .clientQuestionDrafted, .findingDismissed, .clientMemoryRuleCreated,
+            .apiWriteRejected, .clientQuestionDrafted, .findingDismissed, .clientMemoryRuleCreated,
             .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory
         ]
         for kind in kinds {
             #expect(!kind.humanLabel.isEmpty)
             #expect(kind.humanLabel != kind.rawValue, "\(kind.rawValue) should not be shown to a user as its raw case name")
         }
+    }
+
+    // Gauntlet Loop, Gauntlet B round 13 (2026-08-24): a rejected/unverified
+    // staged write used to leave zero Activity Log record, so
+    // ActivityLogView's own "can prove what Voice Ledger ... submitted"
+    // claim was false for exactly the writes that mattered most to prove.
+    @Test("apiWriteApplied and apiWriteRejected have distinct labels — a success is never confusable with a rejection in the log")
+    func apiWriteAppliedAndRejectedAreDistinct() {
+        #expect(ActivityKind.apiWriteApplied.humanLabel != ActivityKind.apiWriteRejected.humanLabel)
     }
 
     @Test("Actor.displayLabel names the user, not just 'a user'")
