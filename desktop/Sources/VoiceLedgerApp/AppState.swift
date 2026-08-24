@@ -932,6 +932,19 @@ public final class AppState {
     /// `findingActionError` — this method isn't scoped to a finding, it
     /// acts on a `ClientMemoryRule.id`) and its own UI plumbing in
     /// `ClientMemoryView.swift` whenever that page is hardened.
+    ///
+    /// Second known gap (round 23, 2026-08-24, also deliberately not fixed
+    /// here, same scope reasoning): `ClientStore.removeClientMemoryRule`
+    /// is a silent no-op on an unknown id (no return value at all, unlike
+    /// `ClientStore.dismissFinding`'s round-22 fix), but this method
+    /// unconditionally logs `.clientMemoryRuleRemoved` regardless. A
+    /// double-tap on `ClientMemoryView`'s "Forget" button (no in-flight
+    /// disabling exists) — or any two concurrent removals of the same
+    /// rule — makes the second call a genuine no-op that still gets
+    /// logged as if it removed something. Same false-positive-log-on-
+    /// no-op-success class round 22 fixed for `dismissFinding`; needs the
+    /// same `ClientStore.removeClientMemoryRule` → `Bool` treatment
+    /// whenever this page is hardened.
     public func removeClientMemoryRule(id: String, actorName: String) async {
         guard let rule = clientMemoryRules.first(where: { $0.id == id }) else { return }
         do {
