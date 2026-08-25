@@ -272,14 +272,35 @@ public final class AppState {
         self.engine = RuleEngine(rules: RuleRegistry.all)
     }
 
+    // Gauntlet Loop, Gauntlet C round 8 (2026-08-24): had the identical
+    // pre-round-4 shape `syncAndEvaluate()` used to have — each `self.`
+    // publish landed as its own `load` call succeeded, not resolved into
+    // locals first. `ClientStore` is one independent JSON file per data
+    // type; a single corrupted file (a real failure mode for this exact
+    // storage design — a crash mid-write, a partial disk write) makes a
+    // LATER call in the sequence throw while EARLIER ones have already
+    // published real fresh data, leaving the app in a mixed fresh/stale
+    // state with no way to tell which properties are which.
+    // `RootView.swift`'s Month-End Close screen reads `checklistCompletions`
+    // with zero staleness gating — if that load never completed, every
+    // checklist item would render as confidently "not completed," a
+    // specific wrong claim, not an honest gray state. All five loads are
+    // now resolved into locals first; the five `self.` assignments that
+    // follow have zero `await`/`try` between them, matching
+    // `syncAndEvaluate()`'s atomic block exactly.
     public func loadFromDiskOnly() async {
         loadState = .loading
         do {
-            findings = try await store.loadFindings()
-            activityLog = try await store.loadActivityLog()
-            checklistCompletions = try await store.loadChecklistCompletions()
-            mappingHints = try await store.loadMappingHints()
-            clientMemoryRules = try await store.loadClientMemoryRules()
+            let newFindings = try await store.loadFindings()
+            let newActivityLog = try await store.loadActivityLog()
+            let newChecklistCompletions = try await store.loadChecklistCompletions()
+            let newMappingHints = try await store.loadMappingHints()
+            let newClientMemoryRules = try await store.loadClientMemoryRules()
+            findings = newFindings
+            activityLog = newActivityLog
+            checklistCompletions = newChecklistCompletions
+            mappingHints = newMappingHints
+            clientMemoryRules = newClientMemoryRules
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
