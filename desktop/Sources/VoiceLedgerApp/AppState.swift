@@ -948,9 +948,21 @@ public final class AppState {
                 }
             }
 
-            self.clientMemoryRules = try await self.store.loadClientMemoryRules()
-            self.findings = try await self.store.loadFindings()
-            self.activityLog = try await self.store.loadActivityLog()
+            // Gauntlet Loop, Gauntlet C round 9 (2026-08-24): resolved into
+            // locals before publishing — the most severe instance of this
+            // pass's atomicity bug class. This block auto-dismisses
+            // matching open findings on disk above; if `loadFindings()`
+            // threw after `clientMemoryRules` had already published,
+            // `self.findings` would keep its STALE value — meaning
+            // `FindingsListView` kept showing findings as open that were
+            // just dismissed on disk. A specific false claim, not just
+            // missing data.
+            let newClientMemoryRules = try await self.store.loadClientMemoryRules()
+            let newFindings = try await self.store.loadFindings()
+            let newActivityLog = try await self.store.loadActivityLog()
+            self.clientMemoryRules = newClientMemoryRules
+            self.findings = newFindings
+            self.activityLog = newActivityLog
         }
         // `triggeringFindingID` is optional — this action isn't inherently
         // about one finding, it can auto-dismiss several. When the caller
@@ -1016,8 +1028,14 @@ public final class AppState {
                 ruleID: rule.ruleID,
                 note: "No longer always dismissing \(rule.ruleID.rawValue) findings for \(rule.vendorName)"
             ))
-            clientMemoryRules = try await store.loadClientMemoryRules()
-            activityLog = try await store.loadActivityLog()
+            // Gauntlet Loop, Gauntlet C round 9 (2026-08-24): resolved into
+            // locals before publishing, same fix as `dismissFinding`'s
+            // matching pair — a stale `activityLog` would hide the
+            // `.clientMemoryRuleRemoved` entry just written above.
+            let newClientMemoryRules = try await store.loadClientMemoryRules()
+            let newActivityLog = try await store.loadActivityLog()
+            clientMemoryRules = newClientMemoryRules
+            activityLog = newActivityLog
         } catch {
             loadState = .failed("\(error)")
         }
@@ -1104,8 +1122,17 @@ public final class AppState {
             if try await self.store.dismissFinding(id: findingID) {
                 try await self.store.appendActivityLogEntry(entry)
             }
-            self.findings = try await self.store.loadFindings()
-            self.activityLog = try await self.store.loadActivityLog()
+            // Gauntlet Loop, Gauntlet C round 9 (2026-08-24): resolved into
+            // locals before publishing — same atomicity fix as
+            // `syncAndEvaluate()`/`loadFromDiskOnly()`. If `loadActivityLog()`
+            // threw after `findings` had already published, the Activity
+            // Log would silently miss the entry just written above while
+            // `findings` correctly showed the dismissal — a real,
+            // inconsistent combination, not just one stale property.
+            let newFindings = try await self.store.loadFindings()
+            let newActivityLog = try await self.store.loadActivityLog()
+            self.findings = newFindings
+            self.activityLog = newActivityLog
         }
     }
 
