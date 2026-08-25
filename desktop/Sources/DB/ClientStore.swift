@@ -36,6 +36,8 @@ public actor ClientStore {
     private var checklistCompletionsURL: URL { directory.appending(path: "checklist-completions.json") }
     private var mappingHintsURL: URL { directory.appending(path: "mapping-hints.json") }
     private var clientMemoryRulesURL: URL { directory.appending(path: "client-memory-rules.json") }
+    private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
+    private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
 
     // MARK: - Findings
 
@@ -221,6 +223,35 @@ public actor ClientStore {
         var existing = try loadClientMemoryRules()
         existing.removeAll { $0.id == id }
         try save(existing, to: clientMemoryRulesURL)
+    }
+
+    // MARK: - Scope & Period Lock (docs/VOICE_LEDGER_SPEC.md Page 2)
+
+    public func loadEngagementScope() throws -> EngagementScope {
+        try load(EngagementScope.self, from: engagementScopeURL, default: EngagementScope())
+    }
+
+    public func saveEngagementScope(_ scope: EngagementScope) throws {
+        try save(scope, to: engagementScopeURL)
+    }
+
+    /// `nil` means no lock has ever been set for this realm — distinct from
+    /// a lock existing at some far-past period, so callers can tell "never
+    /// locked" from "locked, just not recently."
+    public func loadPeriodLock() throws -> PeriodLock? {
+        try load(PeriodLock?.self, from: periodLockURL, default: nil)
+    }
+
+    public func savePeriodLock(_ lock: PeriodLock) throws {
+        try save(lock, to: periodLockURL)
+    }
+
+    /// The reverse of `savePeriodLock` — a lock set in error must be as
+    /// removable as a checklist completion (§11.4's same posture: an
+    /// attestation is a record, not an irreversible fact).
+    public func clearPeriodLock() throws {
+        guard FileManager.default.fileExists(atPath: periodLockURL.path) else { return }
+        try FileManager.default.removeItem(at: periodLockURL)
     }
 
     // MARK: - Activity log

@@ -18,6 +18,7 @@ import VoiceLedgerUI
 public final class AppState {
     public enum Screen: Equatable {
         case connection
+        case scopeAndPeriodLock
         case list
         case detail(findingID: String)
         case procedure(findingID: String, actionID: String)
@@ -65,6 +66,18 @@ public final class AppState {
     /// UI ask "which QBO account is this statement FOR?" (never inferred
     /// from the file). Empty until the first `syncAndEvaluate()` completes.
     public private(set) var accounts: [LedgerAccount] = []
+    /// All synced (plus merged-in imported) transactions from the last
+    /// sync — added for Page 2's period-lock warning
+    /// (`PeriodLockCheck.transactionsInLockedPeriod`), which needs the same
+    /// `LedgerTransaction` set the rule engine evaluates, not a
+    /// rule-specific subset. Empty until the first `syncAndEvaluate()`
+    /// completes, same posture as `accounts`.
+    public private(set) var transactions: [LedgerTransaction] = []
+    /// docs/VOICE_LEDGER_SPEC.md Page 2 — Voice Ledger's own stricter period
+    /// lock, independent of QBO's unread `BookCloseDate`. `nil` until the
+    /// bookkeeper sets one for this realm.
+    public private(set) var periodLock: PeriodLock?
+    public private(set) var engagementScope: EngagementScope = EngagementScope()
     /// All-time count of persisted imported statement lines for this realm
     /// (not period-filtered) — feeds `ReconciliationSummary.compute`'s
     /// `totalStatementLines`. Refreshed on every `syncAndEvaluate()`.
@@ -306,12 +319,51 @@ public final class AppState {
             let newChecklistCompletions = try await store.loadChecklistCompletions()
             let newMappingHints = try await store.loadMappingHints()
             let newClientMemoryRules = try await store.loadClientMemoryRules()
+            let newEngagementScope = try await store.loadEngagementScope()
+            let newPeriodLock = try await store.loadPeriodLock()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
             mappingHints = newMappingHints
             clientMemoryRules = newClientMemoryRules
+            engagementScope = newEngagementScope
+            periodLock = newPeriodLock
             loadState = .loaded
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 2 — sets Voice Ledger's own stricter
+    /// period lock. Never touches QBO; only this app's own screens read it.
+    public func setPeriodLock(through: AccountingPeriod, actorName: String, note: String?) async {
+        do {
+            let lock = PeriodLock(lockedThrough: through, lockedBy: actorName, note: note)
+            try await store.savePeriodLock(lock)
+            periodLock = lock
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// The reverse of `setPeriodLock` — a lock set in error must be as
+    /// removable as a checklist completion.
+    public func clearPeriodLock() async {
+        do {
+            try await store.clearPeriodLock()
+            periodLock = nil
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 2 — records engagement scope and the
+    /// QBOA-access attestation. Unverifiable via API by design (CLAUDE.md:
+    /// attestation is recorded, not proof).
+    public func updateEngagementScope(_ scope: EngagementScope) async {
+        do {
+            try await store.saveEngagementScope(scope)
+            engagementScope = scope
         } catch {
             loadState = .failed("\(error)")
         }
@@ -688,6 +740,7 @@ public final class AppState {
             let newActivityLog = try await store.loadActivityLog()
             coverage = syncedDataSet.coverage
             accounts = syncedDataSet.accounts
+            transactions = dataSet.transactions
             findings = newFindings
             activityLog = newActivityLog
             importedStatementLineCount = importedLines.count

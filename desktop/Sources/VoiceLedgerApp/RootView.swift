@@ -34,6 +34,7 @@ struct RootView: View {
                     }
                     ToolbarItemGroup(placement: .automatic) {
                         Button("Connection") { state.screen = .connection }
+                        Button("Scope & Period Lock") { state.screen = .scopeAndPeriodLock }
                         Button("Sync") { Task { await state.syncAndEvaluate() } }
                             .disabled(state.loadState == .loading)
                         Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
@@ -82,6 +83,42 @@ struct RootView: View {
                 ),
                 onCheckHealth: { Task { await state.checkHealth() } },
                 onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } }
+            )
+
+        case .scopeAndPeriodLock:
+            ScopeAndPeriodLockView(
+                state: ScopeAndPeriodLockView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    servicesIncluded: state.engagementScope.servicesIncluded,
+                    qboaAccountantAccessAttested: state.engagementScope.qboaAccountantAccessAttested,
+                    attestedBy: state.engagementScope.attestedBy,
+                    attestedAt: state.engagementScope.attestedAt,
+                    currentPeriod: state.currentPeriod,
+                    periodLock: state.periodLock,
+                    transactionsInLockedPeriod: state.periodLock.map { lock in
+                        PeriodLockCheck.transactionsInLockedPeriod(state.transactions, lock: lock)
+                    } ?? []
+                ),
+                onToggleService: { service in
+                    var scope = state.engagementScope
+                    if scope.servicesIncluded.contains(service) {
+                        scope.servicesIncluded.remove(service)
+                    } else {
+                        scope.servicesIncluded.insert(service)
+                    }
+                    Task { await state.updateEngagementScope(scope) }
+                },
+                onAttest: { actorName in
+                    var scope = state.engagementScope
+                    scope.qboaAccountantAccessAttested = true
+                    scope.attestedBy = actorName
+                    scope.attestedAt = Date()
+                    Task { await state.updateEngagementScope(scope) }
+                },
+                onSetLock: { through, note in
+                    Task { await state.setPeriodLock(through: through, actorName: actorName, note: note) }
+                },
+                onClearLock: { Task { await state.clearPeriodLock() } }
             )
 
         case .list:
