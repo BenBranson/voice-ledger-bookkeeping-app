@@ -239,6 +239,7 @@ public final class AppState {
 
     // Month-End Close checklist (Page 11) state.
     public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
+    public private(set) var carryForwardMarks: [CarryForwardMark] = []
 
     // Reporting (Page 12) state.
     public private(set) var balanceSheetLines: [ReportLine] = []
@@ -322,6 +323,7 @@ public final class AppState {
             let newClientMemoryRules = try await store.loadClientMemoryRules()
             let newEngagementScope = try await store.loadEngagementScope()
             let newPeriodLock = try await store.loadPeriodLock()
+            let newCarryForwardMarks = try await store.loadCarryForwardMarks()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -329,6 +331,7 @@ public final class AppState {
             clientMemoryRules = newClientMemoryRules
             engagementScope = newEngagementScope
             periodLock = newPeriodLock
+            carryForwardMarks = newCarryForwardMarks
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -1216,6 +1219,63 @@ public final class AppState {
             let newFindings = try await self.store.loadFindings()
             let newActivityLog = try await self.store.loadActivityLog()
             self.findings = newFindings
+            self.activityLog = newActivityLog
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package section:
+    /// "carry-forward items." Never touches `Finding.status` — the finding
+    /// stays exactly as open/resolved/dismissed as it already was; this
+    /// only records that a human chose to defer it, for the Close Package
+    /// to list.
+    public func markFindingCarriedForward(findingID: String, actorName: String, reason: String?) async {
+        guard let finding = finding(id: findingID) else { return }
+        let mark = CarryForwardMark(findingID: findingID, period: period, markedBy: actorName, reason: reason)
+        let entry = ActivityLogEntry(
+            realmID: realmID,
+            actor: .user(actorName),
+            kind: .findingCarriedForward,
+            findingID: findingID,
+            ruleID: finding.ruleID,
+            ruleVersion: finding.ruleVersion,
+            findingSummary: finding.title,
+            note: reason
+        )
+        await performFindingAction(
+            findingID: findingID,
+            failureMessage: { "This finding wasn't marked carried forward: \($0). Try again." }
+        ) {
+            try await self.store.addCarryForwardMark(mark)
+            try await self.store.appendActivityLogEntry(entry)
+            let newCarryForwardMarks = try await self.store.loadCarryForwardMarks()
+            let newActivityLog = try await self.store.loadActivityLog()
+            self.carryForwardMarks = newCarryForwardMarks
+            self.activityLog = newActivityLog
+        }
+    }
+
+    /// The reversal for `markFindingCarriedForward`.
+    public func unmarkCarriedForward(findingID: String, actorName: String) async {
+        guard let finding = finding(id: findingID) else { return }
+        let entry = ActivityLogEntry(
+            realmID: realmID,
+            actor: .user(actorName),
+            kind: .findingCarryForwardRemoved,
+            findingID: findingID,
+            ruleID: finding.ruleID,
+            ruleVersion: finding.ruleVersion,
+            findingSummary: finding.title,
+            note: nil
+        )
+        await performFindingAction(
+            findingID: findingID,
+            failureMessage: { "This carry-forward mark wasn't removed: \($0). Try again." }
+        ) {
+            try await self.store.removeCarryForwardMark(findingID: findingID)
+            try await self.store.appendActivityLogEntry(entry)
+            let newCarryForwardMarks = try await self.store.loadCarryForwardMarks()
+            let newActivityLog = try await self.store.loadActivityLog()
+            self.carryForwardMarks = newCarryForwardMarks
             self.activityLog = newActivityLog
         }
     }

@@ -173,6 +173,7 @@ struct RootView: View {
                     hasClientMemoryRule: finding.vendorName.map { vendorName in
                         state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
                     } ?? false,
+                    carryForwardMark: state.carryForwardMarks.first { $0.findingID == findingID },
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
                     onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
                     onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },
@@ -180,7 +181,9 @@ struct RootView: View {
                         guard let vendorName = finding.vendorName else { return }
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }
                     },
-                    onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } }
+                    onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } },
+                    onMarkCarriedForward: { reason in Task { await state.markFindingCarriedForward(findingID: findingID, actorName: actorName, reason: reason) } },
+                    onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } }
                 )
             } else {
                 Text("Finding not found — it may already be resolved.")
@@ -465,6 +468,10 @@ struct RootView: View {
                 agedReceivablesLines: state.agedReceivablesLines,
                 agedPayablesLines: state.agedPayablesLines,
                 recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
+                carryForwardItems: state.carryForwardMarks.compactMap { mark in
+                    guard let finding = state.finding(id: mark.findingID) else { return nil }
+                    return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
+                },
                 onExport: { format in
                     let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
                     state.exportTable(

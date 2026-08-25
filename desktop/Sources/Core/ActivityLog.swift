@@ -59,6 +59,18 @@ public enum ActivityKind: String, Codable, Sendable {
     /// the rejection/error detail.
     case apiWriteRejected
 
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package section:
+    /// "carry-forward items" — a human's explicit decision to defer an
+    /// open finding to next period rather than resolve or dismiss it now.
+    /// The `note` field carries the reason. Distinct from `findingDismissed`
+    /// (that finding is judged not worth acting on at all); a carried-
+    /// forward finding stays `.open` and keeps appearing on its normal
+    /// pages — this mark only adds it to the Close Package's carry-forward
+    /// list, it never changes `Finding.status`.
+    case findingCarriedForward
+    /// The reversal for `findingCarriedForward`.
+    case findingCarryForwardRemoved
+
     /// A human-readable label, shared by every renderer of this enum.
     /// Gauntlet Loop, Gauntlet B round 5 (2026-08-24): `ClosePackageView`
     /// was rendering `entry.kind.rawValue` directly — the raw case name
@@ -76,6 +88,8 @@ public enum ActivityKind: String, Codable, Sendable {
         case .clientMemoryRuleCreated: return "Client memory rule created"
         case .clientMemoryRuleRemoved: return "Client memory rule removed"
         case .findingAutoDismissedByClientMemory: return "Auto-dismissed (client memory)"
+        case .findingCarriedForward: return "Carried forward to next period"
+        case .findingCarryForwardRemoved: return "Carry-forward mark removed"
         }
     }
 }

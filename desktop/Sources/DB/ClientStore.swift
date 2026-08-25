@@ -38,6 +38,7 @@ public actor ClientStore {
     private var clientMemoryRulesURL: URL { directory.appending(path: "client-memory-rules.json") }
     private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
     private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
+    private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
 
     // MARK: - Findings
 
@@ -252,6 +253,30 @@ public actor ClientStore {
     public func clearPeriodLock() throws {
         guard FileManager.default.fileExists(atPath: periodLockURL.path) else { return }
         try FileManager.default.removeItem(at: periodLockURL)
+    }
+
+    // MARK: - Carry-forward marks (Close Package)
+
+    public func loadCarryForwardMarks() throws -> [CarryForwardMark] {
+        try load([CarryForwardMark].self, from: carryForwardMarksURL, default: [])
+    }
+
+    /// Upserts by `findingID` — re-marking an already-marked finding
+    /// replaces the prior mark (an updated reason) rather than
+    /// accumulating duplicates.
+    public func addCarryForwardMark(_ mark: CarryForwardMark) throws {
+        var existing = try loadCarryForwardMarks()
+        existing.removeAll { $0.findingID == mark.findingID }
+        existing.append(mark)
+        try save(existing, to: carryForwardMarksURL)
+    }
+
+    /// The reversal — a carry-forward mark set in error must be as
+    /// removable as a checklist completion.
+    public func removeCarryForwardMark(findingID: String) throws {
+        var existing = try loadCarryForwardMarks()
+        existing.removeAll { $0.findingID == findingID }
+        try save(existing, to: carryForwardMarksURL)
     }
 
     // MARK: - Activity log

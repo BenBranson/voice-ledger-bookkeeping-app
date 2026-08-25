@@ -18,12 +18,15 @@ import DesignSystem
 /// they just weren't summarized HERE yet, which this pass closes. General
 /// Ledger is deliberately still excluded — it's transaction-level detail,
 /// not summary lines, and doesn't fit this page's "one line per section"
-/// shape. **Still not built**: variance analysis (period-over-period
-/// comparison), a tracked "corrections made" ledger distinct from the
-/// Activity Log, carry-forward items, client Q&A, and Ask Claude history (no
-/// Claude integration exists yet at all). Exportable as CSV/XLSX/PDF (a
-/// plain table export of this same data, not a designed branded document)
-/// via the Export menu.
+/// shape. Variance analysis now lives on the Balance Sheet/P&L report pages
+/// themselves (`FinancialReportView`'s "Compare to prior period"), not
+/// duplicated here. Carry-forward items are now built (`CarryForwardMark`,
+/// marked from `FindingDetailView`) — this section only renders when at
+/// least one exists. **Still not built**: a tracked "corrections made"
+/// ledger distinct from the Activity Log, client Q&A, and Ask Claude
+/// history (no Claude integration exists yet at all). Exportable as
+/// CSV/XLSX/PDF (a plain table export of this same data, not a designed
+/// branded document) via the Export menu.
 public struct ClosePackageView: View {
     public struct ChecklistStatus {
         public let completed: Int
@@ -46,6 +49,11 @@ public struct ClosePackageView: View {
     private let agedReceivablesLines: [AgingLine]
     private let agedPayablesLines: [AgingLine]
     private let recentActivity: [ActivityLogEntry]
+    /// `(mark, finding title, finding dollarExposure)` — the view has no
+    /// way to look up a `Finding` by id itself, so the app layer resolves
+    /// each mark's finding before passing it down, same as every other
+    /// summary on this page being pre-computed by the caller.
+    private let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
     private let onExport: (ReportExportFormat) -> Void
 
     public init(
@@ -61,6 +69,7 @@ public struct ClosePackageView: View {
         agedReceivablesLines: [AgingLine] = [],
         agedPayablesLines: [AgingLine] = [],
         recentActivity: [ActivityLogEntry],
+        carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
         onExport: @escaping (ReportExportFormat) -> Void = { _ in }
     ) {
         self.environment = environment
@@ -75,6 +84,7 @@ public struct ClosePackageView: View {
         self.agedReceivablesLines = agedReceivablesLines
         self.agedPayablesLines = agedPayablesLines
         self.recentActivity = recentActivity
+        self.carryForwardItems = carryForwardItems
         self.onExport = onExport
     }
 
@@ -90,7 +100,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no variance analysis, no carry-forward items or client Q&A).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no corrections ledger or client Q&A yet).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -114,6 +124,10 @@ public struct ClosePackageView: View {
                 }
                 if !agedPayablesLines.isEmpty {
                     agingSummarySection(title: "Aged Payables (total)", lines: agedPayablesLines)
+                }
+
+                if !carryForwardItems.isEmpty {
+                    carryForwardSection
                 }
 
                 activitySection
@@ -229,6 +243,33 @@ public struct ClosePackageView: View {
                         Text(summaryLine.total?.description ?? "-")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
+                    }
+                }
+            }
+        }
+    }
+
+    private var carryForwardSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("CARRY-FORWARD ITEMS")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                ForEach(carryForwardItems, id: \.mark.id) { item in
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        HStack {
+                            Text(item.findingTitle)
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textPrimary)
+                            Spacer()
+                            Text(item.dollarExposure.description)
+                                .font(VLTypography.tabularNumeric())
+                                .foregroundStyle(VLColor.textPrimary)
+                        }
+                        Text("Marked by \(item.mark.markedBy)\(item.mark.reason.map { " — \($0)" } ?? "")")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
                     }
                 }
             }

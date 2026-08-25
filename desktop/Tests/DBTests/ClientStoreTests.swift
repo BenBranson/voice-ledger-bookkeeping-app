@@ -301,6 +301,60 @@ struct ClientStoreTests {
         #expect(loaded.isEmpty)
     }
 
+    @Test("Carry-forward marks round-trip: add then load returns the same mark")
+    func carryForwardMarkRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let mark = CarryForwardMark(findingID: "finding-1", period: AccountingPeriod(year: 2026, month: 7), markedBy: "Benjamin Branson", reason: "Waiting on client")
+        try await store.addCarryForwardMark(mark)
+        let loaded = try await store.loadCarryForwardMarks()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].findingID == "finding-1")
+        #expect(loaded[0].reason == "Waiting on client")
+    }
+
+    @Test("Re-marking the same finding replaces the prior mark, not duplicates it")
+    func carryForwardMarkUpsertReplacesPrior() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let period = AccountingPeriod(year: 2026, month: 7)
+        try await store.addCarryForwardMark(CarryForwardMark(findingID: "finding-1", period: period, markedBy: "Benjamin Branson", reason: "First reason"))
+        try await store.addCarryForwardMark(CarryForwardMark(findingID: "finding-1", period: period, markedBy: "Benjamin Branson", reason: "Corrected reason"))
+        let loaded = try await store.loadCarryForwardMarks()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].reason == "Corrected reason")
+    }
+
+    @Test("Removing a carry-forward mark is the reverse of adding it")
+    func removeCarryForwardMark() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let mark = CarryForwardMark(findingID: "finding-1", period: AccountingPeriod(year: 2026, month: 7), markedBy: "Benjamin Branson")
+        try await store.addCarryForwardMark(mark)
+        try await store.removeCarryForwardMark(findingID: "finding-1")
+        let loaded = try await store.loadCarryForwardMarks()
+        #expect(loaded.isEmpty)
+    }
+
+    @Test("Period lock round-trips: nil before set, real after saving, nil again after clearing")
+    func periodLockRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        #expect(try await store.loadPeriodLock() == nil)
+        let lock = PeriodLock(lockedThrough: AccountingPeriod(year: 2026, month: 6), lockedBy: "Benjamin Branson")
+        try await store.savePeriodLock(lock)
+        #expect(try await store.loadPeriodLock() == lock)
+        try await store.clearPeriodLock()
+        #expect(try await store.loadPeriodLock() == nil)
+    }
+
+    @Test("Engagement scope round-trips: default before saving, real values after")
+    func engagementScopeRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        #expect(try await store.loadEngagementScope() == EngagementScope())
+        let scope = EngagementScope(servicesIncluded: ["Reconciliations"], qboaAccountantAccessAttested: true, attestedBy: "Benjamin Branson")
+        try await store.saveEngagementScope(scope)
+        let loaded = try await store.loadEngagementScope()
+        #expect(loaded.servicesIncluded == ["Reconciliations"])
+        #expect(loaded.qboaAccountantAccessAttested == true)
+    }
+
     @Test("Mapping hints round-trip: upsert then load returns the learned fields")
     func mappingHintsRoundTrip() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())

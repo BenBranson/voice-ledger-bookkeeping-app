@@ -36,16 +36,23 @@ public struct FindingDetailView: View {
     /// `ClientMemoryRule` rows) for one click.
     private let isFindingActionInFlight: Bool
     private let hasClientMemoryRule: Bool
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package "carry-forward
+    /// items" — `nil` when this finding has no active mark.
+    private let carryForwardMark: CarryForwardMark?
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
     private let onSendClientQuestion: (String) -> Void
     private let onRememberVendor: () -> Void
     private let onDismiss: () -> Void
+    private let onMarkCarriedForward: (String?) -> Void
+    private let onUnmarkCarriedForward: () -> Void
 
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
     @State private var draftedQuestionText = ""
     @State private var isConfirmingRememberVendor = false
+    @State private var isDraftingCarryForwardReason = false
+    @State private var carryForwardReasonDraft = ""
 
     public init(
         finding: Finding,
@@ -55,11 +62,14 @@ public struct FindingDetailView: View {
         findingActionError: String? = nil,
         isFindingActionInFlight: Bool = false,
         hasClientMemoryRule: Bool = false,
+        carryForwardMark: CarryForwardMark? = nil,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
         onSendClientQuestion: @escaping (String) -> Void,
         onRememberVendor: @escaping () -> Void = {},
-        onDismiss: @escaping () -> Void
+        onDismiss: @escaping () -> Void,
+        onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
+        onUnmarkCarriedForward: @escaping () -> Void = {}
     ) {
         self.finding = finding
         self.writeAccessEnabled = writeAccessEnabled
@@ -68,11 +78,14 @@ public struct FindingDetailView: View {
         self.findingActionError = findingActionError
         self.isFindingActionInFlight = isFindingActionInFlight
         self.hasClientMemoryRule = hasClientMemoryRule
+        self.carryForwardMark = carryForwardMark
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
         self.onSendClientQuestion = onSendClientQuestion
         self.onRememberVendor = onRememberVendor
         self.onDismiss = onDismiss
+        self.onMarkCarriedForward = onMarkCarriedForward
+        self.onUnmarkCarriedForward = onUnmarkCarriedForward
     }
 
     public var body: some View {
@@ -105,6 +118,7 @@ public struct FindingDetailView: View {
                 if let vendorName = finding.vendorName {
                     clientMemorySection(vendorName)
                 }
+                carryForwardSection
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -150,6 +164,50 @@ public struct FindingDetailView: View {
                     }
                 } else {
                     Button("Always Dismiss for \(vendorName)") { isConfirmingRememberVendor = true }
+                        .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package "carry-forward
+    /// items" — a human's explicit decision to defer this finding to next
+    /// period rather than resolve or dismiss it now. Never changes the
+    /// finding's own status; it stays exactly as open as it already was and
+    /// keeps appearing everywhere it normally would.
+    private var carryForwardSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("CARRY FORWARD")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+
+                if let carryForwardMark {
+                    Text("Marked to carry forward by \(carryForwardMark.markedBy) on \(carryForwardMark.markedAt.formatted(date: .abbreviated, time: .shortened))\(carryForwardMark.reason.map { " — \($0)" } ?? "").")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                    Button("Remove Carry-Forward Mark") { onUnmarkCarriedForward() }
+                        .buttonStyle(.bordered)
+                        .disabled(isFindingActionInFlight)
+                } else if isDraftingCarryForwardReason {
+                    Text("Defers this finding to next period's Close Package list. It stays open and keeps appearing everywhere it already does — this only adds a note that it was deliberately deferred, not forgotten.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                    TextField("Optional reason", text: $carryForwardReasonDraft)
+                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: VLSpacing.sm) {
+                        Button("Confirm — Carry Forward") {
+                            onMarkCarriedForward(carryForwardReasonDraft.isEmpty ? nil : carryForwardReasonDraft)
+                            isDraftingCarryForwardReason = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isApplyingFix || isFindingActionInFlight)
+                        Button("Cancel") { isDraftingCarryForwardReason = false }
+                            .buttonStyle(.bordered)
+                    }
+                } else {
+                    Button("Carry Forward to Next Period") { isDraftingCarryForwardReason = true }
                         .buttonStyle(.bordered)
                 }
             }
