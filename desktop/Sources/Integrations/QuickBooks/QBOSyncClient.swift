@@ -578,7 +578,7 @@ public struct QBOSyncClient: Sendable {
     static func normalize(_ raw: QBORawAccount) -> LedgerAccount? {
         guard let type = LedgerAccountType(rawValue: raw.accountType) else { return nil }
         let balance = raw.currentBalance.map { Money(minorUnits: Self.minorUnits(from: $0), currency: .usd) } ?? .zero
-        return LedgerAccount(id: raw.id, name: raw.name, accountType: type, accountSubType: raw.accountSubType, currentBalance: balance)
+        return LedgerAccount(id: raw.id, name: raw.name, accountType: type, accountSubType: raw.accountSubType, currentBalance: balance, fullyQualifiedName: raw.fullyQualifiedName)
     }
 
     /// `isVoided` uses the same `status == "Voided"` check as Purchase, but

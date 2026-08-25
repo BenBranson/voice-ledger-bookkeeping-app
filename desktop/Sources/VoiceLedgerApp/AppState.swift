@@ -25,6 +25,7 @@ public final class AppState {
         case activityLog
         case cleanupAssessment
         case balanceSheetIntegrity
+        case chartOfAccountsCleanup
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport

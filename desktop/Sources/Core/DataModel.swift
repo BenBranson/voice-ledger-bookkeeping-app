@@ -96,13 +96,20 @@ public struct LedgerAccount: Identifiable, Hashable, Codable, Sendable {
     /// matching on the account's (renameable) `name`.
     public let accountSubType: String?
     public let currentBalance: Money
+    /// `nil` means "not decoded this sync" (field genuinely absent, or a
+    /// raw-decode path that never populated it — see `QBORawAccount`'s doc
+    /// comment), not "this account has no parent." `ChartOfAccountsCleanup`
+    /// treats `nil` as "exclude from duplicate detection," never as a
+    /// reason to fall back to comparing leaf `name` alone.
+    public let fullyQualifiedName: String?
 
-    public init(id: String, name: String, accountType: LedgerAccountType, accountSubType: String? = nil, currentBalance: Money = .zero) {
+    public init(id: String, name: String, accountType: LedgerAccountType, accountSubType: String? = nil, currentBalance: Money = .zero, fullyQualifiedName: String? = nil) {
         self.id = id
         self.name = name
         self.accountType = accountType
         self.accountSubType = accountSubType
         self.currentBalance = currentBalance
+        self.fullyQualifiedName = fullyQualifiedName
     }
 }
 

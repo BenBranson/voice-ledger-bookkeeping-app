@@ -39,6 +39,7 @@ struct RootView: View {
                             .disabled(state.loadState == .loading)
                         Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
                         Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
+                        Button("Chart of Accounts Cleanup") { state.screen = .chartOfAccountsCleanup }
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
@@ -83,6 +84,16 @@ struct RootView: View {
                 ),
                 onCheckHealth: { Task { await state.checkHealth() } },
                 onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } }
+            )
+
+        case .chartOfAccountsCleanup:
+            ChartOfAccountsCleanupView(
+                state: ChartOfAccountsCleanupView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    totalAccountsCount: state.accounts.count,
+                    accountsWithFullyQualifiedNameCount: state.accounts.filter { $0.fullyQualifiedName != nil }.count,
+                    groups: ChartOfAccountsCleanup.findDuplicateCandidates(state.accounts)
+                )
             )
 
         case .scopeAndPeriodLock:
