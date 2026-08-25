@@ -436,8 +436,6 @@ public final class AppState {
         loadState = .loading
         do {
             let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
-            coverage = syncedDataSet.coverage
-            accounts = syncedDataSet.accounts
 
             // Merge in any previously-imported, persisted statement lines
             // (Universal Ingestion Tier 1) so VL-RECON-MISSING-001 sees them
@@ -599,6 +597,23 @@ public final class AppState {
                 }
             }
 
+            // Gauntlet Loop, Gauntlet C round 4 (2026-08-24): `coverage`/
+            // `accounts` used to be published immediately after the first
+            // `await` above, long before this point — so a throw anywhere
+            // in between (any of the several `store`/`engine` calls this
+            // method makes, all genuinely capable of failing) left them
+            // holding this sync's NEW, freshly-`.complete` result while
+            // `findings` below was never reached and kept its OLD (often
+            // empty, e.g. on a first-ever sync) value. `FindingsListView`'s
+            // coverage strip reads exactly that combination — an empty
+            // `findings` array plus `.complete` coverage — as "Verified —
+            // None," a false green for a sync that provably never
+            // finished, not merely stale-but-honest data. Now assigned
+            // together with `findings`/`activityLog`, all three or none:
+            // a throw at any point above leaves every one of them at its
+            // pre-sync value, consistent with each other even if stale.
+            coverage = syncedDataSet.coverage
+            accounts = syncedDataSet.accounts
             findings = try await store.loadFindings()
             activityLog = try await store.loadActivityLog()
             loadState = .loaded

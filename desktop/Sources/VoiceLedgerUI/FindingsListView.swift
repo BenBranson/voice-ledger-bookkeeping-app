@@ -13,13 +13,24 @@ public struct FindingsListView: View {
         public let coverageDetail: String
         public let findings: [Finding]
         public let nextBestAction: NextBestAction?
+        /// Gauntlet Loop, Gauntlet C round 4 (2026-08-24): a fresh critic
+        /// found `AppState.syncAndEvaluate()`'s failure path only ever set
+        /// `loadState = .failed(...)`, which no view anywhere read or
+        /// rendered — so a sync that threw partway through left the
+        /// bookkeeper with no indication anything went wrong, compounding
+        /// the false-green risk this same round found (see `coverage`'s
+        /// doc comment in `AppState.swift`). Shown as a dismissible-by-
+        /// retry banner right below the title; `nil` when the last attempt
+        /// succeeded or no sync has failed yet.
+        public let syncError: String?
 
-        public init(environment: VLEnvironmentTone, coverageStatus: VLStatus, coverageDetail: String, findings: [Finding], nextBestAction: NextBestAction? = nil) {
+        public init(environment: VLEnvironmentTone, coverageStatus: VLStatus, coverageDetail: String, findings: [Finding], nextBestAction: NextBestAction? = nil, syncError: String? = nil) {
             self.environment = environment
             self.coverageStatus = coverageStatus
             self.coverageDetail = coverageDetail
             self.findings = findings
             self.nextBestAction = nextBestAction
+            self.syncError = syncError
         }
 
         // Gauntlet Loop, Gauntlet C round 2 (2026-08-24): a fresh critic
@@ -68,6 +79,12 @@ public struct FindingsListView: View {
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
                     VLEnvironmentBadge(state.environment)
+                }
+
+                if let syncError = state.syncError {
+                    Text("The last sync didn't finish: \(syncError). What's shown below may be out of date — try Sync again.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.red)
                 }
 
                 if let nextBestAction = state.nextBestAction {

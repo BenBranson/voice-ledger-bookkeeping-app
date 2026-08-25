@@ -96,7 +96,11 @@ struct RootView: View {
                         checklistCompletions: state.checklistCompletions,
                         period: state.currentPeriod,
                         hasImportedStatement: state.importedStatementLineCount > 0
-                    )
+                    ),
+                    syncError: {
+                        if case .failed(let message) = state.loadState { return message }
+                        return nil
+                    }()
                 ),
                 onSelect: { finding in state.screen = .detail(findingID: finding.id) },
                 onNavigateNextBestAction: { action in

@@ -76,4 +76,34 @@ struct FindingsListViewTests {
         #expect(synced.exceptionsStatus == .reviewNeeded)
         #expect(synced.exceptionsDetail == "2 open")
     }
+
+    // Gauntlet Loop, Gauntlet C round 4 (2026-08-24): a fresh critic found
+    // AppState.syncAndEvaluate()'s failure path only ever set the unread
+    // loadState.failed, and separately found that a throw partway through
+    // a sync could leave coverage/findings inconsistent — a compounding
+    // false-green risk with zero visible error. syncError is the surfaced
+    // signal AppState now populates from that failure; these tests pin its
+    // plumbing (default nil, and correctly settable) at the ViewState layer.
+    @Test("syncError defaults to nil — no false alarm when the last sync succeeded or none has run yet")
+    func syncErrorDefaultsToNil() {
+        let state = FindingsListView.ViewState(
+            environment: .sandbox,
+            coverageStatus: .verified,
+            coverageDetail: "synced just now",
+            findings: []
+        )
+        #expect(state.syncError == nil)
+    }
+
+    @Test("syncError carries the real failure message through unmodified")
+    func syncErrorCarriesTheFailureMessage() {
+        let state = FindingsListView.ViewState(
+            environment: .sandbox,
+            coverageStatus: .notChecked,
+            coverageDetail: "not synced yet",
+            findings: [],
+            syncError: "networkConnectionLost"
+        )
+        #expect(state.syncError == "networkConnectionLost")
+    }
 }

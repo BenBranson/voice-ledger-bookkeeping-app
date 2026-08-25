@@ -105,6 +105,9 @@ struct StatusMappingHonestyTests {
         // coverage-status source of truth, `coverageStatus`, with no second
         // "dataAvailableStatus"/"checksCompletedStatus" property that could
         // independently drift from it the way `exceptionsStatus` used to.
+        // `syncError` (added Gauntlet C round 4) is a legitimate, distinct
+        // signal — not a second coverage-status source of truth — so it's
+        // included in the expected set below rather than exempted.
         let mirror = Mirror(reflecting: FindingsListView.ViewState(
             environment: .sandbox,
             coverageStatus: .notChecked,
@@ -112,7 +115,7 @@ struct StatusMappingHonestyTests {
             findings: []
         ))
         let propertyNames = Set(mirror.children.compactMap(\.label))
-        #expect(propertyNames == ["environment", "coverageStatus", "coverageDetail", "findings", "nextBestAction"],
+        #expect(propertyNames == ["environment", "coverageStatus", "coverageDetail", "findings", "nextBestAction", "syncError"],
                 "ViewState must expose a single coverageStatus source of truth — an added second status property would need the same currency gating exceptionsStatus now has")
     }
 }
