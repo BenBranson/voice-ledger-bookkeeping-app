@@ -278,7 +278,12 @@ struct RootView: View {
                 isLoading: state.isLoadingBalanceSheet,
                 errorMessage: state.balanceSheetError,
                 onRefresh: { Task { await state.loadBalanceSheet() } },
-                onExport: { format in state.exportTable(Self.exportTable(title: "Balance Sheet", lines: state.balanceSheetLines), format: format, suggestedFilename: "Balance Sheet") }
+                onExport: { format in state.exportTable(Self.exportTable(title: "Balance Sheet", lines: state.balanceSheetLines), format: format, suggestedFilename: "Balance Sheet") },
+                priorPeriodLines: state.priorPeriodBalanceSheetLines,
+                priorPeriodLabel: Self.periodLabel(state.currentPeriod.previousMonth),
+                isLoadingVariance: state.isLoadingVarianceAnalysis,
+                varianceError: state.varianceAnalysisError,
+                onLoadVariance: { Task { await state.loadVarianceAnalysis() } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -295,7 +300,12 @@ struct RootView: View {
                 isLoading: state.isLoadingProfitAndLoss,
                 errorMessage: state.profitAndLossError,
                 onRefresh: { Task { await state.loadProfitAndLoss() } },
-                onExport: { format in state.exportTable(Self.exportTable(title: "Profit & Loss", lines: state.profitAndLossLines), format: format, suggestedFilename: "Profit and Loss") }
+                onExport: { format in state.exportTable(Self.exportTable(title: "Profit & Loss", lines: state.profitAndLossLines), format: format, suggestedFilename: "Profit and Loss") },
+                priorPeriodLines: state.priorPeriodProfitAndLossLines,
+                priorPeriodLabel: Self.periodLabel(state.currentPeriod.previousMonth),
+                isLoadingVariance: state.isLoadingVarianceAnalysis,
+                varianceError: state.varianceAnalysisError,
+                onLoadVariance: { Task { await state.loadVarianceAnalysis() } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -588,6 +598,10 @@ struct RootView: View {
     // state (ReportLine, Finding, ActivityLogEntry) — these just reshape
     // that same data into the one generic `ExportTable` shape every format
     // writer consumes, rather than each page inventing its own export path.
+
+    private static func periodLabel(_ period: AccountingPeriod) -> String {
+        "\(period.year)-\(String(format: "%02d", period.month))"
+    }
 
     private static func exportTable(title: String, lines: [ReportLine]) -> ExportTable {
         ExportTable(

@@ -15,6 +15,15 @@ public struct AccountingPeriod: Hashable, Codable, Sendable {
     public func contains(_ date: AccountingDate) -> Bool {
         date.year == year && date.month == month
     }
+
+    /// The calendar month immediately before this one — December wraps to
+    /// November of the prior year. Used for variance analysis's default
+    /// comparison ("vs. last month"), the simplest and least surprising
+    /// baseline; a same-month-prior-year comparison is a real, different
+    /// question this doesn't answer and isn't built.
+    public var previousMonth: AccountingPeriod {
+        month == 1 ? AccountingPeriod(year: year - 1, month: 12) : AccountingPeriod(year: year, month: month - 1)
+    }
 }
 
 /// A calendar date with no time-of-day or timezone component. QBO's

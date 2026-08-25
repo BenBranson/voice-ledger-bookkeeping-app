@@ -249,6 +249,16 @@ public final class AppState {
     public private(set) var isLoadingGeneralLedger = false
     public private(set) var generalLedgerError: String?
 
+    /// Variance analysis (docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close
+    /// Package section) — this period's Balance Sheet/P&L against the
+    /// immediately prior calendar month, both real QBO data. Loaded
+    /// separately from the current-period reports above (a second fetch,
+    /// against a different period) rather than reusing them.
+    public private(set) var priorPeriodBalanceSheetLines: [ReportLine] = []
+    public private(set) var priorPeriodProfitAndLossLines: [ReportLine] = []
+    public private(set) var isLoadingVarianceAnalysis = false
+    public private(set) var varianceAnalysisError: String?
+
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
@@ -406,6 +416,26 @@ public final class AppState {
             generalLedgerError = "\(error)"
         }
         isLoadingGeneralLedger = false
+    }
+
+    /// Fetches the immediately prior calendar month's Balance Sheet and
+    /// P&L — real QBO reports for a real prior period, not an estimate.
+    /// Both requests run concurrently; either can fail independently
+    /// without blocking the other (same `try?`-per-report posture already
+    /// used in `syncAndEvaluate()` for optional report data).
+    public func loadVarianceAnalysis() async {
+        isLoadingVarianceAnalysis = true
+        varianceAnalysisError = nil
+        let priorPeriod = period.previousMonth
+        async let priorBalanceSheet = try? syncClient.fetchBalanceSheet(realmID: realmID, period: priorPeriod)
+        async let priorProfitAndLoss = try? syncClient.fetchProfitAndLoss(realmID: realmID, period: priorPeriod)
+        let (bs, pl) = await (priorBalanceSheet, priorProfitAndLoss)
+        if bs == nil && pl == nil {
+            varianceAnalysisError = "Could not load \(priorPeriod.year)-\(String(format: "%02d", priorPeriod.month))'s reports to compare against."
+        }
+        priorPeriodBalanceSheetLines = bs ?? []
+        priorPeriodProfitAndLossLines = pl ?? []
+        isLoadingVarianceAnalysis = false
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

@@ -20,6 +20,16 @@ public struct FinancialReportView: View {
     private let errorMessage: String?
     private let onRefresh: () -> Void
     private let onExport: (ReportExportFormat) -> Void
+    /// Variance analysis (docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close
+    /// Package section) — optional so this view's other 6 call sites (Cash
+    /// Flow, and every report before this was added) need no changes.
+    /// `nil` prior lines and `false` loading/no error is the same as never
+    /// having asked for a comparison at all.
+    private let priorPeriodLines: [ReportLine]?
+    private let priorPeriodLabel: String?
+    private let isLoadingVariance: Bool
+    private let varianceError: String?
+    private let onLoadVariance: (() -> Void)?
 
     public init(
         title: String,
@@ -29,7 +39,12 @@ public struct FinancialReportView: View {
         isLoading: Bool,
         errorMessage: String?,
         onRefresh: @escaping () -> Void,
-        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in },
+        priorPeriodLines: [ReportLine]? = nil,
+        priorPeriodLabel: String? = nil,
+        isLoadingVariance: Bool = false,
+        varianceError: String? = nil,
+        onLoadVariance: (() -> Void)? = nil
     ) {
         self.title = title
         self.sourceDescription = sourceDescription
@@ -39,6 +54,11 @@ public struct FinancialReportView: View {
         self.errorMessage = errorMessage
         self.onRefresh = onRefresh
         self.onExport = onExport
+        self.priorPeriodLines = priorPeriodLines
+        self.priorPeriodLabel = priorPeriodLabel
+        self.isLoadingVariance = isLoadingVariance
+        self.varianceError = varianceError
+        self.onLoadVariance = onLoadVariance
     }
 
     public var body: some View {
@@ -97,9 +117,75 @@ public struct FinancialReportView: View {
                         }
                     }
                 }
+
+                if onLoadVariance != nil {
+                    varianceSection
+                }
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    private var varianceSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                HStack {
+                    Text("VS. \(priorPeriodLabel ?? "PRIOR PERIOD")")
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    if let priorPeriodLines, !priorPeriodLines.isEmpty {
+                        EmptyView()
+                    } else {
+                        Button(isLoadingVariance ? "Loading…" : "Compare to prior period") { onLoadVariance?() }
+                            .disabled(isLoadingVariance)
+                            .font(VLTypography.caption())
+                    }
+                }
+
+                if let varianceError {
+                    Text(varianceError)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                }
+
+                if let priorPeriodLines, !priorPeriodLines.isEmpty {
+                    let varianceLines = VarianceAnalysis.compute(current: lines, prior: priorPeriodLines)
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        ForEach(varianceLines) { vline in
+                            HStack {
+                                Text(vline.label)
+                                    .font(vline.isSummary ? VLTypography.cardTitle() : VLTypography.body())
+                                    .foregroundStyle(vline.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
+                                    .padding(.leading, CGFloat(vline.depth) * 16)
+                                Spacer()
+                                Text(vline.priorAmount?.description ?? "—")
+                                    .font(VLTypography.tabularNumeric())
+                                    .foregroundStyle(VLColor.textMuted)
+                                    .frame(minWidth: 90, alignment: .trailing)
+                                if let change = vline.change {
+                                    Text("\(change.minorUnits >= 0 ? "+" : "")\(change.description)")
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(change.minorUnits >= 0 ? VLColor.textPrimary : .red)
+                                        .frame(minWidth: 90, alignment: .trailing)
+                                } else {
+                                    Text("—").font(VLTypography.tabularNumeric()).foregroundStyle(VLColor.textMuted).frame(minWidth: 90, alignment: .trailing)
+                                }
+                                if let percent = vline.percentChange {
+                                    Text("\(percent >= 0 ? "+" : "")\(String(format: "%.1f", percent * 100))%")
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(percent >= 0 ? VLColor.textPrimary : .red)
+                                        .frame(minWidth: 60, alignment: .trailing)
+                                } else {
+                                    Text("—").font(VLTypography.tabularNumeric()).foregroundStyle(VLColor.textMuted).frame(minWidth: 60, alignment: .trailing)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
