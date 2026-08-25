@@ -40,6 +40,7 @@ struct RootView: View {
                         Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
                         Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
                         Button("Chart of Accounts Cleanup") { state.screen = .chartOfAccountsCleanup }
+                        Button("Batch Fixes") { state.screen = .batchFixes }
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
@@ -85,6 +86,29 @@ struct RootView: View {
                 onCheckHealth: { Task { await state.checkHealth() } },
                 onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } }
             )
+
+        case .batchFixes:
+            BatchFixesView(
+                environment: state.environment == .production ? .production : .sandbox,
+                writeAccessEnabled: state.writeAccessEnabled == true,
+                items: BatchFixPlan.preview(findings: state.stagedFixFindings),
+                selectedIDs: state.batchFixSelection,
+                applyingFindingIDs: state.applyingFixFindingIDs,
+                applyFixError: state.applyFixError,
+                isApplyingBatch: state.isApplyingBatchFix,
+                onToggleSelection: { findingID in state.toggleBatchFixSelection(findingID) },
+                onSelectAll: { state.selectAllBatchFix() },
+                onDeselectAll: { state.deselectAllBatchFix() },
+                onApplyBatch: {
+                    let ids = Array(state.batchFixSelection)
+                    Task { await state.applyBatchFix(findingIDs: ids, actorName: actorName) }
+                }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
 
         case .chartOfAccountsCleanup:
             ChartOfAccountsCleanupView(

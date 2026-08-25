@@ -26,6 +26,7 @@ public final class AppState {
         case cleanupAssessment
         case balanceSheetIntegrity
         case chartOfAccountsCleanup
+        case batchFixes
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport
@@ -131,6 +132,18 @@ public final class AppState {
     // production write racing itself, not a cosmetic duplicate log entry.
     // A `Set<String>` tracks each finding's in-flight write independently.
     public private(set) var applyingFixFindingIDs: Set<String> = []
+    /// docs/VOICE_LEDGER_SPEC.md Page 7 (Batch Fixes) — `applyBatchFix`'s
+    /// own re-entrancy guard, same shape as `isSyncInFlight`.
+    public private(set) var isApplyingBatchFix = false
+    /// Which of `stagedFixFindings` are currently checked on the Batch
+    /// Fixes screen. Lives here (not local `@State` in a view) because
+    /// `RootView`'s screen switch is a computed property, not its own View
+    /// struct — `@State` there wouldn't persist across re-renders. Reset on
+    /// navigating to the screen fresh is deliberately NOT automatic; a
+    /// selection persisting across a `syncAndEvaluate()` that removes an
+    /// already-fixed finding is harmless (`toggleBatchFixSelection` below
+    /// only ever adds/removes ids that exist).
+    public var batchFixSelection: Set<String> = []
     // Gauntlet Loop, Gauntlet B round 13 (2026-08-24): this used to be a
     // bare `String?`, not scoped to a finding — a rejected/failed write on
     // Finding A left the error string standing until the NEXT
@@ -894,6 +907,31 @@ public final class AppState {
         findings.first { $0.id == id }
     }
 
+    /// docs/VOICE_LEDGER_SPEC.md Page 7 (Batch Fixes) — every open finding
+    /// with a real, unambiguous staged API write available, the same gate
+    /// `BatchFixPlan.preview` applies. Computed fresh from `findings` on
+    /// every access rather than cached, matching `finding(id:)`'s own
+    /// posture just above.
+    public var stagedFixFindings: [Finding] {
+        findings.filter { $0.status == .open && $0.proposedActions.first?.apiWriteDetails != nil }
+    }
+
+    public func toggleBatchFixSelection(_ findingID: String) {
+        if batchFixSelection.contains(findingID) {
+            batchFixSelection.remove(findingID)
+        } else {
+            batchFixSelection.insert(findingID)
+        }
+    }
+
+    public func selectAllBatchFix() {
+        batchFixSelection = Set(stagedFixFindings.map(\.id))
+    }
+
+    public func deselectAllBatchFix() {
+        batchFixSelection.removeAll()
+    }
+
     /// Gauntlet Loop, Gauntlet B round 19 (2026-08-24): consolidates a
     /// shape that six straight rounds (13-18) independently rediscovered
     /// and patched, one method at a time, in `dismissFinding`,
@@ -1401,5 +1439,28 @@ public final class AppState {
             activityLog = (try? await store.loadActivityLog()) ?? activityLog
             applyingFixFindingIDs.remove(findingID)
         }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 7 (Batch Fixes) — applies the SAME
+    /// `applyStagedFix` write, sequentially, to each finding in
+    /// `findingIDs`. No new write logic: same round-trip verification,
+    /// same Activity Log entries, same per-finding `applyingFixFindingIDs`/
+    /// `applyFixError` tracking `FindingDetailView`'s single "Apply Fix"
+    /// already uses — `BatchFixesView` renders those same per-finding
+    /// signals for each row. Sequential, not concurrent: `applyStagedFix`
+    /// itself calls `syncAndEvaluate()` after every success, so running
+    /// these in parallel would mean overlapping syncs reading/writing
+    /// `findings` at once — the exact race `isSyncInFlight` exists to
+    /// prevent elsewhere in this file. `isApplyingBatchFix` is this
+    /// method's own re-entrancy guard, the same shape `isSyncInFlight` uses
+    /// for `syncAndEvaluate()`, so a rapid double-tap on "Apply All" cannot
+    /// start two overlapping batches.
+    public func applyBatchFix(findingIDs: [String], actorName: String) async {
+        guard !isApplyingBatchFix else { return }
+        isApplyingBatchFix = true
+        for findingID in findingIDs {
+            await applyStagedFix(findingID: findingID, actorName: actorName)
+        }
+        isApplyingBatchFix = false
     }
 }
