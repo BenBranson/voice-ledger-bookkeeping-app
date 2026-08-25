@@ -400,6 +400,10 @@ struct RootView: View {
                 resolvedCleanupFindingsCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
                 balanceSheetLines: state.balanceSheetLines,
                 profitAndLossLines: state.profitAndLossLines,
+                cashFlowLines: state.cashFlowLines,
+                trialBalanceLines: state.trialBalanceLines,
+                agedReceivablesLines: state.agedReceivablesLines,
+                agedPayablesLines: state.agedPayablesLines,
                 recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
                 onExport: { format in
                     let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
@@ -411,7 +415,11 @@ struct RootView: View {
                             openCleanupCount: state.findings.filter { $0.status == .open && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
                             resolvedCleanupCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
                             balanceSheetLines: state.balanceSheetLines,
-                            profitAndLossLines: state.profitAndLossLines
+                            profitAndLossLines: state.profitAndLossLines,
+                            cashFlowLines: state.cashFlowLines,
+                            trialBalanceLines: state.trialBalanceLines,
+                            agedReceivablesLines: state.agedReceivablesLines,
+                            agedPayablesLines: state.agedPayablesLines
                         ),
                         format: format,
                         suggestedFilename: "Close Package"
@@ -421,6 +429,10 @@ struct RootView: View {
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+                if state.cashFlowLines.isEmpty { await state.loadCashFlow() }
+                if state.trialBalanceLines.isEmpty { await state.loadTrialBalance() }
+                if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
+                if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -703,7 +715,11 @@ struct RootView: View {
         openCleanupCount: Int,
         resolvedCleanupCount: Int,
         balanceSheetLines: [ReportLine],
-        profitAndLossLines: [ReportLine]
+        profitAndLossLines: [ReportLine],
+        cashFlowLines: [ReportLine] = [],
+        trialBalanceLines: [TrialBalanceLine] = [],
+        agedReceivablesLines: [AgingLine] = [],
+        agedPayablesLines: [AgingLine] = []
     ) -> ExportTable {
         var rows: [[ExportCell]] = [
             [ExportCell(text: "Period"), ExportCell(text: "\(period.year)-\(String(format: "%02d", period.month))"), ExportCell(text: "")],
@@ -715,6 +731,19 @@ struct RootView: View {
         }
         for line in profitAndLossLines where line.isSummary {
             rows.append([ExportCell(text: "Profit & Loss"), ExportCell(text: line.label), ExportCell.money(line.amount)])
+        }
+        for line in cashFlowLines where line.isSummary {
+            rows.append([ExportCell(text: "Cash Flow"), ExportCell(text: line.label), ExportCell.money(line.amount)])
+        }
+        if let line = trialBalanceLines.last(where: \.isSummary) {
+            rows.append([ExportCell(text: "Trial Balance"), ExportCell(text: "\(line.label) — Debit"), ExportCell.money(line.debit)])
+            rows.append([ExportCell(text: "Trial Balance"), ExportCell(text: "\(line.label) — Credit"), ExportCell.money(line.credit)])
+        }
+        if let line = agedReceivablesLines.last(where: \.isSummary) {
+            rows.append([ExportCell(text: "Aged Receivables"), ExportCell(text: line.label), ExportCell.money(line.total)])
+        }
+        if let line = agedPayablesLines.last(where: \.isSummary) {
+            rows.append([ExportCell(text: "Aged Payables"), ExportCell(text: line.label), ExportCell.money(line.total)])
         }
         return ExportTable(title: "Close Package", columns: ["Section", "Item", "Value"], rows: rows)
     }

@@ -9,14 +9,21 @@ import DesignSystem
 /// honesty convention as the Baseline Evidence Pack (`CLAUDE.md`
 /// terminology: evidence of a starting state, not a restorable backup).
 /// Built here: checklist completion status, Cleanup Assessment finding
-/// counts, Balance Sheet + Profit & Loss summary lines, and recent activity
-/// log entries — everything the app already has computed from real synced
-/// data. **Not built**: variance analysis, cash flow / general ledger /
-/// trial balance / aging reports, a tracked "corrections made" ledger
-/// distinct from the Activity Log, carry-forward items, client Q&A, and Ask
-/// Claude history (no Claude integration exists yet at all). Exportable as
-/// CSV/XLSX/PDF (a plain table export of this same data, not a designed
-/// branded document) via the Export menu.
+/// counts, Balance Sheet + Profit & Loss + Cash Flow + Trial Balance summary
+/// lines, Aged Receivables/Payables totals, and recent activity log entries
+/// — everything the app already has computed from real synced data.
+/// Corrected 2026-08-24: this doc comment previously said cash flow/trial
+/// balance/aging reports weren't built anywhere in the app — they are now
+/// (each has its own dedicated report page, reachable from the toolbar);
+/// they just weren't summarized HERE yet, which this pass closes. General
+/// Ledger is deliberately still excluded — it's transaction-level detail,
+/// not summary lines, and doesn't fit this page's "one line per section"
+/// shape. **Still not built**: variance analysis (period-over-period
+/// comparison), a tracked "corrections made" ledger distinct from the
+/// Activity Log, carry-forward items, client Q&A, and Ask Claude history (no
+/// Claude integration exists yet at all). Exportable as CSV/XLSX/PDF (a
+/// plain table export of this same data, not a designed branded document)
+/// via the Export menu.
 public struct ClosePackageView: View {
     public struct ChecklistStatus {
         public let completed: Int
@@ -34,6 +41,10 @@ public struct ClosePackageView: View {
     private let resolvedCleanupFindingsCount: Int
     private let balanceSheetLines: [ReportLine]
     private let profitAndLossLines: [ReportLine]
+    private let cashFlowLines: [ReportLine]
+    private let trialBalanceLines: [TrialBalanceLine]
+    private let agedReceivablesLines: [AgingLine]
+    private let agedPayablesLines: [AgingLine]
     private let recentActivity: [ActivityLogEntry]
     private let onExport: (ReportExportFormat) -> Void
 
@@ -45,6 +56,10 @@ public struct ClosePackageView: View {
         resolvedCleanupFindingsCount: Int,
         balanceSheetLines: [ReportLine],
         profitAndLossLines: [ReportLine],
+        cashFlowLines: [ReportLine] = [],
+        trialBalanceLines: [TrialBalanceLine] = [],
+        agedReceivablesLines: [AgingLine] = [],
+        agedPayablesLines: [AgingLine] = [],
         recentActivity: [ActivityLogEntry],
         onExport: @escaping (ReportExportFormat) -> Void = { _ in }
     ) {
@@ -55,6 +70,10 @@ public struct ClosePackageView: View {
         self.resolvedCleanupFindingsCount = resolvedCleanupFindingsCount
         self.balanceSheetLines = balanceSheetLines
         self.profitAndLossLines = profitAndLossLines
+        self.cashFlowLines = cashFlowLines
+        self.trialBalanceLines = trialBalanceLines
+        self.agedReceivablesLines = agedReceivablesLines
+        self.agedPayablesLines = agedPayablesLines
         self.recentActivity = recentActivity
         self.onExport = onExport
     }
@@ -71,7 +90,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no variance analysis, no cash flow/GL/trial balance/aging reports, no carry-forward items or client Q&A).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no variance analysis, no carry-forward items or client Q&A).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -83,6 +102,18 @@ public struct ClosePackageView: View {
                 }
                 if !profitAndLossLines.isEmpty {
                     reportSummarySection(title: "Profit & Loss (summary lines)", lines: profitAndLossLines)
+                }
+                if !cashFlowLines.isEmpty {
+                    reportSummarySection(title: "Cash Flow (summary lines)", lines: cashFlowLines)
+                }
+                if !trialBalanceLines.isEmpty {
+                    trialBalanceSummarySection
+                }
+                if !agedReceivablesLines.isEmpty {
+                    agingSummarySection(title: "Aged Receivables (total)", lines: agedReceivablesLines)
+                }
+                if !agedPayablesLines.isEmpty {
+                    agingSummarySection(title: "Aged Payables (total)", lines: agedPayablesLines)
                 }
 
                 activitySection
@@ -149,6 +180,53 @@ public struct ClosePackageView: View {
                             .foregroundStyle(VLColor.textPrimary)
                         Spacer()
                         Text(line.amount?.description ?? "-")
+                            .font(VLTypography.tabularNumericEmphasis())
+                            .foregroundStyle(VLColor.textPrimary)
+                    }
+                }
+            }
+        }
+    }
+
+    private var trialBalanceSummarySection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("TRIAL BALANCE (SUMMARY LINE)")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                if let summaryLine = trialBalanceLines.last(where: \.isSummary) {
+                    HStack {
+                        Text(summaryLine.label)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Spacer()
+                        Text("Debit \(summaryLine.debit?.description ?? "-")  ·  Credit \(summaryLine.credit?.description ?? "-")")
+                            .font(VLTypography.tabularNumericEmphasis())
+                            .foregroundStyle(VLColor.textPrimary)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Only the grand-total summary row, not every customer/vendor line —
+    /// this page is a one-line-per-section overview, matching
+    /// `reportSummarySection`'s shape for `ReportLine`.
+    private func agingSummarySection(title: String, lines: [AgingLine]) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text(title.uppercased())
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                if let summaryLine = lines.last(where: { $0.isSummary }) {
+                    HStack {
+                        Text(summaryLine.label)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Spacer()
+                        Text(summaryLine.total?.description ?? "-")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
                     }
