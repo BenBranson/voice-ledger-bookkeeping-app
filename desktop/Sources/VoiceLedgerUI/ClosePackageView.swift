@@ -22,11 +22,14 @@ import DesignSystem
 /// themselves (`FinancialReportView`'s "Compare to prior period"), not
 /// duplicated here. Carry-forward items are now built (`CarryForwardMark`,
 /// marked from `FindingDetailView`) — this section only renders when at
-/// least one exists. **Still not built**: a tracked "corrections made"
-/// ledger distinct from the Activity Log, client Q&A, and Ask Claude
-/// history (no Claude integration exists yet at all). Exportable as
-/// CSV/XLSX/PDF (a plain table export of this same data, not a designed
-/// branded document) via the Export menu.
+/// least one exists. Corrections made is now built too — a filtered view
+/// of the Activity Log (`ActivityKind.isCorrection`), not a separately
+/// tracked ledger with its own storage; the Activity Log is already the
+/// append-only record of everything, so this is a view distinction, not a
+/// new data model. **Still not built**: client Q&A and Ask Claude history
+/// (no Claude integration exists yet at all). Exportable as CSV/XLSX/PDF (a
+/// plain table export of this same data, not a designed branded document)
+/// via the Export menu.
 public struct ClosePackageView: View {
     public struct ChecklistStatus {
         public let completed: Int
@@ -100,7 +103,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no corrections ledger or client Q&A yet).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no client Q&A or Ask Claude history yet).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -126,6 +129,7 @@ public struct ClosePackageView: View {
                     agingSummarySection(title: "Aged Payables (total)", lines: agedPayablesLines)
                 }
 
+                correctionsSection
                 if !carryForwardItems.isEmpty {
                     carryForwardSection
                 }
@@ -243,6 +247,50 @@ public struct ClosePackageView: View {
                         Text(summaryLine.total?.description ?? "-")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
+                    }
+                }
+            }
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package section:
+    /// "corrections made" — distinct from the full Activity Log (which also
+    /// records detections, dismissals, and other non-correction events).
+    /// `ActivityKind.isCorrection` is the single source of truth for what
+    /// counts; this section just filters and renders it.
+    private var correctionsSection: some View {
+        let corrections = recentActivity.filter { $0.kind.isCorrection }
+        return VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("CORRECTIONS MADE")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                if corrections.isEmpty {
+                    Text("No corrections recorded yet this period.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                } else {
+                    ForEach(corrections.prefix(20), id: \.id) { entry in
+                        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                            HStack {
+                                Text(entry.kind.humanLabel)
+                                    .font(VLTypography.body())
+                                    .foregroundStyle(VLColor.textPrimary)
+                                Spacer()
+                                Text(entry.recordedAt, style: .date)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            }
+                            if let summary = entry.findingSummary {
+                                Text(summary)
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textSecondary)
+                            }
+                            Text(entry.actor.displayLabel)
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        }
                     }
                 }
             }

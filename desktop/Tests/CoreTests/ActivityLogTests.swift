@@ -36,7 +36,8 @@ struct ActivityLogTests {
         let kinds: [ActivityKind] = [
             .findingDetected, .manualCompletionAttested, .findingResolved, .apiWriteApplied,
             .apiWriteRejected, .clientQuestionDrafted, .findingDismissed, .clientMemoryRuleCreated,
-            .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory
+            .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory,
+            .findingCarriedForward, .findingCarryForwardRemoved
         ]
         for kind in kinds {
             #expect(!kind.humanLabel.isEmpty)
@@ -57,5 +58,19 @@ struct ActivityLogTests {
     func actorDisplayLabelNamesTheUser() {
         #expect(Actor.user("Amy").displayLabel == "By Amy")
         #expect(Actor.system.displayLabel == "By Voice Ledger")
+    }
+
+    @Test("isCorrection is true only for apiWriteApplied and manualCompletionAttested")
+    func isCorrectionMatchesOnlyRealCorrections() {
+        #expect(ActivityKind.apiWriteApplied.isCorrection)
+        #expect(ActivityKind.manualCompletionAttested.isCorrection)
+        let nonCorrections: [ActivityKind] = [
+            .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
+            .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
+            .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved
+        ]
+        for kind in nonCorrections {
+            #expect(!kind.isCorrection, "\(kind.rawValue) should not count as a correction")
+        }
     }
 }

@@ -92,6 +92,28 @@ public enum ActivityKind: String, Codable, Sendable {
         case .findingCarryForwardRemoved: return "Carry-forward mark removed"
         }
     }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package section:
+    /// "corrections made" — a tracked ledger distinct from the full
+    /// Activity Log. Single source of truth for which entry kinds actually
+    /// represent a correction being made (not just detected, questioned,
+    /// or administratively recorded), so `ClosePackageView`'s corrections
+    /// section and any future caller agree on the same definition.
+    /// `.manualCompletionAttested` counts even though it's attestation, not
+    /// QBO-verified proof (`CLAUDE.md`: attestation is recorded, not
+    /// treated as proof) — it's still the record of a real Branch B
+    /// correction having been made, same as `.apiWriteApplied` is for
+    /// Branch A.
+    public var isCorrection: Bool {
+        switch self {
+        case .apiWriteApplied, .manualCompletionAttested:
+            return true
+        case .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
+             .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
+             .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved:
+            return false
+        }
+    }
 }
 
 /// docs/phase-0/11_VERTICAL_SLICE.md §11.4's worked example. Branch B never
