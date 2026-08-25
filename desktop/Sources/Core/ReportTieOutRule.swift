@@ -149,9 +149,15 @@ public enum ReportTieOutRule: Rule {
             severity: severity,
             confidence: .high,
             dollarExposure: exposure,
-            evidence: [EvidenceItem(transactionID: affectedIDSuffix, highlightedFields: ["amount"])],
+            evidence: [EvidenceItem(
+                transactionID: affectedIDSuffix,
+                highlightedFields: ["amount"],
+                fieldValues: ["amount": exposure.description, "balanceSheetTotal": balanceSheetTotal.description, "agingTotal": agingGrandTotal.description]
+            )],
             proposedActions: [action],
-            provenance: [.qboAPI(readAt: Date())]
+            provenance: [.qboAPI(readAt: Date())],
+            narrative: "The Balance Sheet's \(accountLabel) balance (\(balanceSheetTotal)) is off by \(exposure) from \(reportLabel)'s total (\(agingGrandTotal)) — something likely posted directly to \(accountLabel) outside the normal invoice/bill flow.",
+            riskIfIgnored: "This \(exposure) stays unexplained by any open invoice or bill on \(reportLabel) until the direct posting is found and reclassified."
         )
     }
 }

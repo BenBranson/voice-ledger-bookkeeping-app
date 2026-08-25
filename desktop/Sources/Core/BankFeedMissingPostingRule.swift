@@ -72,7 +72,7 @@ public enum BankFeedMissingPostingRule: Rule {
             let procedure = GuidedProcedure(
                 steps: [
                     "Open QuickBooks Online",
-                    "Check the bank feed's \"For Review\" queue for this transaction (\(line.vendorName ?? "unknown"), \(line.txnDate), \(line.totalAmount)) — it may already be sitting there unmatched",
+                    "Check the bank feed's \"For Review\" queue for this transaction (\(line.vendorName ?? "unknown"), \(line.txnDate.formatted), \(line.totalAmount)) — it may already be sitting there unmatched",
                     "If it's in the queue: match or add it from there, using QBO's own bank-feed tools",
                     "If it's not in the queue: enter the transaction manually in QBO"
                 ],
@@ -106,9 +106,16 @@ public enum BankFeedMissingPostingRule: Rule {
                 severity: Severity.derive(dollarExposure: exposure, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: exposure,
-                evidence: [EvidenceItem(transactionID: line.id, highlightedFields: ["amount", "date", "account"])],
+                evidence: [EvidenceItem(
+                    transactionID: line.id,
+                    highlightedFields: ["amount", "date", "account"],
+                    fieldValues: ["amount": line.totalAmount.description, "date": line.txnDate.formatted, "vendor": line.vendorName ?? "unknown"]
+                )],
                 proposedActions: [action],
-                provenance: [line.provenance]
+                provenance: [line.provenance],
+                vendorName: line.vendorName,
+                narrative: "A \(line.totalAmount) statement line\(line.vendorName.map { " from \($0)" } ?? "") dated \(line.txnDate.formatted) has no matching Purchase or Bill posted in QBO within \(Self.nearDateWindowDays) days — this activity happened in the bank, but hasn't been entered in your books yet.",
+                riskIfIgnored: "Your books stay behind actual cash activity by \(line.totalAmount) until this is entered — reconciliation and your cash balance will keep being off until it's posted."
             ))
         }
 

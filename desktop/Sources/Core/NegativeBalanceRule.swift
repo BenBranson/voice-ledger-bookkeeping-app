@@ -87,9 +87,15 @@ public enum NegativeBalanceRule: Rule {
                 severity: Severity.derive(dollarExposure: exposure, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: exposure,
-                evidence: [EvidenceItem(transactionID: account.id, highlightedFields: ["currentBalance"])],
+                evidence: [EvidenceItem(
+                    transactionID: account.id,
+                    highlightedFields: ["currentBalance"],
+                    fieldValues: ["currentBalance": "-\(exposure)", "account": account.name]
+                )],
                 proposedActions: [action],
-                provenance: []
+                provenance: [],
+                narrative: "\(account.name) (a \(kind) account) shows a balance of -\(exposure) — \(kind) balances shouldn't normally go negative in QBO's sign convention.",
+                riskIfIgnored: "The underlying cause stays uncorrected and \(account.name)'s balance stays wrong until this is investigated — this could be masking a real overdraft, overpayment, or miscoded transaction."
             ))
         }
 

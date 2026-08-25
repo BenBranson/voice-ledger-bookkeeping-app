@@ -94,10 +94,15 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                 // two payment accounts to differ, so claiming
                 // "paymentAccount" as matched evidence would be an outright
                 // false statement, not merely incomplete.
+                func fieldValues(for txn: LedgerTransaction) -> [String: String] {
+                    ["amount": txn.totalAmount.description, "date": txn.txnDate.formatted, "vendor": vendorA]
+                }
                 let evidence = [
-                    EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date"]),
-                    EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date"])
+                    EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date"], fieldValues: fieldValues(for: a)),
+                    EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date"], fieldValues: fieldValues(for: b))
                 ]
+                let narrative = "Two purchases from \(vendorA) for \(exposure) were posted \(AccountingDate.daysBetween(a.txnDate, b.txnDate) == 0 ? "on the same day" : "\(AccountingDate.daysBetween(a.txnDate, b.txnDate)) day\(AccountingDate.daysBetween(a.txnDate, b.txnDate) == 1 ? "" : "s") apart"), paid from two different accounts — this could be the same bill paid twice, or a coincidence (recurring vendor, round amount)."
+                let riskIfIgnored = "This finding will keep reappearing on every future sync until it's resolved or dismissed. Until then, \(exposure) may be sitting in your books as a duplicate expense across two accounts."
 
                 let procedure = GuidedProcedure(
                     steps: [
@@ -144,7 +149,9 @@ public enum CrossAccountDuplicateExpenseRule: Rule {
                     // sibling rule with a clear single vendor sets this so
                     // Client Memory's "Always Dismiss for <vendor>" can
                     // actually match a finding from this rule.
-                    vendorName: vendorA
+                    vendorName: vendorA,
+                    narrative: narrative,
+                    riskIfIgnored: riskIfIgnored
                 ))
             }
         }

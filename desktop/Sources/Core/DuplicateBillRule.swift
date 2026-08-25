@@ -42,6 +42,10 @@ public enum DuplicateBillRule: Rule {
                 let b = bills[j]
 
                 if context.gatedTransactionIDs.contains(a.id) || context.gatedTransactionIDs.contains(b.id) { continue }
+                // A literal `id` collision is a data-pipeline anomaly, never
+                // two distinct real records — `id` is QBO's own primary key
+                // (same class of landmine VL-DUP-EXP-001's own hardening found).
+                guard a.id != b.id else { continue }
 
                 guard let vendorA = a.vendorName, vendorA == b.vendorName else { continue }
                 guard a.totalAmount == b.totalAmount else { continue }
@@ -100,11 +104,14 @@ public enum DuplicateBillRule: Rule {
                     confidence: .high,
                     dollarExposure: a.totalAmount,
                     evidence: [
-                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "vendor"]),
-                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "vendor"])
+                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "vendor"], fieldValues: ["amount": a.totalAmount.description, "date": a.txnDate.formatted, "vendor": vendorA]),
+                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "vendor"], fieldValues: ["amount": b.totalAmount.description, "date": b.txnDate.formatted, "vendor": vendorA])
                     ],
                     proposedActions: [action],
-                    provenance: [a.provenance, b.provenance]
+                    provenance: [a.provenance, b.provenance],
+                    vendorName: vendorA,
+                    narrative: "Two bills from \(vendorA) for \(a.totalAmount) were both entered on \(a.txnDate.formatted) — this looks like the same bill entered twice.",
+                    riskIfIgnored: "Accounts payable stays overstated by \(a.totalAmount) — and if both bills get paid, expense will be overstated too — until this is resolved."
                 ))
             }
         }

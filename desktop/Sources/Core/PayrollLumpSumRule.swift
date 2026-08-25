@@ -98,10 +98,16 @@ public enum PayrollLumpSumRule: Rule {
                 severity: Severity.derive(dollarExposure: purchase.totalAmount, materiality: context.materiality),
                 confidence: .medium,
                 dollarExposure: purchase.totalAmount,
-                evidence: [EvidenceItem(transactionID: purchase.id, highlightedFields: ["vendor", "lineAccount"])],
+                evidence: [EvidenceItem(
+                    transactionID: purchase.id,
+                    highlightedFields: ["vendor", "amount", "date"],
+                    fieldValues: ["vendor": vendor, "amount": purchase.totalAmount.description, "date": purchase.txnDate.formatted]
+                )],
                 proposedActions: [action],
                 provenance: [purchase.provenance],
-                vendorName: vendor
+                vendorName: vendor,
+                narrative: "A \(purchase.totalAmount) payment to \(vendor) on \(purchase.txnDate.formatted) was coded entirely to one expense line — payroll processor draws usually bundle wages, employer taxes, and withholdings together, so this single line likely overstates wages and omits tax/withholding entries.",
+                riskIfIgnored: "Wages expense stays overstated and employer tax expense/withholding liabilities stay invisible in your books until this payment is split using the real payroll register."
             ))
         }
 

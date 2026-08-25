@@ -62,6 +62,13 @@ public struct AccountingDate: Hashable, Codable, Sendable, Comparable {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }
 
+    /// `"YYYY-M-D"`, matching the convention `DuplicatePostedExpenseRule`
+    /// deliberately kept (its own doc comment: consistency with sibling
+    /// rules' identical convention outweighs polish for one rule in
+    /// isolation). Shared here so every rule's evidence/narrative text uses
+    /// the same format rather than each rewriting it.
+    public var formatted: String { "\(year)-\(month)-\(day)" }
+
     /// Absolute difference in days. Proleptic Gregorian via `Calendar`,
     /// sufficient for T3's ±3-day window (docs/phase-0/11_VERTICAL_SLICE.md
     /// §11.2) — no calendar-library dependency needed for that.

@@ -85,7 +85,7 @@ public enum VendorDescriptionMismatchRule: Rule {
             let procedure = GuidedProcedure(
                 steps: [
                     "Open QuickBooks Online",
-                    "Find the posted transaction for \(postedVendor), \(match.txnDate), \(match.totalAmount)",
+                    "Find the posted transaction for \(postedVendor), \(match.txnDate.formatted), \(match.totalAmount)",
                     "Compare it against the bank statement description: \"\(statementDescription)\"",
                     "Confirm whether this is really \(postedVendor), or whether QBO (or a prior bookkeeper) matched it to the wrong vendor",
                     "If wrong: correct the vendor on the posted transaction in QBO"
@@ -119,12 +119,14 @@ public enum VendorDescriptionMismatchRule: Rule {
                 confidence: .medium,
                 dollarExposure: line.totalAmount,
                 evidence: [
-                    EvidenceItem(transactionID: line.id, highlightedFields: ["description"]),
-                    EvidenceItem(transactionID: match.id, highlightedFields: ["vendor"])
+                    EvidenceItem(transactionID: line.id, highlightedFields: ["description"], fieldValues: ["description": statementDescription, "amount": line.totalAmount.description, "date": line.txnDate.formatted]),
+                    EvidenceItem(transactionID: match.id, highlightedFields: ["vendor"], fieldValues: ["vendor": postedVendor, "amount": match.totalAmount.description, "date": match.txnDate.formatted])
                 ],
                 proposedActions: [action],
                 provenance: [line.provenance, match.provenance],
-                vendorName: postedVendor
+                vendorName: postedVendor,
+                narrative: "A \(line.totalAmount) statement line described as \"\(statementDescription)\" was matched in QBO to \(postedVendor) — the two names share no words in common, so this match may be wrong.",
+                riskIfIgnored: "If this match is actually wrong, per-vendor totals for both \(postedVendor) and whoever the statement line really belongs to will stay inaccurate until it's confirmed or corrected."
             ))
         }
 

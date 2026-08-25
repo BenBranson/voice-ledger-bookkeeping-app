@@ -39,6 +39,7 @@ public enum DuplicatePaymentRule: Rule {
                 let b = payments[j]
 
                 if context.gatedTransactionIDs.contains(a.id) || context.gatedTransactionIDs.contains(b.id) { continue }
+                guard a.id != b.id else { continue }
 
                 guard let customerA = a.vendorName, customerA == b.vendorName else { continue }
                 guard a.totalAmount == b.totalAmount else { continue }
@@ -99,11 +100,14 @@ public enum DuplicatePaymentRule: Rule {
                     confidence: .medium, // no reference-number tier and no verified void signal for Payment — one notch below VL-DUP-INV-001/VL-DUP-BILL-001's .high
                     dollarExposure: a.totalAmount,
                     evidence: [
-                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "customer"]),
-                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "customer"])
+                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "customer"], fieldValues: ["amount": a.totalAmount.description, "date": a.txnDate.formatted, "customer": customerA]),
+                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "customer"], fieldValues: ["amount": b.totalAmount.description, "date": b.txnDate.formatted, "customer": customerA])
                     ],
                     proposedActions: [action],
-                    provenance: [a.provenance, b.provenance]
+                    provenance: [a.provenance, b.provenance],
+                    vendorName: customerA,
+                    narrative: "Two payments from \(customerA) for \(a.totalAmount) were both dated \(a.txnDate.formatted) — check deposit records to confirm whether this is the same payment recorded twice.",
+                    riskIfIgnored: "Cash received stays overstated and \(customerA)'s open balance stays understated by \(a.totalAmount) until this is verified against deposit records."
                 ))
             }
         }

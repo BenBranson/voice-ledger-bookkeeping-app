@@ -89,9 +89,15 @@ public enum OpeningBalanceEquityRule: Rule {
                 severity: Severity.derive(dollarExposure: exposure, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: exposure,
-                evidence: [EvidenceItem(transactionID: account.id, highlightedFields: ["currentBalance"])],
+                evidence: [EvidenceItem(
+                    transactionID: account.id,
+                    highlightedFields: ["currentBalance"],
+                    fieldValues: ["currentBalance": exposure.description, "account": account.name]
+                )],
                 proposedActions: [action],
-                provenance: []
+                provenance: [],
+                narrative: "\(account.name) carries a \(exposure) balance — Opening Balance Equity should be zero once a file is fully set up and reconciled.",
+                riskIfIgnored: "Your balance sheet will keep showing this \(exposure) as an unresolved opening-balance discrepancy on every report until it's traced and reclassified."
             ))
         }
 

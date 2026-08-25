@@ -66,7 +66,7 @@ public enum UncategorizedTransactionRule: Rule {
 
             let procedure = GuidedProcedure(
                 steps: [
-                    "Open QuickBooks Online, find this transaction (vendor: \(txn.vendorName ?? "unknown"), \(txn.txnDate), \(txn.totalAmount))",
+                    "Open QuickBooks Online, find this transaction (vendor: \(txn.vendorName ?? "unknown"), \(txn.txnDate.formatted), \(txn.totalAmount))",
                     "Determine the correct expense or income category based on what was actually purchased or received",
                     "Edit the transaction and change the category from Uncategorized Expense/Income/Asset to the correct account",
                     "Save the transaction"
@@ -99,10 +99,16 @@ public enum UncategorizedTransactionRule: Rule {
                 severity: Severity.derive(dollarExposure: txn.totalAmount, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: txn.totalAmount,
-                evidence: [EvidenceItem(transactionID: txn.id, highlightedFields: ["lineAccount"])],
+                evidence: [EvidenceItem(
+                    transactionID: txn.id,
+                    highlightedFields: ["lineAccount", "amount", "date"],
+                    fieldValues: ["lineAccount": "Uncategorized", "amount": txn.totalAmount.description, "date": txn.txnDate.formatted, "vendor": txn.vendorName ?? "unknown"]
+                )],
                 proposedActions: [action],
                 provenance: [txn.provenance],
-                vendorName: txn.vendorName
+                vendorName: txn.vendorName,
+                narrative: "A \(txn.totalAmount) transaction \(txn.vendorName.map { "from \($0) " } ?? "")dated \(txn.txnDate.formatted) is still sitting in one of QBO's default Uncategorized accounts — it's counted in cash totals but not in any real expense or income category yet.",
+                riskIfIgnored: "This \(txn.totalAmount) stays outside any meaningful P&L breakdown until it's recategorized — the transaction total is correct, but what it represents isn't visible in your reports."
             ))
         }
 

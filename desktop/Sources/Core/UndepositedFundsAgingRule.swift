@@ -81,7 +81,7 @@ public enum UndepositedFundsAgingRule: Rule {
             let procedure = GuidedProcedure(
                 steps: [
                     "Open QuickBooks Online, go to Bookkeeping > Transactions > Bank deposits",
-                    "Find the Payment from \(payment.vendorName ?? "this customer"), \(payment.txnDate), \(payment.totalAmount)",
+                    "Find the Payment from \(payment.vendorName ?? "this customer"), \(payment.txnDate.formatted), \(payment.totalAmount)",
                     "Confirm whether this was actually deposited at the bank",
                     "If yes: record the Deposit in QBO to move it out of Undeposited Funds",
                     "If no: determine why — a forgotten deposit, or a Payment entered in error"
@@ -114,9 +114,16 @@ public enum UndepositedFundsAgingRule: Rule {
                 severity: Severity.derive(dollarExposure: payment.totalAmount, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: payment.totalAmount,
-                evidence: [EvidenceItem(transactionID: payment.id, highlightedFields: ["txnDate", "depositToAccount"])],
+                evidence: [EvidenceItem(
+                    transactionID: payment.id,
+                    highlightedFields: ["txnDate", "amount"],
+                    fieldValues: ["txnDate": payment.txnDate.formatted, "amount": payment.totalAmount.description, "vendor": payment.vendorName ?? "unknown", "daysAged": "\(ageDays)"]
+                )],
                 proposedActions: [action],
-                provenance: [payment.provenance]
+                provenance: [payment.provenance],
+                vendorName: payment.vendorName,
+                narrative: "A \(payment.totalAmount) payment\(payment.vendorName.map { " from \($0)" } ?? "") dated \(payment.txnDate.formatted) has sat in Undeposited Funds for \(ageDays) days with no matching bank Deposit — it may have been forgotten.",
+                riskIfIgnored: "Available cash stays overstated by \(payment.totalAmount) in your books until this is deposited (or confirmed as entered in error)."
             ))
         }
 

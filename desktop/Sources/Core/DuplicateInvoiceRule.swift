@@ -38,6 +38,7 @@ public enum DuplicateInvoiceRule: Rule {
                 let b = invoices[j]
 
                 if context.gatedTransactionIDs.contains(a.id) || context.gatedTransactionIDs.contains(b.id) { continue }
+                guard a.id != b.id else { continue }
 
                 guard let customerA = a.vendorName, customerA == b.vendorName else { continue }
                 guard a.totalAmount == b.totalAmount else { continue }
@@ -96,11 +97,14 @@ public enum DuplicateInvoiceRule: Rule {
                     confidence: .high,
                     dollarExposure: a.totalAmount,
                     evidence: [
-                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "customer"]),
-                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "customer"])
+                        EvidenceItem(transactionID: a.id, highlightedFields: ["amount", "date", "customer"], fieldValues: ["amount": a.totalAmount.description, "date": a.txnDate.formatted, "customer": customerA]),
+                        EvidenceItem(transactionID: b.id, highlightedFields: ["amount", "date", "customer"], fieldValues: ["amount": b.totalAmount.description, "date": b.txnDate.formatted, "customer": customerA])
                     ],
                     proposedActions: [action],
-                    provenance: [a.provenance, b.provenance]
+                    provenance: [a.provenance, b.provenance],
+                    vendorName: customerA,
+                    narrative: "Two invoices to \(customerA) for \(a.totalAmount) were both dated \(a.txnDate.formatted) — this looks like the same sale entered twice.",
+                    riskIfIgnored: "Revenue and accounts receivable stay overstated by \(a.totalAmount) until this is resolved."
                 ))
             }
         }

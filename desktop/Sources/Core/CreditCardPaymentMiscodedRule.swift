@@ -157,10 +157,25 @@ public enum CreditCardPaymentMiscodedRule: Rule {
                 severity: severity,
                 confidence: confidence,
                 dollarExposure: purchase.totalAmount,
-                evidence: [EvidenceItem(transactionID: purchase.id, highlightedFields: ["vendor", "lineAccount"])],
+                evidence: [EvidenceItem(
+                    transactionID: purchase.id,
+                    highlightedFields: ["vendor", "lineAccount"],
+                    fieldValues: [
+                        "vendor": vendor,
+                        "amount": purchase.totalAmount.description,
+                        "date": purchase.txnDate.formatted,
+                        "lineAccount": expenseAccountNames
+                    ]
+                )],
                 proposedActions: [action],
                 provenance: [purchase.provenance],
-                vendorName: vendor
+                vendorName: vendor,
+                narrative: "A \(purchase.totalAmount) payment to \(vendor) on \(purchase.txnDate.formatted) was coded to \(expenseAccountNames), an expense account — but this looks like a credit card payment, which should hit the card's own liability account instead, not an expense.",
+                preApprovalChecklist: [
+                    "Confirm \(vendor) is genuinely the credit card issuer, not a merchant with a similar name",
+                    "Verify the correct Credit Card liability account exists in the chart of accounts before applying any fix"
+                ],
+                riskIfIgnored: "Left uncorrected, this \(purchase.totalAmount) is double-counted as an expense — once when the card's charges posted, again here when the payment itself was expensed. Your expense totals and the credit card account's balance will both stay wrong until this is fixed."
             ))
         }
 

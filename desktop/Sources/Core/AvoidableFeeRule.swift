@@ -97,9 +97,21 @@ public enum AvoidableFeeRule: Rule {
                 severity: Severity.derive(dollarExposure: transaction.totalAmount, materiality: context.materiality),
                 confidence: .medium,
                 dollarExposure: transaction.totalAmount,
-                evidence: [EvidenceItem(transactionID: transaction.id, highlightedFields: ["vendorName", "memo"])],
+                evidence: [EvidenceItem(
+                    transactionID: transaction.id,
+                    highlightedFields: ["vendorName", "memo"],
+                    fieldValues: [
+                        "vendorName": transaction.vendorName ?? "unknown",
+                        "memo": transaction.memo ?? "",
+                        "amount": transaction.totalAmount.description,
+                        "date": transaction.txnDate.formatted
+                    ]
+                )],
                 proposedActions: [action],
-                provenance: [.qboAPI(readAt: Date())]
+                provenance: [transaction.provenance],
+                vendorName: transaction.vendorName,
+                narrative: "A \(transaction.totalAmount) charge\(transaction.vendorName.map { " from \($0)" } ?? "") on \(transaction.txnDate.formatted) looks like a late fee, overdraft, or finance charge based on its vendor name or memo.",
+                riskIfIgnored: "This \(transaction.totalAmount) stays blended into ordinary expenses rather than flagged as an avoidable cost worth disputing or fixing at the source."
             ))
         }
 

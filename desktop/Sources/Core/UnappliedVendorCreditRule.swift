@@ -60,7 +60,7 @@ public enum UnappliedVendorCreditRule: Rule {
             let procedure = GuidedProcedure(
                 steps: [
                     "Open QuickBooks Online, go to Expenses, find the vendor \(vendorName)",
-                    "Locate the vendor credit dated \(credit.txnDate), \(credit.balance) still unapplied",
+                    "Locate the vendor credit dated \(credit.txnDate.formatted), \(credit.balance) still unapplied",
                     "Check whether there's an open bill from this vendor the credit could be applied to",
                     "If yes: apply the credit the next time you pay a bill from this vendor (Pay Bills, select both the bill and the credit)",
                     "If no open bill exists and the vendor owes a cash refund instead: record the refund as a Check or Expense using Accounts Payable as the category, linked to this credit"
@@ -94,10 +94,16 @@ public enum UnappliedVendorCreditRule: Rule {
                 severity: Severity.derive(dollarExposure: credit.balance, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: credit.balance,
-                evidence: [EvidenceItem(transactionID: credit.id, highlightedFields: ["balance", "txnDate"])],
+                evidence: [EvidenceItem(
+                    transactionID: credit.id,
+                    highlightedFields: ["balance", "txnDate"],
+                    fieldValues: ["balance": credit.balance.description, "txnDate": credit.txnDate.formatted, "vendor": vendorName, "daysAged": "\(ageDays)"]
+                )],
                 proposedActions: [action],
                 provenance: [credit.provenance],
-                vendorName: vendorName
+                vendorName: vendorName,
+                narrative: "A \(credit.balance) credit from \(vendorName) dated \(credit.txnDate.formatted) has sat unapplied for \(ageDays) days — it isn't reducing a bill or showing up as cash until it's applied or refunded.",
+                riskIfIgnored: "This \(credit.balance) stays money owed to you but unused until it's applied to a bill or refunded — easy to lose track of since QBO gives no reminder on its own."
             ))
         }
 

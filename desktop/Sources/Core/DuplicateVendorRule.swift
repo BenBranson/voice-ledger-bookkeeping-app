@@ -110,9 +110,11 @@ public enum DuplicateVendorRule: Rule {
                 severity: .low, // no dollar exposure of its own — a data-quality finding, not a financial-error one
                 confidence: .high,
                 dollarExposure: .zero,
-                evidence: group.map { EvidenceItem(transactionID: $0.id, highlightedFields: ["displayName"]) },
+                evidence: group.map { EvidenceItem(transactionID: $0.id, highlightedFields: ["displayName"], fieldValues: ["displayName": $0.displayName]) },
                 proposedActions: [action],
-                provenance: []
+                provenance: [],
+                narrative: "These \(group.count) vendor records all normalize to the same name (\(namesList)) — likely the same real-world payee entered more than once, splitting their transaction history across separate records.",
+                riskIfIgnored: "Per-vendor totals, price history, and 1099 aggregation for this vendor will keep understating until these records are merged into one."
             ))
         }
 
