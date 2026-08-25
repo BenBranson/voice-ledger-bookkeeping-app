@@ -21,6 +21,32 @@ public struct FindingsListView: View {
             self.findings = findings
             self.nextBestAction = nextBestAction
         }
+
+        // Gauntlet Loop, Gauntlet C round 2 (2026-08-24): a fresh critic
+        // found this used to be `state.findings.isEmpty ? .verified :
+        // .reviewNeeded`, computed independent of `coverageStatus` — a
+        // stale disk-loaded findings list (from `loadFromDiskOnly()`,
+        // before any sync in the current process) that happened to be
+        // empty rendered EXCEPTIONS FOUND green right next to DATA
+        // AVAILABLE showing gray "not synced yet" in the same strip.
+        // `VLStatus.verified`'s own doc comment requires the result to be
+        // current, not stale — "zero findings" only proves "verified none"
+        // when the data behind it is actually current. A NON-empty stale
+        // list isn't the same dishonesty (`.reviewNeeded` never claims the
+        // result is current), so only the green claim on an empty list is
+        // gated on `coverageStatus` also being `.verified`. Extracted to a
+        // pure function so `VoiceLedgerUITests` can exercise it directly —
+        // this exact bug previously required a temporary test target to
+        // even prove.
+        public var exceptionsStatus: VLStatus {
+            guard findings.isEmpty else { return .reviewNeeded }
+            return coverageStatus == .verified ? .verified : .notChecked
+        }
+
+        public var exceptionsDetail: String {
+            guard findings.isEmpty else { return "\(findings.count) open" }
+            return coverageStatus == .verified ? "None" : "Not synced yet"
+        }
     }
 
     private let state: ViewState
@@ -53,8 +79,8 @@ public struct FindingsListView: View {
                     dataDetail: state.coverageDetail,
                     checksCompleted: state.coverageStatus,
                     checksDetail: "\(state.findings.count) finding\(state.findings.count == 1 ? "" : "s")",
-                    exceptions: state.findings.isEmpty ? .verified : .reviewNeeded,
-                    exceptionsDetail: state.findings.isEmpty ? "None" : "\(state.findings.count) open"
+                    exceptions: state.exceptionsStatus,
+                    exceptionsDetail: state.exceptionsDetail
                 )
 
                 if state.findings.isEmpty {

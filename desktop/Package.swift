@@ -90,6 +90,21 @@ let package = Package(
             path: "Sources/VoiceLedgerUI"
         ),
 
+        // Gauntlet Loop, Gauntlet C round 2 (2026-08-24): a fresh critic
+        // found a real CLAUDE.md rule 5 violation (a coverage-strip column
+        // could render green on stale/not-yet-synced data) and could only
+        // prove it by building a TEMPORARY test target, since nothing in
+        // this package could previously exercise VoiceLedgerUI's own
+        // domain-to-VLStatus mapping logic directly — every prior check of
+        // it was trace-only. Made permanent so this class of bug (a
+        // rendering computation that silently drifts from the honesty
+        // invariants) has a real test target watching it going forward.
+        .testTarget(
+            name: "VoiceLedgerUITests",
+            dependencies: ["VoiceLedgerUI", "Core", "DesignSystem"],
+            path: "Tests/VoiceLedgerUITests"
+        ),
+
         // CSV/XLSX/PDF export — takes a Core `ExportTable` and produces file
         // bytes. XLSX is a hand-rolled minimal OOXML writer (no third-party
         // zip/spreadsheet dependency): the ZIP container uses STORED
