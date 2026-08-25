@@ -440,8 +440,22 @@ public final class AppState {
             // Merge in any previously-imported, persisted statement lines
             // (Universal Ingestion Tier 1) so VL-RECON-MISSING-001 sees them
             // on every sync, not just the run right after import.
+            //
+            // Gauntlet Loop, Gauntlet C round 6 (2026-08-24): a fresh
+            // critic found `importedStatementLineCount` had the identical
+            // non-atomic-publish shape rounds 4/5 fixed for
+            // `coverage`/`accounts`/`findings`/`activityLog` — this used
+            // to publish immediately here, long before the many further
+            // throwing calls below. A throw after this line left this
+            // sync's fresh count published while `findings` stayed stale,
+            // which `RootView`'s `ReconciliationSummary.compute` mixes
+            // together (fresh statement-line count against a stale
+            // unmatched-finding count) into a specific, wrong "Matched" /
+            // "Unmatched" claim on the Bank Feed Cleanup page — the same
+            // false-data shape, on a different rule's surface, reached
+            // through this same shared method. Deferred into a local until
+            // the atomic publish block below.
             let importedLines = try await store.loadImportedStatementLines()
-            importedStatementLineCount = importedLines.count
 
             // VL-FORCED-RECON-001 needs the P&L report (see that rule's doc
             // comment for why — the only API surface that shows a forced
@@ -615,7 +629,8 @@ public final class AppState {
             // suspension/throw point, so the exact same false-green
             // sequence was still reachable if THAT call failed. Every
             // throwing load is now resolved into a LOCAL variable first;
-            // the four `self.` assignments that follow are all plain,
+            // the five `self.` assignments that follow (including
+            // `importedStatementLineCount`, round 6) are all plain,
             // non-throwing writes with no `await` between any of them —
             // an actual atomic publish, not just adjacent lines.
             let newFindings = try await store.loadFindings()
@@ -624,6 +639,7 @@ public final class AppState {
             accounts = syncedDataSet.accounts
             findings = newFindings
             activityLog = newActivityLog
+            importedStatementLineCount = importedLines.count
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
