@@ -597,25 +597,33 @@ public final class AppState {
                 }
             }
 
-            // Gauntlet Loop, Gauntlet C round 4 (2026-08-24): `coverage`/
+            // Gauntlet Loop, Gauntlet C rounds 4-5 (2026-08-24): `coverage`/
             // `accounts` used to be published immediately after the first
-            // `await` above, long before this point — so a throw anywhere
-            // in between (any of the several `store`/`engine` calls this
-            // method makes, all genuinely capable of failing) left them
-            // holding this sync's NEW, freshly-`.complete` result while
-            // `findings` below was never reached and kept its OLD (often
-            // empty, e.g. on a first-ever sync) value. `FindingsListView`'s
-            // coverage strip reads exactly that combination — an empty
-            // `findings` array plus `.complete` coverage — as "Verified —
+            // `await` far above — so a throw anywhere in between (any of
+            // the several `store`/`engine` calls this method makes, all
+            // genuinely capable of failing) left them holding this sync's
+            // NEW, freshly-`.complete` result while `findings` kept its OLD
+            // (often empty, e.g. on a first-ever sync) value. `FindingsListView`'s
+            // coverage strip reads exactly that combination as "Verified —
             // None," a false green for a sync that provably never
-            // finished, not merely stale-but-honest data. Now assigned
-            // together with `findings`/`activityLog`, all three or none:
-            // a throw at any point above leaves every one of them at its
-            // pre-sync value, consistent with each other even if stale.
+            // finished. Round 4's fix moved the four assignments together
+            // but LEFT `try await` calls between them (`loadFindings()`,
+            // `loadActivityLog()`) — a fresh round-5 critic found that
+            // still isn't atomic: `coverage`/`accounts` are plain,
+            // non-throwing reads that publish immediately, while
+            // `loadFindings()` on the very next line is a genuine
+            // suspension/throw point, so the exact same false-green
+            // sequence was still reachable if THAT call failed. Every
+            // throwing load is now resolved into a LOCAL variable first;
+            // the four `self.` assignments that follow are all plain,
+            // non-throwing writes with no `await` between any of them —
+            // an actual atomic publish, not just adjacent lines.
+            let newFindings = try await store.loadFindings()
+            let newActivityLog = try await store.loadActivityLog()
             coverage = syncedDataSet.coverage
             accounts = syncedDataSet.accounts
-            findings = try await store.loadFindings()
-            activityLog = try await store.loadActivityLog()
+            findings = newFindings
+            activityLog = newActivityLog
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
