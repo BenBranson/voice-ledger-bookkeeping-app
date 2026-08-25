@@ -150,6 +150,7 @@ public enum RuleRegistry {
         DuplicatePaymentRule.self,
         UncategorizedTransactionRule.self,
         BankFeedMissingPostingRule.self,
+        BankFeedAmbiguousMatchRule.self,
         VendorDescriptionMismatchRule.self,
         UndepositedFundsAgingRule.self,
         UnappliedVendorCreditRule.self,

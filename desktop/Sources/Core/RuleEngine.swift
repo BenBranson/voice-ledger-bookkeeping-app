@@ -74,6 +74,14 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     case duplicatePayment
     /// `VL-RECON-MISSING-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (pages 4, 5).
     case statementLineMissingPosting
+    /// `VL-RECON-AMBIGUOUS-001` — Page 5's "identifies... duplicate items"
+    /// half, distinct from `duplicateExpense` (which compares posted
+    /// transactions to each other): this compares one imported statement
+    /// line to the posted ledger and flags when it matches 2+ posted
+    /// transactions equally well, so reconciliation can't tell which one
+    /// it actually clears — a real ambiguity, not necessarily a real
+    /// duplicate posting.
+    case statementLineAmbiguousMatch
     /// `VL-VENDOR-MISMATCH-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 3).
     case vendorDescriptionMismatch
     /// `VL-BS-UNDEP-001`, docs/phase-0/08_RULE_ENGINE.md §8.8 (page 8).

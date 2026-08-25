@@ -45,4 +45,18 @@ struct ReconciliationSummaryTests {
         let summary = ReconciliationSummary.compute(totalStatementLines: 2, unmatchedFindings: findings)
         #expect(summary.matchedCount == 0)
     }
+
+    @Test("ambiguousCount defaults to zero when no ambiguous findings are passed")
+    func ambiguousCountDefaultsToZero() {
+        let summary = ReconciliationSummary.compute(totalStatementLines: 10, unmatchedFindings: [])
+        #expect(summary.ambiguousCount == 0)
+    }
+
+    @Test("ambiguousCount reflects ambiguousFindings and is NOT subtracted from matchedCount")
+    func ambiguousCountReported() {
+        let ambiguous = [finding(id: "amb-1", exposureMinorUnits: 2_000)]
+        let summary = ReconciliationSummary.compute(totalStatementLines: 10, unmatchedFindings: [], ambiguousFindings: ambiguous)
+        #expect(summary.ambiguousCount == 1)
+        #expect(summary.matchedCount == 10)
+    }
 }

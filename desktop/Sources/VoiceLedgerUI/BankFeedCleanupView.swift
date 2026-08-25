@@ -16,6 +16,7 @@ public struct BankFeedCleanupView: View {
     private let coverageStatus: VLStatus
     private let missingPostingOutcomeDetail: String
     private let findings: [Finding]
+    private let ambiguousFindings: [Finding]
     private let reconciliationSummary: ReconciliationSummary?
     private let importError: String?
     private let onSelectFinding: (Finding) -> Void
@@ -26,6 +27,7 @@ public struct BankFeedCleanupView: View {
         coverageStatus: VLStatus,
         missingPostingOutcomeDetail: String,
         findings: [Finding],
+        ambiguousFindings: [Finding] = [],
         reconciliationSummary: ReconciliationSummary? = nil,
         importError: String?,
         onSelectFinding: @escaping (Finding) -> Void,
@@ -35,6 +37,7 @@ public struct BankFeedCleanupView: View {
         self.coverageStatus = coverageStatus
         self.missingPostingOutcomeDetail = missingPostingOutcomeDetail
         self.findings = findings
+        self.ambiguousFindings = ambiguousFindings
         self.reconciliationSummary = reconciliationSummary
         self.importError = importError
         self.onSelectFinding = onSelectFinding
@@ -103,6 +106,41 @@ public struct BankFeedCleanupView: View {
                         }
                     }
                 }
+
+                if !ambiguousFindings.isEmpty {
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                            HStack {
+                                Text("AMBIGUOUS MATCHES (VL-RECON-AMBIGUOUS-001)")
+                                    .font(VLTypography.eyebrow())
+                                    .tracking(VLTypography.eyebrowTracking)
+                                    .foregroundStyle(VLColor.textMuted)
+                                Spacer()
+                                VLStatusPill(.reviewNeeded)
+                            }
+                            Text("A statement line matched more than one posted transaction equally well — reconciliation can't tell which one it clears until a human picks.")
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textSecondary)
+                            Divider().overlay(VLColor.border)
+                            ForEach(ambiguousFindings) { finding in
+                                Button {
+                                    onSelectFinding(finding)
+                                } label: {
+                                    HStack {
+                                        Text(finding.title)
+                                            .font(VLTypography.body())
+                                            .foregroundStyle(VLColor.textSecondary)
+                                        Spacer()
+                                        Text(finding.dollarExposure.description)
+                                            .font(VLTypography.tabularNumeric())
+                                            .foregroundStyle(VLColor.textPrimary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -150,6 +188,14 @@ public struct BankFeedCleanupView: View {
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text("Difference")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("\(summary.ambiguousCount)")
+                            .font(VLTypography.metricLarge())
+                            .foregroundStyle(summary.ambiguousCount > 0 ? .red : VLColor.textPrimary)
+                        Text("Ambiguous")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }

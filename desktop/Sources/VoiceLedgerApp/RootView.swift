@@ -247,13 +247,15 @@ struct RootView: View {
 
         case .bankFeedCleanup:
             let missingPostingFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" }
+            let ambiguousMatchFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-AMBIGUOUS-001" }
             BankFeedCleanupView(
                 environment: state.environment == .production ? .production : .sandbox,
                 coverageStatus: missingPostingFindings.isEmpty ? .notChecked : .reviewNeeded,
                 missingPostingOutcomeDetail: "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4).",
                 findings: missingPostingFindings,
+                ambiguousFindings: ambiguousMatchFindings,
                 reconciliationSummary: state.importedStatementLineCount > 0
-                    ? ReconciliationSummary.compute(totalStatementLines: state.importedStatementLineCount, unmatchedFindings: missingPostingFindings)
+                    ? ReconciliationSummary.compute(totalStatementLines: state.importedStatementLineCount, unmatchedFindings: missingPostingFindings, ambiguousFindings: ambiguousMatchFindings)
                     : nil,
                 importError: state.importError,
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
@@ -552,7 +554,7 @@ struct RootView: View {
             case "review-balance-sheet-integrity":
                 readyDetail = detail(for: AppState.balanceSheetIntegrityRuleIDs)
             case "review-bank-feed":
-                readyDetail = detail(for: ["VL-RECON-MISSING-001", "VL-VENDOR-MISMATCH-001"])
+                readyDetail = detail(for: ["VL-RECON-MISSING-001", "VL-RECON-AMBIGUOUS-001", "VL-VENDOR-MISMATCH-001"])
             default:
                 readyDetail = nil
             }
