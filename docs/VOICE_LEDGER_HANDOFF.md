@@ -857,6 +857,20 @@ Same pattern as `VL-PAYROLL-LUMP-001`: checks vendor name AND memo (both already
 
 **Not attempted this session** — flagged and scoped only, per the owner's own instruction not to build it yet.
 
+## 2026-08-27 — sandbox access was never actually blocked; a Claude Code session can get it itself
+
+**Do not re-flag "no sandbox access" as a blocker without first trying this.** The 2026-08-25 entry below says this session had none — true for THAT session, but the fix turned out to be one command, not owner involvement: `backend/spike/mintDevSession.ts` (already existed, built 2026-08-17) re-issues a session token for a realm that's ALREADY connected, reading the encrypted refresh token already sitting in `backend/data/voiceledger.sqlite` (gitignored, persists across sessions on this machine). No browser OAuth, no owner action, nothing time-limited beyond the refresh token's own ~100-day life (last connected 2026-08-16, so good through roughly mid-November 2026).
+
+**How, concretely** (from `backend/`, with `backend/.env` populated — it already is, also gitignored, also persists):
+1. `npm run dev` — starts the backend on `:3000` against the sandbox realm already in `.env`/the sqlite file.
+2. `npx tsx spike/mintDevSession.ts <realmId> /tmp/session-token.txt` — the realmId is whatever's in `backend/data/voiceledger.sqlite`'s `connections` table (`sqlite3 backend/data/voiceledger.sqlite "SELECT realm_id FROM connections;"` — as of this writing, `9341456442848752`). Refuses to run for an unconnected realm, so it can't fabricate access to a company that was never authorized.
+3. Export `VOICE_LEDGER_BACKEND_URL=http://localhost:3000`, `VOICE_LEDGER_SESSION_TOKEN=$(cat /tmp/session-token.txt)`, `VOICE_LEDGER_REALM_ID=<realmId>`, then `voiceledger-devtool health`/`sync-check`/`tax-check` (or any new gate-verification command worth adding) all work directly against the real, live sandbox.
+4. For a raw one-off entity check before committing to a typed catalog operation (`backend/spike/checkFullyQualifiedName.ts`, `checkTaxEntities.ts` are real examples, not just scaffolding — keep this pattern for the next one): `QBO_SPIKE_REALM_ID=<realmId> npx tsx spike/checkWhatever.ts`, using `QboRawClient` the same way those two do.
+
+**What this unblocked in the same session it was found**: `LedgerAccount.fullyQualifiedName` went from "not spike-verified" to live-confirmed (90/90 accounts, 8 real leaf-Name collisions matching `ChartOfAccountsCleanupTests`' synthetic cases exactly) · Sales Tax Review (Page 9) went from "needs sandbox verification" to shipped — `readTaxCodes`/`readTaxRates`/`readTaxAgencies` all live-verified before being added to the catalog, not designed from documentation.
+
+**Still true, not removed by this**: a genuinely NEW write operation (anything beyond `updatePurchaseLineAccount`) still needs its own capability spike and owner approval before shipping — this only removes "no sandbox access" as an excuse not to even TRY the read-only verification step first. Production QBO access is a separate, unrelated question — this is sandbox only (CLAUDE.md rule 7).
+
 ## Corrected 2026-08-25 — owner ROI pivot, Gauntlet Loop deprioritized, real scope closed
 
 **Context**: the owner raised a direct ROI concern about the Gauntlet Loop's multi-round critic pattern ("i only have so much claude usage... do we even need this or should we straight up just work on building the app") partway through Gauntlet C round 9 of `VL-DUP-EXP-001`'s hardening pass. Direction going forward: work directly, no multi-agent critic rounds unless explicitly requested again, prioritize closing real missing scope over further hardening. Gauntlet C was stopped by this instruction, not its own 2-consecutive-clean-round condition — 3 documented landmines were deliberately left open (see workbench.md's final entry for that pass).
