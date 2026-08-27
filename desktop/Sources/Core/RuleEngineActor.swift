@@ -156,7 +156,8 @@ public enum RuleRegistry {
         UnappliedVendorCreditRule.self,
         ForcedReconciliationRule.self,
         ReportTieOutRule.self,
-        AvoidableFeeRule.self
+        AvoidableFeeRule.self,
+        PeriodClosedTransactionRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

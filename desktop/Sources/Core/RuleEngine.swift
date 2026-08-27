@@ -100,6 +100,12 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-FEE-AVOIDABLE-001` — a keyword-matched late fee, overdraft, or
     /// finance charge.
     case avoidableFee
+    /// `VL-PERIOD-CLOSED-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's
+    /// backlog table. A non-voided transaction dated on or before the
+    /// period Voice Ledger's own local `PeriodLock` (Page 2) has been set
+    /// through — never QBO's `BookCloseDate` (unread; see
+    /// `MonthEndChecklist.swift`'s note).
+    case transactionInLockedPeriod
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
@@ -205,6 +211,11 @@ public struct RuleContext: Sendable {
     /// explicitly by test callers so aging math stays deterministic and
     /// testable rather than depending on when the test happens to run.
     public let asOfDate: AccountingDate
+    /// docs/VOICE_LEDGER_SPEC.md Page 2 — Voice Ledger's own local period
+    /// lock (`Core/PeriodLock.swift`), not QBO data. `nil` when the
+    /// bookkeeper has never set one for this realm. `VL-PERIOD-CLOSED-001`
+    /// is the only rule that reads this; every other rule ignores it.
+    public let periodLock: PeriodLock?
 
     public init(
         period: AccountingPeriod,
@@ -212,7 +223,8 @@ public struct RuleContext: Sendable {
         companyFacts: CompanyFacts,
         dismissedFindingIDs: Set<String> = [],
         gatedTransactionIDs: Set<String> = [],
-        asOfDate: AccountingDate = AccountingDate(date: Date())
+        asOfDate: AccountingDate = AccountingDate(date: Date()),
+        periodLock: PeriodLock? = nil
     ) {
         self.period = period
         self.materiality = materiality
@@ -220,6 +232,7 @@ public struct RuleContext: Sendable {
         self.dismissedFindingIDs = dismissedFindingIDs
         self.gatedTransactionIDs = gatedTransactionIDs
         self.asOfDate = asOfDate
+        self.periodLock = periodLock
     }
 
     /// Returns a copy with `gatedTransactionIDs` replaced — used by

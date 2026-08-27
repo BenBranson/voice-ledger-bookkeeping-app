@@ -45,7 +45,7 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
@@ -632,7 +632,13 @@ public final class AppState {
             // reproducing a finding at all (`CLAUDE.md` rule 2's
             // dismiss-is-real posture — not just hidden by a UI filter).
             let dismissedFindingIDs = Set(try await store.loadFindings().filter { $0.status == .dismissed }.map(\.id))
-            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs)
+            // Loaded fresh rather than read from `self.periodLock` — this
+            // sync may be racing `loadFromDiskOnly()` (still in flight from
+            // app launch) or a fresh `setPeriodLock`/`clearPeriodLock` call,
+            // and `VL-PERIOD-CLOSED-001` needs the real on-disk value, not
+            // whatever the last render happened to hold.
+            let currentPeriodLock = try await store.loadPeriodLock()
+            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh
