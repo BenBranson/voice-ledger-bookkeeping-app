@@ -41,6 +41,7 @@ struct RootView: View {
                         Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
                         Button("Chart of Accounts Cleanup") { state.screen = .chartOfAccountsCleanup }
                         Button("Batch Fixes") { state.screen = .batchFixes }
+                        Button("Sales Tax Review") { state.screen = .salesTaxReview }
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
@@ -103,6 +104,24 @@ struct RootView: View {
                     let ids = Array(state.batchFixSelection)
                     Task { await state.applyBatchFix(findingIDs: ids, actorName: actorName) }
                 }
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .salesTaxReview:
+            SalesTaxReviewView(
+                environment: state.environment == .production ? .production : .sandbox,
+                taxCodes: state.taxCodes,
+                taxRates: state.taxRates,
+                taxAgencies: state.taxAgencies,
+                isLoading: state.isLoadingSalesTax,
+                errorMessage: state.salesTaxError,
+                attestation: state.salesTaxAttestation,
+                onRefresh: { Task { await state.loadSalesTaxProfile() } },
+                onSaveAttestation: { attestation in Task { await state.updateSalesTaxAttestation(attestation) } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

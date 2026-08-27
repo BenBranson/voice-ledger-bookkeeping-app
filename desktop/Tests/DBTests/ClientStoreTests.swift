@@ -355,6 +355,17 @@ struct ClientStoreTests {
         #expect(loaded.qboaAccountantAccessAttested == true)
     }
 
+    @Test("Sales tax attestation round-trips: default before saving, real values after")
+    func salesTaxAttestationRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        #expect(try await store.loadSalesTaxAttestation() == SalesTaxAttestation())
+        let attestation = SalesTaxAttestation(filingStatusConfirmed: true, attestedBy: "Benjamin Branson", attestedAt: Date(), note: "AZ quarterly, filed on time")
+        try await store.saveSalesTaxAttestation(attestation)
+        let loaded = try await store.loadSalesTaxAttestation()
+        #expect(loaded.filingStatusConfirmed == true)
+        #expect(loaded.note == "AZ quarterly, filed on time")
+    }
+
     @Test("Mapping hints round-trip: upsert then load returns the learned fields")
     func mappingHintsRoundTrip() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())

@@ -17,12 +17,14 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
     Commands:
       health                 Run the live health check against a connected realm.
+      tax-check              Fetch TaxCode/TaxRate/TaxAgency live and print
+                              them (docs/VOICE_LEDGER_SPEC.md Page 9). Read-only.
       sync-check <yr> <mo>   Sync + evaluate all rules against the live
                               sandbox for a period and print what was found.
                               Does not write to QBO. Persists findings/activity
@@ -128,6 +130,31 @@ case "health":
         }
     } catch {
         FileHandle.standardError.write("Health check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "tax-check":
+    // docs/VOICE_LEDGER_SPEC.md Page 9 (Sales Tax Review) — live-verifies
+    // the three new read operations against a real connected realm, same
+    // "gate-verification, not the app" purpose as `health`/`sync-check`.
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let client = BackendClient(configuration: configuration)
+        let syncClient = QBOSyncClient(backend: client)
+
+        let codes = try await syncClient.fetchTaxCodes(realmID: realmID)
+        let rates = try await syncClient.fetchTaxRates(realmID: realmID)
+        let agencies = try await syncClient.fetchTaxAgencies(realmID: realmID)
+
+        print("Tax codes (\(codes.count)):")
+        for code in codes { print("  \(code.id): \(code.name), taxable=\(String(describing: code.taxable))") }
+        print("Tax rates (\(rates.count)):")
+        for rate in rates { print("  \(rate.id): \(rate.name), \(String(describing: rate.ratePercent))%, active=\(rate.isActive), agency=\(rate.agencyID ?? "none")") }
+        print("Tax agencies (\(agencies.count)):")
+        for agency in agencies { print("  \(agency.id): \(agency.displayName)") }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("tax-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
     }
 

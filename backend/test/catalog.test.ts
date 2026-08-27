@@ -22,7 +22,7 @@ describe("catalog", () => {
     expect(writeOps.map((def) => def.name)).toEqual(["updatePurchaseLineAccount"]);
   });
 
-  it("contains exactly the thirteen operations named in the desktop-side CatalogOperation enum", () => {
+  it("contains exactly the sixteen operations named in the desktop-side CatalogOperation enum", () => {
     const names = [...CATALOG_OPERATIONS.keys()].sort();
     expect(names).toEqual(
       [
@@ -37,6 +37,9 @@ describe("catalog", () => {
         "readPurchases",
         "readVendors",
         "readVendorCredits",
+        "readTaxCodes",
+        "readTaxRates",
+        "readTaxAgencies",
         "readReport",
         "updatePurchaseLineAccount"
       ].sort()

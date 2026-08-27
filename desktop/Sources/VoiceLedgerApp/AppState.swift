@@ -27,6 +27,7 @@ public final class AppState {
         case balanceSheetIntegrity
         case chartOfAccountsCleanup
         case batchFixes
+        case salesTaxReview
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport
@@ -287,6 +288,16 @@ public final class AppState {
     public private(set) var isLoadingVarianceAnalysis = false
     public private(set) var varianceAnalysisError: String?
 
+    /// docs/VOICE_LEDGER_SPEC.md Page 9 (Sales Tax Review) — codes/rates/
+    /// agencies only, see `Core/SalesTax.swift`'s doc comment for what's
+    /// not built (liability balances, transaction-level detail).
+    public private(set) var taxCodes: [TaxCode] = []
+    public private(set) var taxRates: [TaxRate] = []
+    public private(set) var taxAgencies: [TaxAgency] = []
+    public private(set) var isLoadingSalesTax = false
+    public private(set) var salesTaxError: String?
+    public private(set) var salesTaxAttestation = SalesTaxAttestation()
+
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
@@ -337,6 +348,7 @@ public final class AppState {
             let newEngagementScope = try await store.loadEngagementScope()
             let newPeriodLock = try await store.loadPeriodLock()
             let newCarryForwardMarks = try await store.loadCarryForwardMarks()
+            let newSalesTaxAttestation = try await store.loadSalesTaxAttestation()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -345,6 +357,7 @@ public final class AppState {
             engagementScope = newEngagementScope
             periodLock = newPeriodLock
             carryForwardMarks = newCarryForwardMarks
+            salesTaxAttestation = newSalesTaxAttestation
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -505,6 +518,38 @@ public final class AppState {
         priorPeriodBalanceSheetLines = bs ?? []
         priorPeriodProfitAndLossLines = pl ?? []
         isLoadingVarianceAnalysis = false
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 9 (Sales Tax Review). All three
+    /// fetched concurrently; each can fail independently without blocking
+    /// the others, same `try?`-per-report posture `loadVarianceAnalysis`
+    /// already uses.
+    public func loadSalesTaxProfile() async {
+        isLoadingSalesTax = true
+        salesTaxError = nil
+        async let codes = try? syncClient.fetchTaxCodes(realmID: realmID)
+        async let rates = try? syncClient.fetchTaxRates(realmID: realmID)
+        async let agencies = try? syncClient.fetchTaxAgencies(realmID: realmID)
+        let (c, r, a) = await (codes, rates, agencies)
+        if c == nil && r == nil && a == nil {
+            salesTaxError = "Could not load sales tax data for this company."
+        }
+        taxCodes = c ?? []
+        taxRates = r ?? []
+        taxAgencies = a ?? []
+        isLoadingSalesTax = false
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 9 — records the filing-status
+    /// attestation. Unverifiable via API by design (`CLAUDE.md`:
+    /// attestation is recorded, not proof).
+    public func updateSalesTaxAttestation(_ attestation: SalesTaxAttestation) async {
+        do {
+            try await store.saveSalesTaxAttestation(attestation)
+            salesTaxAttestation = attestation
+        } catch {
+            loadState = .failed("\(error)")
+        }
     }
 
     /// docs/phase-0/02_QBO_CAPABILITY_MATRIX.md row C1: a live, timestamped

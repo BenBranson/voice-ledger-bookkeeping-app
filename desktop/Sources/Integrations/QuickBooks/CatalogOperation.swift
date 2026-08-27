@@ -38,6 +38,14 @@ public enum CatalogOperation: String, Sendable, CaseIterable {
     /// Added 2026-08-17 alongside `VL-VENDCREDIT-UNAPPLIED-001` — mirrors
     /// the backend's `readVendorCredits` operation, added in the same commit.
     case readVendorCredits
+    /// Added 2026-08-27 alongside Sales Tax Review (docs/VOICE_LEDGER_SPEC.md
+    /// Page 9) — mirrors the backend's `readTaxCodes`/`readTaxRates`/
+    /// `readTaxAgencies` operations, all three live-verified against the
+    /// real sandbox (`backend/spike/checkTaxEntities.ts`) before being
+    /// added here.
+    case readTaxCodes
+    case readTaxRates
+    case readTaxAgencies
     case readReport
     case cdcSince
     /// Added 2026-08-17/18 — Voice Ledger's FIRST write-classified

@@ -211,6 +211,52 @@ const readVendors = op({
   }
 });
 
+// docs/VOICE_LEDGER_SPEC.md Page 9 (Sales Tax Review). All three verified
+// live against the real sandbox 2026-08-27 (backend/spike/checkTaxEntities.ts)
+// before being added here — TaxCode/TaxRate/TaxAgency all return 200 with
+// real rows, same read-only query shape as readAccounts/readVendors.
+const readTaxCodesParams = z.object({
+  startPosition: z.number().int().min(1).default(1),
+  maxResults: z.number().int().min(1).max(1000).default(1000)
+});
+
+const readTaxCodes = op({
+  name: "readTaxCodes",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readTaxCodesParams,
+  execute: async (client, realmId, params: z.infer<typeof readTaxCodesParams>) => {
+    const query = `select * from TaxCode STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
+const readTaxRatesParams = readTaxCodesParams;
+
+const readTaxRates = op({
+  name: "readTaxRates",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readTaxRatesParams,
+  execute: async (client, realmId, params: z.infer<typeof readTaxRatesParams>) => {
+    const query = `select * from TaxRate STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
+const readTaxAgenciesParams = readTaxCodesParams;
+
+const readTaxAgencies = op({
+  name: "readTaxAgencies",
+  operationClass: "read",
+  matrixRow: "TBD — new row, not yet in 02_QBO_CAPABILITY_MATRIX.md",
+  paramsSchema: readTaxAgenciesParams,
+  execute: async (client, realmId, params: z.infer<typeof readTaxAgenciesParams>) => {
+    const query = `select * from TaxAgency STARTPOSITION ${params.startPosition} MAXRESULTS ${params.maxResults}`;
+    return client.get(realmId, "query", { query });
+  }
+});
+
 // Closed set — deliberately NOT an arbitrary report-name passthrough.
 // docs/phase-0/04_DATA_MODEL.md §4.9: report column composition varies by
 // minor version and locale; an unlisted report name has no normalizer and
@@ -435,6 +481,9 @@ export const CATALOG_OPERATIONS: ReadonlyMap<string, AnyOperationDefinition> = n
     readPayments,
     readDeposits,
     readVendorCredits,
+    readTaxCodes,
+    readTaxRates,
+    readTaxAgencies,
     readReport,
     cdcSince,
     updatePurchaseLineAccount

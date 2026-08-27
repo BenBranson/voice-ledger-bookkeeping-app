@@ -194,6 +194,27 @@ public struct QBOSyncClient: Sendable {
         return Self.flattenGeneralLedger(decoded.rows, depth: 0)
     }
 
+    /// docs/VOICE_LEDGER_SPEC.md Page 9 (Sales Tax Review). Live-verified
+    /// 2026-08-27 against the real sandbox (`backend/spike/checkTaxEntities.ts`)
+    /// — all three return real rows for this company.
+    public func fetchTaxCodes(realmID: RealmID) async throws -> [TaxCode] {
+        let data = try await backend.call(.readTaxCodes, realmID: realmID, params: EmptyParams())
+        let decoded = try JSONDecoder().decode(QBOTaxCodeQueryResponse.self, from: data)
+        return (decoded.queryResponse.taxCode ?? []).map { TaxCode(id: $0.id, name: $0.name, taxable: $0.taxable) }
+    }
+
+    public func fetchTaxRates(realmID: RealmID) async throws -> [TaxRate] {
+        let data = try await backend.call(.readTaxRates, realmID: realmID, params: EmptyParams())
+        let decoded = try JSONDecoder().decode(QBOTaxRateQueryResponse.self, from: data)
+        return (decoded.queryResponse.taxRate ?? []).map { TaxRate(id: $0.id, name: $0.name, ratePercent: $0.rateValue, isActive: $0.active ?? true, agencyID: $0.agencyID) }
+    }
+
+    public func fetchTaxAgencies(realmID: RealmID) async throws -> [TaxAgency] {
+        let data = try await backend.call(.readTaxAgencies, realmID: realmID, params: EmptyParams())
+        let decoded = try JSONDecoder().decode(QBOTaxAgencyQueryResponse.self, from: data)
+        return (decoded.queryResponse.taxAgency ?? []).map { TaxAgency(id: $0.id, displayName: $0.displayName) }
+    }
+
     public struct ReadAgingReportParams: Encodable, Sendable {
         public let reportKind: String
         public init(reportKind: String) {

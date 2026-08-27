@@ -39,6 +39,7 @@ public actor ClientStore {
     private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
     private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
     private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
+    private var salesTaxAttestationURL: URL { directory.appending(path: "sales-tax-attestation.json") }
 
     // MARK: - Findings
 
@@ -277,6 +278,16 @@ public actor ClientStore {
         var existing = try loadCarryForwardMarks()
         existing.removeAll { $0.findingID == findingID }
         try save(existing, to: carryForwardMarksURL)
+    }
+
+    // MARK: - Sales Tax Review attestation (Page 9)
+
+    public func loadSalesTaxAttestation() throws -> SalesTaxAttestation {
+        try load(SalesTaxAttestation.self, from: salesTaxAttestationURL, default: SalesTaxAttestation())
+    }
+
+    public func saveSalesTaxAttestation(_ attestation: SalesTaxAttestation) throws {
+        try save(attestation, to: salesTaxAttestationURL)
     }
 
     // MARK: - Activity log
