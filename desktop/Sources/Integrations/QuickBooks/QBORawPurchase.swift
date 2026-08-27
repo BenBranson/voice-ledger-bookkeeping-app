@@ -106,19 +106,23 @@ public struct QBORawAccount: Decodable, Sendable {
     public let accountType: String
     public let accountSubType: String?
     public let currentBalance: Decimal?
-    /// The full parent-to-leaf path (e.g. `"Job Costing:Job Materials"`), a
-    /// standard field on QBO's `Account` entity per Intuit's public schema —
-    /// **not independently spike-verified present in this sandbox's response
-    /// the way this struct's other fields are** (see this struct's own doc
-    /// comment). `VL-COA-DUPACCT-001`'s investigation
-    /// (`docs/phase-0/08_RULE_ENGINE.md` §8.8) found leaf `Name` alone
-    /// produces systematic false positives — the same leaf name legitimately
-    /// reused for an Income and a matching COGS/Expense sub-account under
-    /// different parents — and named `FullyQualifiedName` as the fix.
-    /// `ChartOfAccountsCleanup` only compares accounts where this decoded to
-    /// a real value; a `nil` here (field genuinely absent, or a decode this
-    /// sandbox never exercised) means that account is skipped from
-    /// duplicate detection entirely, never silently compared on leaf name.
+    /// The full parent-to-leaf path (e.g. `"Job Expenses:Job Materials"`).
+    /// **Live-verified 2026-08-27** against the real sandbox
+    /// (`backend/spike/checkFullyQualifiedName.ts`): 90/90 accounts
+    /// returned a real, non-empty value. `VL-COA-DUPACCT-001`'s
+    /// investigation (`docs/phase-0/08_RULE_ENGINE.md` §8.8) found leaf
+    /// `Name` alone produces systematic false positives — confirmed live in
+    /// this same check: 8 real leaf-`Name` collisions exist in this
+    /// sandbox, including `"Equipment Rental"` appearing as TWO different
+    /// Expense accounts (`Job Expenses:Equipment Rental` vs. plain
+    /// `Equipment Rental`) — same `AccountType`, different parent, exactly
+    /// the same-type-different-parent case `ChartOfAccountsCleanupTests`
+    /// covers with synthetic data. `FullyQualifiedName` correctly
+    /// distinguishes every one of these 8 pairs. `ChartOfAccountsCleanup`
+    /// still only compares accounts where this decoded to a real value —
+    /// `nil` here now means a genuine decode failure, not an unverified
+    /// field, and stays excluded from detection rather than falling back to
+    /// leaf name.
     public let fullyQualifiedName: String?
 
     enum CodingKeys: String, CodingKey {

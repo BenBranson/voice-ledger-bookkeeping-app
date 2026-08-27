@@ -18,10 +18,12 @@ import Foundation
 /// leaf name across two genuinely different sub-categories of the same
 /// type (e.g. two different "Repairs" accounts under different parents).
 /// `FullyQualifiedName` carries the full parent path, which distinguishes
-/// both cases. See `QBORawAccount.fullyQualifiedName`'s doc comment for why
-/// that field is not yet spike-verified present in this sandbox's response
-/// — accounts missing it are excluded from detection entirely, never
-/// silently compared on leaf name as a fallback.
+/// both cases — **live-verified 2026-08-27** against the real sandbox
+/// (`QBORawAccount.fullyQualifiedName`'s doc comment): this sandbox has 8
+/// real leaf-`Name` collisions, and `FullyQualifiedName` correctly
+/// distinguishes every one. Accounts missing it are still excluded from
+/// detection entirely, never silently compared on leaf name as a fallback
+/// — that path is now just unreachable in practice, not merely unverified.
 public struct DuplicateAccountCandidateGroup: Identifiable, Sendable {
     public let id: String
     public let accounts: [LedgerAccount]
