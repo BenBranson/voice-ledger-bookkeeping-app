@@ -1,0 +1,120 @@
+#!/bin/bash
+# Voice Ledger Launcher — double-click entry point, no Terminal required.
+#
+# Starts the backend (if not already running), builds and launches the
+# desktop app (if not already running), and shows a native macOS dialog
+# summarizing what happened. Safe to double-click again any time — it
+# detects what's already running and skips redundant work, and detects a
+# port conflict (something else already listening on 3000) rather than
+# silently trying to start a second backend on top of it.
+#
+# GUI-launched processes on macOS do NOT source ~/.zshrc or ~/.bash_profile,
+# so PATH is set explicitly here — without this, node/npm/swift would not
+# be found even though they work fine from an interactive Terminal.
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
+
+PROJECT_ROOT="/Users/benjaminkylebranson/Documents/Bookkeeping APP"
+BACKEND_DIR="$PROJECT_ROOT/backend"
+DESKTOP_DIR="$PROJECT_ROOT/desktop"
+BACKEND_PORT=3000
+
+LOG_DIR="$HOME/Library/Logs/VoiceLedger"
+mkdir -p "$LOG_DIR"
+BACKEND_LOG="$LOG_DIR/backend.log"
+APP_LOG="$LOG_DIR/app.log"
+
+# A double-click while a previous launch is still deciding what to do
+# (e.g. mid-way through the backend health poll below) would otherwise
+# race itself and could start two backends. This lock makes a second,
+# concurrent double-click a silent no-op instead.
+LOCK_FILE="$LOG_DIR/launcher.lock"
+if [ -f "$LOCK_FILE" ] && kill -0 "$(cat "$LOCK_FILE" 2>/dev/null)" 2>/dev/null; then
+    exit 0
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
+status_lines=()
+
+backend_healthy() {
+    curl -s -m 2 "http://localhost:$BACKEND_PORT/healthz" 2>/dev/null | grep -q '"status":"ok"'
+}
+
+# --- 1. Backend: already running, port conflict, or start it fresh ---
+if backend_healthy; then
+    status_lines+=("Backend: already running (port $BACKEND_PORT)")
+elif lsof -i ":$BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    # Something is listening on the port but didn't answer as Voice
+    # Ledger's own backend — a real conflict, not something to paper over
+    # by trying to start a second server on the same port.
+    OWNER="$(lsof -i ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1" (pid "$2")"}')"
+    status_lines+=("Port $BACKEND_PORT is already in use by ${OWNER:-another process}, and it did not answer as Voice Ledger's backend. Quit that process, then open this launcher again.")
+else
+    cd "$BACKEND_DIR" || { status_lines+=("Backend: could not find $BACKEND_DIR"); }
+    if [ -d "$BACKEND_DIR" ]; then
+        : > "$BACKEND_LOG"
+        # `arch -arm64` forces native execution regardless of any ambient
+        # Rosetta translation state a GUI-launched process can inherit —
+        # confirmed live: without this, node ran as x86_64 here and failed
+        # to load better-sqlite3's arm64-only native module, even though
+        # the identical `npm run dev` works fine from an interactive
+        # Terminal shell.
+        nohup arch -arm64 npm run dev >> "$BACKEND_LOG" 2>&1 &
+        disown
+        started=false
+        for _ in $(seq 1 20); do
+            sleep 1
+            if backend_healthy; then started=true; break; fi
+        done
+        if [ "$started" = true ]; then
+            status_lines+=("Backend: started (port $BACKEND_PORT)")
+        else
+            status_lines+=("Backend: did not respond after 20s — check ~/Library/Logs/VoiceLedger/backend.log")
+        fi
+    fi
+fi
+
+# --- 2. Desktop app: already running, or build + launch it ---
+if pgrep -x VoiceLedgerApp >/dev/null 2>&1; then
+    status_lines+=("Voice Ledger app: already running")
+    osascript -e 'tell application "System Events" to set frontmost of process "VoiceLedgerApp" to true' >/dev/null 2>&1
+else
+    if [ -d "$DESKTOP_DIR" ]; then
+        cd "$DESKTOP_DIR" || exit 1
+        : > "$APP_LOG"
+        # Incremental release build — fast no-op if nothing changed since
+        # the last launch, but still catches real source changes rather
+        # than silently running a stale binary.
+        if arch -arm64 swift build -c release >> "$APP_LOG" 2>&1; then
+            BIN="$DESKTOP_DIR/.build/release/VoiceLedgerApp"
+            if [ -x "$BIN" ]; then
+                nohup arch -arm64 "$BIN" >> "$APP_LOG" 2>&1 &
+                disown
+                status_lines+=("Voice Ledger app: launched")
+            else
+                status_lines+=("Voice Ledger app: build succeeded but the binary wasn't found — check ~/Library/Logs/VoiceLedger/app.log")
+            fi
+        elif grep -q "Operation not permitted\|couldn't determine the current working directory" "$APP_LOG" 2>/dev/null; then
+            # macOS's Files & Folders privacy protection, confirmed live:
+            # a brand-new unsigned app bundle reading a folder under
+            # ~/Documents for the first time is silently denied (no visible
+            # prompt in this failure mode) rather than shown a permission
+            # dialog. Only the user clicking Allow in System Settings fixes
+            # this — nothing this script can do fixes it from inside.
+            status_lines+=("Voice Ledger app: macOS blocked this launcher from reading the project folder (a one-time permission check, not a bug). Opening System Settings now — find \"Voice Ledger Launcher\" under Files and Folders or Full Disk Access and turn it on, then open this launcher again.")
+            open "x-apple.systempreferences:com.apple.preference.security?Privacy" >/dev/null 2>&1
+        else
+            status_lines+=("Voice Ledger app: build failed — check ~/Library/Logs/VoiceLedger/app.log")
+        fi
+    else
+        status_lines+=("Voice Ledger app: could not find $DESKTOP_DIR")
+    fi
+fi
+
+# --- 3. Show a native status dialog — never a Terminal window ---
+MESSAGE="$(printf '%s\n' "${status_lines[@]}")"
+osascript \
+    -e 'on run argv' \
+    -e 'display dialog (item 1 of argv) with title "Voice Ledger" buttons {"OK"} default button "OK" with icon note' \
+    -e 'end run' \
+    "$MESSAGE" >/dev/null 2>&1
