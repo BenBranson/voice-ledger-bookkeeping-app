@@ -28,7 +28,13 @@ export type LogEvent =
   | "operation_failed"
   | "rate_limited"
   | "config_error"
-  | "server_started";
+  | "server_started"
+  | "ask_ai_invoked"
+  | "ask_ai_succeeded"
+  | "ask_ai_failed"
+  | "ask_ai_disabled"
+  | "ask_ai_not_configured"
+  | "ai_settings_changed";
 
 /**
  * Every field a log line is EVER allowed to carry. Adding a field here is a

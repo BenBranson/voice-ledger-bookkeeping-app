@@ -25,6 +25,9 @@ export type OperationName =
   | "readPayments"
   | "readDeposits"
   | "readVendorCredits"
+  | "readTaxCodes"
+  | "readTaxRates"
+  | "readTaxAgencies"
   | "readReport"
   | "cdcSince"
   | "updatePurchaseLineAccount";

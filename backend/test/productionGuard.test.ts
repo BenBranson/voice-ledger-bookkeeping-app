@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveQBOCredentials, resolveAppConfig, ConfigError } from "../src/config.js";
+import { resolveQBOCredentials, resolveAppConfig, resolveAIConfig, ConfigError } from "../src/config.js";
 
 /**
  * docs/phase-0/03_SECURITY_THREAT_MODEL.md §3.8 control 1 / §3.8's test
@@ -73,5 +73,25 @@ describe("resolveAppConfig", () => {
       TOKEN_ENCRYPTION_KEY: key64hex
     } as NodeJS.ProcessEnv);
     expect(config.tokenEncryptionKey.length).toBe(32);
+  });
+});
+
+describe("resolveAIConfig — AI features are optional, never a startup requirement", () => {
+  it("returns null when OPENAI_API_KEY is unset — the backend must run fully without it", () => {
+    expect(resolveAIConfig({} as NodeJS.ProcessEnv)).toBeNull();
+  });
+
+  it("returns null for an empty-string key, not a config that silently 'works' with an empty key", () => {
+    expect(resolveAIConfig({ OPENAI_API_KEY: "" } as NodeJS.ProcessEnv)).toBeNull();
+  });
+
+  it("returns the key and defaults the model to gpt-4o-mini when OPENAI_MODEL is unset", () => {
+    const config = resolveAIConfig({ OPENAI_API_KEY: "sk-test-123" } as NodeJS.ProcessEnv);
+    expect(config).toEqual({ apiKey: "sk-test-123", model: "gpt-4o-mini" });
+  });
+
+  it("honors an explicit OPENAI_MODEL override", () => {
+    const config = resolveAIConfig({ OPENAI_API_KEY: "sk-test-123", OPENAI_MODEL: "gpt-4o" } as NodeJS.ProcessEnv);
+    expect(config?.model).toBe("gpt-4o");
   });
 });

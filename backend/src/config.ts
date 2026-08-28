@@ -20,6 +20,11 @@ export interface QBOCredentials {
   readonly minorVersion: number;
 }
 
+export interface AIConfig {
+  readonly apiKey: string;
+  readonly model: string;
+}
+
 export interface AppConfig {
   readonly port: number;
   readonly baseUrl: string;
@@ -82,6 +87,25 @@ export function resolveQBOCredentials(env: NodeJS.ProcessEnv = process.env): QBO
     clientSecret: requireEnv(env, "QBO_SANDBOX_CLIENT_SECRET"),
     redirectUri: requireEnv(env, "QBO_REDIRECT_URI"),
     minorVersion
+  };
+}
+
+/**
+ * `null` when `OPENAI_API_KEY` isn't set — the AI feature (Ask [AI] panel)
+ * is entirely optional, unlike QBO credentials. A backend with no AI key
+ * configured still runs normally; every deterministic rule, finding, and
+ * report works exactly the same (CLAUDE.md's kill-switch guarantee: "every
+ * deterministic rule... still works with it off"). The API key itself
+ * never leaves this process — CLAUDE.md rule 3, "no secrets in the desktop
+ * binary" — the desktop client only ever calls `/realms/:realmId/ask-ai`,
+ * never OpenAI directly.
+ */
+export function resolveAIConfig(env: NodeJS.ProcessEnv = process.env): AIConfig | null {
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.trim() === "") return null;
+  return {
+    apiKey,
+    model: env.OPENAI_MODEL ?? "gpt-4o-mini"
   };
 }
 

@@ -27,8 +27,9 @@ for (const a of accounts.slice(0, 5)) {
 // VL-COA-DUPACCT-001 documented (same leaf Name, different FullyQualifiedName).
 const byName: Record<string, any[]> = {};
 for (const a of accounts) {
-  byName[a.Name] = byName[a.Name] ?? [];
-  byName[a.Name].push(a);
+  const existing = byName[a.Name] ?? [];
+  existing.push(a);
+  byName[a.Name] = existing;
 }
 const collisions = Object.entries(byName).filter(([, list]) => list.length > 1);
 console.log(`\nleaf-Name collisions in this sandbox: ${collisions.length}`);

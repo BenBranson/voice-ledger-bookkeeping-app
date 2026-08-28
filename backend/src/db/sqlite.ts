@@ -55,6 +55,16 @@ function migrate(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_sessions_realm ON sessions(realm_id);
+
+    -- docs/VOICE_LEDGER_SPEC.md's AI kill switch: "a single toggle that
+    -- disables all AI features app-wide." App-wide, not per-realm, on
+    -- purpose (spec: "One app-level connection, unlike QBO's per-company
+    -- model") -- a single-row table rather than a column on connections,
+    -- so it doesn't imply per-client scoping it doesn't have.
+    CREATE TABLE IF NOT EXISTS ai_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      enabled INTEGER NOT NULL DEFAULT 1
+    );
   `);
 
   // `CREATE TABLE IF NOT EXISTS` above only defines the shape for a FRESH
