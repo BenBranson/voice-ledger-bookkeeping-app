@@ -46,6 +46,13 @@ public struct FindingDetailView: View {
     private let onDismiss: () -> Void
     private let onMarkCarriedForward: (String?) -> Void
     private let onUnmarkCarriedForward: () -> Void
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel — `nil` `aiStatus` means
+    /// it hasn't been checked yet (never assumed available).
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
 
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
@@ -53,6 +60,7 @@ public struct FindingDetailView: View {
     @State private var isConfirmingRememberVendor = false
     @State private var isDraftingCarryForwardReason = false
     @State private var carryForwardReasonDraft = ""
+    @State private var askAIQuestionDraft = ""
 
     public init(
         finding: Finding,
@@ -69,7 +77,12 @@ public struct FindingDetailView: View {
         onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void,
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
-        onUnmarkCarriedForward: @escaping () -> Void = {}
+        onUnmarkCarriedForward: @escaping () -> Void = {},
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in }
     ) {
         self.finding = finding
         self.writeAccessEnabled = writeAccessEnabled
@@ -86,6 +99,11 @@ public struct FindingDetailView: View {
         self.onDismiss = onDismiss
         self.onMarkCarriedForward = onMarkCarriedForward
         self.onUnmarkCarriedForward = onUnmarkCarriedForward
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
     }
 
     public var body: some View {
@@ -119,6 +137,7 @@ public struct FindingDetailView: View {
                     clientMemorySection(vendorName)
                 }
                 carryForwardSection
+                askAISection
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -209,6 +228,65 @@ public struct FindingDetailView: View {
                 } else {
                     Button("Carry Forward to Next Period") { isDraftingCarryForwardReason = true }
                         .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel — "every page ends with
+    /// an Ask [AI] panel, because the moment of uncertainty is exactly
+    /// when you need to ask rather than guess." OpenAI-backed. The AI only
+    /// ever sees this finding's own already-computed fields
+    /// (`AskAIContext.compose`, Core, pure) — it cannot invent a number
+    /// this screen doesn't already show, per CLAUDE.md rule 1's boundary,
+    /// enforced independently again by the backend's own system prompt.
+    private var askAISection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("ASK AI")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+
+                if let aiStatus, !aiStatus.configured {
+                    Text("AI isn't configured on this backend yet.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                } else if let aiStatus, !aiStatus.enabled {
+                    Text("AI features are turned off — turn them back on from the Connection page to use this.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                } else {
+                    Text("Answers are grounded strictly in this finding's own fields shown above — it cannot state a dollar figure, severity, or judgment beyond what's already here, and it never gives tax or legal advice.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+
+                    if let askAIAnswer {
+                        Text(askAIAnswer)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                            .padding(VLSpacing.xs)
+                            .background(VLColor.background)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+                    }
+
+                    if let askAIError {
+                        Text(askAIError)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(.red)
+                    }
+
+                    HStack(spacing: VLSpacing.sm) {
+                        TextField("Ask a question about this finding", text: $askAIQuestionDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(isAskingAI)
+                        Button(isAskingAI ? "Asking…" : "Ask") {
+                            let question = askAIQuestionDraft
+                            onAskAI(question)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isAskingAI || askAIQuestionDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
                 }
             }
         }

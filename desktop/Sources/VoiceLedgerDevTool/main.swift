@@ -17,7 +17,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -25,6 +25,10 @@ guard arguments.count >= 2, ["health", "tax-check", "sync-check", "csv-import-ch
       health                 Run the live health check against a connected realm.
       tax-check              Fetch TaxCode/TaxRate/TaxAgency live and print
                               them (docs/VOICE_LEDGER_SPEC.md Page 9). Read-only.
+      ask-ai-check           Checks AI status, then asks a real OpenAI
+                              question through the real BackendClient.askAI
+                              code path. Costs a small amount of real API
+                              usage.
       sync-check <yr> <mo>   Sync + evaluate all rules against the live
                               sandbox for a period and print what was found.
                               Does not write to QBO. Persists findings/activity
@@ -130,6 +134,33 @@ case "health":
         }
     } catch {
         FileHandle.standardError.write("Health check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "ask-ai-check":
+    // docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel — live-verifies the
+    // actual BackendClient.askAI Swift code path (not just the raw HTTP
+    // route) against a real connected realm and a real OpenAI key.
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let client = BackendClient(configuration: configuration)
+
+        let status = try await client.getAIStatus()
+        print("AI status: configured=\(status.configured) enabled=\(status.enabled)")
+        guard status.configured, status.enabled else {
+            print("Skipping ask-ai call — not configured and enabled.")
+            exit(status.configured ? 1 : 0)
+        }
+
+        let answer = try await client.askAI(
+            realmID: realmID,
+            question: "Why does this matter?",
+            context: "Finding: Possible duplicate expense. Vendor: Test Vendor. Amount: USD 100.00. Severity: high. Confidence: high."
+        )
+        print("Answer: \(answer)")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("ask-ai-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
     }
 

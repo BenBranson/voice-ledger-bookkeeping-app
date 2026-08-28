@@ -109,6 +109,19 @@ public final class AppState {
     public private(set) var healthCheckError: String?
     public private(set) var isCheckingHealth = false
     public private(set) var writeAccessEnabled: Bool?
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel + kill switch. `nil`
+    /// until the first `checkAIStatus()` completes — never assumed to be
+    /// either configured or enabled before actually asking the backend.
+    public private(set) var aiStatus: AIStatus?
+    public private(set) var isCheckingAIStatus = false
+    public private(set) var isTogglingAIEnabled = false
+    public private(set) var aiStatusError: String?
+    /// Per-finding Ask AI answers — a finding can have at most one
+    /// standing answer at a time; asking again replaces it, same posture
+    /// as every other single-slot per-finding state in this file.
+    public private(set) var askAIAnswers: [String: String] = [:]
+    public private(set) var askingAIFindingIDs: Set<String> = []
+    public private(set) var askAIError: (findingID: String, message: String)?
     public private(set) var isTogglingWriteAccess = false
 
     // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
@@ -605,6 +618,49 @@ public final class AppState {
             healthCheckError = "\(error)"
         }
         isTogglingWriteAccess = false
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's AI kill switch, read side. Never
+    /// cached/assumed — a live call, same posture as `checkHealth()`.
+    public func checkAIStatus() async {
+        isCheckingAIStatus = true
+        aiStatusError = nil
+        do {
+            aiStatus = try await backend.getAIStatus()
+        } catch {
+            aiStatusError = "\(error)"
+        }
+        isCheckingAIStatus = false
+    }
+
+    /// The kill switch's write side. Optimistic UI is deliberately avoided
+    /// here too, same reasoning as `setWriteAccess` — `aiStatus` only
+    /// updates after the backend confirms the new value.
+    public func setAIEnabled(_ enabled: Bool) async {
+        isTogglingAIEnabled = true
+        do {
+            aiStatus = try await backend.setAIEnabled(enabled)
+        } catch {
+            aiStatusError = "\(error)"
+        }
+        isTogglingAIEnabled = false
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel. `AskAIContext.compose`
+    /// (Core, pure) builds the context from the finding's own already-
+    /// computed fields — this method never adds anything to it itself.
+    public func askAI(findingID: String, question: String) async {
+        guard let finding = finding(id: findingID), !askingAIFindingIDs.contains(findingID) else { return }
+        askingAIFindingIDs.insert(findingID)
+        if askAIError?.findingID == findingID { askAIError = nil }
+        do {
+            let context = AskAIContext.compose(finding: finding)
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: context)
+            askAIAnswers[findingID] = answer
+        } catch {
+            askAIError = (findingID: findingID, message: "\(error)")
+        }
+        askingAIFindingIDs.remove(findingID)
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

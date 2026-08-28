@@ -61,6 +61,7 @@ struct RootView: View {
         .task {
             await state.loadFromDiskOnly()
             await state.checkHealth()
+            await state.checkAIStatus()
         }
         .alert("Export Failed", isPresented: Binding(get: { state.exportError != nil }, set: { if !$0 { state.clearExportError() } })) {
             Button("OK") { state.clearExportError() }
@@ -83,10 +84,15 @@ struct RootView: View {
                     lastCheckedAt: state.healthResult?.checkedAt,
                     isChecking: state.isCheckingHealth,
                     writeEnabled: state.writeAccessEnabled,
-                    isTogglingWriteAccess: state.isTogglingWriteAccess
+                    isTogglingWriteAccess: state.isTogglingWriteAccess,
+                    aiStatus: state.aiStatus,
+                    isCheckingAIStatus: state.isCheckingAIStatus,
+                    isTogglingAIEnabled: state.isTogglingAIEnabled,
+                    aiStatusError: state.aiStatusError
                 ),
                 onCheckHealth: { Task { await state.checkHealth() } },
-                onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } }
+                onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } },
+                onToggleAIEnabled: { enabled in Task { await state.setAIEnabled(enabled) } }
             )
 
         case .batchFixes:
@@ -255,7 +261,12 @@ struct RootView: View {
                     },
                     onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } },
                     onMarkCarriedForward: { reason in Task { await state.markFindingCarriedForward(findingID: findingID, actorName: actorName, reason: reason) } },
-                    onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } }
+                    onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } },
+                    aiStatus: state.aiStatus,
+                    askAIAnswer: state.askAIAnswers[findingID],
+                    isAskingAI: state.askingAIFindingIDs.contains(findingID),
+                    askAIError: state.askAIError?.findingID == findingID ? state.askAIError?.message : nil,
+                    onAskAI: { question in Task { await state.askAI(findingID: findingID, question: question) } }
                 )
             } else {
                 Text("Finding not found — it may already be resolved.")

@@ -27,6 +27,12 @@ public struct ConnectionView: View {
         public let isChecking: Bool
         public let writeEnabled: Bool?
         public let isTogglingWriteAccess: Bool
+        /// docs/VOICE_LEDGER_SPEC.md's AI Connection status + kill switch.
+        /// `nil` until the first status check completes.
+        public let aiStatus: AIStatus?
+        public let isCheckingAIStatus: Bool
+        public let isTogglingAIEnabled: Bool
+        public let aiStatusError: String?
 
         public init(
             environment: VLEnvironmentTone,
@@ -37,7 +43,11 @@ public struct ConnectionView: View {
             lastCheckedAt: Date?,
             isChecking: Bool,
             writeEnabled: Bool?,
-            isTogglingWriteAccess: Bool
+            isTogglingWriteAccess: Bool,
+            aiStatus: AIStatus? = nil,
+            isCheckingAIStatus: Bool = false,
+            isTogglingAIEnabled: Bool = false,
+            aiStatusError: String? = nil
         ) {
             self.environment = environment
             self.companyName = companyName
@@ -48,17 +58,28 @@ public struct ConnectionView: View {
             self.isChecking = isChecking
             self.writeEnabled = writeEnabled
             self.isTogglingWriteAccess = isTogglingWriteAccess
+            self.aiStatus = aiStatus
+            self.isCheckingAIStatus = isCheckingAIStatus
+            self.isTogglingAIEnabled = isTogglingAIEnabled
+            self.aiStatusError = aiStatusError
         }
     }
 
     private let state: ViewState
     private let onCheckHealth: () -> Void
     private let onToggleWriteAccess: (Bool) -> Void
+    private let onToggleAIEnabled: (Bool) -> Void
 
-    public init(state: ViewState, onCheckHealth: @escaping () -> Void, onToggleWriteAccess: @escaping (Bool) -> Void) {
+    public init(
+        state: ViewState,
+        onCheckHealth: @escaping () -> Void,
+        onToggleWriteAccess: @escaping (Bool) -> Void,
+        onToggleAIEnabled: @escaping (Bool) -> Void = { _ in }
+    ) {
         self.state = state
         self.onCheckHealth = onCheckHealth
         self.onToggleWriteAccess = onToggleWriteAccess
+        self.onToggleAIEnabled = onToggleAIEnabled
     }
 
     public var body: some View {
@@ -150,10 +171,60 @@ public struct ConnectionView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                 }
+
+                aiConnectionSection
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's "Claude API Connection" section
+    /// (OpenAI-backed per the owner's 2026-08-28 direction — see
+    /// docs/VOICE_LEDGER_HANDOFF.md): "shows whether a key is configured
+    /// and working, not the key itself... Kill switch: a single toggle
+    /// that disables all AI features app-wide."
+    private var aiConnectionSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                HStack {
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        Text("AI CONNECTION")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        Text(aiStatusLabel)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                    }
+                    Spacer()
+                    if let aiStatus = state.aiStatus, aiStatus.configured {
+                        Toggle("", isOn: Binding(
+                            get: { aiStatus.enabled },
+                            set: { onToggleAIEnabled($0) }
+                        ))
+                        .labelsHidden()
+                        .disabled(state.isTogglingAIEnabled)
+                    }
+                }
+                if let aiStatusError = state.aiStatusError {
+                    Text(aiStatusError)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.red)
+                }
+                Text("The Ask [AI] panel is powered by OpenAI. The API key lives only in the backend — this app never sees or displays it. Turning this off disables every AI feature app-wide; every deterministic rule, finding, calculation, and report keeps working exactly the same either way.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+            }
+        }
+    }
+
+    private var aiStatusLabel: String {
+        guard let aiStatus = state.aiStatus else {
+            return state.isCheckingAIStatus ? "Checking…" : "Not yet checked"
+        }
+        if !aiStatus.configured { return "Not configured (no API key set on the backend)" }
+        return aiStatus.enabled ? "On" : "Off"
     }
 
     private var writeAccessLabel: String {

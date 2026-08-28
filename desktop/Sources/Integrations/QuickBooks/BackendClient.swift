@@ -98,6 +98,86 @@ public actor BackendClient {
         return try JSONDecoder().decode(WriteAccessResponse.self, from: data).writeEnabled
     }
 
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel status — `GET /ai/status`.
+    /// Not realm-scoped (the kill switch and API-key configuration are
+    /// app-wide, per the backend's `ai_settings` table), but still
+    /// session-authenticated, so any connected client can check it.
+    public func getAIStatus() async throws -> AIStatus {
+        var url = configuration.baseURL
+        url.append(path: "/ai/status")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(AIStatus.self, from: data)
+    }
+
+    /// The AI kill switch's write side — `POST /ai/settings`. Spec: "a
+    /// single toggle that disables all AI features app-wide."
+    @discardableResult
+    public func setAIEnabled(_ enabled: Bool) async throws -> AIStatus {
+        var url = configuration.baseURL
+        url.append(path: "/ai/settings")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONEncoder().encode(AISettingsRequest(enabled: enabled))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(AIStatus.self, from: data)
+    }
+
+    /// The Ask [AI] panel's only call — `POST /realms/:realmId/ask-ai`.
+    /// `context` is plain text the caller (`AppState`) already composed
+    /// from real `Finding`/report data — this client has no opinion about
+    /// its shape, matching this whole type's transport-only role. The
+    /// OpenAI API key itself never reaches this process; only the backend
+    /// holds it (CLAUDE.md rule 3).
+    public func askAI(realmID: RealmID, question: String, context: String) async throws -> String {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(AskAIResponse.self, from: data).answer
+    }
+
     /// The one generic call this client makes — `POST
     /// /realms/:realmId/operations/:operationName`, mirroring
     /// `backend/src/routes/operations.ts`'s "entire surface." `operation` is
@@ -148,6 +228,20 @@ struct WriteAccessRequest: Encodable, Sendable {
 struct WriteAccessResponse: Decodable, Sendable {
     let writeEnabled: Bool
 }
+
+struct AISettingsRequest: Encodable, Sendable {
+    let enabled: Bool
+}
+
+struct AskAIRequest: Encodable, Sendable {
+    let question: String
+    let context: String
+}
+
+struct AskAIResponse: Decodable, Sendable {
+    let answer: String
+}
+
 
 public struct HealthCheckResult: Codable, Sendable {
     public let realmID: String
