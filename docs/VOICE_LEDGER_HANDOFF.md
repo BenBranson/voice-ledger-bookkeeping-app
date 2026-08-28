@@ -857,6 +857,16 @@ Same pattern as `VL-PAYROLL-LUMP-001`: checks vendor name AND memo (both already
 
 **Not attempted this session** — flagged and scoped only, per the owner's own instruction not to build it yet.
 
+## 2026-08-28 — Ask [AI] panel built and live-verified: OpenAI, not the Claude API
+
+The owner's own words: "were going to actually use openai api integration." Every earlier reference in this doc, CLAUDE.md, and docs/VOICE_LEDGER_SPEC.md to "Claude API," "Ask Claude panel," or "Claude API key" describing a not-yet-built feature is now stale in that one specific respect — the integration is OpenAI (`gpt-4o-mini`, the default I proposed and the owner explicitly confirmed rather than picking another model). CLAUDE.md itself was not edited to rename these references; treat "Claude API"/"Ask Claude panel" language there and in the spec as meaning "the app's chosen AI provider," not literally Anthropic's API, until/unless the owner asks for the docs themselves to be reworded.
+
+**What shipped, same session, live-verified against the real OpenAI key** (not just built): backend (`backend/src/ai/openaiClient.ts`, `backend/src/routes/ai.ts` — `POST /realms/:realmId/ask-ai`, `GET /ai/status`, `POST /ai/settings`), desktop (`BackendClient.askAI`/`getAIStatus`/`setAIEnabled`, `Core/AskAIContext.compose`, `FindingDetailView`'s "ASK AI" section, `ConnectionView`'s "AI CONNECTION" card with the spec's kill switch). The API key lives only in `backend/.env` (`OPENAI_API_KEY`), gitignored, never reaches the desktop process.
+
+**CLAUDE.md rule 1's boundary is enforced in two independent places**, not one: `AskAIContext.compose` (Core, pure) only ever serializes a `Finding`'s own already-computed fields into plain text, and the backend's own system prompt (`routes/ai.ts`'s `SYSTEM_PROMPT`) separately instructs the model never to state a number beyond that context, never to give tax/legal advice, never to claim a QBO write happened. Stress-tested live: asked it to compute a 20%-markup dollar figure and tax owed on a real finding — it correctly refused both and pointed to the app's own numbers / a CPA instead. Logs never carry prompt/completion content (confirmed live in the actual log output), only event names and latency — the logger's pre-existing forbidden-fields list already anticipated this feature before it existed.
+
+**Getting sandbox/live access for this, same technique as §"sandbox access was never actually blocked" above**: `backend/spike/mintDevSession.ts` plus `backend/.env`'s already-stored `OPENAI_API_KEY` is all a session needs — `voiceledger-devtool ask-ai-check` (new) runs the real Swift call path end to end, costs a small amount of real API usage.
+
 ## 2026-08-28 — Page 10 (Taxes) built, deliberately with zero tax law — do not add any without re-reading this
 
 The owner's own words when asked to unblock this page: "we want to stay legally safe and make sure were not making any wrong calculations or and all tax laws are correct." Read literally, that's not satisfiable by any AI-generated tax logic — bracket tables, self-employment rates, and jurisdiction rules change, vary by entity type and locale, and an LLM (including whichever one is reading this) cannot guarantee they're current or complete for a specific business.
