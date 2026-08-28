@@ -66,14 +66,17 @@ else
         nohup arch -arm64 npm run dev >> "$BACKEND_LOG" 2>&1 &
         disown
         started=false
-        for _ in $(seq 1 20); do
+        # 45s, not 20 — confirmed live that a busy Mac (other node/npm
+        # processes already running) can make `npm run dev` take noticeably
+        # longer to come up than on an idle machine.
+        for _ in $(seq 1 45); do
             sleep 1
             if backend_healthy; then started=true; break; fi
         done
         if [ "$started" = true ]; then
             status_lines+=("Backend: started (port $BACKEND_PORT)")
         else
-            status_lines+=("Backend: did not respond after 20s — check ~/Library/Logs/VoiceLedger/backend.log")
+            status_lines+=("Backend: did not respond after 45s — check ~/Library/Logs/VoiceLedger/backend.log")
         fi
     fi
 fi
@@ -99,13 +102,52 @@ if pgrep -x VoiceLedgerApp >/dev/null 2>&1; then
     osascript -e 'tell application "System Events" to set frontmost of process "VoiceLedgerApp" to true' >/dev/null 2>&1
 else
     BIN="$DESKTOP_DIR/.build/release/VoiceLedgerApp"
-    if [ -x "$BIN" ]; then
-        : > "$APP_LOG"
-        nohup arch -arm64 "$BIN" >> "$APP_LOG" 2>&1 &
-        disown
-        status_lines+=("Voice Ledger app: launched")
-    else
+    if [ ! -x "$BIN" ]; then
         status_lines+=("Voice Ledger app: not built yet. Ask Claude to run \"swift build -c release\" in the desktop folder once, then open this launcher again — it will find and run it from then on without needing to build again.")
+    else
+        : > "$APP_LOG"
+        # The app needs a backend URL, a session token, and which connected
+        # company (realmId) to open — it has no way to guess these itself.
+        # The realmId/environment come from whatever's already connected
+        # (backend/data/voiceledger.sqlite's `connections` table, the same
+        # source of truth the backend itself uses) rather than a value
+        # hardcoded here, so reconnecting a different company later doesn't
+        # require editing this script. The session token is minted fresh
+        # each launch via the project's own dev helper
+        # (backend/spike/mintDevSession.ts) — the same mechanism used
+        # throughout this project's own live-verification testing — since a
+        # session token is single-use-to-read (only its hash is ever
+        # stored) and can't just be read back from somewhere.
+        # Deliberately node/tsx, not the system `sqlite3` CLI — confirmed
+        # live that `sqlite3` hits "authorization denied" reading this
+        # exact file from this exact launch context even though `node`
+        # (already proven working for the backend itself, above) does not.
+        CONNECTION_INFO="$(cd "$BACKEND_DIR" && arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" spike/latestConnection.ts 2>>"$APP_LOG")"
+        REALM_ID="$(echo "$CONNECTION_INFO" | sed -n '1p')"
+        REALM_ENV="$(echo "$CONNECTION_INFO" | sed -n '2p')"
+        [ -z "$REALM_ENV" ] && REALM_ENV="sandbox"
+
+        if [ -z "$REALM_ID" ]; then
+            status_lines+=("Voice Ledger app: no connected company found yet. Connect one first, then open this launcher again.")
+        else
+            SESSION_TOKEN_FILE="$LOG_DIR/session-token.txt"
+            rm -f "$SESSION_TOKEN_FILE"
+            (cd "$BACKEND_DIR" && arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" spike/mintDevSession.ts "$REALM_ID" "$SESSION_TOKEN_FILE") >> "$APP_LOG" 2>&1
+            SESSION_TOKEN="$(cat "$SESSION_TOKEN_FILE" 2>/dev/null)"
+            rm -f "$SESSION_TOKEN_FILE"
+
+            if [ -z "$SESSION_TOKEN" ]; then
+                status_lines+=("Voice Ledger app: could not create a session for the connected company — check ~/Library/Logs/VoiceLedger/app.log")
+            else
+                VOICE_LEDGER_BACKEND_URL="http://localhost:$BACKEND_PORT" \
+                VOICE_LEDGER_SESSION_TOKEN="$SESSION_TOKEN" \
+                VOICE_LEDGER_REALM_ID="$REALM_ID" \
+                VOICE_LEDGER_ENVIRONMENT="$REALM_ENV" \
+                nohup arch -arm64 "$BIN" >> "$APP_LOG" 2>&1 &
+                disown
+                status_lines+=("Voice Ledger app: launched")
+            fi
+        fi
     fi
 fi
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import Foundation
 import Core
 import IntegrationsQuickBooks
@@ -34,6 +35,24 @@ struct VoiceLedgerApp: App {
                 }
             }
             .frame(minWidth: 720, minHeight: 480)
+            .onAppear {
+                // Confirmed live 2026-08-28: a raw (unbundled) executable
+                // launched via `nohup binary &` from a script — as the
+                // desktop launcher does, since there is no Xcode-built .app
+                // bundle for this SwiftPM executable — comes up with AppKit's
+                // "background only" activation policy: alive as a process
+                // (`ps`/`pgrep` see it), but no Dock icon and no visible
+                // window, confirmed via `osascript`'s "background only of
+                // process" reporting true. Running via `swift run`/Terminal
+                // never hit this because Terminal-launched processes inherit
+                // a foreground-capable session context an `open`-launched
+                // script's child process does not. Forcing `.regular` here
+                // makes the window appear regardless of how the binary was
+                // started, since AppKit's default in that inherited context
+                // otherwise silently stays background-only.
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 
