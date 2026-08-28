@@ -78,7 +78,7 @@ struct VoiceLedgerApp: App {
             let environment: QBOEnvironment = environmentString == "production" ? .production : .sandbox
 
             let period = AccountingPeriod(year: 2026, month: 7)
-            appState = AppState(realmID: realmID, environment: environment, period: period, backend: backend, store: store)
+            appState = AppState(realmID: realmID, environment: environment, period: period, backend: backend, store: store, clientStoreRootDirectory: supportDir)
         } catch {
             configError = "\(error)"
         }

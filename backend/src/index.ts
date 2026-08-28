@@ -24,6 +24,7 @@ import { healthRoutes, livenessRoute } from "./routes/health.js";
 import { oauthRoutes } from "./routes/oauth.js";
 import { operationsRoutes } from "./routes/operations.js";
 import { aiRoutes } from "./routes/ai.js";
+import { connectionsRoutes } from "./routes/connections.js";
 import { assertCatalogWriteOpsAreApproved } from "./catalog/operations.js";
 import { logEvent } from "./logging/logger.js";
 
@@ -67,6 +68,7 @@ function main(): void {
   app.use(healthRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(operationsRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
+  app.use(connectionsRoutes(tokenStore, sessionMiddleware));
 
   app.listen(appConfig.port, () => {
     logEvent("server_started");

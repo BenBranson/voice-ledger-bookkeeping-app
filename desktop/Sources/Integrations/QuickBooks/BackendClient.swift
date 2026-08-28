@@ -98,6 +98,54 @@ public actor BackendClient {
         return try JSONDecoder().decode(WriteAccessResponse.self, from: data).writeEnabled
     }
 
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit: "every connected client on
+    /// one screen." `GET /connections` — deliberately the one call in this
+    /// client that isn't scoped to `realmID`, mirroring the backend route's
+    /// own doc comment on why crossing realms here is intentional, not a
+    /// gap in the isolation model.
+    public func getConnections() async throws -> [ConnectedClient] {
+        var url = configuration.baseURL
+        url.append(path: "/connections")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(ConnectionsResponse.self, from: data)
+        return decoded.connections.compactMap(Self.normalize)
+    }
+
+    /// A raw connection with an environment string this build's
+    /// `QBOEnvironment` doesn't recognize is dropped, not guessed at —
+    /// mirrors `QBOSyncClient.normalize`'s posture for an unrecognized
+    /// `AccountType`. Pulled out as its own static function (rather than
+    /// inline in `getConnections()`) so this mapping is unit-testable
+    /// without a network call, the same reason `QBOSyncClient.normalize`
+    /// is static.
+    static func normalize(_ raw: RawConnection) -> ConnectedClient? {
+        guard let environment = QBOEnvironment(rawValue: raw.environment) else { return nil }
+        return ConnectedClient(
+            realmID: RealmID(rawValue: raw.realmId),
+            companyName: raw.companyName,
+            environment: environment,
+            writeEnabled: raw.writeEnabled,
+            lastHealthCheckAt: raw.lastHealthCheckAt,
+            lastHealthCheckStatus: raw.lastHealthCheckStatus.flatMap { ConnectionHealthStatus(rawValue: $0) }
+        )
+    }
+
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel status — `GET /ai/status`.
     /// Not realm-scoped (the kill switch and API-key configuration are
     /// app-wide, per the backend's `ai_settings` table), but still
@@ -227,6 +275,19 @@ struct WriteAccessRequest: Encodable, Sendable {
 
 struct WriteAccessResponse: Decodable, Sendable {
     let writeEnabled: Bool
+}
+
+struct ConnectionsResponse: Decodable, Sendable {
+    let connections: [RawConnection]
+}
+
+struct RawConnection: Decodable, Sendable {
+    let realmId: String
+    let environment: String
+    let companyName: String?
+    let writeEnabled: Bool
+    let lastHealthCheckAt: Date?
+    let lastHealthCheckStatus: String?
 }
 
 struct AISettingsRequest: Encodable, Sendable {

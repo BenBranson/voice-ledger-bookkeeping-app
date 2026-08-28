@@ -17,7 +17,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -25,6 +25,8 @@ guard arguments.count >= 2, ["health", "tax-check", "ask-ai-check", "sync-check"
       health                 Run the live health check against a connected realm.
       tax-check              Fetch TaxCode/TaxRate/TaxAgency live and print
                               them (docs/VOICE_LEDGER_SPEC.md Page 9). Read-only.
+      connections-check      Fetch the backend's connection registry live
+                              (docs/VOICE_LEDGER_SPEC.md's Firm Cockpit). Read-only.
       ask-ai-check           Checks AI status, then asks a real OpenAI
                               question through the real BackendClient.askAI
                               code path. Costs a small amount of real API
@@ -134,6 +136,23 @@ case "health":
         }
     } catch {
         FileHandle.standardError.write("Health check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "connections-check":
+    // docs/VOICE_LEDGER_SPEC.md's Firm Cockpit — live-verifies
+    // BackendClient.getConnections against the real backend/database.
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let client = BackendClient(configuration: configuration)
+        let connections = try await client.getConnections()
+        print("Connections (\(connections.count)):")
+        for c in connections {
+            print("  \(c.realmID.rawValue): \(c.companyName ?? "(no name)"), env=\(c.environment.rawValue), writeEnabled=\(c.writeEnabled), health=\(c.lastHealthCheckStatus.map { $0.rawValue } ?? "never checked")")
+        }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("connections-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
     }
 

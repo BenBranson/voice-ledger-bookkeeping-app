@@ -20,6 +20,8 @@ export interface StoredConnection {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly writeEnabled: boolean;
+  readonly lastHealthCheckAt: string | null;
+  readonly lastHealthCheckStatus: string | null;
 }
 
 interface CachedAccessToken {
@@ -37,6 +39,8 @@ interface ConnectionRow {
   created_at: string;
   updated_at: string;
   write_enabled: number;
+  last_health_check_at: string | null;
+  last_health_check_status: string | null;
 }
 
 export class TokenStore {
@@ -97,13 +101,32 @@ export class TokenStore {
       )
       .get({ realmId });
     if (!row) return null;
+    return TokenStore.toStoredConnection(row);
+  }
+
+  /**
+   * docs/VOICE_LEDGER_SPEC.md's Firm Cockpit: "every connected client on
+   * one screen." This is the registry that view needs — every realm ever
+   * authorized, not just the one the caller's session happens to be
+   * scoped to. Deliberately never returns a refresh token or anything
+   * derived from one (only the same public-shape fields `getConnection`
+   * already exposes for a single realm).
+   */
+  listConnections(): StoredConnection[] {
+    const rows = this.db.prepare<[], ConnectionRow>("SELECT * FROM connections ORDER BY updated_at DESC").all();
+    return rows.map(TokenStore.toStoredConnection);
+  }
+
+  private static toStoredConnection(row: ConnectionRow): StoredConnection {
     return {
       realmId: row.realm_id,
       environment: row.environment,
       companyName: row.company_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      writeEnabled: row.write_enabled === 1
+      writeEnabled: row.write_enabled === 1,
+      lastHealthCheckAt: row.last_health_check_at,
+      lastHealthCheckStatus: row.last_health_check_status
     };
   }
 

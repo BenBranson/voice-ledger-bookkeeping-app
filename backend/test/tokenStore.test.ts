@@ -102,4 +102,27 @@ describe("TokenStore", () => {
   it("a realm with no connection row at all is write-disabled, not an error", () => {
     expect(store.isWriteEnabled("never-connected-realm")).toBe(false);
   });
+
+  it("listConnections returns every connected realm", () => {
+    store.saveRefreshToken("111111", "sandbox", "First Co", "token-a");
+    store.saveRefreshToken("222222", "sandbox", "Second Co", "token-b");
+    const all = store.listConnections();
+    expect(all.map((c) => c.realmId).sort()).toEqual(["111111", "222222"]);
+    expect(all.find((c) => c.realmId === "222222")?.companyName).toBe("Second Co");
+  });
+
+  it("listConnections is empty when nothing is connected", () => {
+    expect(store.listConnections()).toEqual([]);
+  });
+
+  it("getConnection and listConnections carry the last health check fields, defaulting to null before any check", () => {
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    expect(store.getConnection("123456")?.lastHealthCheckAt).toBeNull();
+    expect(store.getConnection("123456")?.lastHealthCheckStatus).toBeNull();
+    store.recordHealthCheck("123456", "green", "2026-08-28T12:00:00.000Z");
+    const updated = store.getConnection("123456");
+    expect(updated?.lastHealthCheckStatus).toBe("green");
+    expect(updated?.lastHealthCheckAt).toBe("2026-08-28T12:00:00.000Z");
+    expect(store.listConnections()[0]?.lastHealthCheckStatus).toBe("green");
+  });
 });

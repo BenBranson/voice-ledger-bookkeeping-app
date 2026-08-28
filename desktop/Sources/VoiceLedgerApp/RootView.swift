@@ -43,6 +43,7 @@ struct RootView: View {
                         Button("Batch Fixes") { state.screen = .batchFixes }
                         Button("Sales Tax Review") { state.screen = .salesTaxReview }
                         Button("Taxes") { state.screen = .taxes }
+                        Button("Firm Cockpit") { state.screen = .firmCockpit }
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
@@ -112,6 +113,23 @@ struct RootView: View {
                     Task { await state.applyBatchFix(findingIDs: ids, actorName: actorName) }
                 }
             )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .firmCockpit:
+            FirmCockpitView(
+                environment: state.environment == .production ? .production : .sandbox,
+                summaries: state.firmCockpitSummaries,
+                isLoading: state.isLoadingFirmCockpit,
+                errorMessage: state.firmCockpitError,
+                onRefresh: { Task { await state.loadFirmCockpit() } }
+            )
+            .task {
+                if state.firmCockpitSummaries.isEmpty { await state.loadFirmCockpit() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }

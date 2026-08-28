@@ -29,6 +29,7 @@ public final class AppState {
         case batchFixes
         case salesTaxReview
         case taxes
+        case firmCockpit
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport
@@ -317,6 +318,15 @@ public final class AppState {
     /// input, never defaulted or guessed by this app.
     public private(set) var taxEstimateSettings = TaxEstimateSettings()
 
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit — every connected client's
+    /// summary, from the backend's own connection registry plus a
+    /// READ-ONLY local read of each client's own `ClientStore` (never a
+    /// live QBO sync — that stays exclusive to whichever realm this
+    /// `AppState` is actively running as).
+    public private(set) var firmCockpitSummaries: [ClientCockpitSummary] = []
+    public private(set) var isLoadingFirmCockpit = false
+    public private(set) var firmCockpitError: String?
+
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
@@ -325,15 +335,24 @@ public final class AppState {
     private let backend: BackendClient
     private let syncClient: QBOSyncClient
     private let store: ClientStore
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit — the same Application
+    /// Support root every realm's `ClientStore` lives under
+    /// (`VoiceLedgerApp.swift`'s `configure()`), needed here to construct
+    /// a READ-ONLY `ClientStore` for OTHER connected realms (never the
+    /// live, actively-synced one this `AppState` itself owns). `nil` for
+    /// callers that never pass it (`voiceledger-devtool`, tests) — Firm
+    /// Cockpit simply reports unavailable rather than crashing.
+    private let clientStoreRootDirectory: URL?
     private let engine: RuleEngine
 
-    public init(realmID: RealmID, environment: QBOEnvironment, period: AccountingPeriod, backend: BackendClient, store: ClientStore) {
+    public init(realmID: RealmID, environment: QBOEnvironment, period: AccountingPeriod, backend: BackendClient, store: ClientStore, clientStoreRootDirectory: URL? = nil) {
         self.realmID = realmID
         self.environment = environment
         self.period = period
         self.backend = backend
         self.syncClient = QBOSyncClient(backend: backend)
         self.store = store
+        self.clientStoreRootDirectory = clientStoreRootDirectory
         // All rules, not just Page 3's — Cleanup Assessment's rules must be
         // evaluated in the SAME engine call for §8.2a's relationship
         // gating to see both classes together (RuleEngineActor.swift).
@@ -559,6 +578,50 @@ public final class AppState {
         taxRates = r ?? []
         taxAgencies = a ?? []
         isLoadingSalesTax = false
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit. Fetches the backend's
+    /// connection registry (every realm ever authorized, live — never
+    /// cached), then for each one reads its own local `ClientStore`
+    /// READ-ONLY to build a summary. One client's read failing (a realm
+    /// whose local store hasn't been created yet, e.g. connected but
+    /// never synced) does not fail the others — matches this app's
+    /// existing "one report failing must not fail the whole sync" posture
+    /// (`syncAndEvaluate()`), applied here across clients instead of
+    /// across reports for one client.
+    public func loadFirmCockpit() async {
+        isLoadingFirmCockpit = true
+        firmCockpitError = nil
+        do {
+            let connections = try await backend.getConnections()
+            guard let rootDirectory = clientStoreRootDirectory else {
+                firmCockpitSummaries = []
+                firmCockpitError = "Firm Cockpit needs a local store location this session wasn't given."
+                isLoadingFirmCockpit = false
+                return
+            }
+            var summaries: [ClientCockpitSummary] = []
+            for connection in connections {
+                guard let clientStore = try? ClientStore(realmID: connection.realmID, rootDirectory: rootDirectory) else { continue }
+                async let findingsResult = try? clientStore.loadFindings()
+                async let checklistResult = try? clientStore.loadChecklistCompletions()
+                async let importedResult = try? clientStore.loadImportedStatementLines()
+                async let activityResult = try? clientStore.loadActivityLog()
+                let (f, c, imported, activity) = await (findingsResult, checklistResult, importedResult, activityResult)
+                summaries.append(FirmCockpit.summarize(
+                    client: connection,
+                    findings: f ?? [],
+                    checklistCompletions: c ?? [],
+                    period: period,
+                    importedStatementLineCount: (imported ?? []).count,
+                    activityLog: activity ?? []
+                ))
+            }
+            firmCockpitSummaries = summaries
+        } catch {
+            firmCockpitError = "\(error)"
+        }
+        isLoadingFirmCockpit = false
     }
 
     /// docs/VOICE_LEDGER_SPEC.md Page 9 — records the filing-status

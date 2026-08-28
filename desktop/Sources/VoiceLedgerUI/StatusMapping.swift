@@ -21,6 +21,22 @@ public enum StatusMapping {
         }
     }
 
+    /// `ConnectionHealthStatus` (Core, Firm Cockpit's connection registry
+    /// read) -> `VLStatus`. Same color semantics `RootView`'s separate
+    /// `IntegrationsQuickBooks.HealthStatus` mapping already uses for the
+    /// single-client Connection page — kept as two small mappings rather
+    /// than one shared function, since the two source types live in
+    /// different modules for `CLAUDE.md`'s own architecture-boundary
+    /// reasons and aren't worth merging into one.
+    public static func status(for health: ConnectionHealthStatus?) -> VLStatus {
+        switch health {
+        case .green: return .verified
+        case .yellow: return .reviewNeeded
+        case .red: return .urgent
+        case .gray, nil: return .notChecked
+        }
+    }
+
     public static func coverageGap(for outcome: RuleOutcome) -> VLCoverageGap? {
         switch outcome {
         case .cannotEvaluate(.partialCoverage(let reason)):
