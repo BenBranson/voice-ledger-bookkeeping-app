@@ -40,6 +40,7 @@ public actor ClientStore {
     private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
     private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
     private var salesTaxAttestationURL: URL { directory.appending(path: "sales-tax-attestation.json") }
+    private var taxEstimateSettingsURL: URL { directory.appending(path: "tax-estimate-settings.json") }
 
     // MARK: - Findings
 
@@ -288,6 +289,16 @@ public actor ClientStore {
 
     public func saveSalesTaxAttestation(_ attestation: SalesTaxAttestation) throws {
         try save(attestation, to: salesTaxAttestationURL)
+    }
+
+    // MARK: - Tax estimate settings (Page 10)
+
+    public func loadTaxEstimateSettings() throws -> TaxEstimateSettings {
+        try load(TaxEstimateSettings.self, from: taxEstimateSettingsURL, default: TaxEstimateSettings())
+    }
+
+    public func saveTaxEstimateSettings(_ settings: TaxEstimateSettings) throws {
+        try save(settings, to: taxEstimateSettingsURL)
     }
 
     // MARK: - Activity log

@@ -42,6 +42,7 @@ struct RootView: View {
                         Button("Chart of Accounts Cleanup") { state.screen = .chartOfAccountsCleanup }
                         Button("Batch Fixes") { state.screen = .batchFixes }
                         Button("Sales Tax Review") { state.screen = .salesTaxReview }
+                        Button("Taxes") { state.screen = .taxes }
                         Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
                         Button("Month-End Close") { state.screen = .monthEndClose }
                         Button("Balance Sheet") { state.screen = .balanceSheetReport }
@@ -105,6 +106,34 @@ struct RootView: View {
                     Task { await state.applyBatchFix(findingIDs: ids, actorName: actorName) }
                 }
             )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { state.screen = .list }
+                }
+            }
+
+        case .taxes:
+            TaxesView(
+                environment: state.environment == .production ? .production : .sandbox,
+                currentPeriodLabel: Self.periodLabel(state.currentPeriod),
+                priorPeriodLabel: Self.periodLabel(state.currentPeriod.previousMonth),
+                currentNetIncome: TaxEstimate.netIncome(from: state.profitAndLossLines),
+                priorNetIncome: TaxEstimate.netIncome(from: state.priorPeriodProfitAndLossLines),
+                isLoading: state.isLoadingProfitAndLoss || state.isLoadingVarianceAnalysis,
+                errorMessage: state.profitAndLossError ?? state.varianceAnalysisError,
+                settings: state.taxEstimateSettings,
+                onRefresh: {
+                    Task {
+                        await state.loadProfitAndLoss()
+                        await state.loadVarianceAnalysis()
+                    }
+                },
+                onSaveSettings: { settings in Task { await state.updateTaxEstimateSettings(settings) } }
+            )
+            .task {
+                if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+                if state.priorPeriodProfitAndLossLines.isEmpty { await state.loadVarianceAnalysis() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }

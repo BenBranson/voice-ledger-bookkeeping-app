@@ -366,6 +366,17 @@ struct ClientStoreTests {
         #expect(loaded.note == "AZ quarterly, filed on time")
     }
 
+    @Test("Tax estimate settings round-trip: default before saving, real values after")
+    func taxEstimateSettingsRoundTrip() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        #expect(try await store.loadTaxEstimateSettings() == TaxEstimateSettings())
+        let settings = TaxEstimateSettings(ratePercent: 25, setBy: "Benjamin Branson", setAt: Date(), note: "From CPA estimate")
+        try await store.saveTaxEstimateSettings(settings)
+        let loaded = try await store.loadTaxEstimateSettings()
+        #expect(loaded.ratePercent == 25)
+        #expect(loaded.note == "From CPA estimate")
+    }
+
     @Test("Mapping hints round-trip: upsert then load returns the learned fields")
     func mappingHintsRoundTrip() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())

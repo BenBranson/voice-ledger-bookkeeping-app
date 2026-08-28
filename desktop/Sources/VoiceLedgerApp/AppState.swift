@@ -28,6 +28,7 @@ public final class AppState {
         case chartOfAccountsCleanup
         case batchFixes
         case salesTaxReview
+        case taxes
         case bankFeedCleanup
         case monthEndClose
         case balanceSheetReport
@@ -298,6 +299,11 @@ public final class AppState {
     public private(set) var salesTaxError: String?
     public private(set) var salesTaxAttestation = SalesTaxAttestation()
 
+    /// docs/VOICE_LEDGER_SPEC.md Page 10 (Taxes) — see `Core/TaxEstimate
+    /// .swift`'s doc comment: `ratePercent` is entirely the user's own
+    /// input, never defaulted or guessed by this app.
+    public private(set) var taxEstimateSettings = TaxEstimateSettings()
+
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
@@ -349,6 +355,7 @@ public final class AppState {
             let newPeriodLock = try await store.loadPeriodLock()
             let newCarryForwardMarks = try await store.loadCarryForwardMarks()
             let newSalesTaxAttestation = try await store.loadSalesTaxAttestation()
+            let newTaxEstimateSettings = try await store.loadTaxEstimateSettings()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -358,6 +365,7 @@ public final class AppState {
             periodLock = newPeriodLock
             carryForwardMarks = newCarryForwardMarks
             salesTaxAttestation = newSalesTaxAttestation
+            taxEstimateSettings = newTaxEstimateSettings
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -547,6 +555,18 @@ public final class AppState {
         do {
             try await store.saveSalesTaxAttestation(attestation)
             salesTaxAttestation = attestation
+        } catch {
+            loadState = .failed("\(error)")
+        }
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md Page 10 — records the user-supplied rate
+    /// `TaxEstimate.estimatedSetAside` multiplies by. This app never
+    /// proposes a rate of its own; it only stores whatever the user typed.
+    public func updateTaxEstimateSettings(_ settings: TaxEstimateSettings) async {
+        do {
+            try await store.saveTaxEstimateSettings(settings)
+            taxEstimateSettings = settings
         } catch {
             loadState = .failed("\(error)")
         }
