@@ -9,63 +9,26 @@ struct RootView: View {
     @Bindable var state: AppState
     @State private var actorName = NSFullUserName()
     @State private var isImportingStatement = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationStack {
-            content
-                .toolbar {
-                    // docs/VOICE_LEDGER_SPEC.md's Firm Cockpit: "Wrong-Client
-                    // Protection — active company and period pinned to every
-                    // screen." Every other screen showed only the environment
-                    // badge (sandbox/production) — never the company name or
-                    // period at all, a real gap once more than one client
-                    // connection exists. Placed on the shared toolbar (not
-                    // each screen individually) so it's automatically on
-                    // every one of them, present tense, no exceptions.
-                    ToolbarItem(placement: .principal) {
-                        HStack(spacing: VLSpacing.xs) {
-                            Text(state.companyInfo?.companyName ?? "No company connected")
-                                .font(.headline)
-                            Text("·")
-                                .foregroundStyle(.secondary)
-                            Text("\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))")
-                                .foregroundStyle(.secondary)
-                            VLEnvironmentBadge(state.environment == .production ? .production : .sandbox)
-                        }
-                    }
-                    ToolbarItemGroup(placement: .automatic) {
-                        Button("Connection") { state.screen = .connection }
-                        Button("Scope & Period Lock") { state.screen = .scopeAndPeriodLock }
-                        Button("Sync") { Task { await state.syncAndEvaluate() } }
-                            .disabled(state.loadState == .loading)
-                        Button("Cleanup Assessment") { state.screen = .cleanupAssessment }
-                        Button("Balance Sheet Integrity") { state.screen = .balanceSheetIntegrity }
-                        Button("Chart of Accounts Cleanup") { state.screen = .chartOfAccountsCleanup }
-                        Button("Batch Fixes") { state.screen = .batchFixes }
-                        Button("Sales Tax Review") { state.screen = .salesTaxReview }
-                        Button("Taxes") { state.screen = .taxes }
-                        Button("Firm Cockpit") { state.screen = .firmCockpit }
-                        Button("Bank Feed Cleanup") { state.screen = .bankFeedCleanup }
-                        Button("Month-End Close") { state.screen = .monthEndClose }
-                        Button("Balance Sheet") { state.screen = .balanceSheetReport }
-                        Button("Profit & Loss") { state.screen = .profitAndLossReport }
-                        Button("Cash Flow") { state.screen = .cashFlowReport }
-                        Button("Trial Balance") { state.screen = .trialBalanceReport }
-                        Button("Aged Receivables") { state.screen = .agedReceivablesReport }
-                        Button("Aged Payables") { state.screen = .agedPayablesReport }
-                        Button("General Ledger") { state.screen = .generalLedgerReport }
-                        Button("Activity Log") { state.screen = .activityLog }
-                        Button("Close Package") { state.screen = .closePackage }
-                        Button("Client Memory") { state.screen = .clientMemory }
-                    }
-                    ToolbarItem(placement: .automatic) {
-                        VoiceMicButton(
-                            isListening: state.voiceEngine.isListening,
-                            isProcessing: state.voiceEngine.isProcessing,
-                            onToggle: { state.voiceEngine.toggleListening() }
-                        )
-                    }
-                }
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            AppSidebar(
+                selection: sidebarSelection,
+                companyName: state.companyInfo?.companyName ?? "No company connected",
+                periodLabel: "\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))",
+                environmentTone: state.environment == .production ? .production : .sandbox,
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                isVoiceListening: state.voiceEngine.isListening,
+                isVoiceProcessing: state.voiceEngine.isProcessing,
+                onToggleVoice: { state.voiceEngine.toggleListening() }
+            )
+            .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
+        } detail: {
+            NavigationStack {
+                content
+            }
         }
         .overlay(alignment: .bottom) {
             // docs/VOICE_LEDGER_SPEC.md's `/voice` module — one global
@@ -95,6 +58,73 @@ struct RootView: View {
         } message: {
             Text(state.exportError ?? "")
         }
+    }
+
+    /// Bridges `AppState.screen` (the real navigation state, including the
+    /// two parameterized drill-down cases `.detail`/`.procedure`) to
+    /// `SidebarItem?` (the sidebar's flat, top-level selection). Reading it
+    /// while a finding is open maps back to `.dashboard` so "Findings"
+    /// stays highlighted, the same way a Finder sidebar row stays selected
+    /// while you're looking inside something it contains. Setting it always
+    /// replaces `state.screen` outright — the sidebar is the one navigation
+    /// surface that always starts a fresh top-level screen, never a
+    /// drill-down.
+    private var sidebarSelection: Binding<SidebarItem?> {
+        Binding(
+            get: {
+                switch state.screen {
+                case .connection: return .connection
+                case .scopeAndPeriodLock: return .scopeAndPeriodLock
+                case .list, .detail, .procedure: return .dashboard
+                case .batchFixes: return .batchFixes
+                case .firmCockpit: return .firmCockpit
+                case .taxes: return .taxes
+                case .salesTaxReview: return .salesTaxReview
+                case .chartOfAccountsCleanup: return .chartOfAccountsCleanup
+                case .cleanupAssessment: return .cleanupAssessment
+                case .balanceSheetIntegrity: return .balanceSheetIntegrity
+                case .bankFeedCleanup: return .bankFeedCleanup
+                case .monthEndClose: return .monthEndClose
+                case .activityLog: return .activityLog
+                case .closePackage: return .closePackage
+                case .clientMemory: return .clientMemory
+                case .balanceSheetReport: return .balanceSheetReport
+                case .profitAndLossReport: return .profitAndLossReport
+                case .cashFlowReport: return .cashFlowReport
+                case .trialBalanceReport: return .trialBalanceReport
+                case .agedReceivablesReport: return .agedReceivablesReport
+                case .agedPayablesReport: return .agedPayablesReport
+                case .generalLedgerReport: return .generalLedgerReport
+                }
+            },
+            set: { newValue in
+                guard let newValue else { return }
+                switch newValue {
+                case .dashboard: state.screen = .list
+                case .connection: state.screen = .connection
+                case .scopeAndPeriodLock: state.screen = .scopeAndPeriodLock
+                case .batchFixes: state.screen = .batchFixes
+                case .firmCockpit: state.screen = .firmCockpit
+                case .taxes: state.screen = .taxes
+                case .salesTaxReview: state.screen = .salesTaxReview
+                case .chartOfAccountsCleanup: state.screen = .chartOfAccountsCleanup
+                case .cleanupAssessment: state.screen = .cleanupAssessment
+                case .balanceSheetIntegrity: state.screen = .balanceSheetIntegrity
+                case .bankFeedCleanup: state.screen = .bankFeedCleanup
+                case .monthEndClose: state.screen = .monthEndClose
+                case .activityLog: state.screen = .activityLog
+                case .closePackage: state.screen = .closePackage
+                case .clientMemory: state.screen = .clientMemory
+                case .balanceSheetReport: state.screen = .balanceSheetReport
+                case .profitAndLossReport: state.screen = .profitAndLossReport
+                case .cashFlowReport: state.screen = .cashFlowReport
+                case .trialBalanceReport: state.screen = .trialBalanceReport
+                case .agedReceivablesReport: state.screen = .agedReceivablesReport
+                case .agedPayablesReport: state.screen = .agedPayablesReport
+                case .generalLedgerReport: state.screen = .generalLedgerReport
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -261,33 +291,50 @@ struct RootView: View {
             )
 
         case .list:
-            FindingsListView(
-                state: FindingsListView.ViewState(
-                    environment: state.environment == .production ? .production : .sandbox,
-                    coverageStatus: StatusMapping.status(for: coverageOutcome),
-                    coverageDetail: coverageDetail,
-                    findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) },
-                    nextBestAction: NextBestAction.compute(
-                        findings: state.findings,
-                        checklistCompletions: state.checklistCompletions,
-                        period: state.currentPeriod,
-                        hasImportedStatement: state.importedStatementLineCount > 0
+            VStack(spacing: 0) {
+                // The dashboard's own voice entry point — the owner's own
+                // ask ("voice button on the dashboard"), placed where a
+                // bookkeeper's eye lands first, above the findings the
+                // moment the app opens. `AppSidebar`'s footer offers the
+                // same action from every other screen; this one is just
+                // more prominent, matching where the reference screenshot
+                // put its own "Start a conversation" affordance.
+                DashboardVoiceBanner(
+                    isListening: state.voiceEngine.isListening,
+                    isProcessing: state.voiceEngine.isProcessing,
+                    onToggle: { state.voiceEngine.toggleListening() }
+                )
+                .padding(.horizontal, VLSpacing.pageGutter)
+                .padding(.top, VLSpacing.md)
+
+                FindingsListView(
+                    state: FindingsListView.ViewState(
+                        environment: state.environment == .production ? .production : .sandbox,
+                        coverageStatus: StatusMapping.status(for: coverageOutcome),
+                        coverageDetail: coverageDetail,
+                        findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) },
+                        nextBestAction: NextBestAction.compute(
+                            findings: state.findings,
+                            checklistCompletions: state.checklistCompletions,
+                            period: state.currentPeriod,
+                            hasImportedStatement: state.importedStatementLineCount > 0
+                        ),
+                        syncError: {
+                            if case .failed(let message) = state.loadState { return message }
+                            return nil
+                        }()
                     ),
-                    syncError: {
-                        if case .failed(let message) = state.loadState { return message }
-                        return nil
-                    }()
-                ),
-                onSelect: { finding in state.screen = .detail(findingID: finding.id) },
-                onNavigateNextBestAction: { action in
-                    switch action {
-                    case .reviewHighSeverityFindings: break // already on the list screen
-                    case .importBankStatement: state.screen = .bankFeedCleanup
-                    case .completeChecklistItem: state.screen = .monthEndClose
-                    case .allClear: break
+                    onSelect: { finding in state.screen = .detail(findingID: finding.id) },
+                    onNavigateNextBestAction: { action in
+                        switch action {
+                        case .reviewHighSeverityFindings: break // already on the list screen
+                        case .importBankStatement: state.screen = .bankFeedCleanup
+                        case .completeChecklistItem: state.screen = .monthEndClose
+                        case .allClear: break
+                        }
                     }
-                }
-            )
+                )
+            }
 
         case .detail(let findingID):
             if let finding = state.finding(id: findingID) {
@@ -1016,5 +1063,45 @@ struct RootView: View {
             rows.append([ExportCell(text: "Aged Payables"), ExportCell(text: line.label), ExportCell.money(line.total)])
         }
         return ExportTable(title: "Close Package", columns: ["Section", "Item", "Value"], rows: rows)
+    }
+}
+
+/// The dashboard's own prominent voice entry point — see the `.list` case's
+/// doc comment for why this exists alongside `AppSidebar`'s footer button.
+private struct DashboardVoiceBanner: View {
+    let isListening: Bool
+    let isProcessing: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: VLSpacing.sm) {
+                Image(systemName: isListening ? "mic.fill" : "mic.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(isListening ? .red : VLColor.cyan)
+                VStack(alignment: .leading, spacing: VLSpacing.hairline) {
+                    Text(isListening ? "Listening…" : (isProcessing ? "Thinking…" : "Ask Voice Ledger"))
+                        .font(VLTypography.bodyEmphasis())
+                        .foregroundStyle(VLColor.textPrimary)
+                    if !isListening && !isProcessing {
+                        Text("Navigate, review findings, or ask why something's flagged — by voice.")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(VLColor.textMuted)
+            }
+            .padding(VLSpacing.sm)
+            .background(VLColor.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: VLRadius.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: VLRadius.card)
+                    .stroke(isListening ? Color.red.opacity(0.6) : VLColor.border, lineWidth: VLBorder.hairline)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

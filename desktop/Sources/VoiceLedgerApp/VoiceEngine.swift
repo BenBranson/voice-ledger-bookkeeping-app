@@ -164,19 +164,34 @@ public final class VoiceEngine: NSObject {
         shouldAutoStop = false
         rawMicLevel = 0
 
-        // See the doc comment on the `nonisolated(unsafe)` properties above
-        // for the crash history this specific shape fixes: the callback
-        // below touches NOTHING isolated to this @MainActor class — no
-        // stored property that isn't `nonisolated(unsafe)`, no Task, no
-        // DispatchQueue-to-MainActor hop, no `MainActor.assumeIsolated`.
-        // `self` is captured only to reach that plain storage.
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        // FOURTH real, live-verified crash from this same callback
+        // (2026-08-28/29) — even after the previous fix removed every
+        // touch of MainActor-isolated storage, it crashed again with the
+        // IDENTICAL signature (`dispatch_assert_queue_fail` inside
+        // `swift_task_checkIsolatedSwift`), at a different byte offset
+        // (proving it really was the new code, not a stale binary). Root
+        // cause, actually correct this time: a closure LITERAL written
+        // inside a `@MainActor` method is inferred `@MainActor`-isolated
+        // by Swift BY DEFAULT, regardless of what it touches inside —
+        // AVAudioEngine's `installTap` closure parameter isn't declared
+        // `@Sendable` in this SDK, so nothing forced that inference off.
+        // The isolation check Swift inserts at the closure's own entry
+        // point (before any of the body runs) is what was failing —
+        // matching every crash's near-identical low `symbolLocation`.
+        // Explicitly typing this closure as `@Sendable` at its
+        // declaration is what actually suppresses that inference; a
+        // `@MainActor`-isolated class instance is itself Sendable (global
+        // actor isolation implies Sendable), so capturing `self` here
+        // remains legal — the closure body still reaches only
+        // `nonisolated(unsafe)` storage, same as before.
+        let tapBlock: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = { [weak self] buffer, _ in
             guard let self else { return }
             try? self.audioFile?.write(from: buffer)
             let level = Self.rmsLevel(of: buffer)
             self.rawMicLevel = level
             self.evaluateSilenceOffMainActor(level: level)
         }
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format, block: tapBlock)
 
         do {
             audioEngine.prepare()
