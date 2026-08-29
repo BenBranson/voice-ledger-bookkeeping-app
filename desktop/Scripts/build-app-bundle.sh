@@ -62,6 +62,22 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voice Ledger uses your microphone for voice commands — navigating pages, reviewing findings, and asking questions about what's flagged. Voice never applies a QuickBooks write on its own; every write still requires a real on-screen confirmation.</string>
+	<!-- Root cause of the "sometimes launches with zero windows" flakiness
+	     (2026-08-29, confirmed live across multiple launches, both before
+	     and after switching to `open -a`): macOS persists how many windows
+	     were open at the last quit and replays that on the next launch by
+	     default (NSQuitAlwaysKeepsWindows defaults to true). Any quit that
+	     happened with 0 windows open (this app's one WindowGroup window
+	     closed, or the AppDelegate reopen fix never got a chance to run)
+	     got "restored" as 0 windows on the very next launch, regardless of
+	     the AppDelegate's own reopen handling — that handling only helps
+	     once a window has existed in the CURRENT process; it can't run
+	     before SwiftUI's first window would otherwise appear. Setting this
+	     false makes every launch create its default window fresh, the way
+	     a normal single-window utility app behaves, rather than depending
+	     on whatever state the previous quit happened to leave behind. -->
+	<key>NSQuitAlwaysKeepsWindows</key>
+	<false/>
 </dict>
 </plist>
 PLIST
