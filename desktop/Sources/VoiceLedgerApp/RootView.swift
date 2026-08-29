@@ -3,6 +3,7 @@ import Core
 import IntegrationsQuickBooks
 import DesignSystem
 import VoiceLedgerUI
+import Exporting
 
 struct RootView: View {
     @Bindable var state: AppState
@@ -624,6 +625,31 @@ struct RootView: View {
                         format: format,
                         suggestedFilename: "Close Package"
                     )
+                },
+                onExportBrandedPDF: {
+                    let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
+                    let input = ClosePackagePDFExporter.Input(
+                        companyName: state.companyInfo?.companyName,
+                        environment: state.environment == .production ? "production" : "sandbox",
+                        period: state.currentPeriod,
+                        checklistCompleted: status.completed,
+                        checklistTotal: status.total,
+                        openCleanupCount: state.findings.filter { $0.status == .open && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                        resolvedCleanupCount: state.findings.filter { $0.status == .resolved && AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) }.count,
+                        balanceSheetLines: state.balanceSheetLines,
+                        profitAndLossLines: state.profitAndLossLines,
+                        cashFlowLines: state.cashFlowLines,
+                        trialBalanceLines: state.trialBalanceLines,
+                        agedReceivablesLines: state.agedReceivablesLines,
+                        agedPayablesLines: state.agedPayablesLines,
+                        corrections: state.activityLog.filter { $0.kind.isCorrection }.sorted { $0.recordedAt > $1.recordedAt },
+                        carryForwardItems: state.carryForwardMarks.compactMap { mark in
+                            guard let finding = state.finding(id: mark.findingID) else { return nil }
+                            return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
+                        },
+                        recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }
+                    )
+                    state.exportClosePackagePDF(input)
                 }
             )
             .task {

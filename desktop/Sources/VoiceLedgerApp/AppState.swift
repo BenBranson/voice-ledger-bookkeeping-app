@@ -1541,6 +1541,24 @@ public final class AppState {
         }
     }
 
+    /// `ClosePackageView`'s "Export Branded PDF" — a separate save path
+    /// from `exportTable` because `ClosePackagePDFExporter.Input` isn't an
+    /// `ExportTable` (it's a multi-section document, not one flat table).
+    /// Same `NSSavePanel` posture as `exportTable`.
+    public func exportClosePackagePDF(_ input: ClosePackagePDFExporter.Input) {
+        exportError = nil
+        let data = ClosePackagePDFExporter.export(input)
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Close Package.pdf"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            exportError = "Could not save \(url.lastPathComponent): \(error)"
+        }
+    }
+
     public func clearExportError() {
         exportError = nil
     }

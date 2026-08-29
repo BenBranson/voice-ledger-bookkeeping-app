@@ -98,7 +98,12 @@ public enum PDFReportExporter {
     private static let fontAttributeKey = NSAttributedString.Key(kCTFontAttributeName as String)
     private static let foregroundColorAttributeKey = NSAttributedString.Key(kCTForegroundColorAttributeName as String)
 
-    private static func drawLine(_ text: String, x: CGFloat, y: CGFloat, font: CTFont, color: CGColor, in context: CGContext, maxWidth: CGFloat? = nil) {
+    /// Widened from `private` to the module-internal default so
+    /// `ClosePackagePDFExporter` can reuse the same low-level text-drawing
+    /// primitive rather than duplicating it — both files render PDF text
+    /// via the identical CoreGraphics/CoreText call, just organized into a
+    /// flat table here vs. titled sections there.
+    static func drawLine(_ text: String, x: CGFloat, y: CGFloat, font: CTFont, color: CGColor, in context: CGContext, maxWidth: CGFloat? = nil) {
         let attributedString = NSAttributedString(string: text, attributes: [
             fontAttributeKey: font,
             foregroundColorAttributeKey: color

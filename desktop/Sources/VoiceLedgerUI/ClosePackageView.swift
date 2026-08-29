@@ -27,9 +27,12 @@ import DesignSystem
 /// tracked ledger with its own storage; the Activity Log is already the
 /// append-only record of everything, so this is a view distinction, not a
 /// new data model. **Still not built**: client Q&A and Ask Claude history
-/// (no Claude integration exists yet at all). Exportable as CSV/XLSX/PDF (a
-/// plain table export of this same data, not a designed branded document)
-/// via the Export menu.
+/// (no Claude integration exists yet at all — this app uses OpenAI, see
+/// `AskAIContext`'s doc comment). Exportable two ways: the Export menu's
+/// plain CSV/XLSX/PDF (a flat table of this same data), and "Export
+/// Branded PDF" (`ClosePackagePDFExporter`, added 2026-08-28) — a real
+/// designed document with a cover page and titled sections, the "branded
+/// client PDF" `PDFReportExporter`'s own doc comment originally deferred.
 public struct ClosePackageView: View {
     public struct ChecklistStatus {
         public let completed: Int
@@ -58,6 +61,13 @@ public struct ClosePackageView: View {
     /// summary on this page being pre-computed by the caller.
     private let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
     private let onExport: (ReportExportFormat) -> Void
+    /// The designed, multi-section cover-page-plus-sections PDF
+    /// (`ClosePackagePDFExporter`) — distinct from `onExport`'s generic
+    /// flat-table CSV/XLSX/PDF, which every other report page also shares.
+    /// A separate button rather than a fourth `ReportExportFormat` case:
+    /// that enum is shared by every export menu in the app, and no other
+    /// page has a "branded" mode to offer.
+    private let onExportBrandedPDF: () -> Void
 
     public init(
         environment: VLEnvironmentTone,
@@ -73,7 +83,8 @@ public struct ClosePackageView: View {
         agedPayablesLines: [AgingLine] = [],
         recentActivity: [ActivityLogEntry],
         carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
-        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in },
+        onExportBrandedPDF: @escaping () -> Void = {}
     ) {
         self.environment = environment
         self.period = period
@@ -89,6 +100,7 @@ public struct ClosePackageView: View {
         self.recentActivity = recentActivity
         self.carryForwardItems = carryForwardItems
         self.onExport = onExport
+        self.onExportBrandedPDF = onExportBrandedPDF
     }
 
     public var body: some View {
@@ -99,11 +111,13 @@ public struct ClosePackageView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    Button("Export Branded PDF") { onExportBrandedPDF() }
+                        .buttonStyle(.bordered)
                     ExportMenuButton(onExport: onExport)
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded — exportable as a plain table, not a designed branded document, and not the full spec'd Close Package (no client Q&A or Ask Claude history yet).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table. Not the full spec'd Close Package (no client Q&A or Ask Claude history yet).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
