@@ -88,6 +88,14 @@ public actor ClientStore {
     private let taxEstimateSettingsKey = "tax-estimate-settings"
     private let writeJournalKey = "write-journal"
     private let voiceSessionContextKey = "voice-session-context"
+    private let voiceTranscriptKey = "voice-transcript"
+
+    /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
+    /// trims to this length so an unattended conversation-mode session left
+    /// running can't grow this key without bound. 500 entries is roughly
+    /// 250 back-and-forth turns, comfortably more than one working session
+    /// needs to "read previous conversations" on reopen.
+    private static let maxVoiceTranscriptEntries = 500
 
     // MARK: - Findings
 
@@ -407,6 +415,22 @@ public actor ClientStore {
 
     public func saveVoiceSessionContext(_ context: VoiceSessionContext) throws {
         try save(context, key: voiceSessionContextKey)
+    }
+
+    /// Append-only, same shape as the activity log below — trimmed to the
+    /// most recent `maxVoiceTranscriptEntries` on every append so a long-
+    /// running conversation-mode session can't grow this key unbounded.
+    public func appendVoiceTranscriptEntry(_ entry: VoiceTranscriptEntry) throws {
+        var existing = try load([VoiceTranscriptEntry].self, key: voiceTranscriptKey, default: [])
+        existing.append(entry)
+        if existing.count > Self.maxVoiceTranscriptEntries {
+            existing.removeFirst(existing.count - Self.maxVoiceTranscriptEntries)
+        }
+        try save(existing, key: voiceTranscriptKey)
+    }
+
+    public func loadVoiceTranscript() throws -> [VoiceTranscriptEntry] {
+        try load([VoiceTranscriptEntry].self, key: voiceTranscriptKey, default: [])
     }
 
     // MARK: - Activity log

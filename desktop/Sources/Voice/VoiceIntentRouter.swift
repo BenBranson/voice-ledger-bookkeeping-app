@@ -55,7 +55,10 @@ public enum VoiceIntentRouter {
     private static let rejectWords = ["no", "nah", "nope", "cancel", "never mind", "nevermind", "stop", "don't", "dont"]
     private static let goBackPhrases: Set<String> = ["go back", "back up", "previous page", "previous", "go back a page"]
     private static let nextPhrases: Set<String> = ["next", "next one", "skip", "skip it", "skip this", "skip that", "skip this one", "skip that one", "move on"]
-    private static let openLastEntityPhrases: Set<String> = ["that one", "open that", "show me that", "open it", "show that", "show it"]
+    private static let openLastEntityPhrases: Set<String> = [
+        "that one", "open that", "show me that", "open it", "show that", "show it",
+        "pull it up", "pull that up", "bring that up", "bring it up"
+    ]
     private static let recapPhrases: Set<String> = ["what were we doing", "what was i doing", "where were we"]
     private static let queueStatusPhrases: Set<String> = [
         "what's left", "whats left", "what is left", "what have we fixed", "what have we fixed so far",
@@ -65,10 +68,29 @@ public enum VoiceIntentRouter {
         "review this client", "start my review", "start review", "review my findings", "check these books",
         "start month end review", "start the review", "begin review", "start daily review"
     ]
+    /// "Show me anomalies" et al. route to the SAME `.startReviewQueue`
+    /// intent `startReviewPhrases` already produces — a bare list with no
+    /// way back in was the actual real complaint (2026-08-29 live test):
+    /// asking about anomalies got a narrated list from the reasoning
+    /// fallback with nothing to say "next" to, because nothing had
+    /// actually been opened. Routing here instead means the first item is
+    /// genuinely opened (`.openFinding`) and pushed into
+    /// `lastViewedEntities`, so "pull it up"/"next" have something real to
+    /// act on immediately afterward.
+    private static let anomalyPhrases: Set<String> = [
+        "anomalies", "anomaly", "show anomalies", "show me anomalies", "show me the anomalies",
+        "find anomalies", "find the anomalies", "review anomalies", "check for anomalies",
+        "what needs my attention", "what needs attention"
+    ]
+    private static let recheckPhrases: Set<String> = [
+        "check again", "recheck", "check for anomalies again", "check for new anomalies",
+        "any new anomalies", "scan again", "run the checks again", "run the check again"
+    ]
     private static let explainPhrases: Set<String> = [
         "why", "why is this flagged", "why is this a problem", "why is this here", "explain this", "explain that",
         "what's unusual about this", "whats unusual about this", "show me the evidence", "what's wrong with this",
-        "whats wrong with this"
+        "whats wrong with this", "what should i do", "what would you do", "what do you recommend",
+        "how should i fix this", "what's your recommendation", "whats your recommendation"
     ]
 
     public static func match(text: String, context: VoiceSessionContext) -> VoiceIntent {
@@ -89,7 +111,8 @@ public enum VoiceIntentRouter {
         if openLastEntityPhrases.contains(normalized), context.lastViewedEntities.first != nil { return .openLastEntity }
         if recapPhrases.contains(normalized) { return .recapContext }
         if queueStatusPhrases.contains(normalized), !context.reviewQueue.isEmpty { return .queueStatus }
-        if startReviewPhrases.contains(normalized) { return .startReviewQueue }
+        if recheckPhrases.contains(normalized) { return .recheckAnomalies }
+        if startReviewPhrases.contains(normalized) || anomalyPhrases.contains(normalized) { return .startReviewQueue }
         if explainPhrases.contains(normalized) { return .explainCurrent }
 
         return .unrecognized(text)

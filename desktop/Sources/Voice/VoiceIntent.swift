@@ -44,6 +44,12 @@ public enum VoiceIntent: Equatable, Sendable {
     case navigate(VoiceDestination)
     case goBack
     case startReviewQueue
+    /// Re-syncs and re-evaluates against QBO, then starts a fresh review
+    /// queue from whatever is open afterward — "check again"/"any new
+    /// anomalies" after a batch has already been cleared. Handled by
+    /// calling the same `AppState.syncAndEvaluate()` the sidebar's own
+    /// refresh button already calls, not a new sync mechanism.
+    case recheckAnomalies
     case queueNext
     case queueSkip
     case queueStatus

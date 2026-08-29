@@ -41,6 +41,12 @@ public final class VoiceEngine: NSObject {
     /// The most recent spoken reply, shown on screen too — not just heard.
     public private(set) var lastMessage: String?
     public private(set) var errorMessage: String?
+    /// Every past turn, oldest first — persisted via `ClientStore`
+    /// (`appendVoiceTranscriptEntry`/`loadVoiceTranscript`) so a
+    /// conversation survives an app restart ("working memory," not just
+    /// the structural `VoiceSessionContext` pointers). Loaded once in
+    /// `loadPersistedContext()`; appended to live as each turn happens.
+    public private(set) var transcriptHistory: [VoiceTranscriptEntry] = []
 
     private unowned let appState: AppState
     private let voiceService: VoiceServiceClient
@@ -107,6 +113,7 @@ public final class VoiceEngine: NSObject {
         if let saved = await appState.loadVoiceSessionContext() {
             context = saved
         }
+        transcriptHistory = await appState.loadVoiceTranscript()
     }
 
     // MARK: - Conversation mode toggle
@@ -126,6 +133,32 @@ public final class VoiceEngine: NSObject {
             conversationMode = true
             Task { await startListening() }
         }
+    }
+
+    /// A dedicated Stop control, distinct from the mic toggle above — real,
+    /// live-tested gap (2026-08-29): saying "stop" out loud while she's
+    /// speaking is never heard at all, because the mic isn't listening
+    /// during playback (see this class's header doc comment on why true
+    /// voice barge-in is deferred). This gives an immediate, reliable way
+    /// to cut off speech from the status panel without also ending
+    /// conversation mode the way the mic-toggle button does — a bookkeeper
+    /// who wants to stop a reply short and then keep talking shouldn't
+    /// have to restart the whole conversation.
+    public func stopSpeaking() {
+        audioPlayer?.stop()
+        isSpeaking = false
+    }
+
+    /// Clears everything the floating status panel shows — real, live-
+    /// tested gap (2026-08-29): `lastMessage`/`errorMessage` were only ever
+    /// overwritten, never cleared, so the panel had no way to go away once
+    /// something had been said. Does not touch `conversationMode`/
+    /// `isListening` — dismissing the panel is a display action, not a
+    /// "stop talking to me" action (that's `toggleListening`/`stopSpeaking`).
+    public func dismissStatus() {
+        lastMessage = nil
+        errorMessage = nil
+        transcript = ""
     }
 
     // MARK: - Recording
@@ -343,6 +376,7 @@ public final class VoiceEngine: NSObject {
                 return
             }
             transcript = text
+            await recordTranscript(speaker: .user, text: text)
             await processCommand(text)
         } catch {
             isProcessing = false
@@ -363,7 +397,18 @@ public final class VoiceEngine: NSObject {
             apply(uiAction)
         }
         await appState.saveVoiceSessionContext(context)
+        await recordTranscript(speaker: .assistant, text: turn.speech)
         await speak(turn.speech)
+    }
+
+    /// Appends to both the persisted store (survives an app restart) and
+    /// the live `transcriptHistory` shown in `VoiceHistoryView` — the two
+    /// stay in sync because this is the only place either is written to.
+    private func recordTranscript(speaker: VoiceTranscriptEntry.Speaker, text: String) async {
+        guard !text.isEmpty else { return }
+        let entry = VoiceTranscriptEntry(speaker: speaker, text: text)
+        transcriptHistory.append(entry)
+        await appState.appendVoiceTranscriptEntry(entry)
     }
 
     // MARK: - Speaking
@@ -430,6 +475,25 @@ public final class VoiceEngine: NSObject {
 
     // MARK: - Intent -> Turn
 
+    /// Builds a fresh review queue from `appState.findings` and opens the
+    /// first item — shared by `.startReviewQueue` (the original "start
+    /// review"/"show anomalies" phrasing) and `.recheckAnomalies` (re-sync
+    /// first, then this). Pulled out so both stay byte-for-byte identical
+    /// rather than drifting apart under separate maintenance.
+    private func startReviewQueue() -> VoiceTurn {
+        let queue = ReviewQueue.build(from: appState.findings)
+        context.reviewQueue = queue
+        context.reviewQueueIndex = queue.isEmpty ? nil : 0
+        guard let firstID = queue.first, let finding = appState.finding(id: firstID) else {
+            return VoiceTurn(speech: "There's nothing open to review right now.")
+        }
+        context = context.viewingEntity(VoiceEntityRef(type: .finding, id: finding.id, label: finding.title))
+        return VoiceTurn(
+            speech: "\(queue.count) item\(queue.count == 1 ? "" : "s") to review. Starting with \(finding.title).",
+            uiAction: .openFinding(id: finding.id)
+        )
+    }
+
     private func resolveTurn(for intent: VoiceIntent, rawText: String) async -> VoiceTurn {
         switch intent {
         case .navigate(let destination):
@@ -439,17 +503,19 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: "Going back.", uiAction: .goBack)
 
         case .startReviewQueue:
-            let queue = ReviewQueue.build(from: appState.findings)
-            context.reviewQueue = queue
-            context.reviewQueueIndex = queue.isEmpty ? nil : 0
-            guard let firstID = queue.first, let finding = appState.finding(id: firstID) else {
-                return VoiceTurn(speech: "There's nothing open to review right now.")
+            return startReviewQueue()
+
+        case .recheckAnomalies:
+            // Real re-sync against QBO, same path the sidebar's own
+            // refresh button already calls — not a new sync mechanism,
+            // just voice parity for "check again"/"any new anomalies"
+            // after a batch has already been cleared.
+            await appState.syncAndEvaluate()
+            let turn = startReviewQueue()
+            if context.reviewQueue.isEmpty {
+                return VoiceTurn(speech: "Rechecked — nothing open right now.")
             }
-            context = context.viewingEntity(VoiceEntityRef(type: .finding, id: finding.id, label: finding.title))
-            return VoiceTurn(
-                speech: "\(queue.count) item\(queue.count == 1 ? "" : "s") to review. Starting with \(finding.title).",
-                uiAction: .openFinding(id: finding.id)
-            )
+            return VoiceTurn(speech: "Rechecked. \(turn.speech)", uiAction: turn.uiAction)
 
         case .queueNext, .queueSkip:
             guard !context.reviewQueue.isEmpty else {
@@ -543,7 +609,16 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: "I don't have a specific finding open right now. Open one first, or ask me to start a review.")
         }
         let contextText = AskAIContext.compose(finding: finding)
-        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: "Why is this flagged, in one or two short sentences I can read aloud?")
+        // Asks for the reason AND a recommendation together (real,
+        // live-tested gap 2026-08-29: "why" alone left no path to "so what
+        // should I do") — explicitly grounded in the proposed
+        // resolution(s) `AskAIContext.compose` already lists, never a new
+        // fix invented on the spot (CLAUDE.md rule 1).
+        await appState.askAI(
+            contextKey: Self.reasoningContextKey,
+            contextText: contextText,
+            question: "In two or three short sentences I can read aloud: why is this flagged, and what would you recommend as the next step? Reference only the proposed resolution(s) already listed above — never invent a new fix."
+        )
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
             return VoiceTurn(speech: answer)
         }
@@ -555,14 +630,25 @@ public final class VoiceEngine: NSObject {
     /// never a general free-form chat with no real data behind it.
     private func reasoningFallback(rawText: String) async -> VoiceTurn {
         let contextText: String
+        var openFindingsCount = 0
         if let entityRef = context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
             contextText = AskAIContext.compose(finding: finding)
         } else {
             let openFindings = appState.findings.filter { $0.status == .open }
+            openFindingsCount = openFindings.count
             contextText = AskAIContext.compose(pageTitle: "Voice Ledger", findings: openFindings)
         }
         await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText)
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
+            // Deterministic (Swift-authored, not model-authored) nudge
+            // toward the review queue — real, live-tested gap (2026-08-29):
+            // a narrated list of open findings had no way back in, since
+            // nothing had actually been opened. Only appended when this
+            // answer was actually grounded in the general open-findings
+            // list (not a specific finding already being discussed).
+            if openFindingsCount > 0 {
+                return VoiceTurn(speech: "\(answer) Say \"start review\" and I'll walk you through them one at a time.")
+            }
             return VoiceTurn(speech: answer)
         }
         if let aiStatus = appState.aiStatus, !aiStatus.configured {

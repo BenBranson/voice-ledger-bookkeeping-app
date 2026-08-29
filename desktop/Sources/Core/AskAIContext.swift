@@ -33,8 +33,26 @@ public enum AskAIContext {
         if let principle = ruleIdentity?.accountingPrinciple {
             lines.append("Accounting principle: \(principle)")
         }
-        if let action = finding.proposedActions.first {
-            lines.append("Proposed resolution: \(action.title) (\(action.resolution.rawValue))")
+        // Every computed option, not just the first — so a "what should I
+        // do" answer can recommend AND explain the alternatives, all
+        // strictly from what this app already computed (CLAUDE.md rule 1:
+        // the model narrates these, it never invents a fix of its own).
+        for (index, action) in finding.proposedActions.enumerated() {
+            let label = finding.proposedActions.count > 1 ? "Proposed resolution \(index + 1)" : "Proposed resolution"
+            lines.append("\(label): \(action.title) (\(action.resolution.rawValue))")
+            if let steps = action.guidedProcedure?.steps, !steps.isEmpty {
+                lines.append("  Steps: \(steps.joined(separator: "; "))")
+            }
+            if !action.consequences.isEmpty {
+                let consequenceText = action.consequences.map { consequence -> String in
+                    switch consequence {
+                    case .reconciliation(let text): return "Reconciliation: \(text)"
+                    case .reporting(let text): return "Reporting: \(text)"
+                    case .auditTrail(let text): return "Audit trail: \(text)"
+                    }
+                }.joined(separator: "; ")
+                lines.append("  Consequences: \(consequenceText)")
+            }
         }
         return lines.joined(separator: "\n")
     }

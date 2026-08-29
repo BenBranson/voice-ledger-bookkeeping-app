@@ -227,6 +227,29 @@ struct ClientStoreTests {
         #expect(loaded[0].note == "Confirmed with client, only one withdrawal occurred")
     }
 
+    @Test("Voice transcript is append-only and round-trips")
+    func voiceTranscriptAppendOnly() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.appendVoiceTranscriptEntry(VoiceTranscriptEntry(speaker: .user, text: "show me anomalies"))
+        try await store.appendVoiceTranscriptEntry(VoiceTranscriptEntry(speaker: .assistant, text: "3 items to review."))
+        let loaded = try await store.loadVoiceTranscript()
+        #expect(loaded.count == 2)
+        #expect(loaded[0].text == "show me anomalies")
+        #expect(loaded[1].speaker == .assistant)
+    }
+
+    @Test("Voice transcript is capped at 500 entries — an unattended conversation-mode session can't grow it unbounded")
+    func voiceTranscriptCapsAt500() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        for i in 0..<510 {
+            try await store.appendVoiceTranscriptEntry(VoiceTranscriptEntry(speaker: .user, text: "turn \(i)"))
+        }
+        let loaded = try await store.loadVoiceTranscript()
+        #expect(loaded.count == 500)
+        #expect(loaded.first?.text == "turn 10")
+        #expect(loaded.last?.text == "turn 509")
+    }
+
     func sampleStatementLine(id: String) -> LedgerTransaction {
         LedgerTransaction(
             id: id, entityKind: .importedBankStatementLine, vendorName: "PERMIAN SUPPLY",

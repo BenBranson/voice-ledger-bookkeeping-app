@@ -42,7 +42,9 @@ struct RootView: View {
                     micLevel: state.voiceEngine.micLevel,
                     transcript: state.voiceEngine.transcript,
                     lastMessage: state.voiceEngine.lastMessage,
-                    errorMessage: state.voiceEngine.errorMessage
+                    errorMessage: state.voiceEngine.errorMessage,
+                    onStop: { state.voiceEngine.stopSpeaking() },
+                    onDismiss: { state.voiceEngine.dismissStatus() }
                 )
                 .padding(.bottom, VLSpacing.md)
             }
@@ -88,6 +90,7 @@ struct RootView: View {
                 case .activityLog: return .activityLog
                 case .closePackage: return .closePackage
                 case .clientMemory: return .clientMemory
+                case .voiceHistory: return .voiceHistory
                 case .balanceSheetReport: return .balanceSheetReport
                 case .profitAndLossReport: return .profitAndLossReport
                 case .cashFlowReport: return .cashFlowReport
@@ -115,6 +118,7 @@ struct RootView: View {
                 case .activityLog: state.screen = .activityLog
                 case .closePackage: state.screen = .closePackage
                 case .clientMemory: state.screen = .clientMemory
+                case .voiceHistory: state.screen = .voiceHistory
                 case .balanceSheetReport: state.screen = .balanceSheetReport
                 case .profitAndLossReport: state.screen = .profitAndLossReport
                 case .cashFlowReport: state.screen = .cashFlowReport
@@ -761,6 +765,14 @@ struct RootView: View {
                     Button("Back") { state.screen = .list }
                 }
             }
+
+        case .voiceHistory:
+            VoiceHistoryView(rows: Self.voiceHistoryRows(state.voiceEngine.transcriptHistory))
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Back") { state.screen = .list }
+                    }
+                }
         }
     }
 
@@ -892,6 +904,27 @@ struct RootView: View {
             let header = headerRow.flatMap { $0.indices.contains(index) ? $0[index] : nil } ?? "Column \(index + 1)"
             let samples = dataRows.prefix(3).compactMap { $0.indices.contains(index) ? $0[index] : nil }
             return ImportBankStatementView.ColumnPreview(index: index, header: header, sampleValues: samples)
+        }
+    }
+
+    /// `VoiceTranscriptEntry` -> `VoiceHistoryView.Row`. Lives here, not in
+    /// `VoiceLedgerUI`, for the same reason `vlStatus(for:)` does — only the
+    /// app layer is allowed to bridge a `Core` type into this UI module's
+    /// primitive-only vocabulary.
+    private static func voiceHistoryRows(_ entries: [VoiceTranscriptEntry]) -> [VoiceHistoryView.Row] {
+        let formatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter
+        }()
+        return entries.map { entry in
+            VoiceHistoryView.Row(
+                id: entry.id,
+                isUser: entry.speaker == .user,
+                text: entry.text,
+                timeLabel: formatter.string(from: entry.timestamp)
+            )
         }
     }
 

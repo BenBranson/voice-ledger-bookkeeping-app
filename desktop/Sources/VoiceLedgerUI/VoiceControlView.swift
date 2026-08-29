@@ -40,14 +40,27 @@ public struct VoiceStatusPanel: View {
     private let transcript: String
     private let lastMessage: String?
     private let errorMessage: String?
+    private let onStop: () -> Void
+    private let onDismiss: () -> Void
 
-    public init(isListening: Bool, isSpeaking: Bool, micLevel: Double, transcript: String, lastMessage: String?, errorMessage: String?) {
+    public init(
+        isListening: Bool,
+        isSpeaking: Bool,
+        micLevel: Double,
+        transcript: String,
+        lastMessage: String?,
+        errorMessage: String?,
+        onStop: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
         self.isListening = isListening
         self.isSpeaking = isSpeaking
         self.micLevel = micLevel
         self.transcript = transcript
         self.lastMessage = lastMessage
         self.errorMessage = errorMessage
+        self.onStop = onStop
+        self.onDismiss = onDismiss
     }
 
     public var body: some View {
@@ -58,6 +71,19 @@ public struct VoiceStatusPanel: View {
                         .font(VLTypography.eyebrow())
                         .tracking(VLTypography.eyebrowTracking)
                         .foregroundStyle(VLColor.textMuted)
+                    // Real, live-tested gap (2026-08-29): saying "stop" out
+                    // loud while she's speaking is never heard (the mic
+                    // isn't listening during playback) — this button is the
+                    // one reliable, immediate way to cut a reply short
+                    // without also ending conversation mode.
+                    if isSpeaking {
+                        Button(action: onStop) {
+                            Label("Stop", systemImage: "stop.fill")
+                                .font(VLTypography.caption())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.red)
+                    }
                     if isListening {
                         // A simple bar-meter — proves audio is reaching the
                         // engine independent of whether transcription/
@@ -72,6 +98,15 @@ public struct VoiceStatusPanel: View {
                         .background(VLColor.border)
                         .clipShape(RoundedRectangle(cornerRadius: 2))
                     }
+                    Spacer(minLength: VLSpacing.xs)
+                    // The panel used to have no way to go away once
+                    // `lastMessage`/`errorMessage` were set — this is that
+                    // dismiss control.
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 if !transcript.isEmpty {

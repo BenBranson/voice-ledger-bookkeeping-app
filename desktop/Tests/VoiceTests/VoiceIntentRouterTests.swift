@@ -91,6 +91,28 @@ struct VoiceIntentRouterTests {
         #expect(result != .queueStatus)
     }
 
+    // MARK: Anomalies -> startReviewQueue (real, live-tested gap 2026-08-29:
+    // "show me anomalies" used to fall through to the reasoning path,
+    // producing a static list with no way to work through it one by one)
+
+    @Test("'Show me anomalies' and its variants start a review queue, same as 'start review'")
+    func anomalyPhrasesStartReviewQueue() {
+        #expect(VoiceIntentRouter.match(text: "anomalies", context: .empty) == .startReviewQueue)
+        #expect(VoiceIntentRouter.match(text: "show me anomalies", context: .empty) == .startReviewQueue)
+        #expect(VoiceIntentRouter.match(text: "show me the anomalies", context: .empty) == .startReviewQueue)
+        #expect(VoiceIntentRouter.match(text: "find anomalies", context: .empty) == .startReviewQueue)
+        #expect(VoiceIntentRouter.match(text: "what needs my attention", context: .empty) == .startReviewQueue)
+    }
+
+    // MARK: Recheck
+
+    @Test("'Check again' and its variants match recheckAnomalies")
+    func recheckPhrasesMatch() {
+        #expect(VoiceIntentRouter.match(text: "check again", context: .empty) == .recheckAnomalies)
+        #expect(VoiceIntentRouter.match(text: "recheck", context: .empty) == .recheckAnomalies)
+        #expect(VoiceIntentRouter.match(text: "any new anomalies", context: .empty) == .recheckAnomalies)
+    }
+
     // MARK: Other deterministic intents
 
     @Test("'Go back' matches regardless of context")
@@ -104,6 +126,15 @@ struct VoiceIntentRouterTests {
         var ctx = VoiceSessionContext.empty
         ctx.lastViewedEntities = [VoiceEntityRef(type: .finding, id: "f1")]
         #expect(VoiceIntentRouter.match(text: "that one", context: ctx) == .openLastEntity)
+    }
+
+    @Test("'Pull it up' and its variants also match openLastEntity — real, live-tested phrasing (2026-08-29)")
+    func pullItUpMatchesOpenLastEntity() {
+        var ctx = VoiceSessionContext.empty
+        ctx.lastViewedEntities = [VoiceEntityRef(type: .finding, id: "f1")]
+        #expect(VoiceIntentRouter.match(text: "pull it up", context: ctx) == .openLastEntity)
+        #expect(VoiceIntentRouter.match(text: "pull that up", context: ctx) == .openLastEntity)
+        #expect(VoiceIntentRouter.match(text: "bring that up", context: ctx) == .openLastEntity)
     }
 
     @Test("'Why' matches explainCurrent")

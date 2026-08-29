@@ -43,6 +43,7 @@ public final class AppState {
         case generalLedgerReport
         case closePackage
         case clientMemory
+        case voiceHistory
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -1929,6 +1930,14 @@ public final class AppState {
 
     public func saveVoiceSessionContext(_ context: VoiceSessionContext) async {
         try? await store.saveVoiceSessionContext(context)
+    }
+
+    public func appendVoiceTranscriptEntry(_ entry: VoiceTranscriptEntry) async {
+        try? await store.appendVoiceTranscriptEntry(entry)
+    }
+
+    public func loadVoiceTranscript() async -> [VoiceTranscriptEntry] {
+        (try? await store.loadVoiceTranscript()) ?? []
     }
 
     /// docs/VOICE_LEDGER_HANDOFF.md D4's resolution probe. Re-reads the
