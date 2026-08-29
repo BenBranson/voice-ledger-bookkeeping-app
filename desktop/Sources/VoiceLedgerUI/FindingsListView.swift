@@ -23,14 +23,68 @@ public struct FindingsListView: View {
         /// retry banner right below the title; `nil` when the last attempt
         /// succeeded or no sync has failed yet.
         public let syncError: String?
+        /// Owner directive (2026-08-29): "the reports should touch upon the
+        /// overall health of the client's books... what's been improved or
+        /// downgraded since last month." Same free/second-opinion pairing
+        /// as `FindingDetailView`'s Ask AI panels — `secondOpinionConfigured`
+        /// gates whether the OpenAI report button renders at all, same as
+        /// there.
+        public let healthReportAnswer: String?
+        public let isGeneratingHealthReport: Bool
+        public let healthReportError: String?
+        public let healthReportSecondOpinionAnswer: String?
+        public let isGeneratingHealthReportSecondOpinion: Bool
+        public let healthReportSecondOpinionError: String?
+        public let secondOpinionConfigured: Bool
+        /// Owner directive (2026-08-29): the "value summary" — shown once
+        /// every finding is cleared (see `emptyState`).
+        public let valueSummaryAnswer: String?
+        public let isGeneratingValueSummary: Bool
+        public let valueSummaryError: String?
+        public let valueSummarySecondOpinionAnswer: String?
+        public let isGeneratingValueSummarySecondOpinion: Bool
+        public let valueSummarySecondOpinionError: String?
 
-        public init(environment: VLEnvironmentTone, coverageStatus: VLStatus, coverageDetail: String, findings: [Finding], nextBestAction: NextBestAction? = nil, syncError: String? = nil) {
+        public init(
+            environment: VLEnvironmentTone,
+            coverageStatus: VLStatus,
+            coverageDetail: String,
+            findings: [Finding],
+            nextBestAction: NextBestAction? = nil,
+            syncError: String? = nil,
+            healthReportAnswer: String? = nil,
+            isGeneratingHealthReport: Bool = false,
+            healthReportError: String? = nil,
+            healthReportSecondOpinionAnswer: String? = nil,
+            isGeneratingHealthReportSecondOpinion: Bool = false,
+            healthReportSecondOpinionError: String? = nil,
+            secondOpinionConfigured: Bool = false,
+            valueSummaryAnswer: String? = nil,
+            isGeneratingValueSummary: Bool = false,
+            valueSummaryError: String? = nil,
+            valueSummarySecondOpinionAnswer: String? = nil,
+            isGeneratingValueSummarySecondOpinion: Bool = false,
+            valueSummarySecondOpinionError: String? = nil
+        ) {
             self.environment = environment
             self.coverageStatus = coverageStatus
             self.coverageDetail = coverageDetail
             self.findings = findings
             self.nextBestAction = nextBestAction
             self.syncError = syncError
+            self.healthReportAnswer = healthReportAnswer
+            self.isGeneratingHealthReport = isGeneratingHealthReport
+            self.healthReportError = healthReportError
+            self.healthReportSecondOpinionAnswer = healthReportSecondOpinionAnswer
+            self.isGeneratingHealthReportSecondOpinion = isGeneratingHealthReportSecondOpinion
+            self.healthReportSecondOpinionError = healthReportSecondOpinionError
+            self.secondOpinionConfigured = secondOpinionConfigured
+            self.valueSummaryAnswer = valueSummaryAnswer
+            self.isGeneratingValueSummary = isGeneratingValueSummary
+            self.valueSummaryError = valueSummaryError
+            self.valueSummarySecondOpinionAnswer = valueSummarySecondOpinionAnswer
+            self.isGeneratingValueSummarySecondOpinion = isGeneratingValueSummarySecondOpinion
+            self.valueSummarySecondOpinionError = valueSummarySecondOpinionError
         }
 
         // Gauntlet Loop, Gauntlet C round 2 (2026-08-24): a fresh critic
@@ -70,19 +124,31 @@ public struct FindingsListView: View {
     /// eagle eye" — this puts the same re-scan action directly on the page.
     private let onRefresh: () -> Void
     private let isRefreshing: Bool
+    private let onGenerateHealthReport: () -> Void
+    private let onGenerateHealthReportSecondOpinion: () -> Void
+    private let onGenerateValueSummary: () -> Void
+    private let onGenerateValueSummarySecondOpinion: () -> Void
 
     public init(
         state: ViewState,
         onSelect: @escaping (Finding) -> Void,
         onNavigateNextBestAction: @escaping (NextBestAction) -> Void = { _ in },
         onRefresh: @escaping () -> Void = {},
-        isRefreshing: Bool = false
+        isRefreshing: Bool = false,
+        onGenerateHealthReport: @escaping () -> Void = {},
+        onGenerateHealthReportSecondOpinion: @escaping () -> Void = {},
+        onGenerateValueSummary: @escaping () -> Void = {},
+        onGenerateValueSummarySecondOpinion: @escaping () -> Void = {}
     ) {
         self.state = state
         self.onSelect = onSelect
         self.onNavigateNextBestAction = onNavigateNextBestAction
         self.onRefresh = onRefresh
         self.isRefreshing = isRefreshing
+        self.onGenerateHealthReport = onGenerateHealthReport
+        self.onGenerateHealthReportSecondOpinion = onGenerateHealthReportSecondOpinion
+        self.onGenerateValueSummary = onGenerateValueSummary
+        self.onGenerateValueSummarySecondOpinion = onGenerateValueSummarySecondOpinion
     }
 
     public var body: some View {
@@ -127,6 +193,8 @@ public struct FindingsListView: View {
                     exceptionsDetail: state.exceptionsDetail
                 )
 
+                healthReportSection
+
                 if state.findings.isEmpty {
                     emptyState
                 } else {
@@ -147,11 +215,83 @@ public struct FindingsListView: View {
         .background(VLColor.background)
     }
 
+    /// Owner directive (2026-08-29): "at the top of findings there should
+    /// be 2 buttons, one generate report with gemma... and the other...
+    /// open AI which should possibly be even more thorough." Reuses
+    /// `AskAIPanelView` exactly as `FindingDetailView` does for its own
+    /// two-tier panels — same component, page-level context instead of one
+    /// finding's.
+    private var healthReportSection: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+            AskAIPanelView(
+                title: "BOOK HEALTH REPORT (GEMMA — FREE)",
+                disclaimer: "Covers open issues, what's been fixed, key metrics, and change since the last report — all numbers already computed by this app.",
+                aiStatus: nil,
+                answer: state.healthReportAnswer,
+                isAsking: state.isGeneratingHealthReport,
+                error: state.healthReportError,
+                onAsk: { _ in onGenerateHealthReport() },
+                quickAskLabel: "Generate Report (Gemma)",
+                onQuickAsk: onGenerateHealthReport
+            )
+            if state.secondOpinionConfigured {
+                AskAIPanelView(
+                    title: "BOOK HEALTH REPORT (OPENAI — MORE THOROUGH)",
+                    disclaimer: "Same real numbers, sent to OpenAI for a more thorough read. Costs money per report and only runs when you ask.",
+                    aiStatus: nil,
+                    answer: state.healthReportSecondOpinionAnswer,
+                    isAsking: state.isGeneratingHealthReportSecondOpinion,
+                    error: state.healthReportSecondOpinionError,
+                    onAsk: { _ in onGenerateHealthReportSecondOpinion() },
+                    quickAskLabel: "Generate Report (OpenAI)",
+                    onQuickAsk: onGenerateHealthReportSecondOpinion
+                )
+            }
+        }
+    }
+
     private var emptyState: some View {
-        VLCard {
-            HStack(spacing: VLSpacing.sm) {
-                VLStatusPill(state.coverageStatus, label: state.coverageStatus == .verified ? "No duplicates found" : state.coverageDetail)
-                Spacer()
+        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+            VLCard {
+                HStack(spacing: VLSpacing.sm) {
+                    VLStatusPill(state.coverageStatus, label: state.coverageStatus == .verified ? "No duplicates found" : state.coverageDetail)
+                    Spacer()
+                }
+            }
+
+            // Owner directive (2026-08-29): "after all findings are
+            // completed I should be able to press a button that explains
+            // all changes... whether I helped the client save money, time,
+            // etc." Only offered once genuinely verified-clear (CLAUDE.md
+            // rule 5 — never invite a value claim built on a stale or
+            // never-synced "empty" list).
+            if state.coverageStatus == .verified {
+                VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                    AskAIPanelView(
+                        title: "CLIENT VALUE SUMMARY (GEMMA — FREE)",
+                        disclaimer: "Summarizes what was found and corrected since the last report, and the real dollar exposure addressed — never a claim of literal cash saved.",
+                        aiStatus: nil,
+                        answer: state.valueSummaryAnswer,
+                        isAsking: state.isGeneratingValueSummary,
+                        error: state.valueSummaryError,
+                        onAsk: { _ in onGenerateValueSummary() },
+                        quickAskLabel: "Generate Client Value Report (Gemma)",
+                        onQuickAsk: onGenerateValueSummary
+                    )
+                    if state.secondOpinionConfigured {
+                        AskAIPanelView(
+                            title: "CLIENT VALUE SUMMARY (OPENAI — MORE THOROUGH)",
+                            disclaimer: "Same real numbers, sent to OpenAI for a more thorough read. Costs money per report and only runs when you ask.",
+                            aiStatus: nil,
+                            answer: state.valueSummarySecondOpinionAnswer,
+                            isAsking: state.isGeneratingValueSummarySecondOpinion,
+                            error: state.valueSummarySecondOpinionError,
+                            onAsk: { _ in onGenerateValueSummarySecondOpinion() },
+                            quickAskLabel: "Generate Client Value Report (OpenAI)",
+                            onQuickAsk: onGenerateValueSummarySecondOpinion
+                        )
+                    }
+                }
             }
         }
     }

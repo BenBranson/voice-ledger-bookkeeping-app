@@ -125,4 +125,80 @@ struct AskAIContextTests {
         let context = AskAIContext.composeRedacted(finding: finding(narrative: "A charge appeared twice.", vendorName: "A"))
         #expect(context.contains("A charge appeared twice."))
     }
+
+    // MARK: composeHealthReport — the "Generate Report" buttons on
+    // Findings, 2026-08-29.
+
+    @Test("composeHealthReport includes both open (negative) and resolved (positive) findings")
+    func composeHealthReportIncludesBothSides() {
+        let open = finding(vendorName: "Open Vendor")
+        let resolved = finding(vendorName: "Resolved Vendor")
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [open], resolvedFindings: [resolved], dismissedFindings: [],
+            balanceSheetLines: [], profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        #expect(context.contains("1 open finding"))
+        #expect(context.contains("1 finding(s) resolved"))
+    }
+
+    @Test("composeHealthReport omits the change-since-last-period section entirely when no prior data is given")
+    func composeHealthReportOmitsVarianceWithoutPriorData() {
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [], resolvedFindings: [], dismissedFindings: [],
+            balanceSheetLines: [], profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        #expect(!context.contains("CHANGE SINCE LAST PERIOD"))
+    }
+
+    @Test("composeHealthReport includes real KPI figures when the underlying report lines support them")
+    func composeHealthReportIncludesKPIs() {
+        let bsLines = [
+            ReportLine(label: "Total Current Assets", amount: Money(minorUnits: 500_00, currency: .usd), depth: 0, isSummary: true),
+            ReportLine(label: "Total Current Liabilities", amount: Money(minorUnits: 200_00, currency: .usd), depth: 0, isSummary: true)
+        ]
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [], resolvedFindings: [], dismissedFindings: [],
+            balanceSheetLines: bsLines, profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        #expect(context.contains("Working capital") || context.contains("Current ratio"))
+    }
+
+    // MARK: composeValueSummary — the "Client Value Report" button, shown
+    // once every finding is cleared, 2026-08-29.
+
+    @Test("composeValueSummary sums dollar exposure across resolved findings, same-currency only")
+    func composeValueSummarySumsExposure() {
+        let a = finding(vendorName: "Vendor A")
+        let context = AskAIContext.composeValueSummary(resolvedFindings: [a, a], dismissedFindings: [], corrections: [], since: nil)
+        #expect(context.contains("972.40"))
+    }
+
+    @Test("composeValueSummary never claims literal cash savings — the honest-scope wording is always present when a total is stated")
+    func composeValueSummaryNeverClaimsCashSavings() {
+        let context = AskAIContext.composeValueSummary(resolvedFindings: [finding(vendorName: "Vendor A")], dismissedFindings: [], corrections: [], since: nil)
+        #expect(context.contains("not a claim of cash the client received"))
+    }
+
+    @Test("composeValueSummary states this is the first report when since is nil")
+    func composeValueSummaryFirstReportWording() {
+        let context = AskAIContext.composeValueSummary(resolvedFindings: [], dismissedFindings: [], corrections: [], since: nil)
+        #expect(context.contains("first report"))
+    }
+
+    @Test("composeValueSummary includes corrections from the Activity Log with their notes")
+    func composeValueSummaryIncludesCorrections() {
+        let entry = ActivityLogEntry(
+            realmID: RealmID(rawValue: "realm-a"),
+            actor: .user("Benjamin Branson"),
+            kind: .apiWriteApplied,
+            findingSummary: "Reclassified a credit card payment",
+            note: "Moved to the correct liability account"
+        )
+        let context = AskAIContext.composeValueSummary(resolvedFindings: [], dismissedFindings: [], corrections: [entry], since: nil)
+        #expect(context.contains("Reclassified a credit card payment"))
+        #expect(context.contains("Moved to the correct liability account"))
+    }
 }

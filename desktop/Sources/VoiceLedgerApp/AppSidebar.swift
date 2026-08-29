@@ -5,7 +5,7 @@ import VoiceLedgerUI
 /// Every top-level destination `RootView.content` can render, EXCEPT the two
 /// parameterized drill-down screens (`.detail`, `.procedure`) — those are
 /// reached by tapping into a finding, never directly from the sidebar, and
-/// `RootView.sidebarSelection`'s getter maps them back to `.dashboard` so
+/// `RootView.sidebarSelection`'s getter maps them back to `.findings` so
 /// the "Findings" row stays highlighted while one is open (the same way a
 /// Finder sidebar row stays selected while you're looking inside a folder
 /// it contains).
@@ -17,7 +17,13 @@ import VoiceLedgerUI
 /// stage, makes every destination visible at a glance without hiding any of
 /// them and without touching what any individual screen does.
 enum SidebarItem: String, CaseIterable, Identifiable {
+    /// Owner directive (2026-08-29): a real per-client KPI dashboard — the
+    /// app's actual landing screen now (`AppState.screen`'s default). Not
+    /// to be confused with the OLD `.dashboard` case, renamed `.findings`
+    /// below — that one's title was always "Findings," a naming leftover,
+    /// not an actual dashboard.
     case dashboard
+    case findings
     case firmCockpit
     case cleanupAssessment
     case balanceSheetIntegrity
@@ -45,7 +51,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .dashboard: return "Findings"
+        case .dashboard: return "Dashboard"
+        case .findings: return "Findings"
         case .firmCockpit: return "Firm Cockpit"
         case .cleanupAssessment: return "Cleanup Assessment"
         case .balanceSheetIntegrity: return "Balance Sheet Integrity"
@@ -73,7 +80,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .dashboard: return "list.bullet.rectangle.portrait"
+        case .dashboard: return "gauge.with.dots.needle.50percent"
+        case .findings: return "list.bullet.rectangle.portrait"
         case .firmCockpit: return "square.grid.2x2"
         case .cleanupAssessment: return "checkmark.seal"
         case .balanceSheetIntegrity: return "chart.bar.doc.horizontal"
@@ -107,7 +115,7 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .firmCockpit]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit]),
     SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),
@@ -126,6 +134,9 @@ struct AppSidebar: View {
     let isVoiceListening: Bool
     let isVoiceProcessing: Bool
     let onToggleVoice: () -> Void
+    /// Owner directive (2026-08-29): "the letters for Voice Ledger at the
+    /// top left should act as a home button."
+    let onGoHome: () -> Void
 
     var body: some View {
         List(selection: $selection) {
@@ -146,12 +157,18 @@ struct AppSidebar: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: VLSpacing.xs) {
             HStack(spacing: VLSpacing.xs) {
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(VLColor.cyan)
-                Text("Voice Ledger")
-                    .font(VLTypography.cardTitle())
-                    .foregroundStyle(VLColor.textPrimary)
+                Button(action: onGoHome) {
+                    HStack(spacing: VLSpacing.xs) {
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(VLColor.cyan)
+                        Text("Voice Ledger")
+                            .font(VLTypography.cardTitle())
+                            .foregroundStyle(VLColor.textPrimary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Go to Dashboard")
                 Spacer()
                 voiceMicButton
                 Button(action: onSync) {

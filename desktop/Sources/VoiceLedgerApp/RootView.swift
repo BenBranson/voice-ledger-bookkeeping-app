@@ -22,7 +22,8 @@ struct RootView: View {
                 onSync: { Task { await state.syncAndEvaluate() } },
                 isVoiceListening: state.voiceEngine.isListening,
                 isVoiceProcessing: state.voiceEngine.isProcessing,
-                onToggleVoice: { state.voiceEngine.toggleListening() }
+                onToggleVoice: { state.voiceEngine.toggleListening() },
+                onGoHome: { state.screen = .clientDashboard }
             )
             .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
         } detail: {
@@ -65,7 +66,7 @@ struct RootView: View {
     /// Bridges `AppState.screen` (the real navigation state, including the
     /// two parameterized drill-down cases `.detail`/`.procedure`) to
     /// `SidebarItem?` (the sidebar's flat, top-level selection). Reading it
-    /// while a finding is open maps back to `.dashboard` so "Findings"
+    /// while a finding is open maps back to `.findings` so "Findings"
     /// stays highlighted, the same way a Finder sidebar row stays selected
     /// while you're looking inside something it contains. Setting it always
     /// replaces `state.screen` outright — the sidebar is the one navigation
@@ -75,9 +76,10 @@ struct RootView: View {
         Binding(
             get: {
                 switch state.screen {
+                case .clientDashboard: return .dashboard
                 case .connection: return .connection
                 case .scopeAndPeriodLock: return .scopeAndPeriodLock
-                case .list, .detail, .procedure: return .dashboard
+                case .list, .detail, .procedure: return .findings
                 case .batchFixes: return .batchFixes
                 case .firmCockpit: return .firmCockpit
                 case .taxes: return .taxes
@@ -103,7 +105,8 @@ struct RootView: View {
             set: { newValue in
                 guard let newValue else { return }
                 switch newValue {
-                case .dashboard: state.screen = .list
+                case .dashboard: state.screen = .clientDashboard
+                case .findings: state.screen = .list
                 case .connection: state.screen = .connection
                 case .scopeAndPeriodLock: state.screen = .scopeAndPeriodLock
                 case .batchFixes: state.screen = .batchFixes
@@ -134,6 +137,27 @@ struct RootView: View {
     @ViewBuilder
     private var content: some View {
         switch state.screen {
+        case .clientDashboard:
+            ClientDashboardView(
+                state: ClientDashboardView.ViewState(
+                    companyName: state.companyInfo?.companyName ?? "No company connected",
+                    environment: state.environment == .production ? .production : .sandbox,
+                    coverageStatus: StatusMapping.status(for: coverageOutcome),
+                    coverageDetail: coverageDetail,
+                    balanceSheetLines: state.balanceSheetLines,
+                    profitAndLossLines: state.profitAndLossLines,
+                    isLoadingReports: state.isLoadingBalanceSheet || state.isLoadingProfitAndLoss,
+                    topFindings: Array(FindingTriage.sorted(state.findings.filter { $0.status == .open }).prefix(5)),
+                    openFindingsCount: state.findings.filter { $0.status == .open }.count
+                ),
+                onOpenFinding: { finding in state.screen = .detail(findingID: finding.id) },
+                onViewAllFindings: { state.screen = .list }
+            )
+            .task {
+                if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
+                if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+            }
+
         case .connection:
             ConnectionView(
                 state: ConnectionView.ViewState(
@@ -340,7 +364,20 @@ struct RootView: View {
                         syncError: {
                             if case .failed(let message) = state.loadState { return message }
                             return nil
-                        }()
+                        }(),
+                        healthReportAnswer: state.askAIAnswers[AppState.healthReportContextKey],
+                        isGeneratingHealthReport: state.askingAIContextKeys.contains(AppState.healthReportContextKey),
+                        healthReportError: state.askAIError?.contextKey == AppState.healthReportContextKey ? state.askAIError?.message : nil,
+                        healthReportSecondOpinionAnswer: state.secondOpinionAnswers[AppState.healthReportContextKey],
+                        isGeneratingHealthReportSecondOpinion: state.askingSecondOpinionContextKeys.contains(AppState.healthReportContextKey),
+                        healthReportSecondOpinionError: state.secondOpinionError?.contextKey == AppState.healthReportContextKey ? state.secondOpinionError?.message : nil,
+                        secondOpinionConfigured: state.aiStatus?.secondaryConfigured ?? false,
+                        valueSummaryAnswer: state.askAIAnswers[AppState.valueSummaryContextKey],
+                        isGeneratingValueSummary: state.askingAIContextKeys.contains(AppState.valueSummaryContextKey),
+                        valueSummaryError: state.askAIError?.contextKey == AppState.valueSummaryContextKey ? state.askAIError?.message : nil,
+                        valueSummarySecondOpinionAnswer: state.secondOpinionAnswers[AppState.valueSummaryContextKey],
+                        isGeneratingValueSummarySecondOpinion: state.askingSecondOpinionContextKeys.contains(AppState.valueSummaryContextKey),
+                        valueSummarySecondOpinionError: state.secondOpinionError?.contextKey == AppState.valueSummaryContextKey ? state.secondOpinionError?.message : nil
                     ),
                     onSelect: { finding in state.screen = .detail(findingID: finding.id) },
                     onNavigateNextBestAction: { action in
@@ -352,7 +389,11 @@ struct RootView: View {
                         }
                     },
                     onRefresh: { Task { await state.syncAndEvaluate() } },
-                    isRefreshing: state.loadState == .loading
+                    isRefreshing: state.loadState == .loading,
+                    onGenerateHealthReport: { Task { await state.generateHealthReport() } },
+                    onGenerateHealthReportSecondOpinion: { Task { await state.generateHealthReportSecondOpinion() } },
+                    onGenerateValueSummary: { Task { await state.generateValueSummary() } },
+                    onGenerateValueSummarySecondOpinion: { Task { await state.generateValueSummarySecondOpinion() } }
                 )
             }
 

@@ -368,6 +368,27 @@ struct ClientStoreTests {
         #expect(try await store.loadPeriodLock() == nil)
     }
 
+    @Test("lastReportGeneratedAt is nil before any report, and round-trips a real timestamp after saving")
+    func lastReportGeneratedAtRoundTrips() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        #expect(try await store.loadLastReportGeneratedAt() == nil)
+        let now = Date()
+        try await store.saveLastReportGeneratedAt(now)
+        let loaded = try await store.loadLastReportGeneratedAt()
+        #expect(loaded != nil)
+        #expect(abs((loaded ?? .distantPast).timeIntervalSince(now)) < 1)
+    }
+
+    @Test("Saving lastReportGeneratedAt a second time replaces the prior value, not accumulates")
+    func lastReportGeneratedAtOverwritesPriorValue() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let earlier = Date(timeIntervalSince1970: 1_000_000)
+        let later = Date(timeIntervalSince1970: 2_000_000)
+        try await store.saveLastReportGeneratedAt(earlier)
+        try await store.saveLastReportGeneratedAt(later)
+        #expect(try await store.loadLastReportGeneratedAt() == later)
+    }
+
     @Test("Engagement scope round-trips: default before saving, real values after")
     func engagementScopeRoundTrip() async throws {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())

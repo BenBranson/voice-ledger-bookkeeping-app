@@ -89,6 +89,10 @@ public actor ClientStore {
     private let writeJournalKey = "write-journal"
     private let voiceSessionContextKey = "voice-session-context"
     private let voiceTranscriptKey = "voice-transcript"
+    /// Owner directive (2026-08-29): the two AI-generated report buttons'
+    /// "since last report" window — `nil` means no report has ever been
+    /// generated for this client yet.
+    private let lastReportGeneratedAtKey = "last-report-generated-at"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
     /// trims to this length so an unattended conversation-mode session left
@@ -323,6 +327,19 @@ public actor ClientStore {
 
     public func savePeriodLockSnapshot(_ snapshot: PeriodLockSnapshot) throws {
         try save(snapshot, key: periodLockSnapshotKey)
+    }
+
+    // MARK: - AI report generation timestamp (2026-08-29)
+
+    /// `nil` means no health or value-summary report has ever been
+    /// generated for this client — the caller then reports the full
+    /// history rather than an empty "since" window.
+    public func loadLastReportGeneratedAt() throws -> Date? {
+        try load(Date?.self, key: lastReportGeneratedAtKey, default: nil)
+    }
+
+    public func saveLastReportGeneratedAt(_ date: Date) throws {
+        try save(date, key: lastReportGeneratedAtKey)
     }
 
     // MARK: - Bank statement reconciliation snapshots (VL-RECON-DIFF-001)

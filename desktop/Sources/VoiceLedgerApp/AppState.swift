@@ -19,6 +19,9 @@ import VoiceLedgerUI
 @Observable
 public final class AppState {
     public enum Screen: Equatable {
+        /// Owner directive (2026-08-29): the app's real landing screen — a
+        /// per-client KPI dashboard, distinct from `.list` (Findings).
+        case clientDashboard
         case connection
         case scopeAndPeriodLock
         case list
@@ -91,7 +94,14 @@ public final class AppState {
     /// `totalStatementLines`. Refreshed on every `syncAndEvaluate()`.
     public private(set) var importedStatementLineCount: Int = 0
     public private(set) var loadState: LoadState = .idle
-    public var screen: Screen = .connection
+    // Owner directive (2026-08-29): "the app should start with the client's
+    // dashboard" — previously `.connection`, which meant every launch
+    // landed on the connection-health screen regardless of whether a
+    // client was already connected, with no auto-redirect anywhere in this
+    // codebase (confirmed by search — the bookkeeper always navigated away
+    // manually via the sidebar). `.connection` is still one click away in
+    // the sidebar's SETUP section, unchanged.
+    public var screen: Screen = .clientDashboard
     public let environment: QBOEnvironment
     /// Gauntlet Loop, Gauntlet B round 21 (2026-08-24): `syncAndEvaluate()`'s
     /// own re-entrancy guard — deliberately NOT `loadState == .loading`,
@@ -198,6 +208,14 @@ public final class AppState {
     public private(set) var writeJournal: [WriteJournalEntry] = []
     public private(set) var isResolvingWriteJournalEntryIDs: Set<String> = []
     public private(set) var writeJournalError: String?
+
+    /// Owner directive (2026-08-29): the two AI-generated report buttons'
+    /// "since last report" window. `nil` until the first report is ever
+    /// generated for this client. The reports' own answer/error/in-flight
+    /// state reuses `askAIAnswers`/`secondOpinionAnswers` below (generic,
+    /// keyed by `contextKey`) with fixed keys `"health-report"`/
+    /// `"value-summary"` — no new state dictionaries needed.
+    public private(set) var lastReportGeneratedAt: Date?
 
     /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): a fresh critic
     /// found `attestCompletion`/`dismissFinding` both unconditionally did
@@ -440,6 +458,7 @@ public final class AppState {
             let newSalesTaxAttestation = try await store.loadSalesTaxAttestation()
             let newTaxEstimateSettings = try await store.loadTaxEstimateSettings()
             let newWriteJournal = try await store.loadWriteJournal()
+            let newLastReportGeneratedAt = try await store.loadLastReportGeneratedAt()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -451,6 +470,7 @@ public final class AppState {
             salesTaxAttestation = newSalesTaxAttestation
             taxEstimateSettings = newTaxEstimateSettings
             writeJournal = newWriteJournal
+            lastReportGeneratedAt = newLastReportGeneratedAt
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -876,23 +896,109 @@ public final class AppState {
     ///    automatic/default flow, only from a button the owner clicks
     ///    themselves each time, since every call here is a real,
     ///    non-free API request.
+    /// The general form, mirroring `askAI(contextKey:contextText:question:)`
+    /// above — extracted 2026-08-29 so the report buttons (page-level
+    /// context, not one finding's) can reuse the same opt-in paid tier
+    /// without a finding ID.
+    public func askSecondOpinion(contextKey: String, contextText: String, question: String) async {
+        guard !askingSecondOpinionContextKeys.contains(contextKey) else { return }
+        askingSecondOpinionContextKeys.insert(contextKey)
+        if secondOpinionError?.contextKey == contextKey { secondOpinionError = nil }
+        do {
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary)
+            secondOpinionAnswers[contextKey] = answer
+        } catch {
+            secondOpinionError = (contextKey: contextKey, message: "\(error)")
+        }
+        askingSecondOpinionContextKeys.remove(contextKey)
+    }
+
+    /// `FindingDetailView`'s call site — a thin wrapper, context composed
+    /// (and redacted) from that finding's own fields.
     public func askSecondOpinion(findingID: String, question: String) async {
         guard let finding = finding(id: findingID) else { return }
-        guard !askingSecondOpinionContextKeys.contains(findingID) else { return }
-        askingSecondOpinionContextKeys.insert(findingID)
-        if secondOpinionError?.contextKey == findingID { secondOpinionError = nil }
-        do {
-            let answer = try await backend.askAI(
-                realmID: realmID,
-                question: question,
-                context: AskAIContext.composeRedacted(finding: finding),
-                tier: .secondary
-            )
-            secondOpinionAnswers[findingID] = answer
-        } catch {
-            secondOpinionError = (contextKey: findingID, message: "\(error)")
-        }
-        askingSecondOpinionContextKeys.remove(findingID)
+        await askSecondOpinion(contextKey: findingID, contextText: AskAIContext.composeRedacted(finding: finding), question: question)
+    }
+
+    /// Public so `RootView` can read `askAIAnswers`/`secondOpinionAnswers`
+    /// by the same fixed key these methods write to, without duplicating
+    /// the literal string.
+    public static let healthReportContextKey = "health-report"
+    public static let valueSummaryContextKey = "value-summary"
+    private static let healthReportPrompt = "In plain English: how healthy are this client's books right now? Cover the negative (open issues) and the positive (what's been fixed), the key financial metrics, and how things have changed since the last report if that data is available."
+    private static let valueSummaryPrompt = "In plain English, written for a client with no bookkeeping background: summarize what was found and corrected in their books, and what that means for them. Be specific about the real numbers given, and do not claim a dollar figure was literally saved unless the context says so."
+
+    /// Findings whose Activity Log entry of the given `kind` was recorded
+    /// after `lastReportGeneratedAt` (or ALL such entries, when no report
+    /// has ever been generated) — the deterministic "since last report"
+    /// window both report functions share. A finding can appear here even
+    /// after its own status has moved on since the log entry, which is
+    /// correct: the log entry is what happened during the window, not a
+    /// live re-check of current status.
+    private func findingsChanged(kind: ActivityKind, since: Date?) -> [Finding] {
+        let ids = Set(activityLog
+            .filter { $0.kind == kind && (since == nil || $0.recordedAt > since!) }
+            .compactMap(\.findingID))
+        return findings.filter { ids.contains($0.id) }
+    }
+
+    private func composedHealthReportContext() -> String {
+        AskAIContext.composeHealthReport(
+            openFindings: findings.filter { $0.status == .open },
+            resolvedFindings: findingsChanged(kind: .findingResolved, since: lastReportGeneratedAt),
+            dismissedFindings: findingsChanged(kind: .findingDismissed, since: lastReportGeneratedAt),
+            balanceSheetLines: balanceSheetLines,
+            profitAndLossLines: profitAndLossLines,
+            priorBalanceSheetLines: priorPeriodBalanceSheetLines,
+            priorProfitAndLossLines: priorPeriodProfitAndLossLines,
+            period: currentPeriod
+        )
+    }
+
+    private func composedValueSummaryContext() -> String {
+        AskAIContext.composeValueSummary(
+            resolvedFindings: findingsChanged(kind: .findingResolved, since: lastReportGeneratedAt),
+            dismissedFindings: findingsChanged(kind: .findingDismissed, since: lastReportGeneratedAt),
+            corrections: activityLog.filter { $0.kind.isCorrection && (lastReportGeneratedAt == nil || $0.recordedAt > lastReportGeneratedAt!) },
+            since: lastReportGeneratedAt
+        )
+    }
+
+    /// Records that a report was generated right now — updates the "since
+    /// last report" baseline both compose functions read, persisted so it
+    /// survives a restart. Errors are swallowed the same way other
+    /// best-effort persistence in this class is (the report itself already
+    /// succeeded by the time this is called; a disk write failure here
+    /// shouldn't surface as if the report failed).
+    private func recordReportGenerated() async {
+        let now = Date()
+        lastReportGeneratedAt = now
+        try? await store.saveLastReportGeneratedAt(now)
+    }
+
+    // The "since last report" baseline only advances on a genuine success
+    // — `askAI`/`askSecondOpinion` catch their own errors internally rather
+    // than throwing, so success is read back as "no error was just set for
+    // this key," the same signal `FindingDetailView`'s error binding
+    // already relies on elsewhere.
+    public func generateHealthReport() async {
+        await askAI(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt)
+        if askAIError?.contextKey != Self.healthReportContextKey { await recordReportGenerated() }
+    }
+
+    public func generateHealthReportSecondOpinion() async {
+        await askSecondOpinion(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt)
+        if secondOpinionError?.contextKey != Self.healthReportContextKey { await recordReportGenerated() }
+    }
+
+    public func generateValueSummary() async {
+        await askAI(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt)
+        if askAIError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
+    }
+
+    public func generateValueSummarySecondOpinion() async {
+        await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt)
+        if secondOpinionError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

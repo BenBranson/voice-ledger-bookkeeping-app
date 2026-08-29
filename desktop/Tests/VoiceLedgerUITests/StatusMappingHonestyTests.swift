@@ -107,7 +107,12 @@ struct StatusMappingHonestyTests {
         // independently drift from it the way `exceptionsStatus` used to.
         // `syncError` (added Gauntlet C round 4) is a legitimate, distinct
         // signal — not a second coverage-status source of truth — so it's
-        // included in the expected set below rather than exempted.
+        // included in the expected set below rather than exempted. Same
+        // reasoning for the report-generation fields added 2026-08-29
+        // (owner directive: two AI-generated report buttons on this
+        // screen) — answer/error/in-flight state for two report kinds
+        // across two AI tiers, none of which is an alternate coverage
+        // status.
         let mirror = Mirror(reflecting: FindingsListView.ViewState(
             environment: .sandbox,
             coverageStatus: .notChecked,
@@ -115,7 +120,13 @@ struct StatusMappingHonestyTests {
             findings: []
         ))
         let propertyNames = Set(mirror.children.compactMap(\.label))
-        #expect(propertyNames == ["environment", "coverageStatus", "coverageDetail", "findings", "nextBestAction", "syncError"],
-                "ViewState must expose a single coverageStatus source of truth — an added second status property would need the same currency gating exceptionsStatus now has")
+        #expect(propertyNames == [
+            "environment", "coverageStatus", "coverageDetail", "findings", "nextBestAction", "syncError",
+            "healthReportAnswer", "isGeneratingHealthReport", "healthReportError",
+            "healthReportSecondOpinionAnswer", "isGeneratingHealthReportSecondOpinion", "healthReportSecondOpinionError",
+            "secondOpinionConfigured",
+            "valueSummaryAnswer", "isGeneratingValueSummary", "valueSummaryError",
+            "valueSummarySecondOpinionAnswer", "isGeneratingValueSummarySecondOpinion", "valueSummarySecondOpinionError"
+        ], "ViewState must expose a single coverageStatus source of truth — an added second status property would need the same currency gating exceptionsStatus now has")
     }
 }
