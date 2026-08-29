@@ -288,8 +288,8 @@ struct RootView: View {
                     onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } },
                     aiStatus: state.aiStatus,
                     askAIAnswer: state.askAIAnswers[findingID],
-                    isAskingAI: state.askingAIFindingIDs.contains(findingID),
-                    askAIError: state.askAIError?.findingID == findingID ? state.askAIError?.message : nil,
+                    isAskingAI: state.askingAIContextKeys.contains(findingID),
+                    askAIError: state.askAIError?.contextKey == findingID ? state.askAIError?.message : nil,
                     onAskAI: { question in Task { await state.askAI(findingID: findingID, question: question) } }
                 )
             } else {
@@ -327,13 +327,22 @@ struct RootView: View {
                 }
 
         case .cleanupAssessment:
+            let cleanupAssessmentAskAIKey = "page:cleanup-assessment"
             CleanupAssessmentView(
                 environment: state.environment == .production ? .production : .sandbox,
                 coverageStatus: StatusMapping.status(for: coverageOutcome),
                 coverageDetail: coverageDetail,
                 summaries: cleanupAssessmentSummaries,
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
-                onExport: { format in state.exportTable(Self.exportTable(findingSummaries: cleanupAssessmentSummaries), format: format, suggestedFilename: "Cleanup Assessment") }
+                onExport: { format in state.exportTable(Self.exportTable(findingSummaries: cleanupAssessmentSummaries), format: format, suggestedFilename: "Cleanup Assessment") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[cleanupAssessmentAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(cleanupAssessmentAskAIKey),
+                askAIError: state.askAIError?.contextKey == cleanupAssessmentAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings))
+                    Task { await state.askAI(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

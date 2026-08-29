@@ -60,7 +60,6 @@ public struct FindingDetailView: View {
     @State private var isConfirmingRememberVendor = false
     @State private var isDraftingCarryForwardReason = false
     @State private var carryForwardReasonDraft = ""
-    @State private var askAIQuestionDraft = ""
 
     public init(
         finding: Finding,
@@ -241,55 +240,15 @@ public struct FindingDetailView: View {
     /// this screen doesn't already show, per CLAUDE.md rule 1's boundary,
     /// enforced independently again by the backend's own system prompt.
     private var askAISection: some View {
-        VLCard {
-            VStack(alignment: .leading, spacing: VLSpacing.sm) {
-                Text("ASK AI")
-                    .font(VLTypography.eyebrow())
-                    .tracking(VLTypography.eyebrowTracking)
-                    .foregroundStyle(VLColor.textMuted)
-
-                if let aiStatus, !aiStatus.configured {
-                    Text("AI isn't configured on this backend yet.")
-                        .font(VLTypography.caption())
-                        .foregroundStyle(VLColor.textMuted)
-                } else if let aiStatus, !aiStatus.enabled {
-                    Text("AI features are turned off — turn them back on from the Connection page to use this.")
-                        .font(VLTypography.caption())
-                        .foregroundStyle(VLColor.textMuted)
-                } else {
-                    Text("Answers are grounded strictly in this finding's own fields shown above — it cannot state a dollar figure, severity, or judgment beyond what's already here, and it never gives tax or legal advice.")
-                        .font(VLTypography.caption())
-                        .foregroundStyle(VLColor.textMuted)
-
-                    if let askAIAnswer {
-                        Text(askAIAnswer)
-                            .font(VLTypography.body())
-                            .foregroundStyle(VLColor.textPrimary)
-                            .padding(VLSpacing.xs)
-                            .background(VLColor.background)
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
-                    }
-
-                    if let askAIError {
-                        Text(askAIError)
-                            .font(VLTypography.caption())
-                            .foregroundStyle(.red)
-                    }
-
-                    HStack(spacing: VLSpacing.sm) {
-                        TextField("Ask a question about this finding", text: $askAIQuestionDraft)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(isAskingAI)
-                        Button(isAskingAI ? "Asking…" : "Ask") {
-                            let question = askAIQuestionDraft
-                            onAskAI(question)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isAskingAI || askAIQuestionDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                }
-            }
-        }
+        AskAIPanelView(
+            disclaimer: "Answers are grounded strictly in this finding's own fields shown above — it cannot state a dollar figure, severity, or judgment beyond what's already here, and it never gives tax or legal advice.",
+            placeholder: "Ask a question about this finding",
+            aiStatus: aiStatus,
+            answer: askAIAnswer,
+            isAsking: isAskingAI,
+            error: askAIError,
+            onAsk: onAskAI
+        )
     }
 
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Question Builder" —

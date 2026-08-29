@@ -117,12 +117,18 @@ public final class AppState {
     public private(set) var isCheckingAIStatus = false
     public private(set) var isTogglingAIEnabled = false
     public private(set) var aiStatusError: String?
-    /// Per-finding Ask AI answers — a finding can have at most one
-    /// standing answer at a time; asking again replaces it, same posture
-    /// as every other single-slot per-finding state in this file.
+    /// Per-context-key Ask AI answers, keyed by finding ID for
+    /// `FindingDetailView` or a fixed page key (e.g. `"cleanup-assessment"`)
+    /// for a page-level panel — one standing answer per key at a time;
+    /// asking again replaces it, same posture as every other single-slot
+    /// per-finding state in this file. Renamed from the finding-only
+    /// `askAIAnswers`/`askingAIFindingIDs` when the Ask AI panel expanded
+    /// beyond `FindingDetailView` to other pages (2026-08-28) — the
+    /// dictionaries themselves didn't need to change shape, only what they
+    /// mean.
     public private(set) var askAIAnswers: [String: String] = [:]
-    public private(set) var askingAIFindingIDs: Set<String> = []
-    public private(set) var askAIError: (findingID: String, message: String)?
+    public private(set) var askingAIContextKeys: Set<String> = []
+    public private(set) var askAIError: (contextKey: String, message: String)?
     public private(set) var isTogglingWriteAccess = false
 
     // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
@@ -780,21 +786,33 @@ public final class AppState {
         isTogglingAIEnabled = false
     }
 
-    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel. `AskAIContext.compose`
-    /// (Core, pure) builds the context from the finding's own already-
-    /// computed fields — this method never adds anything to it itself.
-    public func askAI(findingID: String, question: String) async {
-        guard let finding = finding(id: findingID), !askingAIFindingIDs.contains(findingID) else { return }
-        askingAIFindingIDs.insert(findingID)
-        if askAIError?.findingID == findingID { askAIError = nil }
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel: "Every page ends with an
+    /// Ask [AI] panel." The general form, added 2026-08-28 when the panel
+    /// expanded beyond `FindingDetailView` — any caller supplies its own
+    /// `contextKey` (so its answer/error state doesn't collide with any
+    /// other panel's) and pre-composed `contextText` (built by
+    /// `AskAIContext`, Core, pure — this method never adds anything to it
+    /// itself, preserving CLAUDE.md rule 1's boundary no matter which page
+    /// calls this).
+    public func askAI(contextKey: String, contextText: String, question: String) async {
+        guard !askingAIContextKeys.contains(contextKey) else { return }
+        askingAIContextKeys.insert(contextKey)
+        if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let context = AskAIContext.compose(finding: finding)
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: context)
-            askAIAnswers[findingID] = answer
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText)
+            askAIAnswers[contextKey] = answer
         } catch {
-            askAIError = (findingID: findingID, message: "\(error)")
+            askAIError = (contextKey: contextKey, message: "\(error)")
         }
-        askingAIFindingIDs.remove(findingID)
+        askingAIContextKeys.remove(contextKey)
+    }
+
+    /// `FindingDetailView`'s call site — a thin wrapper over the general
+    /// form above, keyed by finding ID, context composed from that
+    /// finding's own already-computed fields.
+    public func askAI(findingID: String, question: String) async {
+        guard let finding = finding(id: findingID) else { return }
+        await askAI(contextKey: findingID, contextText: AskAIContext.compose(finding: finding), question: question)
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

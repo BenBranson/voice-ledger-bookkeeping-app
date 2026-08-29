@@ -38,4 +38,22 @@ public enum AskAIContext {
         }
         return lines.joined(separator: "\n")
     }
+
+    /// The page-level counterpart to `compose(finding:)` — added when the
+    /// Ask AI panel expanded beyond `FindingDetailView` to other pages
+    /// (docs/VOICE_LEDGER_SPEC.md: "Every page ends with an Ask [AI]
+    /// panel."). Same boundary: only serializes fields these findings
+    /// already carry, capped at 20 so the context stays a summary rather
+    /// than dumping the entire page's data into the prompt.
+    public static func compose(pageTitle: String, findings: [Finding]) -> String {
+        var lines: [String] = ["Page: \(pageTitle)", "Open findings: \(findings.count)"]
+        for finding in findings.prefix(20) {
+            let periodLabel = "\(finding.period.year)-\(String(format: "%02d", finding.period.month))"
+            lines.append("- \(finding.title) — severity \(finding.severity.rawValue), exposure \(finding.dollarExposure.description), period \(periodLabel)")
+        }
+        if findings.count > 20 {
+            lines.append("...and \(findings.count - 20) more not listed here")
+        }
+        return lines.joined(separator: "\n")
+    }
 }

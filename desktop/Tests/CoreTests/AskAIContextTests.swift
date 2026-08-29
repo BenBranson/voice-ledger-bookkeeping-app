@@ -55,4 +55,26 @@ struct AskAIContextTests {
         let expectedPrinciple = RuleRegistry.all.first { $0.identity.id == RuleID(rawValue: "VL-DUP-EXP-001") }!.identity.accountingPrinciple
         #expect(context.contains(expectedPrinciple))
     }
+
+    @Test("compose(pageTitle:findings:) includes the page title and every finding's title")
+    func pageLevelComposeIncludesTitleAndFindings() {
+        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: [finding(), finding()])
+        #expect(context.contains("Cleanup Assessment"))
+        #expect(context.contains("Possible duplicate expense"))
+        #expect(context.contains("Open findings: 2"))
+    }
+
+    @Test("compose(pageTitle:findings:) caps the listed findings at 20 and notes the rest")
+    func pageLevelComposeCapsAtTwenty() {
+        let findings = (1...25).map { _ in finding() }
+        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: findings)
+        #expect(context.contains("...and 5 more not listed here"))
+    }
+
+    @Test("compose(pageTitle:findings:) handles zero findings without a placeholder line")
+    func pageLevelComposeHandlesEmpty() {
+        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: [])
+        #expect(context.contains("Open findings: 0"))
+        #expect(!context.contains("more not listed"))
+    }
 }

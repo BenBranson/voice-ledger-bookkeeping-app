@@ -33,6 +33,14 @@ public struct CleanupAssessmentView: View {
     private let summaries: [RuleSummary]
     private let onSelectFinding: (Finding) -> Void
     private let onExport: (ReportExportFormat) -> Void
+    /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel, page-level form — asks
+    /// about the whole assessment (every open finding across every rule
+    /// here), not one finding. See `AskAIPanelView`/`AskAIContext.compose(pageTitle:findings:)`.
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
 
     public init(
         environment: VLEnvironmentTone,
@@ -40,7 +48,12 @@ public struct CleanupAssessmentView: View {
         coverageDetail: String,
         summaries: [RuleSummary],
         onSelectFinding: @escaping (Finding) -> Void,
-        onExport: @escaping (ReportExportFormat) -> Void = { _ in }
+        onExport: @escaping (ReportExportFormat) -> Void = { _ in },
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in }
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
@@ -48,6 +61,11 @@ public struct CleanupAssessmentView: View {
         self.summaries = summaries
         self.onSelectFinding = onSelectFinding
         self.onExport = onExport
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
     }
 
     private var totalFindingCount: Int { summaries.reduce(0) { $0 + $1.findings.count } }
@@ -107,6 +125,16 @@ public struct CleanupAssessmentView: View {
                         ruleSection(summary)
                     }
                 }
+
+                AskAIPanelView(
+                    disclaimer: "Answers are grounded strictly in the findings listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    placeholder: "Ask a question about this assessment",
+                    aiStatus: aiStatus,
+                    answer: askAIAnswer,
+                    isAsking: isAskingAI,
+                    error: askAIError,
+                    onAsk: onAskAI
+                )
             }
             .padding(VLSpacing.pageGutter)
         }
