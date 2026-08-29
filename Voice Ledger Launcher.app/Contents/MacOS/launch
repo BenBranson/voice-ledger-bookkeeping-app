@@ -43,6 +43,13 @@ echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 status_lines=()
+# Owner directive (2026-08-29): the status dialog at the end used to show
+# every single launch, even a fully successful one — stealing focus and
+# requiring a click before the app window itself could come forward. Only
+# genuinely worth an interruption when something needs the owner's
+# attention (a port conflict, a timeout, a missing build); a normal
+# successful launch is now silent.
+has_problem=false
 
 backend_healthy() {
     curl -s -m 2 "http://localhost:$BACKEND_PORT/healthz" 2>/dev/null | grep -q '"status":"ok"'
@@ -57,8 +64,9 @@ elif lsof -i ":$BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     # by trying to start a second server on the same port.
     OWNER="$(lsof -i ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1" (pid "$2")"}')"
     status_lines+=("Port $BACKEND_PORT is already in use by ${OWNER:-another process}, and it did not answer as Voice Ledger's backend. Quit that process, then open this launcher again.")
+    has_problem=true
 else
-    cd "$BACKEND_DIR" || { status_lines+=("Backend: could not find $BACKEND_DIR"); }
+    cd "$BACKEND_DIR" || { status_lines+=("Backend: could not find $BACKEND_DIR"); has_problem=true; }
     if [ -d "$BACKEND_DIR" ]; then
         : > "$BACKEND_LOG"
         # `arch -arm64` forces native execution regardless of any ambient
@@ -81,6 +89,7 @@ else
             status_lines+=("Backend: started (port $BACKEND_PORT)")
         else
             status_lines+=("Backend: did not respond after 45s — check ~/Library/Logs/VoiceLedger/backend.log")
+            has_problem=true
         fi
     fi
 fi
@@ -101,8 +110,10 @@ if voice_service_healthy; then
 elif lsof -i ":$VOICE_SERVICE_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     OWNER="$(lsof -i ":$VOICE_SERVICE_PORT" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1" (pid "$2")"}')"
     status_lines+=("Port $VOICE_SERVICE_PORT is already in use by ${OWNER:-another process}, and it did not answer as Voice Ledger's voice service. Quit that process, then open this launcher again.")
+    has_problem=true
 elif [ ! -x "$VOICE_SERVICE_DIR/.venv/bin/python" ]; then
     status_lines+=("Voice service: not set up yet. Ask Claude to run \"uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt && ./download_voice.sh\" in the voice-service folder once, then open this launcher again. Voice commands won't work until then, but the rest of the app will.")
+    has_problem=true
 else
     : > "$VOICE_SERVICE_LOG"
     # Absolute paths throughout, not a `cd` + relative path — confirmed
@@ -124,6 +135,7 @@ else
         status_lines+=("Voice service: started (port $VOICE_SERVICE_PORT)")
     else
         status_lines+=("Voice service: did not respond after 30s — check ~/Library/Logs/VoiceLedger/voice-service.log. Voice commands won't work until this is running, but the rest of the app will.")
+        has_problem=true
     fi
 fi
 
@@ -195,6 +207,7 @@ else
     BIN="$APP_BUNDLE/Contents/MacOS/VoiceLedgerApp"
     if [ ! -x "$BIN" ]; then
         status_lines+=("Voice Ledger app: not built yet. Ask Claude to run \"swift build -c release && ./scripts/build-app-bundle.sh release\" in the desktop folder once, then open this launcher again — it will find and run it from then on without needing to build again.")
+        has_problem=true
     else
         : > "$APP_LOG"
         # The app needs a backend URL, a session token, and which connected
@@ -220,6 +233,7 @@ else
 
         if [ -z "$REALM_ID" ]; then
             status_lines+=("Voice Ledger app: no connected company found yet. Connect one first, then open this launcher again.")
+            has_problem=true
         else
             SESSION_TOKEN_FILE="$LOG_DIR/session-token.txt"
             rm -f "$SESSION_TOKEN_FILE"
@@ -229,6 +243,7 @@ else
 
             if [ -z "$SESSION_TOKEN" ]; then
                 status_lines+=("Voice Ledger app: could not create a session for the connected company — check ~/Library/Logs/VoiceLedger/app.log")
+                has_problem=true
             else
                 # `arch -arm64` intentionally NOT used here (unlike the
                 # backend/voice-service sections above) — this machine and
@@ -254,10 +269,17 @@ else
     fi
 fi
 
-# --- 4. Show a native status dialog — never a Terminal window ---
-MESSAGE="$(printf '%s\n' "${status_lines[@]}")"
-osascript \
-    -e 'on run argv' \
-    -e 'display dialog (item 1 of argv) with title "Voice Ledger" buttons {"OK"} default button "OK" with icon note' \
-    -e 'end run' \
-    "$MESSAGE" >/dev/null 2>&1
+# --- 4. Show a native status dialog ONLY when something needs attention ---
+# A fully successful launch (backend/voice-service already healthy or
+# started cleanly, app launched or already running) is silent — the app
+# window itself is the confirmation. The dialog used to show every single
+# time, stealing focus and requiring a click before the real window could
+# come forward, which is exactly backwards for the common case.
+if [ "$has_problem" = true ]; then
+    MESSAGE="$(printf '%s\n' "${status_lines[@]}")"
+    osascript \
+        -e 'on run argv' \
+        -e 'display dialog (item 1 of argv) with title "Voice Ledger" buttons {"OK"} default button "OK" with icon caution' \
+        -e 'end run' \
+        "$MESSAGE" >/dev/null 2>&1
+fi
