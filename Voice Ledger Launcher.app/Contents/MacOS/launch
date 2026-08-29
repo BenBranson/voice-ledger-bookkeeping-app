@@ -1,12 +1,13 @@
 #!/bin/bash
 # Voice Ledger Launcher — double-click entry point, no Terminal required.
 #
-# Starts the backend (if not already running) and launches the desktop
-# app's already-built binary (if not already running), and shows a native
-# macOS dialog summarizing what happened. Safe to double-click again any
-# time — it detects what's already running and skips redundant work, and
-# detects a port conflict (something else already listening on 3000)
-# rather than silently trying to start a second backend on top of it.
+# Starts the backend and the local voice-service (each if not already
+# running) and launches the desktop app's already-built binary (if not
+# already running), and shows a native macOS dialog summarizing what
+# happened. Safe to double-click again any time — it detects what's
+# already running and skips redundant work, and detects a port conflict
+# (something else already listening on 3000 or 8790) rather than silently
+# trying to start a second instance on top of it.
 #
 # Deliberately does NOT build anything itself — see the desktop-app
 # section below for why `swift build` specifically cannot run reliably
@@ -20,12 +21,15 @@ export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$PATH"
 PROJECT_ROOT="/Users/benjaminkylebranson/Documents/Bookkeeping APP"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 DESKTOP_DIR="$PROJECT_ROOT/desktop"
+VOICE_SERVICE_DIR="$PROJECT_ROOT/voice-service"
 BACKEND_PORT=3000
+VOICE_SERVICE_PORT=8790
 
 LOG_DIR="$HOME/Library/Logs/VoiceLedger"
 mkdir -p "$LOG_DIR"
 BACKEND_LOG="$LOG_DIR/backend.log"
 APP_LOG="$LOG_DIR/app.log"
+VOICE_SERVICE_LOG="$LOG_DIR/voice-service.log"
 
 # A double-click while a previous launch is still deciding what to do
 # (e.g. mid-way through the backend health poll below) would otherwise
@@ -81,7 +85,49 @@ else
     fi
 fi
 
-# --- 2. Desktop app: already running, or launch the pre-built binary ---
+# --- 2. voice-service: already running, port conflict, or start it fresh ---
+# docs/VOICE_LEDGER_SPEC.md's /voice module. Same three-way shape as the
+# backend section above (already healthy / port conflict / start fresh),
+# and the same "does not build/set up anything itself" posture the
+# desktop-app section documents below — first-time `pip install`/model
+# download is a one-time setup step, not something a double-click should
+# attempt silently in the background.
+voice_service_healthy() {
+    curl -s -m 2 "http://localhost:$VOICE_SERVICE_PORT/health" 2>/dev/null | grep -q '"status":"ok"'
+}
+
+if voice_service_healthy; then
+    status_lines+=("Voice service: already running (port $VOICE_SERVICE_PORT)")
+elif lsof -i ":$VOICE_SERVICE_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    OWNER="$(lsof -i ":$VOICE_SERVICE_PORT" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1" (pid "$2")"}')"
+    status_lines+=("Port $VOICE_SERVICE_PORT is already in use by ${OWNER:-another process}, and it did not answer as Voice Ledger's voice service. Quit that process, then open this launcher again.")
+elif [ ! -x "$VOICE_SERVICE_DIR/.venv/bin/python" ]; then
+    status_lines+=("Voice service: not set up yet. Ask Claude to run \"uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt && ./download_voice.sh\" in the voice-service folder once, then open this launcher again. Voice commands won't work until then, but the rest of the app will.")
+else
+    : > "$VOICE_SERVICE_LOG"
+    # Absolute paths throughout, not a `cd` + relative path — confirmed
+    # live that `arch -arm64` combined with `nohup ... &` inside a
+    # subshell can fail to resolve a relative interpreter path
+    # ("realpath failed") even though the `cd` runs first in the same
+    # subshell; absolute paths sidestep the question entirely.
+    (cd "$VOICE_SERVICE_DIR" && nohup arch -arm64 "$VOICE_SERVICE_DIR/.venv/bin/python" -m uvicorn main:app --host 127.0.0.1 --port "$VOICE_SERVICE_PORT" >> "$VOICE_SERVICE_LOG" 2>&1 &)
+    started=false
+    # Loading faster-whisper + Piper's models takes a few real seconds
+    # (live-verified 2026-08-29: ~2-3s on this machine) — 30s leaves
+    # comfortable headroom on a busier or colder-cache machine, same
+    # generous-timeout reasoning the backend section above already uses.
+    for _ in $(seq 1 30); do
+        sleep 1
+        if voice_service_healthy; then started=true; break; fi
+    done
+    if [ "$started" = true ]; then
+        status_lines+=("Voice service: started (port $VOICE_SERVICE_PORT)")
+    else
+        status_lines+=("Voice service: did not respond after 30s — check ~/Library/Logs/VoiceLedger/voice-service.log. Voice commands won't work until this is running, but the rest of the app will.")
+    fi
+fi
+
+# --- 3. Desktop app: already running, or launch the pre-built binary ---
 #
 # Deliberately does NOT run `swift build` here. Confirmed live (2026-08-28):
 # `swift build`'s manifest-evaluation step runs inside SwiftPM's own
@@ -151,7 +197,7 @@ else
     fi
 fi
 
-# --- 3. Show a native status dialog — never a Terminal window ---
+# --- 4. Show a native status dialog — never a Terminal window ---
 MESSAGE="$(printf '%s\n' "${status_lines[@]}")"
 osascript \
     -e 'on run argv' \
