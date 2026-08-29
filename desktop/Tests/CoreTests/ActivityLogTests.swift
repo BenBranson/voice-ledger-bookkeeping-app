@@ -35,8 +35,8 @@ struct ActivityLogTests {
     func everyActivityKindHasAHumanLabel() {
         let kinds: [ActivityKind] = [
             .findingDetected, .manualCompletionAttested, .findingResolved, .apiWriteApplied,
-            .apiWriteRejected, .clientQuestionDrafted, .findingDismissed, .clientMemoryRuleCreated,
-            .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory,
+            .apiWriteRejected, .clientQuestionDrafted, .clientQuestionAnswered, .findingDismissed,
+            .clientMemoryRuleCreated, .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory,
             .findingCarriedForward, .findingCarryForwardRemoved
         ]
         for kind in kinds {
@@ -54,6 +54,11 @@ struct ActivityLogTests {
         #expect(ActivityKind.apiWriteApplied.humanLabel != ActivityKind.apiWriteRejected.humanLabel)
     }
 
+    @Test("clientQuestionDrafted and clientQuestionAnswered have distinct labels — a sent question is never confusable with a recorded answer")
+    func clientQuestionDraftedAndAnsweredAreDistinct() {
+        #expect(ActivityKind.clientQuestionDrafted.humanLabel != ActivityKind.clientQuestionAnswered.humanLabel)
+    }
+
     @Test("Actor.displayLabel names the user, not just 'a user'")
     func actorDisplayLabelNamesTheUser() {
         #expect(Actor.user("Amy").displayLabel == "By Amy")
@@ -66,7 +71,7 @@ struct ActivityLogTests {
         #expect(ActivityKind.manualCompletionAttested.isCorrection)
         let nonCorrections: [ActivityKind] = [
             .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
-            .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
+            .clientQuestionAnswered, .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
             .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved
         ]
         for kind in nonCorrections {

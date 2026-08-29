@@ -279,6 +279,13 @@ struct RootView: View {
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
                     onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
                     onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },
+                    lastSentClientQuestion: state.activityLog
+                        .filter { $0.findingID == findingID && $0.kind == .clientQuestionDrafted }
+                        .max(by: { $0.recordedAt < $1.recordedAt })?.note,
+                    clientQuestionAnswer: state.activityLog
+                        .filter { $0.findingID == findingID && $0.kind == .clientQuestionAnswered }
+                        .max(by: { $0.recordedAt < $1.recordedAt })?.note,
+                    onRecordClientQuestionAnswer: { text in Task { await state.recordClientQuestionAnswer(findingID: findingID, actorName: actorName, answerText: text) } },
                     onRememberVendor: {
                         guard let vendorName = finding.vendorName else { return }
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }

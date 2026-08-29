@@ -42,6 +42,16 @@ public struct FindingDetailView: View {
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
     private let onSendClientQuestion: (String) -> Void
+    /// The most recently sent client question for this finding, from the
+    /// Activity Log (`ActivityKind.clientQuestionDrafted`) — `nil` when
+    /// none has been sent yet. Lets this view offer "record the answer"
+    /// without itself reading the log (it stays a dumb rendering of
+    /// whatever it's given, same posture as `hasClientMemoryRule`).
+    private let lastSentClientQuestion: String?
+    /// The recorded client reply (`ActivityKind.clientQuestionAnswered`),
+    /// when one exists.
+    private let clientQuestionAnswer: String?
+    private let onRecordClientQuestionAnswer: (String) -> Void
     private let onRememberVendor: () -> Void
     private let onDismiss: () -> Void
     private let onMarkCarriedForward: (String?) -> Void
@@ -57,6 +67,8 @@ public struct FindingDetailView: View {
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
     @State private var draftedQuestionText = ""
+    @State private var isRecordingAnswer = false
+    @State private var answerDraft = ""
     @State private var isConfirmingRememberVendor = false
     @State private var isDraftingCarryForwardReason = false
     @State private var carryForwardReasonDraft = ""
@@ -73,6 +85,9 @@ public struct FindingDetailView: View {
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
         onSendClientQuestion: @escaping (String) -> Void,
+        lastSentClientQuestion: String? = nil,
+        clientQuestionAnswer: String? = nil,
+        onRecordClientQuestionAnswer: @escaping (String) -> Void = { _ in },
         onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void,
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
@@ -94,6 +109,9 @@ public struct FindingDetailView: View {
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
         self.onSendClientQuestion = onSendClientQuestion
+        self.lastSentClientQuestion = lastSentClientQuestion
+        self.clientQuestionAnswer = clientQuestionAnswer
+        self.onRecordClientQuestionAnswer = onRecordClientQuestionAnswer
         self.onRememberVendor = onRememberVendor
         self.onDismiss = onDismiss
         self.onMarkCarriedForward = onMarkCarriedForward
@@ -254,7 +272,11 @@ public struct FindingDetailView: View {
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Question Builder" —
     /// see `ClientQuestionDrafter`'s doc comment for exactly what this is
     /// and isn't (a template-generated starting draft, always shown
-    /// editable before anything is recorded as sent; no answer-tracking).
+    /// editable before anything is recorded as sent). Once sent
+    /// (`lastSentClientQuestion` non-nil), also offers recording the
+    /// client's reply — the bookkeeper types in what the client said, same
+    /// "recorded, not verified by the app" posture as everything else
+    /// `.manualQBO` on this screen.
     private var clientQuestionSection: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
@@ -291,6 +313,53 @@ public struct FindingDetailView: View {
                         isDraftingClientQuestion = true
                     }
                     .buttonStyle(.bordered)
+                }
+
+                if let lastSentClientQuestion {
+                    Divider()
+                    Text("SENT")
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Text(lastSentClientQuestion)
+                        .font(VLTypography.body())
+                        .foregroundStyle(VLColor.textSecondary)
+
+                    if let clientQuestionAnswer {
+                        Text("ANSWER")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        Text(clientQuestionAnswer)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                            .padding(VLSpacing.xs)
+                            .background(VLColor.background)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+                    } else if isRecordingAnswer {
+                        TextEditor(text: $answerDraft)
+                            .font(VLTypography.body())
+                            .frame(minHeight: 100)
+                            .padding(VLSpacing.xs)
+                            .background(VLColor.background)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+                        HStack(spacing: VLSpacing.sm) {
+                            Button("Save Answer") {
+                                onRecordClientQuestionAnswer(answerDraft)
+                                isRecordingAnswer = false
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(answerDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isApplyingFix || isFindingActionInFlight)
+                            Button("Cancel") { isRecordingAnswer = false }
+                                .buttonStyle(.bordered)
+                        }
+                    } else {
+                        Button("Record Client's Answer") {
+                            answerDraft = ""
+                            isRecordingAnswer = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
             }
         }

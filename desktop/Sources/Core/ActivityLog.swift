@@ -31,6 +31,14 @@ public enum ActivityKind: String, Codable, Sendable {
     /// text. This records that a question was asked, not an answer; see
     /// `ClientQuestionDrafter`'s doc comment for what's not built yet.
     case clientQuestionDrafted
+    /// The human recorded the client's reply to a previously-sent question
+    /// — the answer-recording half `ClientQuestionDrafter`'s doc comment
+    /// used to say wasn't built yet (closed 2026-08-28). Same "recorded,
+    /// not verified by the app" posture: Voice Ledger has no channel to
+    /// receive the client's actual reply, this only logs that a human
+    /// heard back and what they said. The `note` field carries the answer
+    /// text.
+    case clientQuestionAnswered
     /// The human decided a finding isn't worth acting on — distinct from
     /// `findingResolved` (the underlying problem is actually fixed). The
     /// `note` field carries the reason, when one was given.
@@ -84,6 +92,7 @@ public enum ActivityKind: String, Codable, Sendable {
         case .apiWriteApplied: return "API write applied"
         case .apiWriteRejected: return "API write not confirmed"
         case .clientQuestionDrafted: return "Client question sent"
+        case .clientQuestionAnswered: return "Client question answered"
         case .findingDismissed: return "Finding dismissed"
         case .clientMemoryRuleCreated: return "Client memory rule created"
         case .clientMemoryRuleRemoved: return "Client memory rule removed"
@@ -109,7 +118,7 @@ public enum ActivityKind: String, Codable, Sendable {
         case .apiWriteApplied, .manualCompletionAttested:
             return true
         case .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
-             .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
+             .clientQuestionAnswered, .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
              .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved:
             return false
         }

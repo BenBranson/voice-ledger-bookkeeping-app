@@ -1682,6 +1682,33 @@ public final class AppState {
         }
     }
 
+    /// Records the client's reply to a previously-sent question —
+    /// `ClientQuestionDrafter`'s doc comment has the full "what this is and
+    /// isn't" (still no real two-way channel; the bookkeeper types in what
+    /// the client said). Attached to the finding the same way
+    /// `recordClientQuestionSent` attaches the question itself: a new
+    /// `ActivityLogEntry` keyed by `findingID`, not a separate record.
+    public func recordClientQuestionAnswer(findingID: String, actorName: String, answerText: String) async {
+        guard let finding = finding(id: findingID) else { return }
+        let entry = ActivityLogEntry(
+            realmID: realmID,
+            actor: .user(actorName),
+            kind: .clientQuestionAnswered,
+            findingID: findingID,
+            ruleID: finding.ruleID,
+            ruleVersion: finding.ruleVersion,
+            findingSummary: finding.title,
+            note: answerText
+        )
+        await performFindingAction(
+            findingID: findingID,
+            failureMessage: { "This answer wasn't recorded: \($0). Try again." }
+        ) {
+            try await self.store.appendActivityLogEntry(entry)
+            self.activityLog = try await self.store.loadActivityLog()
+        }
+    }
+
     /// CLAUDE.md rule 2's "push" step for `.stagedAPI` actions — the only
     /// write path in the app. The caller (the view) is responsible for the
     /// "review" step: showing before/after and requiring an explicit tap,
