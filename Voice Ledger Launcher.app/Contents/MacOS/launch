@@ -147,9 +147,26 @@ if pgrep -x VoiceLedgerApp >/dev/null 2>&1; then
     status_lines+=("Voice Ledger app: already running")
     osascript -e 'tell application "System Events" to set frontmost of process "VoiceLedgerApp" to true' >/dev/null 2>&1
 else
-    BIN="$DESKTOP_DIR/.build/release/VoiceLedgerApp"
+    # Runs the app from a real .app bundle (Contents/MacOS +
+    # Contents/Info.plist), not the bare Mach-O — investigating a real,
+    # still-unresolved crash (SIGABRT inside SwiftUI's own Button-gesture
+    # dispatch on a mic-button click); this app had never run as a genuine
+    # bundle before, an unusual setup that could plausibly affect AppKit's
+    # gesture/event routing. See scripts/build-app-bundle.sh's own header
+    # comment for the full history.
+    #
+    # Assembling the bundle (scripts/build-app-bundle.sh) does NOT happen
+    # here, even though it's cheap (just cp/codesign, no SwiftPM manifest
+    # evaluation) — confirmed live (2026-08-29) it still fails with
+    # "Operation not permitted" from this GUI-launched context, the same
+    # class of sandboxing restriction already documented above for
+    # `swift build` itself. Same fix: this launcher only ever RUNS a
+    # pre-built bundle, never builds or assembles one — whoever maintains
+    # this app runs build-app-bundle.sh from a Terminal session (or Claude
+    # Code) after `swift build -c release`.
+    BIN="$DESKTOP_DIR/.build/release/VoiceLedgerApp.app/Contents/MacOS/VoiceLedgerApp"
     if [ ! -x "$BIN" ]; then
-        status_lines+=("Voice Ledger app: not built yet. Ask Claude to run \"swift build -c release\" in the desktop folder once, then open this launcher again — it will find and run it from then on without needing to build again.")
+        status_lines+=("Voice Ledger app: not built yet. Ask Claude to run \"swift build -c release && ./scripts/build-app-bundle.sh release\" in the desktop folder once, then open this launcher again — it will find and run it from then on without needing to build again.")
     else
         : > "$APP_LOG"
         # The app needs a backend URL, a session token, and which connected
