@@ -238,7 +238,7 @@ public actor BackendClient {
     ///   backend rejects any other value outright rather than silently
     ///   treating it as primary, so a caller bug here fails loudly instead
     ///   of ever silently making an unwanted paid request.
-    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = [], tier: AskAITier = .primary) async throws -> String {
+    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = [], tier: AskAITier = .primary, format: AskAIFormat = .concise) async throws -> String {
         var url = configuration.baseURL
         url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
 
@@ -248,7 +248,7 @@ public actor BackendClient {
         if let token = configuration.sessionToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history, tier: tier.rawValue))
+        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history, tier: tier.rawValue, format: format.rawValue))
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -341,11 +341,22 @@ public enum AskAITier: String, Sendable {
     case secondary
 }
 
+/// Mirrors `backend/src/routes/ai.ts`'s `format` field (2026-08-29) —
+/// `.report` asks for a genuinely fuller, multi-paragraph write-up
+/// instead of the brief, spoken-friendly default. Used ONLY by the two
+/// report-generation buttons (`AppState.generateHealthReport`/
+/// `generateValueSummary`); every other caller keeps `.concise`.
+public enum AskAIFormat: String, Sendable {
+    case concise
+    case report
+}
+
 struct AskAIRequest: Encodable, Sendable {
     let question: String
     let context: String
     let history: [AskAIHistoryTurn]
     let tier: String
+    let format: String
 }
 
 struct AskAIResponse: Decodable, Sendable {

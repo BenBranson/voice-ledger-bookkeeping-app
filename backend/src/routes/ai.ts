@@ -24,7 +24,32 @@ import { OpenAIClient, OpenAIApiError } from "../ai/openaiClient.js";
 import { OllamaClient, OllamaApiError } from "../ai/ollamaClient.js";
 import { logEvent } from "../logging/logger.js";
 
-const SYSTEM_PROMPT = `You are the Ask panel inside Voice Ledger, a bookkeeping tool. Every dollar figure, severity rating, confidence score, and pass/fail decision you see in the "Context" block of the CURRENT message was already computed by deterministic code, not by you.
+/**
+ * Owner directive (2026-08-29): the two report buttons (health report,
+ * client value summary) were reading noticeably thinner from the free
+ * local tier than from OpenAI — investigation found the actual cause
+ * wasn't model capability, it was this prompt. The closing instruction
+ * below ("keep it to a few sentences, no bullet points") was written for
+ * the voice assistant's SPOKEN answers and was being applied to EVERY
+ * call through this one shared prompt, including the two report buttons,
+ * which are read on screen, never spoken, and are explicitly supposed to
+ * be thorough. That one line was capping how much real, already-computed
+ * detail either model was allowed to include — a bigger local model was
+ * tried and rejected first (gemma4:26b: confirmed live at ~32s just to
+ * generate three sentences on this hardware, unusable for an interactive
+ * button), so prompt-level headroom is the correct, working fix, not a
+ * bigger/slower model.
+ *
+ * `format: "report"` swaps the closing instruction for a longer, more
+ * structured one — used ONLY by the two report-generation buttons
+ * (`AppState.generateHealthReport`/`generateValueSummary`, both tiers).
+ * Every other caller (per-finding quick explain/second-opinion, voice's
+ * reasoning fallback, free-text follow-up questions) keeps the original
+ * concise/spoken-friendly behavior — those genuinely are read in a small
+ * panel or spoken aloud, where brevity is the right call, not a
+ * limitation to route around.
+ */
+const BASE_SYSTEM_PROMPT = `You are the Ask panel inside Voice Ledger, a bookkeeping tool. Every dollar figure, severity rating, confidence score, and pass/fail decision you see in the "Context" block of the CURRENT message was already computed by deterministic code, not by you.
 
 Earlier messages in this conversation (if any) are real prior exchanges — you already said what they show you saying, and the user already said what they show the user saying. Use them freely to answer conversational/follow-up questions ("what did I just ask?", "why?", "what should I do about that?", confirming a "yes" to something you just proposed). The "stick to the context" rule below is about DOLLAR FIGURES AND FINANCIAL FACTS specifically — it is not a reason to claim you don't remember something you said two messages ago.
 
@@ -33,10 +58,20 @@ Rules you must follow on every reply:
 - Never give definitive tax, legal, or filing advice. If asked something in that territory, say it's a question for a licensed CPA or attorney, not something you can answer for them.
 - Never claim a QuickBooks write, correction, or filing has happened, will happen, or was verified — that is only ever true if the context says so explicitly.
 - If a question needs financial data that ISN'T in the current Context block and ISN'T something you already stated earlier in this conversation, say so plainly instead of guessing.
-- Be concise and plain-English — the person reading this is a bookkeeper, not an accountant, per the app's own design philosophy ("training wheels and bowling bumpers").
 - Talk like a knowledgeable colleague who's actually looked at these books, not a script reading numbers back. Don't restate the question before answering it: say "Cash is $34,250," not "You asked about your cash balance, and I can tell you that..."
-- Be decisive, not clarification-happy. If earlier turns in this conversation already proposed a specific next step and the user now says something like "yes," "sure," or "go ahead," that means do — or rather, describe — the exact thing you already offered; don't ask what they meant.
-- This may be spoken aloud by a voice assistant — keep it to a few sentences, no bullet points or markdown formatting.`;
+- Be decisive, not clarification-happy. If earlier turns in this conversation already proposed a specific next step and the user now says something like "yes," "sure," or "go ahead," that means do — or rather, describe — the exact thing you already offered; don't ask what they meant.`;
+
+const CONCISE_CLOSING = `- Be concise and plain-English — the person reading this is a bookkeeper, not an accountant, per the app's own design philosophy ("training wheels and bowling bumpers").
+- This may be spoken aloud by a voice assistant, or read in a small on-screen panel — keep it to a few sentences, no bullet points or markdown formatting.`;
+
+const REPORT_CLOSING = `- This is a written report, read on screen — not spoken aloud and not a quick answer. Use as much of the real, already-computed detail in the Context block as is genuinely useful. Do not compress for brevity if there's real signal to convey.
+- Write it as a few well-organized paragraphs, in this order where the Context block has the material for it: (1) overall health in plain terms, (2) the negative — open issues, what's wrong and how material it is, (3) the positive — what's already been fixed or resolved, (4) the key financial metrics and what they mean for someone running this business, (5) how things have changed since the last report, if that's in the Context block. Skip any section the Context block has nothing for, rather than padding it out.
+- Plain prose paragraphs, not bullet points or markdown headers — but each paragraph should be genuinely substantive, not a single compressed sentence.
+- Still plain-English for a bookkeeper, not an accountant — thorough does not mean jargon-heavy.`;
+
+function systemPrompt(format: "concise" | "report"): string {
+  return `${BASE_SYSTEM_PROMPT}\n${format === "report" ? REPORT_CLOSING : CONCISE_CLOSING}`;
+}
 
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_CONTEXT_LENGTH = 8000;
@@ -177,6 +212,14 @@ export function aiRoutes(
         res.status(400).json({ error: "Body must be { question: string, context: string }." });
         return;
       }
+      // Owner directive (2026-08-29): report-mode prose, only for the two
+      // report buttons — see `systemPrompt`'s doc comment. Same "reject
+      // outright, never silently default" posture as `tier` above.
+      const format = req.body?.format;
+      if (format !== undefined && format !== "concise" && format !== "report") {
+        res.status(400).json({ error: 'format must be "concise" or "report" when present.' });
+        return;
+      }
       if (question.length > MAX_QUESTION_LENGTH) {
         res.status(400).json({ error: `question is too long (max ${MAX_QUESTION_LENGTH} characters).` });
         return;
@@ -191,7 +234,7 @@ export function aiRoutes(
       logEvent("ask_ai_invoked", { realmId, tier: useSecondary ? "secondary" : "primary" });
       try {
         const userMessage = `Context (already computed by the app, not by you):\n${context}\n\nQuestion: ${question}`;
-        const result = await activeClient.complete(SYSTEM_PROMPT, userMessage, history);
+        const result = await activeClient.complete(systemPrompt(format === "report" ? "report" : "concise"), userMessage, history);
         logEvent("ask_ai_succeeded", { realmId, tier: useSecondary ? "secondary" : "primary", latencyMs: result.latencyMs });
         res.json({ answer: result.text, model: result.model });
       } catch (error) {

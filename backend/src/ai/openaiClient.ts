@@ -57,7 +57,14 @@ export class OpenAIClient implements AICompletionClient {
         // Deterministic-leaning, not creative — this is explaining a
         // computed finding, not drafting marketing copy.
         temperature: 0.2,
-        max_tokens: 700
+        // Owner directive (2026-08-29): the two report buttons now ask for
+        // a genuinely fuller, multi-paragraph write-up ("report" format in
+        // routes/ai.ts) — 700 was sized for the original concise-only
+        // behavior and could truncate a real 5-section report. Raised with
+        // headroom; the concise/voice/quick-answer prompts still stop
+        // themselves well short of even the old cap, per their own
+        // brevity instruction, so this doesn't change their behavior.
+        max_tokens: 1100
       }),
       // OpenAI can occasionally hang; a bookkeeper waiting on this panel
       // deserves a bounded wait, not an indefinite spinner.

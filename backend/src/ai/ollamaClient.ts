@@ -56,8 +56,13 @@ export class OllamaClient implements AICompletionClient {
       }),
       // Local inference on consumer hardware is genuinely slower than a
       // hosted API — a longer bound than OpenAIClient's 30s, chosen for
-      // that reason, not copied from it.
-      signal: AbortSignal.timeout(90_000)
+      // that reason, not copied from it. Raised from 90s to 180s
+      // (2026-08-29): live-benchmarked on this machine at roughly
+      // 6 tokens/sec for gemma4:e4b, and the new "report" format
+      // (routes/ai.ts) deliberately asks for a genuinely longer,
+      // multi-paragraph answer — a real report-length response could
+      // exceed 90s on its own without ever being stuck.
+      signal: AbortSignal.timeout(180_000)
     });
     const latencyMs = Date.now() - startedAt;
 

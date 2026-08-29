@@ -860,12 +860,12 @@ public final class AppState {
     /// `AskAIContext`, Core, pure — this method never adds anything to it
     /// itself, preserving CLAUDE.md rule 1's boundary no matter which page
     /// calls this).
-    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = []) async {
+    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = [], format: AskAIFormat = .concise) async {
         guard !askingAIContextKeys.contains(contextKey) else { return }
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history)
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format)
             askAIAnswers[contextKey] = answer
         } catch {
             askAIError = (contextKey: contextKey, message: "\(error)")
@@ -900,12 +900,12 @@ public final class AppState {
     /// above — extracted 2026-08-29 so the report buttons (page-level
     /// context, not one finding's) can reuse the same opt-in paid tier
     /// without a finding ID.
-    public func askSecondOpinion(contextKey: String, contextText: String, question: String) async {
+    public func askSecondOpinion(contextKey: String, contextText: String, question: String, format: AskAIFormat = .concise) async {
         guard !askingSecondOpinionContextKeys.contains(contextKey) else { return }
         askingSecondOpinionContextKeys.insert(contextKey)
         if secondOpinionError?.contextKey == contextKey { secondOpinionError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary)
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary, format: format)
             secondOpinionAnswers[contextKey] = answer
         } catch {
             secondOpinionError = (contextKey: contextKey, message: "\(error)")
@@ -982,22 +982,22 @@ public final class AppState {
     // this key," the same signal `FindingDetailView`'s error binding
     // already relies on elsewhere.
     public func generateHealthReport() async {
-        await askAI(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt)
+        await askAI(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt, format: .report)
         if askAIError?.contextKey != Self.healthReportContextKey { await recordReportGenerated() }
     }
 
     public func generateHealthReportSecondOpinion() async {
-        await askSecondOpinion(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt)
+        await askSecondOpinion(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: Self.healthReportPrompt, format: .report)
         if secondOpinionError?.contextKey != Self.healthReportContextKey { await recordReportGenerated() }
     }
 
     public func generateValueSummary() async {
-        await askAI(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt)
+        await askAI(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt, format: .report)
         if askAIError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
     }
 
     public func generateValueSummarySecondOpinion() async {
-        await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt)
+        await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt, format: .report)
         if secondOpinionError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
     }
 
