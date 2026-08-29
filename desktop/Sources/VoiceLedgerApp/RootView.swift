@@ -370,17 +370,27 @@ struct RootView: View {
                     Button("Back") { state.screen = .list }
                 }
             }
-            .fileImporter(isPresented: $isImportingStatement, allowedContentTypes: [.commaSeparatedText, .plainText, .data]) { result in
+            .fileImporter(isPresented: $isImportingStatement, allowedContentTypes: [.commaSeparatedText, .plainText, .data, .pdf, .png, .jpeg, .heic]) { result in
                 // A `.failure` here is the user cancelling the panel or an
                 // OS-level picker error — nothing to show; `selectFileForImport`
                 // itself reports a real read/parse failure via `importError`.
                 // `.data` is included so `.ofx`/`.qfx` (no dedicated UTType)
                 // still pass the picker's filter; format is then decided by
                 // extension inside `selectFileForImport`, not by this filter.
+                // `.pdf`/`.png`/`.jpeg`/`.heic` are Universal Ingestion Tier
+                // 2 (OCR) — same "decide by extension inside
+                // selectFileForImport" posture.
                 if case .success(let url) = result {
-                    let accessed = url.startAccessingSecurityScopedResource()
-                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-                    state.selectFileForImport(url: url)
+                    // The security-scoped session must stay open for the
+                    // FULL async operation, not just this synchronous
+                    // closure — `defer` inside the `Task` below fires when
+                    // the async work finishes, not when this closure
+                    // returns immediately after scheduling it.
+                    Task {
+                        let accessed = url.startAccessingSecurityScopedResource()
+                        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                        await state.selectFileForImport(url: url)
+                    }
                 }
             }
             .sheet(isPresented: Binding(get: { state.pendingImport != nil }, set: { if !$0 { state.cancelPendingImport() } })) {

@@ -6,8 +6,12 @@ import DesignSystem
 /// and compares it against your imported CSV/OFX/QFX/Excel statement;
 /// detects duplicates and missing postings." **Minimal slice**: only
 /// `VL-RECON-MISSING-001` (missing postings), CSV/OFX/QFX/XLSX (no legacy
-/// .xls), no drag-and-drop (file picker only), no cross-foot validation
-/// (§9.5, except OFX's informational stated-ending-balance display).
+/// .xls), plus Universal Ingestion Tier 2: a PDF or photo of a statement,
+/// via on-device Vision OCR (`VisionDocumentOCR`, macOS 26+) — table-only,
+/// same confirm-and-correct pipeline as every other format, no separate
+/// normalization path. No drag-and-drop (file picker only), no cross-foot
+/// validation (§9.5, except OFX's informational stated-ending-balance
+/// display).
 /// The confirm-and-correct column-mapping step (§9.4) is real —
 /// `ImportBankStatementView`, presented by the app layer after
 /// `onImportTapped` picks a file.
@@ -60,7 +64,7 @@ public struct BankFeedCleanupView: View {
                     .foregroundStyle(VLColor.textMuted)
 
                 HStack {
-                    Button("Import Statement (CSV/OFX/QFX/XLSX)…") { onImportTapped() }
+                    Button("Import Statement (CSV/OFX/QFX/XLSX/PDF/Photo)…") { onImportTapped() }
                         .buttonStyle(.borderedProminent)
                     if let importError {
                         VLStatusPill(.urgent, label: importError)

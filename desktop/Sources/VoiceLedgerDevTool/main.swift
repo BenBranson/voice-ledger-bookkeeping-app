@@ -17,7 +17,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -55,6 +55,12 @@ guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai
                               no realm needed — verifies the ZIP/DEFLATE
                               reader and OOXML parsing against a real file,
                               not just this project's own writer's output.
+      ocr-import-check <pdfOrImagePath>
+                              Runs VisionDocumentOCR against a real PDF or
+                              image file on disk and prints every extracted
+                              table row (docs/VOICE_LEDGER_SPEC.md's
+                              Universal Ingestion Tier 2). No network, no
+                              realm needed, macOS 26+ only.
 
     Required environment variables (not needed for export-sample):
       VOICE_LEDGER_BACKEND_URL     e.g. https://your-backend.onrender.com
@@ -87,6 +93,31 @@ if arguments[1] == "export-sample" {
     try? PDFReportExporter.export(table).write(to: outputDir.appendingPathComponent("sample.pdf"))
     print("Wrote sample.csv, sample.xlsx, sample.pdf to \(outputDir.path)")
     exit(0)
+}
+
+if arguments[1] == "ocr-import-check" {
+    guard arguments.count >= 3 else {
+        FileHandle.standardError.write("Usage: ocr-import-check <pdfOrImagePath>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    guard #available(macOS 26.0, *) else {
+        FileHandle.standardError.write("ocr-import-check needs macOS 26 or later.\n".data(using: .utf8)!)
+        exit(2)
+    }
+    let path = arguments[2]
+    let url = URL(fileURLWithPath: path)
+    let ext = url.pathExtension.lowercased()
+    do {
+        let rows = ext == "pdf" ? try await VisionDocumentOCR.extractRows(fromPDFAt: url) : try await VisionDocumentOCR.extractRows(fromImageFileAt: url)
+        print("Extracted \(rows.count) rows:")
+        for row in rows {
+            print("  \(row)")
+        }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("ocr-import-check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
 }
 
 if arguments[1] == "xlsx-import-check" {

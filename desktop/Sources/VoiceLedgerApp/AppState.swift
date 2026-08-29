@@ -257,9 +257,10 @@ public final class AppState {
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
     /// Loaded on launch and refreshed after every confirmed CSV import —
-    /// `selectFileForImport` (synchronous, called from inside a
-    /// `.fileImporter` completion) reads this in-memory cache rather than
-    /// hitting the store itself, since it has no `async` context to do so.
+    /// `selectFileForImport` reads this in-memory cache rather than
+    /// hitting the store itself on every call (it gained an `async`
+    /// context when Tier 2/OCR was added, but there's still no reason to
+    /// re-read the store just to check for a matching mapping hint).
     public private(set) var mappingHints: [MappingHint] = []
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Memory, With
     /// Approval" — loaded at launch and refreshed after every mutation,
@@ -966,11 +967,44 @@ public final class AppState {
     /// account-only for OFX); nothing is normalized or persisted until
     /// `confirmCSVImport`/`confirmOFXImport` is called with an explicitly
     /// human-confirmed mapping/account.
-    public func selectFileForImport(url: URL) {
+    public func selectFileForImport(url: URL) async {
         importError = nil
         let ext = url.pathExtension.lowercased()
         do {
-            if ext == "ofx" || ext == "qfx" {
+            if ext == "pdf" || ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "heic" {
+                // docs/VOICE_LEDGER_SPEC.md's Universal Ingestion Tier 2:
+                // Apple Vision on-device OCR. Gated on the REAL runtime
+                // requirement `VisionDocumentOCR.swift` discovered by
+                // compiling against the SDK (macOS 26.0, not the spec's
+                // stated 15 — see that file's doc comment) — never a
+                // crash on an older system, a clear message instead.
+                guard #available(macOS 26.0, *) else {
+                    importError = "Importing a PDF or photo needs macOS 26 or later. Use a CSV/OFX/QFX/XLSX export instead on this Mac."
+                    return
+                }
+                let rows: [[String]]
+                do {
+                    rows = ext == "pdf" ? try await VisionDocumentOCR.extractRows(fromPDFAt: url) : try await VisionDocumentOCR.extractRows(fromImageFileAt: url)
+                } catch VisionDocumentOCR.OCRError.noTableDetected {
+                    importError = "\(url.lastPathComponent): couldn't find a table in this document. A CSV/OFX/QFX/XLSX export will work more reliably."
+                    return
+                } catch VisionDocumentOCR.OCRError.unsupportedFile {
+                    importError = "\(url.lastPathComponent) couldn't be read as an image or PDF."
+                    return
+                }
+                let matchedHint = mappingHints.first { $0.id == MappingHint.makeID(headers: rows[0]) }
+                // Reuses PendingCSVImport/confirmCSVImport unchanged, same
+                // as the .xlsx path above — once OCR produces `[[String]]`,
+                // a scanned statement and a real CSV are the same shape
+                // all the way through the existing confirm-and-correct +
+                // BankStatementCSVImporter pipeline. No second
+                // normalization path.
+                pendingImport = .csv(PendingCSVImport(
+                    filename: url.lastPathComponent, allRows: rows, hasHeaderRow: true,
+                    suggestedFields: matchedHint?.fields ?? [],
+                    appliedHint: matchedHint.map { (id: $0.id, timesUsed: $0.timesUsed) }
+                ))
+            } else if ext == "ofx" || ext == "qfx" {
                 let text = try String(contentsOf: url, encoding: .utf8)
                 let count = OFXParser.parseTransactions(text).count
                 guard count > 0 else {
