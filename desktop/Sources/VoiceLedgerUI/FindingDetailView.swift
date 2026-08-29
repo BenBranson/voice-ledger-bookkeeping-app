@@ -361,7 +361,7 @@ public struct FindingDetailView: View {
     private var secondOpinionSection: some View {
         AskAIPanelView(
             title: "SECOND OPINION (OPENAI)",
-            disclaimer: "Sends this finding's numbers, dates, and description to OpenAI's API for a second opinion — the vendor name is redacted first, but other details are not. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+            disclaimer: "Sends this finding's numbers, dates, and description to OpenAI's API for a second opinion — the vendor name and any account named in the recommended fix are redacted first, but other details (like account names only mentioned in the explanation text) are not. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
             placeholder: "Ask OpenAI for a second opinion",
             // This section only renders once `secondOpinionConfigured` is
             // already true (the caller checked `/ai/status` for real) — no

@@ -65,25 +65,54 @@ public enum AskAIContext {
     /// ignore, not a guarantee.
     ///
     /// **Honest scope, not a claim of full anonymization**: this replaces
-    /// occurrences of `finding.vendorName` specifically (case-insensitive,
-    /// including inside `narrative`/proposed-action text, where it often
-    /// also appears in prose). It does NOT strip dollar amounts, dates,
-    /// account names, or transaction identifiers — those are the facts the
-    /// second opinion needs to be useful at all, and Voice Ledger doesn't
-    /// have a general-purpose PII/entity scrubber to safely remove them
-    /// without risking mangling the numbers themselves. The UI's own
-    /// disclaimer must state this plainly rather than imply a stronger
-    /// guarantee than this function actually provides.
+    /// occurrences of `finding.vendorName` and any account name
+    /// STRUCTURALLY tied to this specific finding via a `ProposedAction`'s
+    /// `apiWriteDetails` (`currentAccountName`/`suggestedAccountName`) —
+    /// case-insensitive, including inside `narrative`/proposed-action
+    /// text, where they often also appear in prose, not just a labeled
+    /// field.
+    ///
+    /// Deliberately does NOT scan the client's entire chart of accounts
+    /// for a broader sweep — most real account names are short, ordinary
+    /// English words ("Cash," "Rent," "Sales"), and blindly redacting any
+    /// occurrence of every account name in the file would risk mangling
+    /// unrelated prose ("cash flow," "total sales") the way a 1-character
+    /// vendor name would (see the guard below). Only redacting names this
+    /// function can PROVE are actually about this finding, not merely
+    /// present somewhere in the company's books, keeps every redaction a
+    /// precise, structurally-justified one rather than a guess.
+    ///
+    /// Still not a claim of full anonymization: dollar amounts, dates, and
+    /// any account name mentioned only in a rule's own narrative prose
+    /// (not carried in `apiWriteDetails`) are not stripped — those are the
+    /// facts the second opinion needs to be useful at all, and Voice
+    /// Ledger doesn't have a general-purpose PII/entity scrubber to safely
+    /// remove more than this without risking mangling the numbers
+    /// themselves. The UI's own disclaimer must state this plainly rather
+    /// than imply a stronger guarantee than this function actually
+    /// provides.
     public static func composeRedacted(finding: Finding) -> String {
         var text = compose(finding: finding)
-        // A 1-character vendor name would redact nearly every letter in
-        // the text instead of one identifier — guard against that
-        // pathological case rather than silently mangling the context.
-        guard let vendorName = finding.vendorName, vendorName.count >= 2 else { return text }
-        while let range = text.range(of: vendorName, options: .caseInsensitive) {
-            text.replaceSubrange(range, with: "the vendor")
+        text = redact(finding.vendorName, in: text, placeholder: "the vendor")
+        for action in finding.proposedActions {
+            guard let details = action.apiWriteDetails else { continue }
+            text = redact(details.currentAccountName, in: text, placeholder: "an account")
+            text = redact(details.suggestedAccountName, in: text, placeholder: "another account")
         }
         return text
+    }
+
+    /// A 1-character (or empty) identifier would redact nearly every
+    /// occurrence of that letter instead of one real identifier — guard
+    /// against that pathological case rather than silently mangling the
+    /// context.
+    private static func redact(_ identifier: String?, in text: String, placeholder: String) -> String {
+        guard let identifier, identifier.count >= 2 else { return text }
+        var result = text
+        while let range = result.range(of: identifier, options: .caseInsensitive) {
+            result.replaceSubrange(range, with: placeholder)
+        }
+        return result
     }
 
     /// Owner directive (2026-08-29): the two report-generation buttons on

@@ -126,6 +126,58 @@ struct AskAIContextTests {
         #expect(context.contains("A charge appeared twice."))
     }
 
+    // MARK: composeRedacted — account-name redaction via apiWriteDetails
+    // (2026-08-29): structurally-known account names, not a blind sweep
+    // of the whole chart of accounts.
+
+    private func stagedActionFinding(currentAccountName: String, suggestedAccountName: String) -> Finding {
+        let details = StagedAPIWriteDetails(
+            purchaseID: "p1", lineID: "l1", expectedSyncToken: "1",
+            currentAccountID: "50", currentAccountName: currentAccountName,
+            suggestedAccountID: "60", suggestedAccountName: suggestedAccountName
+        )
+        let action = ProposedAction(
+            id: "reclassify", title: "Reclassify to \(suggestedAccountName)", resolution: .stagedAPI,
+            guidedProcedure: nil, consequences: [], reversal: .irreversible, apiWriteDetails: details
+        )
+        return Finding(
+            id: "f1", ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0),
+            realmID: RealmID(rawValue: "realm-a"), period: AccountingPeriod(year: 2026, month: 7),
+            title: "Test finding", severity: .high, confidence: .high,
+            dollarExposure: Money(minorUnits: 48_620, currency: .usd),
+            evidence: [], proposedActions: [action], provenance: [],
+            // `compose(finding:)` doesn't surface `currentAccountName`
+            // anywhere on its own — only prose fields do. The narrative is
+            // exactly the kind of real place a rule mentions the CURRENT
+            // (wrong) account by name, which is what this test needs to
+            // actually exercise both redaction targets.
+            narrative: "This was coded to \(currentAccountName), which is a real problem."
+        )
+    }
+
+    @Test("composeRedacted replaces both the current and suggested account names from apiWriteDetails")
+    func composeRedactedReplacesStructuralAccountNames() {
+        let context = AskAIContext.composeRedacted(finding: stagedActionFinding(currentAccountName: "Owner Draw", suggestedAccountName: "Payroll Expenses"))
+        #expect(!context.contains("Owner Draw"))
+        #expect(!context.contains("Payroll Expenses"))
+        #expect(context.contains("an account"))
+        #expect(context.contains("another account"))
+    }
+
+    @Test("composeRedacted's account-name redaction is case-insensitive")
+    func composeRedactedAccountRedactionIsCaseInsensitive() {
+        let finding = stagedActionFinding(currentAccountName: "Owner Draw", suggestedAccountName: "Payroll Expenses")
+        // The action's own title embeds the suggested name in a different case than the field itself would ever naturally vary, proving the match isn't literal-only.
+        let context = AskAIContext.composeRedacted(finding: finding)
+        #expect(!context.lowercased().contains("owner draw"))
+    }
+
+    @Test("composeRedacted does not touch account names when the finding has no apiWriteDetails (manualQBO resolution)")
+    func composeRedactedLeavesManualQBOFindingsUnaffected() {
+        let plain = finding(narrative: "Reclassify to Office Expenses to fix this.")
+        #expect(AskAIContext.composeRedacted(finding: plain) == AskAIContext.compose(finding: plain))
+    }
+
     // MARK: composeHealthReport — the "Generate Report" buttons on
     // Findings, 2026-08-29.
 
