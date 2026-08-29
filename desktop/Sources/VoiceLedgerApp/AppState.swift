@@ -1376,6 +1376,19 @@ public final class AppState {
     /// treated as proof. The finding itself only resolves on the NEXT
     /// `syncAndEvaluate()` call, when the isVoided exclusion actually fires
     /// (acceptance criterion 14) — this method does not touch finding status.
+    ///
+    /// Owner directive (2026-08-29): "a checkmark I click when I've taken
+    /// care of it" must actually behave like one — previously, tapping "I
+    /// completed this in QBO" recorded the attestation and returned to a
+    /// list that still showed the finding open, with nothing telling the
+    /// owner a manual Sync was the missing step to see it clear. Rather
+    /// than trust the click itself (would violate CLAUDE.md rule 5 — green
+    /// only after the required check actually re-ran), this now triggers
+    /// that re-check immediately: `syncAndEvaluate()` re-fetches from QBO
+    /// and re-runs the rule, so the finding either genuinely disappears
+    /// (verified fixed) or honestly stays open (not actually fixed yet, or
+    /// QBO hasn't caught up) within the same interaction, not silently
+    /// pending until whenever the next unrelated sync happens to occur.
     public func attestCompletion(findingID: String, actorName: String, note: String?) async {
         guard let finding = finding(id: findingID), let action = finding.proposedActions.first else { return }
         let entry = ActivityLogEntry(
@@ -1397,6 +1410,8 @@ public final class AppState {
             try await self.store.appendActivityLogEntry(entry)
             self.activityLog = try await self.store.loadActivityLog()
         }
+        guard findingActionError?.findingID != findingID else { return }
+        await syncAndEvaluate()
     }
 
     /// The explicit "Remember this vendor" action — deliberately separate

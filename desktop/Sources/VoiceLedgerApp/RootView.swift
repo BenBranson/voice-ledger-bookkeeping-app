@@ -316,7 +316,21 @@ struct RootView: View {
                         environment: state.environment == .production ? .production : .sandbox,
                         coverageStatus: StatusMapping.status(for: coverageOutcome),
                         coverageDetail: coverageDetail,
-                        findings: state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) },
+                        // Owner directive (2026-08-29): Findings is the one
+                        // screen used with "an eagle eye" for every red flag
+                        // — it must never silently exclude a category of
+                        // open finding just because that category ALSO has
+                        // its own focused workflow page (Cleanup Assessment,
+                        // Balance Sheet Integrity). Previously excluded
+                        // every `cleanupAssessmentRuleIDs` finding (21 of the
+                        // ~29 registered rules) from this list entirely —
+                        // real discrepancies were only visible if the owner
+                        // separately remembered to open those other pages.
+                        // Cleanup Assessment/Balance Sheet Integrity keep
+                        // their own filtered views below (harmless overlap,
+                        // not a source of truth conflict — both read the
+                        // same `state.findings`).
+                        findings: state.findings.filter { $0.status == .open },
                         nextBestAction: NextBestAction.compute(
                             findings: state.findings,
                             checklistCompletions: state.checklistCompletions,
