@@ -16,13 +16,18 @@ public struct MonthEndCloseView: View {
         /// readiness signal (e.g. the QBO-side reconciliation/closing-date
         /// steps, which Voice Ledger cannot verify itself).
         public let readyDetail: String?
+        /// docs/VOICE_LEDGER_HANDOFF.md D3 — `MonthEndChecklist.isStale`,
+        /// computed by the caller (this view has no watermark of its own
+        /// to compare against). Meaningless when `completion` is `nil`.
+        public let isStale: Bool
         public var id: ChecklistItemID { item.id }
 
-        public init(item: ChecklistItem, isUnlocked: Bool, completion: ChecklistItemCompletion?, readyDetail: String?) {
+        public init(item: ChecklistItem, isUnlocked: Bool, completion: ChecklistItemCompletion?, readyDetail: String?, isStale: Bool = false) {
             self.item = item
             self.isUnlocked = isUnlocked
             self.completion = completion
             self.readyDetail = readyDetail
+            self.isStale = isStale
         }
     }
 
@@ -82,7 +87,15 @@ public struct MonthEndCloseView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     Spacer()
-                    if let completion = state.completion {
+                    if let completion = state.completion, state.isStale {
+                        // docs/VOICE_LEDGER_HANDOFF.md D3: the rules or
+                        // materiality policy that produced the evidence
+                        // this was completed against have since changed —
+                        // CLAUDE.md rule 5's "unknown is never green"
+                        // applied to an attestation, not just a check.
+                        VLStatusPill(.reviewNeeded, label: "Stale — re-verify")
+                            .help("Completed by \(completion.completedBy) on \(completion.completedAt.formatted(date: .abbreviated, time: .shortened)), but the rules or materiality policy used to evaluate this have changed since — re-check before trusting this as still complete.")
+                    } else if let completion = state.completion {
                         VLStatusPill(.verified, label: "Done")
                             .help("Completed by \(completion.completedBy) on \(completion.completedAt.formatted(date: .abbreviated, time: .shortened))")
                     } else if !state.isUnlocked {

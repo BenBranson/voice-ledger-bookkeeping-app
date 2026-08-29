@@ -44,13 +44,20 @@ public struct ChecklistItemCompletion: Codable, Sendable, Equatable {
     public let completedAt: Date
     public let completedBy: String
     public let note: String?
+    /// docs/VOICE_LEDGER_HANDOFF.md D3 — the evidence watermark at the
+    /// moment this item was marked complete. `nil` for a completion
+    /// recorded before this field existed; `MonthEndChecklist.isStale`
+    /// treats `nil` the same as a real mismatch (CLAUDE.md rule 5: unknown
+    /// is never treated as fresh).
+    public let watermark: EvidenceWatermark?
 
-    public init(itemID: ChecklistItemID, period: AccountingPeriod, completedAt: Date = Date(), completedBy: String, note: String? = nil) {
+    public init(itemID: ChecklistItemID, period: AccountingPeriod, completedAt: Date = Date(), completedBy: String, note: String? = nil, watermark: EvidenceWatermark? = nil) {
         self.itemID = itemID
         self.period = period
         self.completedAt = completedAt
         self.completedBy = completedBy
         self.note = note
+        self.watermark = watermark
     }
 }
 
@@ -115,5 +122,16 @@ public enum MonthEndChecklist {
         let completedIDs = Set(completions.filter { $0.period == period }.map(\.itemID))
         let completed = defaultItems.filter { completedIDs.contains($0.id) }.count
         return (completed, defaultItems.count)
+    }
+
+    /// docs/VOICE_LEDGER_HANDOFF.md D3: "A page is fresh iff the evidence
+    /// watermark it was completed against still equals the current
+    /// watermark." A completion recorded before watermarks existed
+    /// (`watermark == nil`) is treated as stale, not fresh — CLAUDE.md
+    /// rule 5's "unknown is never green" applied to this specific case:
+    /// there's no way to know whether the rules/materiality that produced
+    /// the original evidence still match, so it can't be asserted fresh.
+    public static func isStale(_ completion: ChecklistItemCompletion, currentWatermark: EvidenceWatermark) -> Bool {
+        completion.watermark != currentWatermark
     }
 }

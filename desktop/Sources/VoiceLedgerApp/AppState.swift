@@ -478,12 +478,27 @@ public final class AppState {
     /// treated as proof (§11.4's same posture for finding completion).
     public func completeChecklistItem(_ itemID: ChecklistItemID, actorName: String, note: String?) async {
         do {
-            let completion = ChecklistItemCompletion(itemID: itemID, period: period, completedBy: actorName, note: note)
+            // docs/VOICE_LEDGER_HANDOFF.md D3 — captured at completion
+            // time so a later rule-version bump or materiality change can
+            // be detected as staling this attestation (`AppState
+            // .currentEvidenceWatermark`).
+            let completion = ChecklistItemCompletion(itemID: itemID, period: period, completedBy: actorName, note: note, watermark: Self.currentEvidenceWatermark())
             try await store.upsertChecklistCompletion(completion)
             checklistCompletions = try await store.loadChecklistCompletions()
         } catch {
             loadState = .failed("\(error)")
         }
+    }
+
+    /// docs/VOICE_LEDGER_HANDOFF.md D3's watermark, computed fresh — never
+    /// cached, so a rule version bump takes effect on the very next call
+    /// with no migration step of its own.
+    static func currentEvidenceWatermark() -> EvidenceWatermark {
+        // A `\.identity` keypath on `[any Rule.Type]` crashes SILGen
+        // (Swift 6.3.3, existential-metatype keypath lowering) — an
+        // explicit closure sidesteps the same compiler bug.
+        let identities = RuleRegistry.all.map { ruleType in ruleType.identity }
+        return EvidenceWatermark.current(ruleIdentities: identities, materiality: .defaultPolicy)
     }
 
     public func uncompleteChecklistItem(_ itemID: ChecklistItemID) async {

@@ -706,6 +706,7 @@ struct RootView: View {
         let completionsForPeriod = state.checklistCompletions.filter { $0.period == state.currentPeriod }
         let completedIDs = Set(completionsForPeriod.map(\.itemID))
         let openFindings = state.findings.filter { $0.status == .open }
+        let currentWatermark = AppState.currentEvidenceWatermark()
 
         func detail(for ruleIDs: Set<String>) -> String {
             let count = openFindings.filter { ruleIDs.contains($0.ruleID.rawValue) }.count
@@ -724,11 +725,13 @@ struct RootView: View {
             default:
                 readyDetail = nil
             }
+            let completion = completionsForPeriod.first { $0.itemID == item.id }
             return MonthEndCloseView.ItemState(
                 item: item,
                 isUnlocked: MonthEndChecklist.isUnlocked(item, completedItemIDs: completedIDs),
-                completion: completionsForPeriod.first { $0.itemID == item.id },
-                readyDetail: readyDetail
+                completion: completion,
+                readyDetail: readyDetail,
+                isStale: completion.map { MonthEndChecklist.isStale($0, currentWatermark: currentWatermark) } ?? false
             )
         }
     }

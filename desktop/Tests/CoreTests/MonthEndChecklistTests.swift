@@ -32,6 +32,54 @@ struct MonthEndChecklistTests {
         #expect(MonthEndChecklist.isUnlocked(closingItem, completedItemIDs: allThree))
     }
 
+    @Test("isStale is false when the completion's watermark matches the current one")
+    func isStaleFalseWhenWatermarksMatch() {
+        let watermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.0.0", materialityFloorMinorUnits: 2_500)
+        let completion = ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "a"), period: AccountingPeriod(year: 2026, month: 7), completedBy: "A", watermark: watermark)
+        #expect(!MonthEndChecklist.isStale(completion, currentWatermark: watermark))
+    }
+
+    @Test("isStale is true when a rule version has changed since completion")
+    func isStaleTrueWhenRuleVersionChanged() {
+        let oldWatermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.0.0", materialityFloorMinorUnits: 2_500)
+        let newWatermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.1.0", materialityFloorMinorUnits: 2_500)
+        let completion = ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "a"), period: AccountingPeriod(year: 2026, month: 7), completedBy: "A", watermark: oldWatermark)
+        #expect(MonthEndChecklist.isStale(completion, currentWatermark: newWatermark))
+    }
+
+    @Test("isStale is true when the materiality floor has changed since completion")
+    func isStaleTrueWhenMaterialityChanged() {
+        let oldWatermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.0.0", materialityFloorMinorUnits: 2_500)
+        let newWatermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.0.0", materialityFloorMinorUnits: 5_000)
+        let completion = ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "a"), period: AccountingPeriod(year: 2026, month: 7), completedBy: "A", watermark: oldWatermark)
+        #expect(MonthEndChecklist.isStale(completion, currentWatermark: newWatermark))
+    }
+
+    @Test("isStale is true for a completion recorded before watermarks existed — unknown is never treated as fresh")
+    func isStaleTrueForNilWatermark() {
+        let currentWatermark = EvidenceWatermark(ruleVersionsSignature: "VL-DUP-EXP-001:1.0.0", materialityFloorMinorUnits: 2_500)
+        let completion = ChecklistItemCompletion(itemID: ChecklistItemID(rawValue: "a"), period: AccountingPeriod(year: 2026, month: 7), completedBy: "A", watermark: nil)
+        #expect(MonthEndChecklist.isStale(completion, currentWatermark: currentWatermark))
+    }
+
+    @Test("EvidenceWatermark.current is order-independent — rule identity order never changes the signature")
+    func evidenceWatermarkCurrentIsOrderIndependent() {
+        let a = RuleIdentity(id: RuleID(rawValue: "VL-A"), version: RuleVersion(major: 1, minor: 0, patch: 0), title: "A", category: .duplicateExpense, ruleClass: .categorization, page: .cleanupAssessment, accountingPrinciple: "", sourceDependencies: [])
+        let b = RuleIdentity(id: RuleID(rawValue: "VL-B"), version: RuleVersion(major: 2, minor: 1, patch: 0), title: "B", category: .duplicateExpense, ruleClass: .categorization, page: .cleanupAssessment, accountingPrinciple: "", sourceDependencies: [])
+        let watermark1 = EvidenceWatermark.current(ruleIdentities: [a, b], materiality: .defaultPolicy)
+        let watermark2 = EvidenceWatermark.current(ruleIdentities: [b, a], materiality: .defaultPolicy)
+        #expect(watermark1 == watermark2)
+    }
+
+    @Test("EvidenceWatermark.current changes when a rule's version changes")
+    func evidenceWatermarkCurrentChangesWithRuleVersion() {
+        let v1 = RuleIdentity(id: RuleID(rawValue: "VL-A"), version: RuleVersion(major: 1, minor: 0, patch: 0), title: "A", category: .duplicateExpense, ruleClass: .categorization, page: .cleanupAssessment, accountingPrinciple: "", sourceDependencies: [])
+        let v2 = RuleIdentity(id: RuleID(rawValue: "VL-A"), version: RuleVersion(major: 1, minor: 1, patch: 0), title: "A", category: .duplicateExpense, ruleClass: .categorization, page: .cleanupAssessment, accountingPrinciple: "", sourceDependencies: [])
+        let watermark1 = EvidenceWatermark.current(ruleIdentities: [v1], materiality: .defaultPolicy)
+        let watermark2 = EvidenceWatermark.current(ruleIdentities: [v2], materiality: .defaultPolicy)
+        #expect(watermark1 != watermark2)
+    }
+
     @Test("The default checklist has no duplicate item IDs")
     func defaultChecklistHasNoDuplicateIDs() {
         let ids = MonthEndChecklist.defaultItems.map(\.id)
