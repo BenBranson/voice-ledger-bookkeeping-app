@@ -109,10 +109,16 @@ public struct VoiceStatusPanel: View {
                     .buttonStyle(.plain)
                 }
 
+                // Confirms she actually received the right words — real,
+                // requested feedback (2026-08-29): on-screen only (no
+                // spoken echo — that would add a full TTS round trip to
+                // every command, working against responsiveness), but
+                // made more prominent than a caption so it reads as "here
+                // is what I heard," not an afterthought.
                 if !transcript.isEmpty {
                     Text("\"\(transcript)\"")
-                        .font(VLTypography.body())
-                        .foregroundStyle(VLColor.textSecondary)
+                        .font(VLTypography.bodyEmphasis())
+                        .foregroundStyle(VLColor.textPrimary)
                 }
 
                 if let lastMessage {
