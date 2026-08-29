@@ -832,12 +832,12 @@ public final class AppState {
     /// `AskAIContext`, Core, pure — this method never adds anything to it
     /// itself, preserving CLAUDE.md rule 1's boundary no matter which page
     /// calls this).
-    public func askAI(contextKey: String, contextText: String, question: String) async {
+    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = []) async {
         guard !askingAIContextKeys.contains(contextKey) else { return }
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText)
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history)
             askAIAnswers[contextKey] = answer
         } catch {
             askAIError = (contextKey: contextKey, message: "\(error)")

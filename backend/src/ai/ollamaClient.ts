@@ -13,7 +13,7 @@
  * OpenAI-shaped `{ choices: [{ message }] }`.
  */
 
-import type { AICompletionClient, AICompletionResult } from "./aiClient.js";
+import type { AIChatTurn, AICompletionClient, AICompletionResult } from "./aiClient.js";
 
 export class OllamaApiError extends Error {
   constructor(
@@ -31,7 +31,10 @@ export class OllamaClient implements AICompletionClient {
     private readonly model: string
   ) {}
 
-  async complete(systemPrompt: string, userMessage: string): Promise<AICompletionResult> {
+  /** `history` (see `AIChatTurn`'s doc comment): prior turns of the SAME
+   * voice conversation, replayed between the system prompt and the final
+   * user message so a follow-up isn't answered from zero context. */
+  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = []): Promise<AICompletionResult> {
     const startedAt = Date.now();
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
@@ -40,6 +43,7 @@ export class OllamaClient implements AICompletionClient {
         model: this.model,
         messages: [
           { role: "system", content: systemPrompt },
+          ...history,
           { role: "user", content: userMessage }
         ],
         stream: false,

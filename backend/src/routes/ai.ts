@@ -19,7 +19,7 @@
 import { Router, type RequestHandler } from "express";
 import type { AIConfig } from "../config.js";
 import type { AISettingsStore } from "../ai/aiSettingsStore.js";
-import type { AICompletionClient } from "../ai/aiClient.js";
+import type { AIChatTurn, AICompletionClient } from "../ai/aiClient.js";
 import { OpenAIClient, OpenAIApiError } from "../ai/openaiClient.js";
 import { OllamaClient, OllamaApiError } from "../ai/ollamaClient.js";
 import { logEvent } from "../logging/logger.js";
@@ -31,10 +31,49 @@ Rules you must follow on every reply:
 - Never give definitive tax, legal, or filing advice. If asked something in that territory, say it's a question for a licensed CPA or attorney, not something you can answer for them.
 - Never claim a QuickBooks write, correction, or filing has happened, will happen, or was verified — that is only ever true if the context says so explicitly.
 - Keep answers grounded strictly in the context provided. If the context doesn't contain enough information to answer, say so plainly instead of guessing.
-- Be concise and plain-English — the person reading this is a bookkeeper, not an accountant, per the app's own design philosophy ("training wheels and bowling bumpers").`;
+- Be concise and plain-English — the person reading this is a bookkeeper, not an accountant, per the app's own design philosophy ("training wheels and bowling bumpers").
+- Talk like a knowledgeable colleague who's actually looked at these books, not a script reading numbers back. Don't restate the question before answering it: say "Cash is $34,250," not "You asked about your cash balance, and I can tell you that..."
+- Be decisive, not clarification-happy. If earlier turns in this conversation already proposed a specific next step and the user now says something like "yes," "sure," or "go ahead," that means do — or rather, describe — the exact thing you already offered; don't ask what they meant.
+- This may be spoken aloud by a voice assistant — keep it to a few sentences, no bullet points or markdown formatting.`;
 
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_CONTEXT_LENGTH = 8000;
+/// Prior-turn replay for voice follow-ups (added 2026-08-29 — see
+/// `AIChatTurn`'s doc comment). Budgeted the same way as question/context
+/// above: hard caps enforced server-side regardless of what the client
+/// sends, and a per-turn cap so one oversized entry can't eat the whole
+/// budget alone.
+const MAX_HISTORY_TURNS = 12;
+const MAX_HISTORY_TOTAL_CHARS = 3000;
+const MAX_HISTORY_TURN_CHARS = 800;
+
+/** Never trusts the client's history blindly — validates shape, caps a
+ * single turn's length, keeps only the most recent turns, then drops the
+ * oldest of those until the total is under budget. */
+export function sanitizeHistory(raw: unknown): AIChatTurn[] {
+  if (!Array.isArray(raw)) return [];
+  const turns: AIChatTurn[] = [];
+  for (const item of raw) {
+    if (
+      item &&
+      typeof item === "object" &&
+      (item.role === "user" || item.role === "assistant") &&
+      typeof item.content === "string" &&
+      item.content.trim() !== ""
+    ) {
+      turns.push({ role: item.role, content: item.content.slice(0, MAX_HISTORY_TURN_CHARS) });
+    }
+  }
+
+  const recent = turns.slice(-MAX_HISTORY_TURNS);
+  let totalChars = recent.reduce((sum, turn) => sum + turn.content.length, 0);
+  let start = 0;
+  while (totalChars > MAX_HISTORY_TOTAL_CHARS && start < recent.length) {
+    totalChars -= recent[start]!.content.length;
+    start++;
+  }
+  return recent.slice(start);
+}
 
 export function aiRoutes(
   aiConfig: AIConfig | null,
@@ -109,10 +148,12 @@ export function aiRoutes(
         return;
       }
 
+      const history = sanitizeHistory(req.body?.history);
+
       logEvent("ask_ai_invoked", { realmId });
       try {
         const userMessage = `Context (already computed by the app, not by you):\n${context}\n\nQuestion: ${question}`;
-        const result = await client.complete(SYSTEM_PROMPT, userMessage);
+        const result = await client.complete(SYSTEM_PROMPT, userMessage, history);
         logEvent("ask_ai_succeeded", { realmId, latencyMs: result.latencyMs });
         res.json({ answer: result.text, model: result.model });
       } catch (error) {

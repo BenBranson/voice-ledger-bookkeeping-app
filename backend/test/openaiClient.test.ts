@@ -64,6 +64,29 @@ describe("OpenAIClient", () => {
     await expect(client.complete("sys", "user")).rejects.toThrow(OpenAIApiError);
   });
 
+  it("inserts history turns between the system prompt and the final user message (2026-08-29 voice memory)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ model: "gpt-4o-mini", choices: [{ message: { content: "ok" } }] })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new OpenAIClient("test-key", "gpt-4o-mini");
+    const history = [
+      { role: "user" as const, content: "Why is this flagged?" },
+      { role: "assistant" as const, content: "It's 5x the usual amount." }
+    ];
+    await client.complete("sys", "what should I do?", history);
+    const [, requestInit] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse(requestInit.body);
+    expect(body.messages).toEqual([
+      { role: "system", content: "sys" },
+      { role: "user", content: "Why is this flagged?" },
+      { role: "assistant", content: "It's 5x the usual amount." },
+      { role: "user", content: "what should I do?" }
+    ]);
+  });
+
   it("OpenAIApiError carries the real HTTP status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 429, text: vi.fn() }));
     const client = new OpenAIClient("test-key", "gpt-4o-mini");

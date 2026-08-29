@@ -10,7 +10,7 @@
  * no opinion about what the model is allowed to say.
  */
 
-import type { AICompletionClient, AICompletionResult } from "./aiClient.js";
+import type { AIChatTurn, AICompletionClient, AICompletionResult } from "./aiClient.js";
 
 export class OpenAIApiError extends Error {
   constructor(
@@ -32,13 +32,14 @@ export class OpenAIClient implements AICompletionClient {
   ) {}
 
   /**
-   * A single non-streaming chat completion. No conversation history is
-   * threaded through here — each call is independent, `systemPrompt` +
-   * `userMessage` fully determine the request. Callers own composing
-   * `userMessage` from whatever context (a finding's fields, a question)
-   * needs to be included.
+   * A single non-streaming chat completion. `history` (added 2026-08-29 —
+   * see `AIChatTurn`'s doc comment) replays prior turns of the SAME voice
+   * conversation between `systemPrompt` and the final `userMessage`, so a
+   * follow-up question isn't answered from zero context. Callers own
+   * composing `userMessage`/`history` from whatever context (a finding's
+   * fields, a question, recent transcript) needs to be included.
    */
-  async complete(systemPrompt: string, userMessage: string): Promise<OpenAICompletionResult> {
+  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = []): Promise<OpenAICompletionResult> {
     const startedAt = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -50,6 +51,7 @@ export class OpenAIClient implements AICompletionClient {
         model: this.model,
         messages: [
           { role: "system", content: systemPrompt },
+          ...history,
           { role: "user", content: userMessage }
         ],
         // Deterministic-leaning, not creative — this is explaining a

@@ -662,6 +662,25 @@ public final class VoiceEngine: NSObject {
         }
     }
 
+    /// Prior turns of THIS voice conversation, for the AI reasoning path
+    /// to replay — added 2026-08-29, after researching a different app's
+    /// voice assistant that the owner said felt sharper: it replays its
+    /// last several exchanges into every call, while this engine
+    /// previously sent one isolated question with zero memory of what was
+    /// just discussed (the likely cause of a follow-up feeling like it
+    /// was "talking in circles"). `dropLast()` excludes the CURRENT
+    /// user utterance — it's already recorded into `transcriptHistory`
+    /// (via `recordTranscript` in `handleRecordedAudio`, before this is
+    /// ever called) but is sent separately as the actual `question`, not
+    /// as history. Capped at 12 turns here too — belt-and-suspenders with
+    /// the backend's own `sanitizeHistory`, which enforces the real budget
+    /// regardless of what this sends.
+    private func recentHistory(maxTurns: Int = 12) -> [AskAIHistoryTurn] {
+        transcriptHistory.dropLast().suffix(maxTurns).map { entry in
+            AskAIHistoryTurn(role: entry.speaker == .user ? "user" : "assistant", content: entry.text)
+        }
+    }
+
     /// "Why is this flagged" et al. — grounded ENTIRELY in the current
     /// finding's own already-computed fields via `AskAIContext.compose`,
     /// the exact same call `FindingDetailView`'s on-screen Ask AI panel
@@ -680,7 +699,8 @@ public final class VoiceEngine: NSObject {
         await appState.askAI(
             contextKey: Self.reasoningContextKey,
             contextText: contextText,
-            question: "In two or three short sentences I can read aloud: why is this flagged, and what would you recommend as the next step? Reference only the proposed resolution(s) already listed above — never invent a new fix."
+            question: "In two or three short sentences I can read aloud: why is this flagged, and what would you recommend as the next step? Reference only the proposed resolution(s) already listed above — never invent a new fix.",
+            history: recentHistory()
         )
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
             return VoiceTurn(speech: answer)
@@ -701,7 +721,7 @@ public final class VoiceEngine: NSObject {
             openFindingsCount = openFindings.count
             contextText = AskAIContext.compose(pageTitle: "Voice Ledger", findings: openFindings)
         }
-        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText)
+        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText, history: recentHistory())
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
             // Deterministic (Swift-authored, not model-authored) nudge
             // toward the review queue — real, live-tested gap (2026-08-29):
