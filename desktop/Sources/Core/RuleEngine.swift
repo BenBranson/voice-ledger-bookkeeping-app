@@ -117,6 +117,11 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-CLOSED-PERIOD-DRIFT-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's
     /// backlog table.
     case closedPeriodDrift
+    /// `VL-VEND-PRICE-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
+    /// table. Also covers `VL-SUB-INCREASE-001` — see
+    /// `VendorPriceIncreaseRule`'s doc comment for why that's one rule, not
+    /// two.
+    case vendorPriceIncrease
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

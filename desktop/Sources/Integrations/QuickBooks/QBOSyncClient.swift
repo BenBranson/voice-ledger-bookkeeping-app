@@ -161,6 +161,29 @@ public struct QBOSyncClient: Sendable {
         return Self.flattenTrialBalance(decoded.rows)
     }
 
+    /// Purchases only, for a single period — deliberately narrower than the
+    /// full `sync()` (no bills/accounts/vendors/etc. fetched). Added for
+    /// `VL-VEND-PRICE-001`/`VL-SUB-INCREASE-001`/`VL-SUB-UNUSED-001`, which
+    /// all need ONE additional period's vendor activity to compare against
+    /// the current one — no new QBO capability, just `readPurchases` (the
+    /// same operation `sync()` already uses) called against a different
+    /// date range. Bills are intentionally excluded: recurring
+    /// vendor/subscription charges in this app's real data are Purchases
+    /// (bank/card charges), not Bills (which represent open payables), and
+    /// adding a second entity type here would double the fetch cost of
+    /// these three rules for no evidence any subscription is ever billed
+    /// that way.
+    public func fetchPurchases(realmID: RealmID, period: AccountingPeriod) async throws -> [LedgerTransaction] {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let purchasesData = try await backend.call(
+            .readPurchases,
+            realmID: realmID,
+            params: ReadPurchasesParams(startDate: startDate, endDate: endDate)
+        )
+        let purchasesResponse = try JSONDecoder().decode(QBOPurchaseQueryResponse.self, from: purchasesData)
+        return (purchasesResponse.queryResponse.purchase ?? []).map { Self.normalize($0) }
+    }
+
     /// Aged Receivables — verified live 2026-08-18. See `AgingLine`'s doc
     /// comment: 6 money columns per row, and leaf rows appear in TWO
     /// different shapes within the same real report (bare, untagged

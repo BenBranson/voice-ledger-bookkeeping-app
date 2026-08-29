@@ -384,6 +384,15 @@ public struct NormalizedDataSet: Sendable {
     /// time (`RuleContext.periodLockSnapshot`). Same "empty means not
     /// fetched" posture as the other report arrays above.
     public let trialBalanceLines: [TrialBalanceLine]
+    /// Added for `VL-VEND-PRICE-001` — the prior period's Purchases only
+    /// (see `QBOSyncClient.fetchPurchases`'s doc comment for why Purchases
+    /// only, not Bills too), fetched independently from `transactions`
+    /// (which is always the CURRENT `period`'s activity). Empty means "not
+    /// fetched this sync," same posture as the other optional-coverage
+    /// arrays above — a real prior period with genuinely zero purchases is
+    /// a rare but real possible case the rule can't distinguish from
+    /// "never fetched," so it treats empty as `.cannotEvaluate` either way.
+    public let priorPeriodTransactions: [LedgerTransaction]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -400,6 +409,7 @@ public struct NormalizedDataSet: Sendable {
         agedReceivablesLines: [AgingLine] = [],
         agedPayablesLines: [AgingLine] = [],
         trialBalanceLines: [TrialBalanceLine] = [],
+        priorPeriodTransactions: [LedgerTransaction] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -415,6 +425,7 @@ public struct NormalizedDataSet: Sendable {
         self.agedReceivablesLines = agedReceivablesLines
         self.agedPayablesLines = agedPayablesLines
         self.trialBalanceLines = trialBalanceLines
+        self.priorPeriodTransactions = priorPeriodTransactions
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

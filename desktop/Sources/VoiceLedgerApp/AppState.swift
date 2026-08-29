@@ -48,7 +48,7 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001", "VL-VEND-PRICE-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
@@ -855,6 +855,9 @@ public final class AppState {
             // in the same NormalizedDataSet the rule receives — same
             // independent-fetch, try?-wrapped posture as the reports above.
             let trialBalanceLinesForSync = (try? await syncClient.fetchTrialBalance(realmID: realmID, period: period)) ?? []
+            // VL-VEND-PRICE-001 needs last period's Purchases to compare
+            // against this period's — same independent-fetch posture.
+            let priorPeriodTransactionsForSync = (try? await syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)) ?? []
 
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
@@ -881,6 +884,7 @@ public final class AppState {
                 agedReceivablesLines: agedReceivablesLines,
                 agedPayablesLines: agedPayablesLines,
                 trialBalanceLines: trialBalanceLinesForSync,
+                priorPeriodTransactions: priorPeriodTransactionsForSync,
                 coverage: syncedDataSet.coverage,
                 companyFacts: syncedDataSet.companyFacts
             )

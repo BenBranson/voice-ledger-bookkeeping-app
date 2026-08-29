@@ -160,7 +160,8 @@ public enum RuleRegistry {
         PeriodClosedTransactionRule.self,
         PersonalExpenseRule.self,
         VendorAnomalyRule.self,
-        ClosedPeriodDriftRule.self
+        ClosedPeriodDriftRule.self,
+        VendorPriceIncreaseRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {
