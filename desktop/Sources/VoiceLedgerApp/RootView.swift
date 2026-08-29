@@ -330,7 +330,7 @@ struct RootView: View {
                         // their own filtered views below (harmless overlap,
                         // not a source of truth conflict — both read the
                         // same `state.findings`).
-                        findings: state.findings.filter { $0.status == .open },
+                        findings: FindingTriage.sorted(state.findings.filter { $0.status == .open }),
                         nextBestAction: NextBestAction.compute(
                             findings: state.findings,
                             checklistCompletions: state.checklistCompletions,

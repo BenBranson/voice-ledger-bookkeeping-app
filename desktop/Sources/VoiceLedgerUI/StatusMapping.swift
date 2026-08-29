@@ -53,6 +53,23 @@ public enum StatusMapping {
         }
     }
 
+    /// Owner directive (2026-08-29): "give them a percentage and color code
+    /// them" — bands `Finding.priorityScore` (Core, deterministic) into the
+    /// same three-color vocabulary the rest of the app already uses for
+    /// urgency, rather than inventing a fourth color scheme just for this.
+    /// Thresholds are the same 50/75 split `Severity.derive` + the score's
+    /// own weighting already produce in practice: a `.high`-severity,
+    /// `.high`-confidence finding lands at 80+ before exposure is even
+    /// considered, so `.urgent` genuinely means "severity and confidence
+    /// both say this is real and material," not an arbitrary cutoff.
+    public static func priorityStatus(_ score: Int) -> VLStatus {
+        switch score {
+        case 75...: return .urgent
+        case 50..<75: return .reviewNeeded
+        default: return .informational
+        }
+    }
+
     public static func resolutionStatus(_ kind: ResolutionKind) -> VLStatus {
         switch kind {
         case .manualQBO: return .actionRequired

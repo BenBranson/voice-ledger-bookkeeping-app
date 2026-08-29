@@ -134,7 +134,12 @@ private struct FindingRow: View {
     let finding: Finding
 
     var body: some View {
-        VLCard(accentRail: StatusMapping.severityStatus(finding.severity).color) {
+        // Owner directive (2026-08-29): triage queue — the accent rail and
+        // the leading pill both key off `priorityScore`'s color band, not
+        // raw severity, so the strongest visual signal on the row matches
+        // the order the list itself is sorted in (`FindingTriage.sorted`,
+        // RootView.swift).
+        VLCard(accentRail: StatusMapping.priorityStatus(finding.priorityScore).color) {
             VStack(alignment: .leading, spacing: VLSpacing.xs) {
                 HStack {
                     Text(finding.title)
@@ -146,6 +151,7 @@ private struct FindingRow: View {
                         .foregroundStyle(VLColor.textPrimary)
                 }
                 HStack(spacing: VLSpacing.xs) {
+                    VLStatusPill(StatusMapping.priorityStatus(finding.priorityScore), label: "\(finding.priorityScore)% priority")
                     VLStatusPill(StatusMapping.severityStatus(finding.severity), label: finding.severity == .high ? "High" : "Low")
                     Text("Confidence: \(finding.confidence.rawValue.capitalized)")
                         .font(VLTypography.caption())
