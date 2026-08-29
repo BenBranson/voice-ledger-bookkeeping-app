@@ -379,6 +379,11 @@ public struct NormalizedDataSet: Sendable {
     /// Added for `VL-REPORT-TIE-001` — same tie-out, for A/P against Aged
     /// Payables.
     public let agedPayablesLines: [AgingLine]
+    /// Added for `VL-CLOSED-PERIOD-DRIFT-001` — the Trial Balance report for
+    /// this exact `period`, compared against the snapshot captured at lock
+    /// time (`RuleContext.periodLockSnapshot`). Same "empty means not
+    /// fetched" posture as the other report arrays above.
+    public let trialBalanceLines: [TrialBalanceLine]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -394,6 +399,7 @@ public struct NormalizedDataSet: Sendable {
         balanceSheetLines: [ReportLine] = [],
         agedReceivablesLines: [AgingLine] = [],
         agedPayablesLines: [AgingLine] = [],
+        trialBalanceLines: [TrialBalanceLine] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
@@ -408,6 +414,7 @@ public struct NormalizedDataSet: Sendable {
         self.balanceSheetLines = balanceSheetLines
         self.agedReceivablesLines = agedReceivablesLines
         self.agedPayablesLines = agedPayablesLines
+        self.trialBalanceLines = trialBalanceLines
         self.coverage = coverage
         self.companyFacts = companyFacts
     }

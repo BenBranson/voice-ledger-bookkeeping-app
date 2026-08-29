@@ -48,7 +48,7 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
@@ -426,6 +426,19 @@ public final class AppState {
             let lock = PeriodLock(lockedThrough: through, lockedBy: actorName, note: note)
             try await store.savePeriodLock(lock)
             periodLock = lock
+
+            // VL-CLOSED-PERIOD-DRIFT-001's baseline. Fetched live, right now
+            // — not from `self.trialBalanceLines`, which may be stale or for
+            // a different period than `through` if the bookkeeper is
+            // locking a period other than whatever they last viewed on the
+            // Trial Balance page. Best-effort: a fetch failure here must not
+            // fail the lock itself, same posture as every other optional
+            // report fetch in this file — it just means the drift check
+            // reports .cannotEvaluate until the period is re-locked.
+            if let lines = try? await syncClient.fetchTrialBalance(realmID: realmID, period: through), !lines.isEmpty {
+                let snapshot = PeriodLockSnapshot.capture(lockedThrough: through, from: lines)
+                try? await store.savePeriodLockSnapshot(snapshot)
+            }
         } catch {
             loadState = .failed("\(error)")
         }
@@ -838,6 +851,10 @@ public final class AppState {
             let balanceSheetLines = (try? await syncClient.fetchBalanceSheet(realmID: realmID, period: period)) ?? []
             let agedReceivablesLines = (try? await syncClient.fetchAgedReceivables(realmID: realmID)) ?? []
             let agedPayablesLines = (try? await syncClient.fetchAgedPayables(realmID: realmID)) ?? []
+            // VL-CLOSED-PERIOD-DRIFT-001 needs this period's Trial Balance
+            // in the same NormalizedDataSet the rule receives — same
+            // independent-fetch, try?-wrapped posture as the reports above.
+            let trialBalanceLinesForSync = (try? await syncClient.fetchTrialBalance(realmID: realmID, period: period)) ?? []
 
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
@@ -863,6 +880,7 @@ public final class AppState {
                 balanceSheetLines: balanceSheetLines,
                 agedReceivablesLines: agedReceivablesLines,
                 agedPayablesLines: agedPayablesLines,
+                trialBalanceLines: trialBalanceLinesForSync,
                 coverage: syncedDataSet.coverage,
                 companyFacts: syncedDataSet.companyFacts
             )
@@ -879,7 +897,11 @@ public final class AppState {
             // and `VL-PERIOD-CLOSED-001` needs the real on-disk value, not
             // whatever the last render happened to hold.
             let currentPeriodLock = try await store.loadPeriodLock()
-            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock)
+            // Same "loaded fresh, not from `self`" reasoning as
+            // `currentPeriodLock` immediately above — VL-CLOSED-PERIOD-DRIFT-001
+            // needs the on-disk snapshot as of right now.
+            let currentPeriodLockSnapshot = try await store.loadPeriodLockSnapshot()
+            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock, periodLockSnapshot: currentPeriodLockSnapshot)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh

@@ -38,6 +38,7 @@ public actor ClientStore {
     private var clientMemoryRulesURL: URL { directory.appending(path: "client-memory-rules.json") }
     private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
     private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
+    private var periodLockSnapshotURL: URL { directory.appending(path: "period-lock-snapshot.json") }
     private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
     private var salesTaxAttestationURL: URL { directory.appending(path: "sales-tax-attestation.json") }
     private var taxEstimateSettingsURL: URL { directory.appending(path: "tax-estimate-settings.json") }
@@ -255,6 +256,20 @@ public actor ClientStore {
     public func clearPeriodLock() throws {
         guard FileManager.default.fileExists(atPath: periodLockURL.path) else { return }
         try FileManager.default.removeItem(at: periodLockURL)
+        // The snapshot is only meaningful alongside its lock — an orphaned
+        // snapshot from a cleared lock would let `VL-CLOSED-PERIOD-DRIFT-001`
+        // compare against a period nobody currently considers locked.
+        try? FileManager.default.removeItem(at: periodLockSnapshotURL)
+    }
+
+    /// `VL-CLOSED-PERIOD-DRIFT-001`'s baseline — `nil` when the current
+    /// lock (if any) predates this feature, or no lock has been set.
+    public func loadPeriodLockSnapshot() throws -> PeriodLockSnapshot? {
+        try load(PeriodLockSnapshot?.self, from: periodLockSnapshotURL, default: nil)
+    }
+
+    public func savePeriodLockSnapshot(_ snapshot: PeriodLockSnapshot) throws {
+        try save(snapshot, to: periodLockSnapshotURL)
     }
 
     // MARK: - Carry-forward marks (Close Package)

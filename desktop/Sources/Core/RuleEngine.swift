@@ -114,6 +114,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VendorAnomalyRule`'s doc comment for what's deliberately NOT
     /// covered ("unusual timing," "unusual name").
     case vendorAmountAnomaly
+    /// `VL-CLOSED-PERIOD-DRIFT-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's
+    /// backlog table.
+    case closedPeriodDrift
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
@@ -224,6 +227,12 @@ public struct RuleContext: Sendable {
     /// bookkeeper has never set one for this realm. `VL-PERIOD-CLOSED-001`
     /// is the only rule that reads this; every other rule ignores it.
     public let periodLock: PeriodLock?
+    /// Trial Balance snapshot captured the moment `periodLock` was set
+    /// (`Core/PeriodLock.swift`'s `PeriodLockSnapshot`) — `nil` when no lock
+    /// has been set, or when the lock predates this feature (an old lock
+    /// with no snapshot on disk). `VL-CLOSED-PERIOD-DRIFT-001` is the only
+    /// rule that reads this.
+    public let periodLockSnapshot: PeriodLockSnapshot?
 
     public init(
         period: AccountingPeriod,
@@ -232,7 +241,8 @@ public struct RuleContext: Sendable {
         dismissedFindingIDs: Set<String> = [],
         gatedTransactionIDs: Set<String> = [],
         asOfDate: AccountingDate = AccountingDate(date: Date()),
-        periodLock: PeriodLock? = nil
+        periodLock: PeriodLock? = nil,
+        periodLockSnapshot: PeriodLockSnapshot? = nil
     ) {
         self.period = period
         self.materiality = materiality
@@ -241,6 +251,7 @@ public struct RuleContext: Sendable {
         self.gatedTransactionIDs = gatedTransactionIDs
         self.asOfDate = asOfDate
         self.periodLock = periodLock
+        self.periodLockSnapshot = periodLockSnapshot
     }
 
     /// Returns a copy with `gatedTransactionIDs` replaced — used by
