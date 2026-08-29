@@ -81,6 +81,16 @@ struct FinancialKPIsTests {
         ]
         #expect(FinancialKPIs.quickRatio(from: lines) == nil)
     }
+
+    @Test("Quick ratio falls back to Total Bank Accounts / Total Accounts Receivable — real labels confirmed live 2026-08-29 against this app's sandbox company, which has no bare Cash/Accounts Receivable summary line")
+    func quickRatioFallsBackToRealSandboxLabels() {
+        let lines = [
+            ReportLine(label: "Total Bank Accounts", amount: money(500_000), depth: 1, isSummary: true),
+            ReportLine(label: "Total Accounts Receivable", amount: money(200_000), depth: 1, isSummary: true),
+            ReportLine(label: "Total Current Liabilities", amount: money(350_000), depth: 0, isSummary: true)
+        ]
+        #expect(FinancialKPIs.quickRatio(from: lines) == 2.0)
+    }
 }
 
 @Suite("BalanceSheetBreakdown")
@@ -119,6 +129,18 @@ struct BalanceSheetBreakdownTests {
     func emptyWhenNoSplitPoint() {
         #expect(BalanceSheetBreakdown.assetSlices(from: []).isEmpty)
         #expect(BalanceSheetBreakdown.liabilitiesAndEquitySlices(from: []).isEmpty)
+    }
+
+    @Test("Splits at 'TOTAL ASSETS' (all caps) — the real label confirmed live 2026-08-29 against this app's sandbox company")
+    func splitsAtAllCapsTotalAssets() {
+        let lines = [
+            ReportLine(label: "Checking", amount: money(500_000), depth: 1, isSummary: false),
+            ReportLine(label: "TOTAL ASSETS", amount: money(500_000), depth: 0, isSummary: true),
+            ReportLine(label: "Accounts Payable", amount: money(200_000), depth: 1, isSummary: false),
+            ReportLine(label: "TOTAL LIABILITIES AND EQUITY", amount: money(500_000), depth: 0, isSummary: true)
+        ]
+        #expect(BalanceSheetBreakdown.assetSlices(from: lines).map(\.label) == ["Checking"])
+        #expect(BalanceSheetBreakdown.liabilitiesAndEquitySlices(from: lines).map(\.label) == ["Accounts Payable"])
     }
 }
 

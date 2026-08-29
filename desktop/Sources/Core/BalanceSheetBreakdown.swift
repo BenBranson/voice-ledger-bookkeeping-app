@@ -22,12 +22,16 @@ public enum BalanceSheetBreakdown {
         }
     }
 
-    /// `nil` if "Total Assets" isn't found — the split point between the
+    /// `nil` if neither label is found — the split point between the
     /// Assets section and the Liabilities & Equity section that follows it
-    /// in QBO's own report ordering. Same "return nil, never guess"
-    /// posture as `FinancialKPIs`.
+    /// in QBO's own report ordering. Same "return nil, never guess" posture
+    /// as `FinancialKPIs`. Live-verified 2026-08-29 against this app's real
+    /// sandbox company: the grand total here renders as "TOTAL ASSETS"
+    /// (all caps) — a different casing than the section subtotals like
+    /// "Total Current Assets," which is why this tries both rather than
+    /// trusting the same casing convention throughout.
     private static func totalAssetsIndex(in lines: [ReportLine]) -> Int? {
-        lines.firstIndex(where: { $0.isSummary && $0.label == "Total Assets" })
+        lines.firstIndex(where: { $0.isSummary && ($0.label == "TOTAL ASSETS" || $0.label == "Total Assets") })
     }
 
     public static func assetSlices(from lines: [ReportLine]) -> [Slice] {
