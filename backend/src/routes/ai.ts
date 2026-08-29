@@ -19,7 +19,9 @@
 import { Router, type RequestHandler } from "express";
 import type { AIConfig } from "../config.js";
 import type { AISettingsStore } from "../ai/aiSettingsStore.js";
+import type { AICompletionClient } from "../ai/aiClient.js";
 import { OpenAIClient, OpenAIApiError } from "../ai/openaiClient.js";
+import { OllamaClient, OllamaApiError } from "../ai/ollamaClient.js";
 import { logEvent } from "../logging/logger.js";
 
 const SYSTEM_PROMPT = `You are the Ask panel inside Voice Ledger, a bookkeeping tool. Every dollar figure, severity rating, confidence score, and pass/fail decision you see in the context below was already computed by deterministic code, not by you.
@@ -42,10 +44,19 @@ export function aiRoutes(
   rateLimitByRealm: RequestHandler
 ): Router {
   const router = Router();
-  const client = aiConfig ? new OpenAIClient(aiConfig.apiKey, aiConfig.model) : null;
+  const client: AICompletionClient | null = aiConfig
+    ? aiConfig.provider === "ollama"
+      ? new OllamaClient(aiConfig.baseUrl, aiConfig.model)
+      : new OpenAIClient(aiConfig.apiKey, aiConfig.model)
+    : null;
 
   router.get("/ai/status", requireSession, (_req, res) => {
-    res.json({ configured: client !== null, enabled: aiSettingsStore.isEnabled() });
+    res.json({
+      configured: client !== null,
+      enabled: aiSettingsStore.isEnabled(),
+      provider: aiConfig?.provider ?? null,
+      model: aiConfig?.model ?? null
+    });
   });
 
   router.post("/ai/settings", requireSession, (req, res) => {
@@ -56,7 +67,12 @@ export function aiRoutes(
     }
     aiSettingsStore.setEnabled(enabled);
     logEvent("ai_settings_changed");
-    res.json({ configured: client !== null, enabled: aiSettingsStore.isEnabled() });
+    res.json({
+      configured: client !== null,
+      enabled: aiSettingsStore.isEnabled(),
+      provider: aiConfig?.provider ?? null,
+      model: aiConfig?.model ?? null
+    });
   });
 
   router.post(
@@ -101,7 +117,7 @@ export function aiRoutes(
         res.json({ answer: result.text, model: result.model });
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "UnknownError";
-        if (error instanceof OpenAIApiError) {
+        if (error instanceof OpenAIApiError || error instanceof OllamaApiError) {
           logEvent("ask_ai_failed", { realmId, httpStatus: error.httpStatus, error: errorName });
         } else {
           logEvent("ask_ai_failed", { realmId, error: errorName });

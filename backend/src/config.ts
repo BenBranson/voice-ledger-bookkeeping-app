@@ -20,10 +20,15 @@ export interface QBOCredentials {
   readonly minorVersion: number;
 }
 
-export interface AIConfig {
-  readonly apiKey: string;
-  readonly model: string;
-}
+/**
+ * Two shapes, picked by `AI_PROVIDER`. "ollama" needs no secret at all —
+ * it's this machine talking to its own local Ollama server — which is why
+ * `resolveAIConfig` below never returns `null` for it the way it does for
+ * a missing OpenAI key.
+ */
+export type AIConfig =
+  | { readonly provider: "openai"; readonly apiKey: string; readonly model: string }
+  | { readonly provider: "ollama"; readonly baseUrl: string; readonly model: string };
 
 export interface AppConfig {
   readonly port: number;
@@ -91,19 +96,40 @@ export function resolveQBOCredentials(env: NodeJS.ProcessEnv = process.env): QBO
 }
 
 /**
- * `null` when `OPENAI_API_KEY` isn't set — the AI feature (Ask [AI] panel)
- * is entirely optional, unlike QBO credentials. A backend with no AI key
- * configured still runs normally; every deterministic rule, finding, and
- * report works exactly the same (CLAUDE.md's kill-switch guarantee: "every
- * deterministic rule... still works with it off"). The API key itself
- * never leaves this process — CLAUDE.md rule 3, "no secrets in the desktop
- * binary" — the desktop client only ever calls `/realms/:realmId/ask-ai`,
- * never OpenAI directly.
+ * The AI feature (Ask [AI] panel) is entirely optional, unlike QBO
+ * credentials — a backend with no AI provider configured still runs
+ * normally; every deterministic rule, finding, and report works exactly
+ * the same (CLAUDE.md's kill-switch guarantee: "every deterministic
+ * rule... still works with it off").
+ *
+ * `AI_PROVIDER=ollama` (2026-08-29, per the owner's own direction to cut
+ * AI cost — this app's default going forward): talks to a local Ollama
+ * server, no API key, genuinely free per request. Never `null` for this
+ * provider — there's no secret to be missing, only "is Ollama actually
+ * running," which `OllamaClient.complete` surfaces as a normal request
+ * failure if not, the same way a network error would for any provider.
+ *
+ * `AI_PROVIDER=openai` (or unset, for backward compatibility): `null`
+ * when `OPENAI_API_KEY` isn't set. The key itself never leaves this
+ * process — CLAUDE.md rule 3, "no secrets in the desktop binary" — the
+ * desktop client only ever calls `/realms/:realmId/ask-ai`, never OpenAI
+ * directly.
  */
 export function resolveAIConfig(env: NodeJS.ProcessEnv = process.env): AIConfig | null {
+  const provider = (env.AI_PROVIDER ?? "openai").trim().toLowerCase();
+
+  if (provider === "ollama") {
+    return {
+      provider: "ollama",
+      baseUrl: env.OLLAMA_BASE_URL ?? "http://localhost:11434",
+      model: env.OLLAMA_MODEL ?? "gemma4:e4b"
+    };
+  }
+
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey || apiKey.trim() === "") return null;
   return {
+    provider: "openai",
     apiKey,
     model: env.OPENAI_MODEL ?? "gpt-4o-mini"
   };

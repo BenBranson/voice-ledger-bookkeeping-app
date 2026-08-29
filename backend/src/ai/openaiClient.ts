@@ -10,6 +10,8 @@
  * no opinion about what the model is allowed to say.
  */
 
+import type { AICompletionClient, AICompletionResult } from "./aiClient.js";
+
 export class OpenAIApiError extends Error {
   constructor(
     message: string,
@@ -20,13 +22,10 @@ export class OpenAIApiError extends Error {
   }
 }
 
-export interface OpenAICompletionResult {
-  readonly text: string;
-  readonly model: string;
-  readonly latencyMs: number;
-}
+/** @deprecated use `AICompletionResult` from `./aiClient.js` — kept as an alias so nothing importing this name breaks. */
+export type OpenAICompletionResult = AICompletionResult;
 
-export class OpenAIClient {
+export class OpenAIClient implements AICompletionClient {
   constructor(
     private readonly apiKey: string,
     private readonly model: string

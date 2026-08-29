@@ -212,7 +212,7 @@ public struct ConnectionView: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(.red)
                 }
-                Text("The Ask [AI] panel is powered by OpenAI. The API key lives only in the backend — this app never sees or displays it. Turning this off disables every AI feature app-wide; every deterministic rule, finding, calculation, and report keeps working exactly the same either way.")
+                Text("\(aiProviderDescription) Turning this off disables every AI feature app-wide; every deterministic rule, finding, calculation, and report keeps working exactly the same either way.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }
@@ -223,8 +223,27 @@ public struct ConnectionView: View {
         guard let aiStatus = state.aiStatus else {
             return state.isCheckingAIStatus ? "Checking…" : "Not yet checked"
         }
-        if !aiStatus.configured { return "Not configured (no API key set on the backend)" }
+        if !aiStatus.configured { return "Not configured (no provider set on the backend)" }
         return aiStatus.enabled ? "On" : "Off"
+    }
+
+    /// Never hardcodes a provider name — the backend's actual config
+    /// (`AIStatus.provider`/`.model`) decides what's true here, so this
+    /// stays honest whether it's answering via local Ollama (free) or
+    /// OpenAI (paid). The API key, when one exists, never leaves the
+    /// backend either way.
+    private var aiProviderDescription: String {
+        guard let aiStatus = state.aiStatus, aiStatus.configured else {
+            return "The Ask [AI] panel needs a provider configured on the backend."
+        }
+        switch aiStatus.provider {
+        case "ollama":
+            return "The Ask [AI] panel runs locally via Ollama\(aiStatus.model.map { " (\($0))" } ?? "") — free, and nothing leaves this machine."
+        case "openai":
+            return "The Ask [AI] panel is powered by OpenAI. The API key lives only in the backend — this app never sees or displays it."
+        default:
+            return "The Ask [AI] panel is configured on the backend."
+        }
     }
 
     private var writeAccessLabel: String {

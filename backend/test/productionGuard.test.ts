@@ -87,11 +87,30 @@ describe("resolveAIConfig — AI features are optional, never a startup requirem
 
   it("returns the key and defaults the model to gpt-4o-mini when OPENAI_MODEL is unset", () => {
     const config = resolveAIConfig({ OPENAI_API_KEY: "sk-test-123" } as NodeJS.ProcessEnv);
-    expect(config).toEqual({ apiKey: "sk-test-123", model: "gpt-4o-mini" });
+    expect(config).toEqual({ provider: "openai", apiKey: "sk-test-123", model: "gpt-4o-mini" });
   });
 
   it("honors an explicit OPENAI_MODEL override", () => {
     const config = resolveAIConfig({ OPENAI_API_KEY: "sk-test-123", OPENAI_MODEL: "gpt-4o" } as NodeJS.ProcessEnv);
     expect(config?.model).toBe("gpt-4o");
+  });
+
+  it("AI_PROVIDER=ollama needs no API key at all — it's a local server, not a hosted one", () => {
+    const config = resolveAIConfig({ AI_PROVIDER: "ollama" } as NodeJS.ProcessEnv);
+    expect(config).toEqual({ provider: "ollama", baseUrl: "http://localhost:11434", model: "gemma4:e4b" });
+  });
+
+  it("honors explicit OLLAMA_BASE_URL / OLLAMA_MODEL overrides", () => {
+    const config = resolveAIConfig({
+      AI_PROVIDER: "ollama",
+      OLLAMA_BASE_URL: "http://localhost:9999",
+      OLLAMA_MODEL: "qwen2.5-coder:7b"
+    } as NodeJS.ProcessEnv);
+    expect(config).toEqual({ provider: "ollama", baseUrl: "http://localhost:9999", model: "qwen2.5-coder:7b" });
+  });
+
+  it("AI_PROVIDER is case-insensitive", () => {
+    const config = resolveAIConfig({ AI_PROVIDER: "OLLAMA" } as NodeJS.ProcessEnv);
+    expect(config?.provider).toBe("ollama");
   });
 });
