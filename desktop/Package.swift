@@ -42,8 +42,13 @@ let package = Package(
         // /staging — deferred; stub only (docs/phase-0/10_STAGING_APPROVAL_AUDIT.md).
         .target(name: "Staging", dependencies: ["Core"], path: "Sources/Staging"),
 
-        // /voice — deferred deliberately last per Build Order §12.
+        // /voice — Build Order §12 ("Voice layer last, so a voice bug never
+        // blocks anything else"), filled in 2026-08-29 after everything
+        // else. The deterministic intent router + session context + review
+        // queue — no audio I/O, no LLM call, all pure and unit-testable.
         .target(name: "Voice", dependencies: ["Core"], path: "Sources/Voice"),
+
+        .testTarget(name: "VoiceTests", dependencies: ["Voice", "Core"], path: "Tests/VoiceTests"),
 
         // /db — Phase 1 step 1.6: ClientStore.swift, now backed by a real
         // SQLite database per realm (docs/phase-0/07_CLIENT_ISOLATION.md
