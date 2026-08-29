@@ -19,13 +19,31 @@ public struct BalanceSheetDonutChart: View {
 
     public var body: some View {
         HStack(spacing: VLSpacing.md) {
-            donut(title: "Assets", slices: assetSlices)
-            donut(title: "Liabilities & Equity", slices: liabilitiesAndEquitySlices)
+            DonutCard(title: "Assets", slices: assetSlices)
+            DonutCard(title: "Liabilities & Equity", slices: liabilitiesAndEquitySlices)
+        }
+    }
+}
+
+/// One donut, with click-to-inspect: tapping a slice shows its title and
+/// amount in a callout beside the chart — real, requested feature
+/// (2026-08-29) — while the always-visible legend list stays underneath,
+/// unchanged (the owner's own instruction: "keep the reference underneath
+/// the graphs").
+private struct DonutCard: View {
+    let title: String
+    let slices: [BalanceSheetBreakdown.Slice]
+
+    @State private var selectedAmount: Double?
+
+    private var selectedSlice: BalanceSheetBreakdown.Slice? {
+        guard let selectedAmount else { return nil }
+        return slices.min { lhs, rhs in
+            abs(lhs.amount.majorUnitsDouble - selectedAmount) < abs(rhs.amount.majorUnitsDouble - selectedAmount)
         }
     }
 
-    @ViewBuilder
-    private func donut(title: String, slices: [BalanceSheetBreakdown.Slice]) -> some View {
+    var body: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
                 Text(title.uppercased())
@@ -39,12 +57,33 @@ public struct BalanceSheetDonutChart: View {
                         .foregroundStyle(VLColor.textMuted)
                         .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
-                    Chart(Array(slices.enumerated()), id: \.element.id) { index, slice in
-                        SectorMark(angle: .value("Amount", slice.amount.majorUnitsDouble), innerRadius: .ratio(0.6), angularInset: 1.5)
-                            .foregroundStyle(VLChartPalette.color(at: index))
-                            .cornerRadius(3)
+                    HStack(spacing: VLSpacing.sm) {
+                        Chart(Array(slices.enumerated()), id: \.element.id) { index, slice in
+                            SectorMark(angle: .value("Amount", slice.amount.majorUnitsDouble), innerRadius: .ratio(0.6), angularInset: 1.5)
+                                .foregroundStyle(VLChartPalette.color(at: index))
+                                .cornerRadius(3)
+                                // Dims every slice except the selected one,
+                                // so a click visibly highlights which wedge
+                                // the callout is describing.
+                                .opacity(selectedSlice == nil || selectedSlice?.id == slice.id ? 1 : 0.35)
+                        }
+                        .chartAngleSelection(value: $selectedAmount)
+                        .frame(width: 140, height: 140)
+
+                        if let selectedSlice {
+                            VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                                Text(selectedSlice.label)
+                                    .font(VLTypography.cardTitle())
+                                    .foregroundStyle(VLColor.textPrimary)
+                                    .lineLimit(2)
+                                Text(selectedSlice.amount.description)
+                                    .font(VLTypography.tabularNumeric())
+                                    .foregroundStyle(VLColor.cyan)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .frame(height: 140)
+                    .animation(.default, value: selectedAmount)
 
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         ForEach(Array(slices.prefix(5).enumerated()), id: \.element.id) { index, slice in
