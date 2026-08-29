@@ -174,7 +174,10 @@ There is one accounting scope (`com.intuit.quickbooks.accounting`) and it grants
                   the same normalized shape as API data
   /xero           (future) same contract, different adapter
 /staging          local, diffable record of every proposed correction
-/voice            whisper.cpp, local intent parser, optional LLM fallback
+/voice            faster-whisper (Python, local) + local intent parser +
+                  optional LLM fallback — built 2026-08-29 with
+                  faster-whisper, not whisper.cpp as originally written
+                  here; see docs/VOICE_LEDGER_HANDOFF.md D8 for why
 /db               findings, activity log, imports, dismissal/memory rules
 /ui               SwiftUI screens
 ```

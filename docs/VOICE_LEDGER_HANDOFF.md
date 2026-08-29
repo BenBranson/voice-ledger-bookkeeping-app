@@ -235,6 +235,18 @@ Confirmed single operator. Multi-operator is deferred as its own future design p
 
 Chose native SwiftUI over Electron/Tauri. **Consequence accepted:** no code reuse from the web prototype; slower path to a running app; better native feel. The prototype becomes pure conceptual reference.
 
+## D8 — `/voice` module — BUILT 2026-08-29
+
+Build Order item 12 ("Voice layer last, so a voice bug never blocks anything else") — filled in last, after every other approved-scope item, per that same ordering. `Sources/Voice` was a literal empty placeholder until this.
+
+**Spec text says `whisper.cpp`; what actually shipped is faster-whisper (Python).** Flagged per CLAUDE.md's "flag rather than silently work around" — the owner has a separate, more mature app (`Claude Voice Ledger`, not part of this repo) with an already-working local STT/TTS stack (faster-whisper + Piper, FastAPI) they explicitly chose to reuse rather than build a new whisper.cpp integration from scratch. `voice-service/` at this repo's root is that same stack, adapted (no CORS middleware — the only caller is the native Swift app via `URLSession`, not a browser).
+
+**What's real**: `voice-service/` (STT/TTS, fully local, live-verified end-to-end including a genuine TTS→STT round trip and — separately — the actual Swift `VoiceServiceClient` against the real running service, both via the new `voiceledger-devtool voice-service-check` command); `Sources/Voice` (`VoiceSessionContext`, `VoiceIntentRouter` — the deterministic fast path, ported from a design already battle-tested in that reference app including its own documented, verified LLM hallucination bugs — `ReviewQueue`, `VoiceTurn`); `VoiceEngine` (`VoiceLedgerApp`, `AVAudioEngine`-based recording with RMS silence auto-stop, conversation mode, `AVAudioPlayer` playback); a global mic button + status panel in `RootView`; the launcher starts `voice-service` as a third process alongside the backend.
+
+**The safety guarantee is structural, not a runtime check**: `VoiceIntent` has no case that can apply a staged QBO fix (`AppState.applyStagedFix`) — confirmed by grep, not just by testing that it happens not to fire: the only occurrence of `applyStagedFix` anywhere in `Sources/Voice`/`VoiceEngine.swift` is a doc comment explaining it's never called. The two `VoicePendingAction` kinds voice CAN confirm (`dismissFinding`/`completeChecklistItem`) are Voice Ledger's own low-stakes internal state, never a QBO write — matching docs/VOICE_LEDGER_SPEC.md's Voice Guardrails line exactly: "voice navigates, filters, searches, reads, and drafts, but never finalizes a QBO write without visible on-screen confirmation."
+
+**Not live-tested with a real spoken command** — this environment has no microphone to drive. Everything up to and including the actual mic/speaker round trip is either unit-tested (the deterministic router, review queue, session context — 26 tests) or live-verified against the real running `voice-service` process (STT/TTS, and the full launcher-started three-process stack, confirmed via a real end-to-end launch: backend + voice-service + a genuine foreground app window, not a stuck early-launch process). The one thing that still needs a human to actually speak to the running app once: does a spoken "Cleanup Assessment" navigate, does "why is this flagged" produce a sensible answer, does the mic permission prompt appear correctly on first use.
+
 ---
 
 # 6. QBO integration — VERIFIED findings
