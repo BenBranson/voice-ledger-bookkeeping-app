@@ -5,26 +5,43 @@ import DesignSystem
 /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit — see `Core/FirmCockpit.swift`'s
 /// doc comment for exactly what this slice covers and what it deliberately
 /// doesn't (client-blocked items, deadlines — this app tracks neither).
-/// **Read-only summary, not a switcher**: tapping a client here does not
-/// make it the active connection — this app still runs as exactly one
-/// realm per launch. Actually switching which client's data the rest of
-/// the app shows is separate, larger work (a connected-client registry
-/// already exists via this same backend endpoint, but re-instantiating
-/// `AppState`/`ClientStore`/the sync session for a newly-picked realm
-/// on demand is not built).
+/// **Now a real switcher too**: "Switch to This Client" mints a fresh
+/// session for that realm and replaces this app's entire active
+/// connection (`VoiceLedgerApp.swift`'s `performSwitch`) — a real,
+/// working re-instantiation, not a stub. `currentRealmID` disables the
+/// button on whichever client is already active, so it can't be tapped
+/// pointlessly on itself.
 public struct FirmCockpitView: View {
     private let environment: VLEnvironmentTone
     private let summaries: [ClientCockpitSummary]
     private let isLoading: Bool
     private let errorMessage: String?
+    private let currentRealmID: String?
+    private let isSwitchingClient: Bool
+    private let switchClientError: String?
     private let onRefresh: () -> Void
+    private let onSwitchToClient: (ConnectedClient) -> Void
 
-    public init(environment: VLEnvironmentTone, summaries: [ClientCockpitSummary], isLoading: Bool, errorMessage: String?, onRefresh: @escaping () -> Void) {
+    public init(
+        environment: VLEnvironmentTone,
+        summaries: [ClientCockpitSummary],
+        isLoading: Bool,
+        errorMessage: String?,
+        currentRealmID: String? = nil,
+        isSwitchingClient: Bool = false,
+        switchClientError: String? = nil,
+        onRefresh: @escaping () -> Void,
+        onSwitchToClient: @escaping (ConnectedClient) -> Void = { _ in }
+    ) {
         self.environment = environment
         self.summaries = summaries
         self.isLoading = isLoading
         self.errorMessage = errorMessage
+        self.currentRealmID = currentRealmID
+        self.isSwitchingClient = isSwitchingClient
+        self.switchClientError = switchClientError
         self.onRefresh = onRefresh
+        self.onSwitchToClient = onSwitchToClient
     }
 
     public var body: some View {
@@ -38,7 +55,7 @@ public struct FirmCockpitView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("Every connected client, from what's already been synced locally — not a live re-check of each one. Doesn't show client-blocked items or deadlines; this app doesn't track either yet. Selecting a client here doesn't switch the app to it — that's separate work, not built.")
+                Text("Every connected client, from what's already been synced locally — not a live re-check of each one. Doesn't show client-blocked items or deadlines; this app doesn't track either yet.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -49,6 +66,14 @@ public struct FirmCockpitView: View {
                         Text(errorMessage)
                             .font(VLTypography.caption())
                             .foregroundStyle(.red)
+                    }
+                }
+
+                if let switchClientError {
+                    VLCard(accentRail: VLColor.violet) {
+                        Text("Couldn't switch clients: \(switchClientError)")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
                     }
                 }
 
@@ -108,6 +133,15 @@ public struct FirmCockpitView: View {
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }
+                }
+
+                if summary.client.realmID.rawValue == currentRealmID {
+                    VLStatusPill(.verified, label: "Currently Active")
+                } else {
+                    Button(isSwitchingClient ? "Switching…" : "Switch to This Client") {
+                        onSwitchToClient(summary.client)
+                    }
+                    .disabled(isSwitchingClient)
                 }
             }
         }

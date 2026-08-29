@@ -327,12 +327,26 @@ public final class AppState {
     public private(set) var firmCockpitSummaries: [ClientCockpitSummary] = []
     public private(set) var isLoadingFirmCockpit = false
     public private(set) var firmCockpitError: String?
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher. `AppState` deliberately
+    /// has no idea HOW to build another `AppState` (it would need its own
+    /// `backend`/`ClientStore`/period, a different concern entirely) — it
+    /// only owns the trigger and the in-flight/error UI state. The actual
+    /// re-instantiation is `VoiceLedgerApp.swift`'s job, wired in here as a
+    /// callback exactly once at construction.
+    public var onSwitchToClient: ((RealmID, QBOEnvironment) async -> Void)?
+    public private(set) var isSwitchingClient = false
+    public private(set) var switchClientError: String?
 
     private let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
     /// (e.g. `checklistCompletions`) without duplicating the period value.
     public var currentPeriod: AccountingPeriod { period }
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher/Firm Cockpit —
+    /// exposed read-only so a view can tell which connected client THIS
+    /// `AppState` instance is currently running as, without waiting on
+    /// `companyInfo` (only populated after the first health check).
+    public var currentRealmID: RealmID { realmID }
     private let backend: BackendClient
     private let syncClient: QBOSyncClient
     private let store: ClientStore
@@ -590,6 +604,48 @@ public final class AppState {
     /// existing "one report failing must not fail the whole sync" posture
     /// (`syncAndEvaluate()`), applied here across clients instead of
     /// across reports for one client.
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher — the trigger. Delegates
+    /// entirely to `onSwitchToClient` (see that property's doc comment for
+    /// why); this method's own job is just the in-flight/error UI state
+    /// every other async action in this file already follows the same
+    /// shape for. A no-op (never sets `isSwitchingClient`) if the app
+    /// layer never wired the callback — e.g. a test or CLI context that
+    /// has no notion of "another AppState to switch to."
+    public func switchActiveClient(to targetRealmID: RealmID, environment targetEnvironment: QBOEnvironment) async {
+        guard let onSwitchToClient, !isSwitchingClient else { return }
+        isSwitchingClient = true
+        switchClientError = nil
+        await onSwitchToClient(targetRealmID, targetEnvironment)
+        // Deliberately does NOT set `isSwitchingClient = false` on success —
+        // a successful switch replaces this ENTIRE AppState instance (the
+        // app layer swaps which one `RootView` displays), so there is no
+        // "this instance, now idle" state to return to; only a failure
+        // leaves this same instance still active and needing to reset.
+        // `failClientSwitch` is `onSwitchToClient`'s only way back into
+        // this instance on the failure path.
+    }
+
+    /// Called by `onSwitchToClient` (app layer) to get a fresh session
+    /// token for the target realm, using THIS `AppState`'s own `backend`
+    /// connection — the one piece of the switch the app layer genuinely
+    /// cannot do itself, since `backend`/its session token are private to
+    /// whichever `AppState` currently holds a valid one. Everything else
+    /// about building the new `AppState` (a new `ClientStore`, a new
+    /// `BackendClient` pointed at the new token) is the app layer's job,
+    /// not this one's — this method's only responsibility is the one
+    /// privileged call only the currently-active session can make.
+    public func requestSwitchSessionToken(forRealmID targetRealmID: RealmID) async throws -> String {
+        try await backend.requestSession(forRealmID: targetRealmID)
+    }
+
+    /// Called by `onSwitchToClient` (app layer) when the switch attempt
+    /// itself fails — never called on success, since success means this
+    /// `AppState` instance is about to be replaced, not updated.
+    public func failClientSwitch(_ message: String) {
+        isSwitchingClient = false
+        switchClientError = message
+    }
+
     public func loadFirmCockpit() async {
         isLoadingFirmCockpit = true
         firmCockpitError = nil

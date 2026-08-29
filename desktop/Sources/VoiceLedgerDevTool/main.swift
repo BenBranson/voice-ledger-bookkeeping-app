@@ -17,7 +17,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -27,6 +27,10 @@ guard arguments.count >= 2, ["health", "tax-check", "connections-check", "ask-ai
                               them (docs/VOICE_LEDGER_SPEC.md Page 9). Read-only.
       connections-check      Fetch the backend's connection registry live
                               (docs/VOICE_LEDGER_SPEC.md's Firm Cockpit). Read-only.
+      switch-session-check   Mints a fresh session for VOICE_LEDGER_REALM_ID
+                              via the Client Switcher's endpoint, then proves
+                              the new token actually works with a follow-up
+                              call.
       ask-ai-check           Checks AI status, then asks a real OpenAI
                               question through the real BackendClient.askAI
                               code path. Costs a small amount of real API
@@ -167,6 +171,26 @@ case "health":
         }
     } catch {
         FileHandle.standardError.write("Health check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "switch-session-check":
+    // docs/VOICE_LEDGER_SPEC.md's Client Switcher — live-verifies the
+    // actual BackendClient.requestSession Swift code path, then proves
+    // the returned token is a genuinely working session (not just a
+    // 200 response) by using it for a real follow-up call.
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let client = BackendClient(configuration: configuration)
+        let newToken = try await client.requestSession(forRealmID: realmID)
+        print("Minted a new session token (\(newToken.count) chars).")
+        let newConfig = BackendConfiguration(baseURL: configuration.baseURL, sessionToken: newToken)
+        let newClient = BackendClient(configuration: newConfig)
+        let connections = try await newClient.getConnections()
+        print("New token works — fetched \(connections.count) connection(s) with it.")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("switch-session-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
     }
 

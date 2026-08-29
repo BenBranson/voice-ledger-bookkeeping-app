@@ -125,7 +125,13 @@ struct RootView: View {
                 summaries: state.firmCockpitSummaries,
                 isLoading: state.isLoadingFirmCockpit,
                 errorMessage: state.firmCockpitError,
-                onRefresh: { Task { await state.loadFirmCockpit() } }
+                currentRealmID: state.currentRealmID.rawValue,
+                isSwitchingClient: state.isSwitchingClient,
+                switchClientError: state.switchClientError,
+                onRefresh: { Task { await state.loadFirmCockpit() } },
+                onSwitchToClient: { client in
+                    Task { await state.switchActiveClient(to: client.realmID, environment: client.environment) }
+                }
             )
             .task {
                 if state.firmCockpitSummaries.isEmpty { await state.loadFirmCockpit() }

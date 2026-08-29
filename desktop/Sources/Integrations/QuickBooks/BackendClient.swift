@@ -146,6 +146,36 @@ public actor BackendClient {
         )
     }
 
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher — `POST
+    /// /realms/:realmId/session`. Mints a fresh session token for a
+    /// DIFFERENT already-connected realm than this client's own current
+    /// session, proving only that the caller already holds a valid
+    /// session for *some* realm (this is a single-operator tool — see
+    /// the backend route's own doc comment for why that's sufficient,
+    /// not a privilege escalation). Never sends or needs a refresh
+    /// token — this backend never exposes one to the desktop client at
+    /// all, matching every other call in this file.
+    public func requestSession(forRealmID targetRealmID: RealmID) async throws -> String {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(targetRealmID.rawValue)/session")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(SwitchSessionResponse.self, from: data).sessionToken
+    }
+
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel status — `GET /ai/status`.
     /// Not realm-scoped (the kill switch and API-key configuration are
     /// app-wide, per the backend's `ai_settings` table), but still
@@ -275,6 +305,10 @@ struct WriteAccessRequest: Encodable, Sendable {
 
 struct WriteAccessResponse: Decodable, Sendable {
     let writeEnabled: Bool
+}
+
+struct SwitchSessionResponse: Decodable, Sendable {
+    let sessionToken: String
 }
 
 struct ConnectionsResponse: Decodable, Sendable {

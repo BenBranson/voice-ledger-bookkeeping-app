@@ -22,6 +22,11 @@ import VoiceLedgerUI
 struct VoiceLedgerApp: App {
     @State private var appState: AppState?
     @State private var configError: String?
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher — the one piece of
+    /// configuration that stays constant across a switch (same backend,
+    /// different realm/session). `nil` only before `configure()`'s first
+    /// successful run.
+    @State private var backendBaseURL: URL?
 
     var body: some Scene {
         WindowGroup("Voice Ledger") {
@@ -64,23 +69,57 @@ struct VoiceLedgerApp: App {
                 return
             }
             let realmID = RealmID(rawValue: realmIDString)
-            let backend = BackendClient(configuration: configuration)
-
-            let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appending(path: "VoiceLedger", directoryHint: .isDirectory)
-            let store = try ClientStore(realmID: realmID, rootDirectory: supportDir)
 
             // CLAUDE.md rule 7: sandbox vs. production must be visually
             // unmistakable. This app has no environment picker — the
             // environment comes from which backend/realm you pointed it at,
-            // surfaced honestly rather than defaulted to sandbox.
+            // surfaced honestly rather than defaulted to sandbox. (Only for
+            // THIS initial launch — a client switched-to later carries its
+            // own real environment from the backend's connection registry,
+            // see `performSwitch` below, never this env var.)
             let environmentString = ProcessInfo.processInfo.environment["VOICE_LEDGER_ENVIRONMENT"] ?? "sandbox"
             let environment: QBOEnvironment = environmentString == "production" ? .production : .sandbox
 
-            let period = AccountingPeriod(year: 2026, month: 7)
-            appState = AppState(realmID: realmID, environment: environment, period: period, backend: backend, store: store, clientStoreRootDirectory: supportDir)
+            backendBaseURL = configuration.baseURL
+            appState = try buildAppState(realmID: realmID, environment: environment, sessionToken: configuration.sessionToken, backendBaseURL: configuration.baseURL)
         } catch {
             configError = "\(error)"
+        }
+    }
+
+    /// The one place an `AppState` is constructed — used for the initial
+    /// launch AND every subsequent client switch, so the two paths can
+    /// never quietly drift apart (a switch producing a subtly
+    /// differently-configured `AppState` than a fresh launch would).
+    private func buildAppState(realmID: RealmID, environment: QBOEnvironment, sessionToken: String?, backendBaseURL: URL) throws -> AppState {
+        let configuration = BackendConfiguration(baseURL: backendBaseURL, sessionToken: sessionToken)
+        let backend = BackendClient(configuration: configuration)
+        let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appending(path: "VoiceLedger", directoryHint: .isDirectory)
+        let store = try ClientStore(realmID: realmID, rootDirectory: supportDir)
+        let period = AccountingPeriod(year: 2026, month: 7)
+        let newState = AppState(realmID: realmID, environment: environment, period: period, backend: backend, store: store, clientStoreRootDirectory: supportDir)
+        newState.onSwitchToClient = { [weak newState] targetRealmID, targetEnvironment in
+            await performSwitch(to: targetRealmID, environment: targetEnvironment, requestingFrom: newState)
+        }
+        return newState
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Client Switcher. `requestingFrom` is
+    /// whichever `AppState` the user actually clicked "switch" on —
+    /// always the currently-displayed one in practice, but captured
+    /// explicitly at the moment the switch started (never re-read from
+    /// `self.appState`), so a failure reports back onto the exact
+    /// instance that initiated it even if something else changed
+    /// `self.appState` in the meantime.
+    private func performSwitch(to targetRealmID: RealmID, environment targetEnvironment: QBOEnvironment, requestingFrom current: AppState?) async {
+        guard let current, let backendBaseURL else { return }
+        do {
+            let newToken = try await current.requestSwitchSessionToken(forRealmID: targetRealmID)
+            let newState = try buildAppState(realmID: targetRealmID, environment: targetEnvironment, sessionToken: newToken, backendBaseURL: backendBaseURL)
+            appState = newState
+        } catch {
+            current.failClientSwitch("\(error)")
         }
     }
 }
