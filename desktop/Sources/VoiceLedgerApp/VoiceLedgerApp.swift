@@ -20,6 +20,16 @@ import VoiceLedgerUI
 ///   swift run VoiceLedgerApp
 @main
 struct VoiceLedgerApp: App {
+    /// Owner directive (2026-08-29): closing the app's one window (the red
+    /// traffic-light button, or Cmd-W) left it with zero windows and no
+    /// way back — neither the Dock icon nor `NSApp.activate` brought one
+    /// back, confirmed live with a real Dock-icon click, not just
+    /// `activate`. A plain `WindowGroup` with no app delegate is supposed
+    /// to handle this itself, but doesn't here reliably; `AppDelegate`
+    /// below hooks the real AppKit reopen callback and asks SwiftUI to
+    /// open a fresh window explicitly rather than relying on that default.
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.openWindow) private var openWindow
     @State private var appState: AppState?
     @State private var configError: String?
     /// docs/VOICE_LEDGER_SPEC.md's Client Switcher — the one piece of
@@ -29,7 +39,7 @@ struct VoiceLedgerApp: App {
     @State private var backendBaseURL: URL?
 
     var body: some Scene {
-        WindowGroup("Voice Ledger") {
+        WindowGroup("Voice Ledger", id: Self.mainWindowID) {
             Group {
                 if let appState {
                     RootView(state: appState)
@@ -57,9 +67,16 @@ struct VoiceLedgerApp: App {
                 // otherwise silently stays background-only.
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
+                // Hands the AppDelegate a real way to open a fresh window —
+                // see `AppDelegate`'s own doc comment for why the default
+                // reopen behavior wasn't enough on its own, confirmed via
+                // an actual Dock-icon click leaving the app at zero windows.
+                appDelegate.onReopenWithNoWindows = { openWindow(id: Self.mainWindowID) }
             }
         }
     }
+
+    private static let mainWindowID = "main"
 
     private func configure() {
         do {
@@ -121,6 +138,27 @@ struct VoiceLedgerApp: App {
         } catch {
             current.failClientSwitch("\(error)")
         }
+    }
+}
+
+/// Owner directive (2026-08-29): "make sure everything works soundly" —
+/// closing this app's one window (traffic-light close button, or Cmd-W)
+/// left the app running with zero windows and no way to get one back.
+/// Confirmed live: neither `NSApp.activate` nor a real Dock-icon click
+/// brought a window back on their own, even though a plain `WindowGroup`
+/// with no custom delegate is supposed to handle exactly this case by
+/// default. `onReopenWithNoWindows` is set once, right after launch
+/// (`VoiceLedgerApp.body`'s `.onAppear`), to call SwiftUI's own
+/// `openWindow(id:)` — asking explicitly rather than continuing to rely on
+/// a default that demonstrably wasn't firing here.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var onReopenWithNoWindows: (() -> Void)?
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            onReopenWithNoWindows?()
+        }
+        return true
     }
 }
 
