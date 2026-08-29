@@ -38,6 +38,31 @@ struct VoiceSessionContextTests {
         #expect(cleared.pendingAction == nil)
     }
 
+    @Test("stage is idle when nothing is set")
+    func stageIsIdleByDefault() {
+        #expect(VoiceSessionContext.empty.stage == .idle)
+    }
+
+    @Test("stage is reviewingSummary once a review queue exists but nothing is opened yet")
+    func stageIsReviewingSummaryWithQueueOnly() {
+        var ctx = VoiceSessionContext.empty
+        ctx.reviewQueue = ["f1", "f2"]
+        #expect(ctx.stage == .reviewingSummary)
+    }
+
+    @Test("stage is activeFinding once currentEntity is set")
+    func stageIsActiveFindingWithCurrentEntity() {
+        let ctx = VoiceSessionContext.empty.viewingEntity(VoiceEntityRef(type: .finding, id: "f1"))
+        #expect(ctx.stage == .activeFinding)
+    }
+
+    @Test("stage is awaitingConfirmation when a pending action is set, even with a current entity — the more specific state takes priority")
+    func stageIsAwaitingConfirmationEvenWithCurrentEntity() {
+        var ctx = VoiceSessionContext.empty.viewingEntity(VoiceEntityRef(type: .finding, id: "f1"))
+        ctx.pendingAction = VoicePendingAction(kind: .dismissFinding, findingID: "f1", summary: "dismiss this finding")
+        #expect(ctx.stage == .awaitingConfirmation)
+    }
+
     @Test("VoiceSessionContext round-trips through Codable")
     func roundTripsThroughCodable() throws {
         var ctx = VoiceSessionContext.empty

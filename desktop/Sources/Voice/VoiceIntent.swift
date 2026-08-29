@@ -43,6 +43,11 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
 public enum VoiceIntent: Equatable, Sendable {
     case navigate(VoiceDestination)
     case goBack
+    /// "Hi"/"status update" — a greeting that gets a real, deterministic
+    /// answer (open-findings count + total dollar exposure, both already-
+    /// computed data) instead of falling through to the reasoning path
+    /// with nothing to say. Real, requested phrase (2026-08-29).
+    case statusOverview
     case startReviewQueue
     /// Re-syncs and re-evaluates against QBO, then starts a fresh review
     /// queue from whatever is open afterward — "check again"/"any new

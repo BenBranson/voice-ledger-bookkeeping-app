@@ -32,7 +32,7 @@ public enum VoiceIntentRouter {
         (.findingsList, ["dashboard", "findings", "findings list", "home", "list"]),
         (.cleanupAssessment, ["cleanup assessment", "cleanup", "clean up assessment", "clean up"]),
         (.balanceSheetIntegrity, ["balance sheet integrity"]),
-        (.bankFeedCleanup, ["bank feed cleanup", "bank feed", "bank"]),
+        (.bankFeedCleanup, ["bank feed cleanup", "bank feed", "bank", "check bank feeds", "bank feeds"]),
         (.chartOfAccountsCleanup, ["chart of accounts cleanup", "chart of accounts"]),
         (.batchFixes, ["batch fixes", "batch fix"]),
         (.salesTaxReview, ["sales tax review", "sales tax"]),
@@ -54,7 +54,7 @@ public enum VoiceIntentRouter {
     private static let confirmWords = ["yes", "yeah", "yep", "yup", "confirm", "do it", "go ahead", "sounds good", "sure", "okay", "ok"]
     private static let rejectWords = ["no", "nah", "nope", "cancel", "never mind", "nevermind", "stop", "don't", "dont"]
     private static let goBackPhrases: Set<String> = ["go back", "back up", "previous page", "previous", "go back a page"]
-    private static let nextPhrases: Set<String> = ["next", "next one", "skip", "skip it", "skip this", "skip that", "skip this one", "skip that one", "move on"]
+    private static let nextPhrases: Set<String> = ["next", "next one", "skip", "skip it", "skip this", "skip that", "skip this one", "skip that one", "skip this for now", "move on"]
     private static let openLastEntityPhrases: Set<String> = [
         "that one", "open that", "show me that", "open it", "show that", "show it",
         "pull it up", "pull that up", "bring that up", "bring it up"
@@ -84,13 +84,22 @@ public enum VoiceIntentRouter {
     ]
     private static let recheckPhrases: Set<String> = [
         "check again", "recheck", "check for anomalies again", "check for new anomalies",
-        "any new anomalies", "scan again", "run the checks again", "run the check again"
+        "any new anomalies", "scan again", "run the checks again", "run the check again",
+        "are we done", "audit summary"
     ]
     private static let explainPhrases: Set<String> = [
         "why", "why is this flagged", "why is this a problem", "why is this here", "explain this", "explain that",
         "what's unusual about this", "whats unusual about this", "show me the evidence", "what's wrong with this",
         "whats wrong with this", "what should i do", "what would you do", "what do you recommend",
-        "how should i fix this", "what's your recommendation", "whats your recommendation"
+        "how should i fix this", "what's your recommendation", "whats your recommendation",
+        "what caused this", "what are my options", "fix it", "let's fix it", "lets fix it", "how do i fix it"
+    ]
+    /// "Hi"/"status update" — real, requested phrasing (2026-08-29) for a
+    /// deterministic greeting that actually says something (open-findings
+    /// count + total exposure) instead of falling through to the reasoning
+    /// path with nothing useful to answer.
+    private static let statusOverviewPhrases: Set<String> = [
+        "hi", "hello", "hey", "status update", "give me a status update", "how are things", "what's the status"
     ]
 
     public static func match(text: String, context: VoiceSessionContext) -> VoiceIntent {
@@ -107,6 +116,7 @@ public enum VoiceIntentRouter {
         }
 
         if goBackPhrases.contains(normalized) { return .goBack }
+        if statusOverviewPhrases.contains(normalized) { return .statusOverview }
         if nextPhrases.contains(normalized), !context.reviewQueue.isEmpty { return .queueNext }
         if openLastEntityPhrases.contains(normalized), context.lastViewedEntities.first != nil { return .openLastEntity }
         if recapPhrases.contains(normalized) { return .recapContext }

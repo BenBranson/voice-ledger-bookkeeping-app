@@ -60,6 +60,22 @@ public struct VoicePendingAction: Codable, Sendable, Equatable {
     }
 }
 
+/// A name for the four states `VoiceSessionContext`'s existing fields
+/// already distinguish — added 2026-08-29 to make the conversation's
+/// current stage explicit rather than something every caller re-derives
+/// ad hoc. Deliberately a COMPUTED property below, not a stored one: a
+/// stored `stage` field would be a second source of truth that could
+/// drift from `currentEntity`/`reviewQueue`/`pendingAction` if a call site
+/// updated one but not the other. `awaitingConfirmation` takes priority
+/// over `activeFinding` — a pending yes/no question is the more specific,
+/// more urgent state even while a finding is still open on screen.
+public enum VoiceStage: String, Sendable {
+    case idle
+    case reviewingSummary
+    case activeFinding
+    case awaitingConfirmation
+}
+
 public struct VoiceSessionContext: Codable, Sendable, Equatable {
     public var currentEntity: VoiceEntityRef?
     /// Ordered finding IDs — `ReviewQueue.build` produces this from real
@@ -90,6 +106,13 @@ public struct VoiceSessionContext: Codable, Sendable, Equatable {
     }
 
     public static let empty = VoiceSessionContext()
+
+    public var stage: VoiceStage {
+        if pendingAction != nil { return .awaitingConfirmation }
+        if currentEntity != nil { return .activeFinding }
+        if !reviewQueue.isEmpty { return .reviewingSummary }
+        return .idle
+    }
 
     /// Records that `entity` was just looked at — moves it to the front of
     /// `lastViewedEntities` (no duplicate), sets it as `currentEntity`, caps

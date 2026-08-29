@@ -4,6 +4,32 @@ import Core
 
 @Suite("VoiceIntentRouter.match")
 struct VoiceIntentRouterTests {
+    // MARK: Phase 2 — state coverage (2026-08-29)
+
+    @Test("'Hi'/'status update' matches statusOverview")
+    func statusOverviewPhrasesMatch() {
+        #expect(VoiceIntentRouter.match(text: "hi", context: .empty) == .statusOverview)
+        #expect(VoiceIntentRouter.match(text: "status update", context: .empty) == .statusOverview)
+    }
+
+    @Test("'What caused this'/'fix it'/'what are my options' match explainCurrent")
+    func fixOptionsPhrasesMatchExplainCurrent() {
+        #expect(VoiceIntentRouter.match(text: "what caused this", context: .empty) == .explainCurrent)
+        #expect(VoiceIntentRouter.match(text: "fix it", context: .empty) == .explainCurrent)
+        #expect(VoiceIntentRouter.match(text: "what are my options", context: .empty) == .explainCurrent)
+    }
+
+    @Test("'Are we done'/'audit summary' match recheckAnomalies")
+    func auditSummaryPhrasesMatchRecheck() {
+        #expect(VoiceIntentRouter.match(text: "are we done", context: .empty) == .recheckAnomalies)
+        #expect(VoiceIntentRouter.match(text: "audit summary", context: .empty) == .recheckAnomalies)
+    }
+
+    @Test("'Check bank feeds' navigates to bank feed cleanup")
+    func checkBankFeedsNavigates() {
+        #expect(VoiceIntentRouter.match(text: "check bank feeds", context: .empty) == .navigate(.bankFeedCleanup))
+    }
+
     // MARK: Navigation
 
     @Test("Matches a bare page name")

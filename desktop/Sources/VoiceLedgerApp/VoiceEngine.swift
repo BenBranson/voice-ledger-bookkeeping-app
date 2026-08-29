@@ -536,6 +536,33 @@ public final class VoiceEngine: NSObject {
         }
     }
 
+    /// "Hi"/"status update" — real, requested phrasing (2026-08-29): a
+    /// greeting that gets a real answer instead of falling through to the
+    /// reasoning path with nothing useful to say. Both numbers are already-
+    /// computed `Finding` data (count, `dollarExposure` sum) — no AI call,
+    /// no invented figure, same posture as everywhere else voice touches
+    /// dollar amounts.
+    private func statusOverview() -> VoiceTurn {
+        let open = appState.findings.filter { $0.status == .open }
+        guard !open.isEmpty else {
+            return VoiceTurn(
+                speech: "Connected to QuickBooks. No open findings right now — you're all caught up.",
+                uiAction: .navigate(.firmCockpit)
+            )
+        }
+        let currency = open[0].dollarExposure.currency
+        let sameCurrency = open.allSatisfy { $0.dollarExposure.currency == currency }
+        var exposureClause = ""
+        if sameCurrency {
+            let total = open.dropFirst().reduce(open[0].dollarExposure) { $0 + $1.dollarExposure }
+            exposureClause = " totaling \(total.description) in exposure"
+        }
+        return VoiceTurn(
+            speech: "Connected to QuickBooks. You have \(open.count) open finding\(open.count == 1 ? "" : "s")\(exposureClause). Ready when you are.",
+            uiAction: .navigate(.firmCockpit)
+        )
+    }
+
     // MARK: - Intent -> Turn
 
     /// Builds a fresh review queue from `appState.findings` and opens the
@@ -564,6 +591,9 @@ public final class VoiceEngine: NSObject {
 
         case .goBack:
             return VoiceTurn(speech: "Going back.", uiAction: .goBack)
+
+        case .statusOverview:
+            return statusOverview()
 
         case .startReviewQueue:
             return startReviewQueue()
@@ -702,10 +732,17 @@ public final class VoiceEngine: NSObject {
             question: "In two or three short sentences I can read aloud: why is this flagged, and what would you recommend as the next step? Reference only the proposed resolution(s) already listed above — never invent a new fix.",
             history: recentHistory()
         )
+        // Real, requested fix (2026-08-29 — "the screen doesn't follow the
+        // conversation"): every explain/fix-options answer re-syncs the
+        // screen to the finding actually being discussed, whether the user
+        // had navigated away or was already looking at it. Same
+        // `.openFinding` action `.startReviewQueue`/`.queueNext` already
+        // produce — not a new mechanism, and still only ever a navigation,
+        // never a write.
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
-            return VoiceTurn(speech: answer)
+            return VoiceTurn(speech: answer, uiAction: .openFinding(id: finding.id))
         }
-        return VoiceTurn(speech: "I couldn't get an explanation right now. \(finding.narrative ?? finding.title)")
+        return VoiceTurn(speech: "I couldn't get an explanation right now. \(finding.narrative ?? finding.title)", uiAction: .openFinding(id: finding.id))
     }
 
     /// Open-ended questions the router didn't match — grounded in whatever
