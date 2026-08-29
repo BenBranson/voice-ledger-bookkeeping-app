@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.voiceledger.app</string>
+	<key>CFBundleName</key>
+	<string>VoiceLedgerApp</string>
+	<key>CFBundleExecutable</key>
+	<string>VoiceLedgerApp</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<!-- docs/VOICE_LEDGER_SPEC.md's /voice module. VoiceLedgerApp ships as a
+	     raw SwiftPM executable (Voice Ledger Launcher.app runs the built
+	     binary directly, not a wrapped .app bundle -- see the launcher's
+	     own `launch` script), which normally means no Info.plist at all.
+	     This file is embedded directly into the Mach-O binary via
+	     Package.swift's linker settings (`-sectcreate __TEXT __info_plist`)
+	     specifically so this ONE key exists -- macOS won't show a
+	     microphone permission prompt (with any usage description) to a
+	     process that has none. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Voice Ledger uses your microphone for voice commands — navigating pages, reviewing findings, and asking questions about what's flagged. Voice never applies a QuickBooks write on its own; every write still requires a real on-screen confirmation.</string>
+</dict>
+</plist>

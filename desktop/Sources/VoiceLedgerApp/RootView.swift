@@ -58,12 +58,37 @@ struct RootView: View {
                         Button("Close Package") { state.screen = .closePackage }
                         Button("Client Memory") { state.screen = .clientMemory }
                     }
+                    ToolbarItem(placement: .automatic) {
+                        VoiceMicButton(
+                            isListening: state.voiceEngine.isListening,
+                            isProcessing: state.voiceEngine.isProcessing,
+                            onToggle: { state.voiceEngine.toggleListening() }
+                        )
+                    }
                 }
+        }
+        .overlay(alignment: .bottom) {
+            // docs/VOICE_LEDGER_SPEC.md's `/voice` module — one global
+            // control, not per-page, since a bookkeeper navigates between
+            // pages while talking.
+            if state.voiceEngine.isListening || state.voiceEngine.isProcessing || state.voiceEngine.isSpeaking
+                || state.voiceEngine.lastMessage != nil || state.voiceEngine.errorMessage != nil {
+                VoiceStatusPanel(
+                    isListening: state.voiceEngine.isListening,
+                    isSpeaking: state.voiceEngine.isSpeaking,
+                    micLevel: state.voiceEngine.micLevel,
+                    transcript: state.voiceEngine.transcript,
+                    lastMessage: state.voiceEngine.lastMessage,
+                    errorMessage: state.voiceEngine.errorMessage
+                )
+                .padding(.bottom, VLSpacing.md)
+            }
         }
         .task {
             await state.loadFromDiskOnly()
             await state.checkHealth()
             await state.checkAIStatus()
+            await state.voiceEngine.loadPersistedContext()
         }
         .alert("Export Failed", isPresented: Binding(get: { state.exportError != nil }, set: { if !$0 { state.clearExportError() } })) {
             Button("OK") { state.clearExportError() }

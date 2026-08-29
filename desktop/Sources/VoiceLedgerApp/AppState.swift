@@ -2,8 +2,10 @@ import Foundation
 import Observation
 import AppKit
 import Core
+import Voice
 import IntegrationsQuickBooks
 import IntegrationsImports
+import IntegrationsVoice
 import DB
 import Exporting
 import VoiceLedgerUI
@@ -376,6 +378,13 @@ public final class AppState {
     /// Cockpit simply reports unavailable rather than crashing.
     private let clientStoreRootDirectory: URL?
     private let engine: RuleEngine
+    /// docs/VOICE_LEDGER_SPEC.md's `/voice` module. Assigned at the END of
+    /// `init` below (once every other stored property has a value), not in
+    /// this property's own initializer — `@Observable`'s macro expansion
+    /// doesn't support `lazy`, and `VoiceEngine` holds an `unowned`
+    /// reference back to this `AppState`, which can't be passed until
+    /// `self` is fully initialized.
+    public private(set) var voiceEngine: VoiceEngine!
 
     public init(realmID: RealmID, environment: QBOEnvironment, period: AccountingPeriod, backend: BackendClient, store: ClientStore, clientStoreRootDirectory: URL? = nil) {
         self.realmID = realmID
@@ -389,6 +398,7 @@ public final class AppState {
         // evaluated in the SAME engine call for §8.2a's relationship
         // gating to see both classes together (RuleEngineActor.swift).
         self.engine = RuleEngine(rules: RuleRegistry.all)
+        self.voiceEngine = VoiceEngine(appState: self)
     }
 
     // Gauntlet Loop, Gauntlet C round 8 (2026-08-24): had the identical
@@ -1908,6 +1918,18 @@ public final class AppState {
     /// Named once so `applyStagedFix`'s two blocking-error messages stay
     /// in sync with whatever the UI actually calls this action.
     static let resolvePendingWriteActionName = "Resolve Pending Write"
+
+    /// docs/VOICE_LEDGER_SPEC.md's `/voice` module — `VoiceEngine`'s only
+    /// two touchpoints with `store`, which stays `private` to this type
+    /// otherwise. Thin pass-throughs, same shape as every other
+    /// load/save pair `AppState` already exposes.
+    public func loadVoiceSessionContext() async -> VoiceSessionContext? {
+        (try? await store.loadVoiceSessionContext()) ?? nil
+    }
+
+    public func saveVoiceSessionContext(_ context: VoiceSessionContext) async {
+        try? await store.saveVoiceSessionContext(context)
+    }
 
     /// docs/VOICE_LEDGER_HANDOFF.md D4's resolution probe. Re-reads the
     /// purchase this journal entry targeted and compares its CURRENT

@@ -151,8 +151,20 @@ let package = Package(
         // native macOS window was available; see the final report.
         .executableTarget(
             name: "VoiceLedgerApp",
-            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "DesignSystem", "VoiceLedgerUI", "Exporting"],
-            path: "Sources/VoiceLedgerApp"
+            dependencies: ["Core", "Voice", "IntegrationsQuickBooks", "IntegrationsImports", "IntegrationsVoice", "DB", "DesignSystem", "VoiceLedgerUI", "Exporting"],
+            path: "Sources/VoiceLedgerApp",
+            exclude: ["Info.plist"],
+            // docs/VOICE_LEDGER_SPEC.md's `/voice` module needs a real
+            // NSMicrophoneUsageDescription somewhere macOS can find it —
+            // this app ships as a raw SwiftPM executable (`Voice Ledger
+            // Launcher.app` runs the built binary directly, not a wrapped
+            // .app), which normally has no Info.plist at all. Embedding
+            // one directly into the Mach-O binary via `-sectcreate` is the
+            // standard fix for exactly this shape of SwiftPM executable —
+            // see Sources/VoiceLedgerApp/Info.plist's own doc comment.
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker", "Sources/VoiceLedgerApp/Info.plist"])
+            ]
         ),
 
         // `swift test` requires full Xcode (Testing.framework isn't part of
