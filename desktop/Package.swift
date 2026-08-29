@@ -65,13 +65,17 @@ let package = Package(
         // macOS SDK — no third-party package dependency, same "hand-roll it
         // against the platform SDK" posture `Exporting`'s ZIP writer and
         // `PDFReportExporter` already use.
-        .target(name: "DB", dependencies: ["Core"], path: "Sources/DB", linkerSettings: [.linkedLibrary("sqlite3")]),
+        // Depends on Voice too (added 2026-08-29) — VoiceSessionContext
+        // persistence lives here, the same key-value pattern every other
+        // singleton value already uses. No cycle: Voice depends only on
+        // Core, DB depending on Voice is one direction.
+        .target(name: "DB", dependencies: ["Core", "Voice"], path: "Sources/DB", linkerSettings: [.linkedLibrary("sqlite3")]),
 
         // Isolation and reconciliation tests for ClientStore. No dependency
         // on IntegrationsQuickBooks — a violation here would mean /db leaked
         // toward /integrations, which CLAUDE.md's architecture boundaries
         // forbid just as much as the reverse.
-        .testTarget(name: "DBTests", dependencies: ["DB", "Core"], path: "Tests/DBTests"),
+        .testTarget(name: "DBTests", dependencies: ["DB", "Core", "Voice"], path: "Tests/DBTests"),
 
         // Design tokens and the smallest primitives that enforce them.
         // Deliberately has NO dependency on Core: these are pure presentation

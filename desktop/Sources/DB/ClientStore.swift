@@ -1,5 +1,6 @@
 import Foundation
 import Core
+import Voice
 
 /// docs/phase-0/07_CLIENT_ISOLATION.md §7.1: "one SQLite database per
 /// `realmId`, plus a phantom type... not a `realm_id` column with a WHERE
@@ -86,6 +87,7 @@ public actor ClientStore {
     private let salesTaxAttestationKey = "sales-tax-attestation"
     private let taxEstimateSettingsKey = "tax-estimate-settings"
     private let writeJournalKey = "write-journal"
+    private let voiceSessionContextKey = "voice-session-context"
 
     // MARK: - Findings
 
@@ -392,6 +394,19 @@ public actor ClientStore {
         existing.removeAll { $0.id == entry.id }
         existing.append(entry)
         try save(existing, key: writeJournalKey)
+    }
+
+    // MARK: - Voice session context (docs/VOICE_LEDGER_SPEC.md's /voice module)
+
+    /// `nil` means no voice session has ever been recorded for this
+    /// realm — same "never happened" vs. "happened, just empty" distinction
+    /// every other optional singleton value in this store already makes.
+    public func loadVoiceSessionContext() throws -> VoiceSessionContext? {
+        try load(VoiceSessionContext?.self, key: voiceSessionContextKey, default: nil)
+    }
+
+    public func saveVoiceSessionContext(_ context: VoiceSessionContext) throws {
+        try save(context, key: voiceSessionContextKey)
     }
 
     // MARK: - Activity log

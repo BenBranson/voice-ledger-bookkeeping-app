@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Core
+import Voice
 @testable import DB
 
 @Suite("ClientStore")
@@ -416,5 +417,21 @@ struct ClientStoreTests {
         let renamed = MappingHint.makeID(headers: ["Date", "Memo", "Amount"])
         #expect(a != reordered)
         #expect(a != renamed)
+    }
+
+    @Test("Voice session context: nil before any save, real values after")
+    func voiceSessionContextRoundTrips() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let before = try await store.loadVoiceSessionContext()
+        #expect(before == nil)
+
+        var context = VoiceSessionContext.empty
+        context.reviewQueue = ["f1", "f2"]
+        context.reviewQueueIndex = 0
+        context = context.viewingEntity(VoiceEntityRef(type: .finding, id: "f1", label: "Possible duplicate"))
+        try await store.saveVoiceSessionContext(context)
+
+        let loaded = try await store.loadVoiceSessionContext()
+        #expect(loaded == context)
     }
 }
