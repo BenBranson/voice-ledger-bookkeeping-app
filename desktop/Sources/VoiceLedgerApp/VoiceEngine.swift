@@ -48,19 +48,47 @@ public final class VoiceEngine: NSObject {
     private var context: VoiceSessionContext = .empty
 
     private let audioEngine = AVAudioEngine()
-    private var audioFile: AVAudioFile?
     private var recordingURL: URL?
     private var audioPlayer: AVAudioPlayer?
+    private var levelMeterTimer: Timer?
 
     // Silence-detection thresholds — ported directly from
     // VoiceEngineContext.jsx's SPEAK_THRESHOLD/SILENCE_MS/MAX_RECORDING_MS.
+    // Plain `let` (no isolation annotation needed): immutable Sendable
+    // values are always safe to read from any thread, including the audio
+    // tap's realtime thread where `evaluateSilenceOffMainActor` reads them.
     private let speakThreshold: Float = 0.06
     private let silenceSeconds: TimeInterval = 1.4
     private let maxRecordingSeconds: TimeInterval = 20
 
-    private var hasSpokenThisRecording = false
-    private var silenceStartedAt: Date?
-    private var recordingStartedAt: Date?
+    // Everything below is written from inside `installTap`'s callback,
+    // which AVAudioEngine invokes on a CoreAudio-owned realtime thread via
+    // its `RealtimeMessenger` relay — NOT any GCD queue or thread Swift's
+    // concurrency runtime recognizes as the MainActor's executor. THREE
+    // separate real, live-verified crashes (2026-08-28) came from letting
+    // that callback synchronously touch ANY `@MainActor`-isolated member
+    // of this class (a stored property read/write, or a hop back in via
+    // `Task`/`DispatchQueue.main.async`/`MainActor.assumeIsolated`) — every
+    // one of those inserts a runtime isolation-verification call that
+    // fails against that thread's real executor identity and traps with
+    // EXC_BREAKPOINT/SIGTRAP. The only combination that doesn't crash:
+    // the tap callback touches ONLY `nonisolated(unsafe)` storage
+    // (synchronous, no actor involved at all), and a plain `Timer` added
+    // to the MAIN run loop — a genuinely different, main-thread execution
+    // context the MainActor runtime does recognize correctly — polls that
+    // storage and publishes it into the `@Observable` properties below.
+    // `nonisolated` alone doesn't compile here — `@Observable`'s macro
+    // expansion wraps every stored property (via `@ObservationTracked`),
+    // and Swift rejects `nonisolated` on a macro-generated mutable stored
+    // property; `nonisolated(unsafe)` is the form that actually works,
+    // despite the compiler's (misleading, in this specific case) "has no
+    // effect" warning suggestion above.
+    @ObservationIgnored nonisolated(unsafe) private var audioFile: AVAudioFile?
+    @ObservationIgnored nonisolated(unsafe) private var hasSpokenThisRecording = false
+    @ObservationIgnored nonisolated(unsafe) private var silenceStartedAt: Date?
+    @ObservationIgnored nonisolated(unsafe) private var recordingStartedAt: Date?
+    @ObservationIgnored nonisolated(unsafe) private var rawMicLevel: Float = 0
+    @ObservationIgnored nonisolated(unsafe) private var shouldAutoStop = false
 
     /// Fixed key for the reasoning fallback's Ask AI answer slot — every
     /// open-ended voice question shares one slot (each new question
@@ -133,43 +161,28 @@ public final class VoiceEngine: NSObject {
         hasSpokenThisRecording = false
         silenceStartedAt = nil
         recordingStartedAt = Date()
+        shouldAutoStop = false
+        rawMicLevel = 0
 
-        // Real, live-verified crash (2026-08-28), TWICE, from two
-        // different attempted fixes:
-        //   1. `Task { @MainActor in ... }` from inside this closure
-        //      crashed with EXC_BREAKPOINT/SIGTRAP in Swift's Task
-        //      executor-isolation check (`dispatch_assert_queue` inside
-        //      `swift_task_checkIsolatedSwift`) — this tap callback is
-        //      invoked via AVAudioEngine's `RealtimeMessenger` relay, and
-        //      creating a Task there hits that check and traps.
-        //   2. `DispatchQueue.main.async { @MainActor in ... }` crashed
-        //      the SAME way — marking a plain-GCD closure `@MainActor`
-        //      still makes the compiler insert the identical runtime
-        //      isolation-verification call at the top of the closure
-        //      body, so it isn't actually a Task-free escape hatch the
-        //      way it looks.
-        // The real fix: `DispatchQueue.main.async` with a PLAIN
-        // (non-`@MainActor`) closure, entering isolation manually via
-        // `MainActor.assumeIsolated` INSIDE the block — the API
-        // specifically designed to bridge legacy GCD-dispatched code into
-        // MainActor-isolated Swift without any executor check that could
-        // fail/crash. This is the one combination that does neither a
-        // Task hop nor a checked isolation entry.
+        // See the doc comment on the `nonisolated(unsafe)` properties above
+        // for the crash history this specific shape fixes: the callback
+        // below touches NOTHING isolated to this @MainActor class — no
+        // stored property that isn't `nonisolated(unsafe)`, no Task, no
+        // DispatchQueue-to-MainActor hop, no `MainActor.assumeIsolated`.
+        // `self` is captured only to reach that plain storage.
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            try? self?.audioFile?.write(from: buffer)
+            guard let self else { return }
+            try? self.audioFile?.write(from: buffer)
             let level = Self.rmsLevel(of: buffer)
-            DispatchQueue.main.async { [weak self] in
-                MainActor.assumeIsolated {
-                    self?.micLevel = Double(level)
-                    self?.evaluateSilence(level: level)
-                }
-            }
+            self.rawMicLevel = level
+            self.evaluateSilenceOffMainActor(level: level)
         }
 
         do {
             audioEngine.prepare()
             try audioEngine.start()
             isListening = true
+            startLevelMeterTimer()
         } catch {
             errorMessage = "Could not start the microphone: \(error)"
             inputNode.removeTap(onBus: 0)
@@ -177,13 +190,12 @@ public final class VoiceEngine: NSObject {
         }
     }
 
-    /// A silent/empty recording is a normal occurrence in an ongoing
-    /// conversation (a pause, ambient noise, a moment of thinking) — it
-    /// auto-stops the SAME way regardless, and `handleRecordedAudio`
-    /// reopens the mic afterward if still in conversation mode, mirroring
-    /// `resumeListeningIfConversationMode` in the reference app.
-    private func evaluateSilence(level: Float) {
-        guard isListening else { return }
+    /// Runs on the audio tap's own realtime thread (see the crash-history
+    /// doc comment above `rawMicLevel` etc.) — touches ONLY
+    /// `nonisolated(unsafe)` storage, never anything MainActor-isolated.
+    /// Doesn't stop listening directly; sets `shouldAutoStop` for the
+    /// main-thread level-meter timer to notice and act on.
+    nonisolated private func evaluateSilenceOffMainActor(level: Float) {
         let now = Date()
         if level > speakThreshold {
             hasSpokenThisRecording = true
@@ -192,19 +204,58 @@ public final class VoiceEngine: NSObject {
             if silenceStartedAt == nil {
                 silenceStartedAt = now
             } else if let startedAt = silenceStartedAt, now.timeIntervalSince(startedAt) > silenceSeconds {
-                stopListening()
+                shouldAutoStop = true
                 return
             }
         }
         if let startedAt = recordingStartedAt, now.timeIntervalSince(startedAt) > maxRecordingSeconds {
-            stopListening()
+            shouldAutoStop = true
         }
+    }
+
+    /// A silent/empty recording is a normal occurrence in an ongoing
+    /// conversation (a pause, ambient noise, a moment of thinking) — it
+    /// auto-stops the SAME way regardless, and `handleRecordedAudio`
+    /// reopens the mic afterward if still in conversation mode, mirroring
+    /// `resumeListeningIfConversationMode` in the reference app.
+    ///
+    /// Fires on the MAIN run loop (added via `RunLoop.main.add(_:forMode:
+    /// .common)` in `startLevelMeterTimer`) — a genuinely different
+    /// execution context than the audio tap's realtime thread, and one
+    /// Swift's MainActor runtime correctly recognizes, so touching
+    /// `micLevel`/calling `stopListening()` here is safe.
+    private func startLevelMeterTimer() {
+        levelMeterTimer?.invalidate()
+        // `Timer`'s block parameter is typed `@Sendable`, so the compiler
+        // can't statically prove this closure runs on the MainActor the
+        // way it can for a method written directly on this class — hence
+        // the explicit `Task { @MainActor in }` hop. This is NOT the same
+        // shape that crashed in the audio tap: that hop was created from
+        // CoreAudio's `RealtimeMessenger` relay thread, which Swift's
+        // concurrency runtime cannot identify; this one is created from a
+        // callback that RunLoop.main is, by construction, already firing
+        // on the real main thread, so entering @MainActor here is the
+        // standard, safe pattern.
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.micLevel = Double(self.rawMicLevel)
+                if self.shouldAutoStop {
+                    self.shouldAutoStop = false
+                    self.stopListening()
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        levelMeterTimer = timer
     }
 
     private func stopListening() {
         guard isListening else { return }
         isListening = false
         micLevel = 0
+        levelMeterTimer?.invalidate()
+        levelMeterTimer = nil
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         audioFile = nil // closing the AVAudioFile flushes it to disk
@@ -231,7 +282,7 @@ public final class VoiceEngine: NSObject {
         }
     }
 
-    private static func rmsLevel(of buffer: AVAudioPCMBuffer) -> Float {
+    nonisolated private static func rmsLevel(of buffer: AVAudioPCMBuffer) -> Float {
         guard let channelData = buffer.floatChannelData else { return 0 }
         let frameLength = Int(buffer.frameLength)
         guard frameLength > 0 else { return 0 }
