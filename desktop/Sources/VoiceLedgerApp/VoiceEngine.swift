@@ -134,10 +134,19 @@ public final class VoiceEngine: NSObject {
         silenceStartedAt = nil
         recordingStartedAt = Date()
 
+        // Real, live-verified crash (2026-08-28): `Task { @MainActor in ... }`
+        // from inside this closure crashed with EXC_BREAKPOINT/SIGTRAP —
+        // this tap callback runs on AVAudioEngine's real-time audio
+        // thread (a raw CoreAudio realtime queue, not a normal GCD
+        // queue), and Swift's Task executor-isolation check
+        // (`dispatch_assert_queue` inside `swift_task_checkIsolatedSwift`)
+        // asserts on that thread and traps. Plain `DispatchQueue.main.async`
+        // sidesteps Swift's Task/executor machinery entirely — the
+        // standard-safe way to hop off a real-time audio callback.
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             try? self?.audioFile?.write(from: buffer)
             let level = Self.rmsLevel(of: buffer)
-            Task { @MainActor [weak self] in
+            DispatchQueue.main.async { @MainActor [weak self] in
                 self?.micLevel = Double(level)
                 self?.evaluateSilence(level: level)
             }
