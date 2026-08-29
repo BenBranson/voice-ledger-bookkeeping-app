@@ -45,10 +45,14 @@ let package = Package(
         // /voice — deferred deliberately last per Build Order §12.
         .target(name: "Voice", dependencies: ["Core"], path: "Sources/Voice"),
 
-        // /db — Phase 1 step 1.6: ClientStore.swift, a real (scoped-down)
-        // per-realm store. See its doc comment for the relationship to
-        // docs/phase-0/07_CLIENT_ISOLATION.md §7.1's SQLite-per-realm design.
-        .target(name: "DB", dependencies: ["Core"], path: "Sources/DB"),
+        // /db — Phase 1 step 1.6: ClientStore.swift, now backed by a real
+        // SQLite database per realm (docs/phase-0/07_CLIENT_ISOLATION.md
+        // §7.1), migrated 2026-08-29 from the earlier JSON-file substitute.
+        // `import SQLite3` uses the system `libsqlite3` already part of the
+        // macOS SDK — no third-party package dependency, same "hand-roll it
+        // against the platform SDK" posture `Exporting`'s ZIP writer and
+        // `PDFReportExporter` already use.
+        .target(name: "DB", dependencies: ["Core"], path: "Sources/DB", linkerSettings: [.linkedLibrary("sqlite3")]),
 
         // Isolation and reconciliation tests for ClientStore. No dependency
         // on IntegrationsQuickBooks — a violation here would mean /db leaked

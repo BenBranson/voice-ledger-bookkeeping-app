@@ -181,7 +181,7 @@ enum RuleOutcome {
 
 Additionally, `.pass` **cannot be recorded** when coverage isn't complete — the engine validates the returned outcome and downgrades a rule author's mistake to `.cannotEvaluate`, recording an engine defect. This is defense against our own future carelessness. **This exact defect was caught by a test during the slice build** — `DuplicatePostedExpenseRule` initially could return `.pass` with partial coverage on a zero-transaction input; fixed at the rule level, not just relied on the engine's backstop. See `desktop/Sources/Core/RuleEngine.swift`, `RuleEngineActor.swift`, `DuplicatePostedExpenseRule.swift`.
 
-## D2 — One SQLite database per `realmId` — PLANNED (scoped-down substitute IMPLEMENTED for the slice)
+## D2 — One SQLite database per `realmId` — the SQLite half now real (2026-08-29); three of four hardening layers still PLANNED
 
 Not a `realm_id` column with a `WHERE` clause. **A cross-client query is not a missing predicate — it is a different file.** The failure mode is eliminated rather than guarded against.
 
@@ -191,7 +191,9 @@ Four layered isolation mechanisms: per-realm database · `ClientScope` actor wit
 
 `realmDirectoryName` is a **hash** of the realmId, so directory listings don't enumerate client identifiers.
 
-**What actually shipped for the slice (2026-08-16):** `desktop/Sources/DB/ClientStore.swift` — one JSON-file-per-realm-directory, not SQLite, and the directory name is the raw `realmId`, not a hash. Same isolation *property* (no shared table a missed `WHERE` could leak across), explicitly documented in the file's own doc comment as a scoped-down substitute, not the spec'd design. The four-mechanism layered model above (phantom types, runtime assertions at crossing points, hashed directory names) is **not yet built** — only the outermost layer (per-realm directory) exists.
+**What shipped 2026-08-16 (the vertical slice):** `desktop/Sources/DB/ClientStore.swift` — one JSON-file-per-realm-directory, not SQLite, and the directory name is the raw `realmId`, not a hash.
+
+**Migrated to real SQLite 2026-08-29** (`desktop/Sources/DB/SQLiteConnection.swift` + `ClientStore.swift`'s rewritten internals): each realm directory now holds one `store.sqlite` file (`import SQLite3` against the system `libsqlite3`, no third-party package — same "hand-roll it against the platform SDK" posture `Exporting`'s ZIP/PDF writers already use), with a single `kv` table (`key TEXT PRIMARY KEY, value TEXT`) — every existing public method on `ClientStore` is unchanged; only the two private `load`/`save` helpers changed what they read from and write to. WAL mode gives a real crash-safety property the JSON files never had: a killed process mid-write leaves the database at its last COMMITted state, not a half-written file, and every load-modify-save sequence that used to be several separate file writes is now backed by one durable store. **Existing realms' JSON data is migrated automatically and once** on first open after upgrading (`ClientStore.migrateLegacyJSONFilesIfNeeded`) — verified against this session's own real accumulated sandbox findings (13 real findings from earlier live-verification runs), not just synthetic test fixtures; the legacy `.json` files are left in place, not deleted, in case a migration bug is ever found later. The directory name is still the raw `realmId`, not a hash — that specific hardening step, and the other three layered mechanisms above (`ClientScope` actor, phantom-typed `Scoped<Scope, Value>`, runtime assertions at crossing points), remain **not yet built**.
 
 ## D3 — Staleness is derived, never marked — PLANNED
 

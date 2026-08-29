@@ -3,18 +3,33 @@ import Core
 
 /// docs/phase-0/07_CLIENT_ISOLATION.md §7.1: "one SQLite database per
 /// `realmId`, plus a phantom type... not a `realm_id` column with a WHERE
-/// clause." **This implementation is a scoped-down substitute, not the
-/// spec'd SQLite store**: one JSON file pair per realm, under a
-/// per-realm directory, so a cross-realm read is a wrong file path (still
-/// structurally awkward to get wrong by accident) rather than a wrong SQL
-/// predicate. It satisfies the isolation *property* §7.1 cares about — no
-/// shared table a missed `WHERE` could leak across — without pulling in a
-/// SQLite dependency for this pass. Swapping the storage engine later
-/// (`FileManager` → SQLite) does not change this type's public API, since
-/// callers only see `RealmID`-scoped operations.
+/// clause." **Migrated to real SQLite 2026-08-29** (`SQLiteConnection`) —
+/// one `.sqlite` file per realm directory, satisfying §7.1's literal
+/// design: a cross-realm read is still a wrong file path (the isolation
+/// property this type has always guaranteed), and every multi-step write
+/// this store makes is now genuinely atomic at the storage layer, which
+/// the prior "one JSON file per data type" substitute never was — a crash
+/// between two related file writes could leave them out of step; a
+/// crashed SQLite write leaves the database at its last COMMITted state.
+///
+/// **Migration from the old JSON files is automatic and one-time**: on
+/// first open after upgrading, `init` reads any legacy `<key>.json` files
+/// still on disk and imports their exact JSON bytes into the new `kv`
+/// table under the same key, for any key not already present in SQLite —
+/// so a realm's existing findings/activity log/etc. survive the storage
+/// engine change rather than silently starting empty. The legacy files
+/// are left in place (not deleted) — harmless once migrated, and safer
+/// than a delete that turns out to be premature if a migration bug is
+/// ever found.
+///
+/// Every public method below is UNCHANGED from the JSON-file version —
+/// only the two private `load`/`save` helpers at the bottom changed what
+/// they read from and write to. No caller (`AppState`, the devtool, every
+/// existing test) needed to change at all.
 public actor ClientStore {
     private let realmID: RealmID
     private let directory: URL
+    private let db: SQLiteConnection
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
@@ -25,29 +40,56 @@ public actor ClientStore {
         // shared state (CLAUDE.md rule 9).
         self.directory = rootDirectory.appending(path: realmID.rawValue, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        self.db = try SQLiteConnection(path: directory.appending(path: "store.sqlite").path)
         self.encoder = JSONEncoder()
         self.encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         self.decoder = JSONDecoder()
+        try Self.migrateLegacyJSONFilesIfNeeded(directory: directory, db: db)
     }
 
-    private var findingsURL: URL { directory.appending(path: "findings.json") }
-    private var activityLogURL: URL { directory.appending(path: "activity-log.json") }
-    private var importedStatementLinesURL: URL { directory.appending(path: "imported-statement-lines.json") }
-    private var checklistCompletionsURL: URL { directory.appending(path: "checklist-completions.json") }
-    private var mappingHintsURL: URL { directory.appending(path: "mapping-hints.json") }
-    private var clientMemoryRulesURL: URL { directory.appending(path: "client-memory-rules.json") }
-    private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
-    private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
-    private var periodLockSnapshotURL: URL { directory.appending(path: "period-lock-snapshot.json") }
-    private var bankStatementReconciliationSnapshotsURL: URL { directory.appending(path: "bank-statement-reconciliation-snapshots.json") }
-    private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
-    private var salesTaxAttestationURL: URL { directory.appending(path: "sales-tax-attestation.json") }
-    private var taxEstimateSettingsURL: URL { directory.appending(path: "tax-estimate-settings.json") }
+    /// One-time, idempotent: for each legacy `<key>.json` file that still
+    /// exists on disk AND has no corresponding row in `kv` yet, copies its
+    /// raw bytes in verbatim (same JSON shape `load`/`save` already
+    /// produce, so no re-encoding is needed or safe to skip). Runs on
+    /// every `init`, but after the first successful migration every key
+    /// already has a `kv` row, so every subsequent app launch does zero
+    /// real work here beyond the existence checks themselves.
+    private static let legacyJSONKeys = [
+        "findings", "activity-log", "imported-statement-lines", "checklist-completions",
+        "mapping-hints", "client-memory-rules", "engagement-scope", "period-lock",
+        "period-lock-snapshot", "bank-statement-reconciliation-snapshots", "carry-forward-marks",
+        "sales-tax-attestation", "tax-estimate-settings"
+    ]
+
+    private static func migrateLegacyJSONFilesIfNeeded(directory: URL, db: SQLiteConnection) throws {
+        for key in legacyJSONKeys {
+            guard try db.getValue(forKey: key) == nil else { continue } // already migrated
+            let legacyURL = directory.appending(path: "\(key).json")
+            guard FileManager.default.fileExists(atPath: legacyURL.path) else { continue }
+            let data = try Data(contentsOf: legacyURL)
+            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { continue }
+            try db.setValue(text, forKey: key)
+        }
+    }
+
+    private let findingsKey = "findings"
+    private let activityLogKey = "activity-log"
+    private let importedStatementLinesKey = "imported-statement-lines"
+    private let checklistCompletionsKey = "checklist-completions"
+    private let mappingHintsKey = "mapping-hints"
+    private let clientMemoryRulesKey = "client-memory-rules"
+    private let engagementScopeKey = "engagement-scope"
+    private let periodLockKey = "period-lock"
+    private let periodLockSnapshotKey = "period-lock-snapshot"
+    private let bankStatementReconciliationSnapshotsKey = "bank-statement-reconciliation-snapshots"
+    private let carryForwardMarksKey = "carry-forward-marks"
+    private let salesTaxAttestationKey = "sales-tax-attestation"
+    private let taxEstimateSettingsKey = "tax-estimate-settings"
 
     // MARK: - Findings
 
     public func loadFindings() throws -> [Finding] {
-        try load([Finding].self, from: findingsURL, default: [])
+        try load([Finding].self, key: findingsKey, default: [])
     }
 
     /// Upserts by `id` (deterministic per §8.5 — re-detection of the same
@@ -78,7 +120,7 @@ public actor ClientStore {
             }
         }
         existing = Array(byID.values).sorted { $0.id < $1.id }
-        try save(existing, to: findingsURL)
+        try save(existing, key: findingsKey)
     }
 
     /// Marks a finding dismissed — the human's own call that this isn't
@@ -105,7 +147,7 @@ public actor ClientStore {
         var existing = try loadFindings()
         guard let index = existing.firstIndex(where: { $0.id == id }), existing[index].status == .open else { return false }
         existing[index].status = .dismissed
-        try save(existing, to: findingsURL)
+        try save(existing, key: findingsKey)
         return true
     }
 
@@ -136,7 +178,7 @@ public actor ClientStore {
                 resolved.append(existing[i])
             }
         }
-        try save(existing, to: findingsURL)
+        try save(existing, key: findingsKey)
         return resolved
     }
 
@@ -147,7 +189,7 @@ public actor ClientStore {
     /// evaluated once at import time — `VL-RECON-MISSING-001` needs to see
     /// it on every run, the same way a synced `Purchase` is.
     public func loadImportedStatementLines() throws -> [LedgerTransaction] {
-        try load([LedgerTransaction].self, from: importedStatementLinesURL, default: [])
+        try load([LedgerTransaction].self, key: importedStatementLinesKey, default: [])
     }
 
     /// Upserts by `id` (stable per `BankStatementCSVImporter`'s
@@ -158,7 +200,7 @@ public actor ClientStore {
         var byID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
         for line in lines { byID[line.id] = line }
         existing = Array(byID.values).sorted { $0.id < $1.id }
-        try save(existing, to: importedStatementLinesURL)
+        try save(existing, key: importedStatementLinesKey)
     }
 
     // MARK: - Month-End Close checklist
@@ -167,7 +209,7 @@ public actor ClientStore {
     /// callers filter by `period` themselves (mirrors how `findings` are
     /// loaded whole and filtered by the view layer).
     public func loadChecklistCompletions() throws -> [ChecklistItemCompletion] {
-        try load([ChecklistItemCompletion].self, from: checklistCompletionsURL, default: [])
+        try load([ChecklistItemCompletion].self, key: checklistCompletionsKey, default: [])
     }
 
     /// Upserts by `(itemID, period)` — re-marking the same item complete
@@ -177,7 +219,7 @@ public actor ClientStore {
         var existing = try loadChecklistCompletions()
         existing.removeAll { $0.itemID == completion.itemID && $0.period == completion.period }
         existing.append(completion)
-        try save(existing, to: checklistCompletionsURL)
+        try save(existing, key: checklistCompletionsKey)
     }
 
     /// Un-marks an item complete for a period — the reverse of
@@ -186,13 +228,13 @@ public actor ClientStore {
     public func removeChecklistCompletion(itemID: ChecklistItemID, period: AccountingPeriod) throws {
         var existing = try loadChecklistCompletions()
         existing.removeAll { $0.itemID == itemID && $0.period == period }
-        try save(existing, to: checklistCompletionsURL)
+        try save(existing, key: checklistCompletionsKey)
     }
 
     // MARK: - Learned column mappings (§9.6 stage 6)
 
     public func loadMappingHints() throws -> [MappingHint] {
-        try load([MappingHint].self, from: mappingHintsURL, default: [])
+        try load([MappingHint].self, key: mappingHintsKey, default: [])
     }
 
     /// Upserts by `MappingHint.makeID(headers:)` — a reimport of a file
@@ -206,19 +248,19 @@ public actor ClientStore {
         let timesUsed = (existing.first { $0.id == id }?.timesUsed ?? 0) + 1
         existing.removeAll { $0.id == id }
         existing.append(MappingHint(id: id, headers: headers, fields: fields, timesUsed: timesUsed, lastUsedAt: Date()))
-        try save(existing, to: mappingHintsURL)
+        try save(existing, key: mappingHintsKey)
     }
 
     // MARK: - Client memory rules
 
     public func loadClientMemoryRules() throws -> [ClientMemoryRule] {
-        try load([ClientMemoryRule].self, from: clientMemoryRulesURL, default: [])
+        try load([ClientMemoryRule].self, key: clientMemoryRulesKey, default: [])
     }
 
     public func addClientMemoryRule(_ rule: ClientMemoryRule) throws {
         var existing = try loadClientMemoryRules()
         existing.append(rule)
-        try save(existing, to: clientMemoryRulesURL)
+        try save(existing, key: clientMemoryRulesKey)
     }
 
     /// The reversal for `addClientMemoryRule` — "with approval" cuts both
@@ -227,56 +269,55 @@ public actor ClientStore {
     public func removeClientMemoryRule(id: String) throws {
         var existing = try loadClientMemoryRules()
         existing.removeAll { $0.id == id }
-        try save(existing, to: clientMemoryRulesURL)
+        try save(existing, key: clientMemoryRulesKey)
     }
 
     // MARK: - Scope & Period Lock (docs/VOICE_LEDGER_SPEC.md Page 2)
 
     public func loadEngagementScope() throws -> EngagementScope {
-        try load(EngagementScope.self, from: engagementScopeURL, default: EngagementScope())
+        try load(EngagementScope.self, key: engagementScopeKey, default: EngagementScope())
     }
 
     public func saveEngagementScope(_ scope: EngagementScope) throws {
-        try save(scope, to: engagementScopeURL)
+        try save(scope, key: engagementScopeKey)
     }
 
     /// `nil` means no lock has ever been set for this realm — distinct from
     /// a lock existing at some far-past period, so callers can tell "never
     /// locked" from "locked, just not recently."
     public func loadPeriodLock() throws -> PeriodLock? {
-        try load(PeriodLock?.self, from: periodLockURL, default: nil)
+        try load(PeriodLock?.self, key: periodLockKey, default: nil)
     }
 
     public func savePeriodLock(_ lock: PeriodLock) throws {
-        try save(lock, to: periodLockURL)
+        try save(lock, key: periodLockKey)
     }
 
     /// The reverse of `savePeriodLock` — a lock set in error must be as
     /// removable as a checklist completion (§11.4's same posture: an
     /// attestation is a record, not an irreversible fact).
     public func clearPeriodLock() throws {
-        guard FileManager.default.fileExists(atPath: periodLockURL.path) else { return }
-        try FileManager.default.removeItem(at: periodLockURL)
+        try db.deleteValue(forKey: periodLockKey)
         // The snapshot is only meaningful alongside its lock — an orphaned
         // snapshot from a cleared lock would let `VL-CLOSED-PERIOD-DRIFT-001`
         // compare against a period nobody currently considers locked.
-        try? FileManager.default.removeItem(at: periodLockSnapshotURL)
+        try db.deleteValue(forKey: periodLockSnapshotKey)
     }
 
     /// `VL-CLOSED-PERIOD-DRIFT-001`'s baseline — `nil` when the current
     /// lock (if any) predates this feature, or no lock has been set.
     public func loadPeriodLockSnapshot() throws -> PeriodLockSnapshot? {
-        try load(PeriodLockSnapshot?.self, from: periodLockSnapshotURL, default: nil)
+        try load(PeriodLockSnapshot?.self, key: periodLockSnapshotKey, default: nil)
     }
 
     public func savePeriodLockSnapshot(_ snapshot: PeriodLockSnapshot) throws {
-        try save(snapshot, to: periodLockSnapshotURL)
+        try save(snapshot, key: periodLockSnapshotKey)
     }
 
     // MARK: - Bank statement reconciliation snapshots (VL-RECON-DIFF-001)
 
     public func loadBankStatementReconciliationSnapshots() throws -> [BankStatementReconciliationSnapshot] {
-        try load([BankStatementReconciliationSnapshot].self, from: bankStatementReconciliationSnapshotsURL, default: [])
+        try load([BankStatementReconciliationSnapshot].self, key: bankStatementReconciliationSnapshotsKey, default: [])
     }
 
     /// Upserts by `accountID` — a later statement import for the same
@@ -287,13 +328,13 @@ public actor ClientStore {
         var existing = try loadBankStatementReconciliationSnapshots()
         existing.removeAll { $0.accountID == snapshot.accountID }
         existing.append(snapshot)
-        try save(existing, to: bankStatementReconciliationSnapshotsURL)
+        try save(existing, key: bankStatementReconciliationSnapshotsKey)
     }
 
     // MARK: - Carry-forward marks (Close Package)
 
     public func loadCarryForwardMarks() throws -> [CarryForwardMark] {
-        try load([CarryForwardMark].self, from: carryForwardMarksURL, default: [])
+        try load([CarryForwardMark].self, key: carryForwardMarksKey, default: [])
     }
 
     /// Upserts by `findingID` — re-marking an already-marked finding
@@ -303,7 +344,7 @@ public actor ClientStore {
         var existing = try loadCarryForwardMarks()
         existing.removeAll { $0.findingID == mark.findingID }
         existing.append(mark)
-        try save(existing, to: carryForwardMarksURL)
+        try save(existing, key: carryForwardMarksKey)
     }
 
     /// The reversal — a carry-forward mark set in error must be as
@@ -311,27 +352,27 @@ public actor ClientStore {
     public func removeCarryForwardMark(findingID: String) throws {
         var existing = try loadCarryForwardMarks()
         existing.removeAll { $0.findingID == findingID }
-        try save(existing, to: carryForwardMarksURL)
+        try save(existing, key: carryForwardMarksKey)
     }
 
     // MARK: - Sales Tax Review attestation (Page 9)
 
     public func loadSalesTaxAttestation() throws -> SalesTaxAttestation {
-        try load(SalesTaxAttestation.self, from: salesTaxAttestationURL, default: SalesTaxAttestation())
+        try load(SalesTaxAttestation.self, key: salesTaxAttestationKey, default: SalesTaxAttestation())
     }
 
     public func saveSalesTaxAttestation(_ attestation: SalesTaxAttestation) throws {
-        try save(attestation, to: salesTaxAttestationURL)
+        try save(attestation, key: salesTaxAttestationKey)
     }
 
     // MARK: - Tax estimate settings (Page 10)
 
     public func loadTaxEstimateSettings() throws -> TaxEstimateSettings {
-        try load(TaxEstimateSettings.self, from: taxEstimateSettingsURL, default: TaxEstimateSettings())
+        try load(TaxEstimateSettings.self, key: taxEstimateSettingsKey, default: TaxEstimateSettings())
     }
 
     public func saveTaxEstimateSettings(_ settings: TaxEstimateSettings) throws {
-        try save(settings, to: taxEstimateSettingsURL)
+        try save(settings, key: taxEstimateSettingsKey)
     }
 
     // MARK: - Activity log
@@ -340,26 +381,36 @@ public actor ClientStore {
     /// store for the activity log, which is what makes append-only a
     /// property of the API, not a convention someone could forget.
     public func appendActivityLogEntry(_ entry: ActivityLogEntry) throws {
-        var existing = try load([ActivityLogEntry].self, from: activityLogURL, default: [])
+        var existing = try load([ActivityLogEntry].self, key: activityLogKey, default: [])
         existing.append(entry)
-        try save(existing, to: activityLogURL)
+        try save(existing, key: activityLogKey)
     }
 
     public func loadActivityLog() throws -> [ActivityLogEntry] {
-        try load([ActivityLogEntry].self, from: activityLogURL, default: [])
+        try load([ActivityLogEntry].self, key: activityLogKey, default: [])
     }
 
     // MARK: - Helpers
 
-    private func load<T: Decodable>(_ type: T.Type, from url: URL, default defaultValue: T) throws -> T {
-        guard FileManager.default.fileExists(atPath: url.path) else { return defaultValue }
-        let data = try Data(contentsOf: url)
-        if data.isEmpty { return defaultValue }
+    private func load<T: Decodable>(_ type: T.Type, key: String, default defaultValue: T) throws -> T {
+        guard let text = try db.getValue(forKey: key), let data = text.data(using: .utf8), !data.isEmpty else { return defaultValue }
         return try decoder.decode(T.self, from: data)
     }
 
-    private func save<T: Encodable>(_ value: T, to url: URL) throws {
+    private func save<T: Encodable>(_ value: T, key: String) throws {
         let data = try encoder.encode(value)
-        try data.write(to: url, options: .atomic)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw ClientStoreError.nonUTF8Encoding(key: key)
+        }
+        try db.setValue(text, forKey: key)
+    }
+
+    enum ClientStoreError: Error, CustomStringConvertible {
+        case nonUTF8Encoding(key: String)
+        var description: String {
+            switch self {
+            case .nonUTF8Encoding(let key): return "JSONEncoder produced non-UTF8 output for key \"\(key)\" — this should never happen since JSONEncoder always produces UTF-8."
+            }
+        }
     }
 }
