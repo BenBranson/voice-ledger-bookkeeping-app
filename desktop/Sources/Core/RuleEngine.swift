@@ -131,6 +131,11 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-BS-DRCR-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
     /// table.
     case debitCreditExpectationViolation
+    /// `VL-RELATIONSHIP-003`, Transaction Relationship Guard branch 3.
+    case bankTransferMiscoded
+    /// `VL-RELATIONSHIP-005`, Transaction Relationship Guard branch 5 (the
+    /// loan-payment instance — `VL-PAYROLL-LUMP-001` is the payroll one).
+    case loanPaymentLumpSum
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
