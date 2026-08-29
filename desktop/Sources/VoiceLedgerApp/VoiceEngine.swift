@@ -95,6 +95,13 @@ public final class VoiceEngine: NSObject {
     @ObservationIgnored nonisolated(unsafe) private var recordingStartedAt: Date?
     @ObservationIgnored nonisolated(unsafe) private var rawMicLevel: Float = 0
     @ObservationIgnored nonisolated(unsafe) private var shouldAutoStop = false
+    /// Set by a `.AVAudioEngineConfigurationChange` observer (e.g. a
+    /// Bluetooth headset connecting/disconnecting mid-recording) — read by
+    /// the same safe main-thread timer poll `shouldAutoStop` already uses,
+    /// rather than calling back into MainActor code directly from the
+    /// notification closure.
+    @ObservationIgnored nonisolated(unsafe) private var audioRouteDidChange = false
+    private var configurationChangeObserver: NSObjectProtocol?
 
     /// Fixed key for the reasoning fallback's Ask AI answer slot — every
     /// open-ended voice question shares one slot (each new question
@@ -181,7 +188,33 @@ public final class VoiceEngine: NSObject {
         recordingURL = tempURL
 
         let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
+
+        // Real, reported gap (2026-08-29): Bluetooth headphones don't
+        // arrive at their microphone-capable format instantly. macOS keeps
+        // a Bluetooth headset in its high-quality, playback-only mode
+        // (A2DP) until something actually asks for its mic, at which point
+        // it renegotiates to a lower-quality, bidirectional mode (HFP) —
+        // a real profile switch that takes a moment. Reading
+        // `outputFormat(forBus:)` the instant this method is called can
+        // catch that transition mid-flight (0 channels/0 sample rate, or a
+        // stale format from whatever device was active a moment ago),
+        // which is the most likely cause of "it took forever" and "it
+        // couldn't hear me over Bluetooth at all." Poll briefly for a
+        // genuinely valid format instead of trusting the first read.
+        var format = inputNode.outputFormat(forBus: 0)
+        var waited: TimeInterval = 0
+        let pollInterval: TimeInterval = 0.1
+        let maxWait: TimeInterval = 2.0
+        while (format.channelCount == 0 || format.sampleRate == 0), waited < maxWait {
+            try? await Task.sleep(for: .seconds(pollInterval))
+            waited += pollInterval
+            format = inputNode.outputFormat(forBus: 0)
+        }
+        guard format.channelCount > 0, format.sampleRate > 0 else {
+            errorMessage = "The microphone isn't ready yet — this can happen right after switching to Bluetooth headphones. Wait a moment and try again."
+            conversationMode = false
+            return
+        }
 
         do {
             audioFile = try AVAudioFile(forWriting: tempURL, settings: format.settings)
@@ -226,6 +259,24 @@ public final class VoiceEngine: NSObject {
         }
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format, block: tapBlock)
 
+        audioRouteDidChange = false
+        // A route change mid-recording (Bluetooth headset connects,
+        // disconnects, or renegotiates its profile) invalidates the tap's
+        // format — the safe response is to stop cleanly and ask the user
+        // to try again, not to keep recording against a format that no
+        // longer matches the actual hardware. `queue: .main` means this
+        // closure is dispatched via the main OperationQueue rather than
+        // CoreAudio's realtime relay, so it only ever touches the plain
+        // `nonisolated(unsafe)` flag below, never MainActor-isolated state
+        // directly — same reasoning as the tap callback's own doc comment.
+        configurationChangeObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: audioEngine,
+            queue: .main
+        ) { [weak self] _ in
+            self?.audioRouteDidChange = true
+        }
+
         do {
             audioEngine.prepare()
             try audioEngine.start()
@@ -235,6 +286,10 @@ public final class VoiceEngine: NSObject {
             errorMessage = "Could not start the microphone: \(error)"
             inputNode.removeTap(onBus: 0)
             conversationMode = false
+            if let observer = configurationChangeObserver {
+                NotificationCenter.default.removeObserver(observer)
+                configurationChangeObserver = nil
+            }
         }
     }
 
@@ -288,7 +343,11 @@ public final class VoiceEngine: NSObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.micLevel = Double(self.rawMicLevel)
-                if self.shouldAutoStop {
+                if self.audioRouteDidChange {
+                    self.audioRouteDidChange = false
+                    self.errorMessage = "The audio device changed (e.g. Bluetooth headphones connecting or disconnecting) — stopped listening. Try again now that it's settled."
+                    self.stopListening()
+                } else if self.shouldAutoStop {
                     self.shouldAutoStop = false
                     self.stopListening()
                 }
@@ -304,6 +363,10 @@ public final class VoiceEngine: NSObject {
         micLevel = 0
         levelMeterTimer?.invalidate()
         levelMeterTimer = nil
+        if let observer = configurationChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configurationChangeObserver = nil
+        }
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         audioFile = nil // closing the AVAudioFile flushes it to disk
