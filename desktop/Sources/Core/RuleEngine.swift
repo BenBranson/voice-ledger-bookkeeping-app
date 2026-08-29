@@ -136,6 +136,10 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-RELATIONSHIP-005`, Transaction Relationship Guard branch 5 (the
     /// loan-payment instance — `VL-PAYROLL-LUMP-001` is the payroll one).
     case loanPaymentLumpSum
+    /// `VL-MISSING-PAYEE-001` — the one rule from the owner's original
+    /// "goalie" audit-engine spec (2026-08-29) that genuinely wasn't
+    /// already built; every other category on that list already existed.
+    case missingPayee
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
