@@ -45,7 +45,12 @@ public enum ProfitAndLossWaterfall {
         segments.append(Segment(label: "Revenue", start: 0, end: revenue, isTotal: true))
 
         var running = revenue
-        if let grossProfit = summaryAmount("Gross Profit", in: profitAndLossLines) {
+        // Real, reported problem (2026-08-29): when a company has no COGS
+        // section, "Gross Profit" equals "Total Income" — the segment
+        // computed to a zero-width bar with a floating "$0" label and
+        // nothing visibly under it. Only added when it's an actual,
+        // visible delta.
+        if let grossProfit = summaryAmount("Gross Profit", in: profitAndLossLines), grossProfit.minorUnits != totalIncome.minorUnits {
             let afterCOGS = grossProfit.majorUnitsDouble
             segments.append(Segment(label: "COGS", start: running, end: afterCOGS, isTotal: false))
             running = afterCOGS

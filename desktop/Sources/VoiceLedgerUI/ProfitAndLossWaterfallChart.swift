@@ -26,14 +26,16 @@ public struct ProfitAndLossWaterfallChart: View {
                     BarMark(
                         x: .value("Segment", segment.label),
                         yStart: .value("Start", min(segment.start, segment.end)),
-                        yEnd: .value("End", max(segment.start, segment.end))
+                        yEnd: .value("End", max(segment.start, segment.end)),
+                        width: .ratio(0.55)
                     )
                     .foregroundStyle(color(for: segment))
-                    .cornerRadius(3)
-                    .annotation(position: .top) {
+                    .cornerRadius(4)
+                    .annotation(position: segment.end >= segment.start ? .top : .bottom) {
                         Text(Self.formatter.string(from: NSNumber(value: segment.end - (segment.isTotal ? 0 : segment.start))) ?? "")
                             .font(VLTypography.caption())
-                            .foregroundStyle(VLColor.textSecondary)
+                            .fontWeight(.medium)
+                            .foregroundStyle(VLColor.textPrimary)
                     }
                 }
                 .chartXAxis {
@@ -44,21 +46,33 @@ public struct ProfitAndLossWaterfallChart: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { _ in
+                    AxisMarks(position: .leading) { value in
                         AxisGridLine().foregroundStyle(VLColor.border)
+                        AxisValueLabel {
+                            if let amount = value.as(Double.self) {
+                                Text(Self.formatter.string(from: NSNumber(value: amount)) ?? "")
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            }
+                        }
                     }
                 }
-                .frame(height: 200)
+                .frame(height: 220)
+                .padding(.top, VLSpacing.md)
             }
         }
     }
 
+    /// Distinct hues per segment role, from `VLChartPalette` — real,
+    /// reported problem (2026-08-29): the old cyan/blue-only scheme made
+    /// the chart look flat and arbitrary rather than purposeful.
     private func color(for segment: ProfitAndLossWaterfall.Segment) -> Color {
-        if segment.label == "Net Income" {
-            return segment.end >= 0 ? VLColor.teal : .red
+        switch segment.label {
+        case "Net Income": return segment.end >= 0 ? VLColor.teal : .red
+        case "Revenue": return VLColor.cyan
+        case "COGS": return VLChartPalette.color(at: 1) // orange
+        default: return VLChartPalette.color(at: 4) // indigo — Expenses and any future segment
         }
-        if segment.label == "Revenue" { return VLColor.cyan }
-        return VLColor.blue
     }
 
     private static let formatter: NumberFormatter = {

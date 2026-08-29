@@ -162,6 +162,17 @@ struct ProfitAndLossWaterfallTests {
         #expect(segments?.last?.end == 2000.0)
     }
 
+    @Test("Skips the COGS segment when Gross Profit equals Total Income — real, reported bug (2026-08-29): a company with no real COGS produced a zero-width bar with a floating '$0' label and nothing under it")
+    func skipsCOGSWhenGrossProfitEqualsTotalIncome() {
+        let lines = [
+            ReportLine(label: "Total Income", amount: money(1_000_000), depth: 0, isSummary: true),
+            ReportLine(label: "Gross Profit", amount: money(1_000_000), depth: 0, isSummary: true),
+            ReportLine(label: "Net Income", amount: money(200_000), depth: 0, isSummary: true)
+        ]
+        let segments = ProfitAndLossWaterfall.segments(from: lines)
+        #expect(segments?.map(\.label) == ["Revenue", "Expenses", "Net Income"])
+    }
+
     @Test("Skips the COGS segment when this company's P&L has no Gross Profit line")
     func skipsCOGSWhenNoGrossProfit() {
         let lines = [
