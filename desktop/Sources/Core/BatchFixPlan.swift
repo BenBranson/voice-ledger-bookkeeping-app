@@ -18,6 +18,22 @@ import Foundation
 /// and per-finding in-flight/error tracking `FindingDetailView`'s single-
 /// finding "Apply Fix" already uses. One implementation, not two that
 /// could disagree (`CLAUDE.md` rule 1).
+///
+/// **Investigated for extension 2026-08-28, found no safe candidate.**
+/// `VL-CC-PAYMENT-001` only offers `.stagedAPI` on its STRUCTURAL match
+/// tier (`isStructuralMatch`) — its keyword-only tier stays `.manualQBO`,
+/// deliberately, because a batch-approved automatic write needs real
+/// certainty, not a pattern guess. Every rule built after it
+/// (`VL-CAT-MISCODE-001`, `VL-VEND-PRICE-001`, `VL-VEND-ANOMALY-001`,
+/// etc.) is `.medium` confidence BY DESIGN — each one's own doc comment
+/// documents a real, legitimate exception a batch fix could wrongly
+/// "correct." Offering `.stagedAPI` on any of them would break the exact
+/// discipline `VL-CC-PAYMENT-001` established. The genuinely different
+/// candidate (`VL-RELATIONSHIP-003`'s "delete this Purchase, re-enter as
+/// a Transfer") isn't a line-reclassification at all — it would need a
+/// brand-new delete-capable write path, a materially higher-stakes
+/// capability than anything built so far, live-verified against sandbox
+/// before being designed around, not attempted opportunistically here.
 public struct BatchFixItem: Identifiable, Sendable {
     public let id: String
     public let findingID: String
