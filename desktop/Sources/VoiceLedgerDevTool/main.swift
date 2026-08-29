@@ -342,13 +342,22 @@ case "sync-check":
             print("    #\(txn.id) \(txn.vendorName ?? "?") \(txn.txnDate) \(txn.totalAmount) doc=\(txn.docNumber ?? "-") voided=\(txn.isVoided) acct=\(txn.paymentAccountID ?? "-") lineAccts=\(txn.lineAccountIDs)")
         }
 
+        // Prior period's Purchases, for VL-VEND-PRICE-001/VL-CAT-MISCODE-001.
+        let priorPeriodTransactions = try await syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)
+        print("Prior period (\(period.previousMonth.year)-\(period.previousMonth.month)) purchases: \(priorPeriodTransactions.count)")
+
         // Mirrors AppState.syncAndEvaluate(): `syncClient.sync()`'s dataset
         // doesn't carry the report lines already fetched above (they're a
         // separate call) — merge them in so rules that depend on
         // `.report` (VL-FORCED-RECON-001) actually see them here too. A
         // real bug (vendorCredits silently dropped the same way) was found
-        // in AppState's copy of this exact reconstruction on 2026-08-18;
-        // this devtool command must not carry the same class of bug.
+        // in AppState's copy of this exact reconstruction on 2026-08-18,
+        // and trialBalanceLines/priorPeriodTransactions were found missing
+        // from THIS devtool copy on 2026-08-28 while live-verifying
+        // VL-BS-DRCR-001/VL-CAT-MISCODE-001/VL-VEND-PRICE-001 — same class
+        // of bug, different field. This devtool command must not carry it
+        // again; if AppState.swift's dataSet construction gains a new
+        // field, this one needs the same field the same day.
         let dataSet = NormalizedDataSet(
             realmID: syncedDataSet.realmID,
             period: syncedDataSet.period,
@@ -361,6 +370,8 @@ case "sync-check":
             balanceSheetLines: balanceSheetLines,
             agedReceivablesLines: agedReceivablesLines,
             agedPayablesLines: agedPayablesLines,
+            trialBalanceLines: trialBalanceLines,
+            priorPeriodTransactions: priorPeriodTransactions,
             coverage: syncedDataSet.coverage,
             companyFacts: syncedDataSet.companyFacts
         )

@@ -128,6 +128,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-CAT-MISCODE-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
     /// table.
     case probableMiscoding
+    /// `VL-BS-DRCR-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
+    /// table.
+    case debitCreditExpectationViolation
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
