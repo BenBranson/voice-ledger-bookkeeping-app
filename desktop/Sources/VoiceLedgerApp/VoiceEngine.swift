@@ -134,21 +134,35 @@ public final class VoiceEngine: NSObject {
         silenceStartedAt = nil
         recordingStartedAt = Date()
 
-        // Real, live-verified crash (2026-08-28): `Task { @MainActor in ... }`
-        // from inside this closure crashed with EXC_BREAKPOINT/SIGTRAP —
-        // this tap callback runs on AVAudioEngine's real-time audio
-        // thread (a raw CoreAudio realtime queue, not a normal GCD
-        // queue), and Swift's Task executor-isolation check
-        // (`dispatch_assert_queue` inside `swift_task_checkIsolatedSwift`)
-        // asserts on that thread and traps. Plain `DispatchQueue.main.async`
-        // sidesteps Swift's Task/executor machinery entirely — the
-        // standard-safe way to hop off a real-time audio callback.
+        // Real, live-verified crash (2026-08-28), TWICE, from two
+        // different attempted fixes:
+        //   1. `Task { @MainActor in ... }` from inside this closure
+        //      crashed with EXC_BREAKPOINT/SIGTRAP in Swift's Task
+        //      executor-isolation check (`dispatch_assert_queue` inside
+        //      `swift_task_checkIsolatedSwift`) — this tap callback is
+        //      invoked via AVAudioEngine's `RealtimeMessenger` relay, and
+        //      creating a Task there hits that check and traps.
+        //   2. `DispatchQueue.main.async { @MainActor in ... }` crashed
+        //      the SAME way — marking a plain-GCD closure `@MainActor`
+        //      still makes the compiler insert the identical runtime
+        //      isolation-verification call at the top of the closure
+        //      body, so it isn't actually a Task-free escape hatch the
+        //      way it looks.
+        // The real fix: `DispatchQueue.main.async` with a PLAIN
+        // (non-`@MainActor`) closure, entering isolation manually via
+        // `MainActor.assumeIsolated` INSIDE the block — the API
+        // specifically designed to bridge legacy GCD-dispatched code into
+        // MainActor-isolated Swift without any executor check that could
+        // fail/crash. This is the one combination that does neither a
+        // Task hop nor a checked isolation entry.
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             try? self?.audioFile?.write(from: buffer)
             let level = Self.rmsLevel(of: buffer)
-            DispatchQueue.main.async { @MainActor [weak self] in
-                self?.micLevel = Double(level)
-                self?.evaluateSilence(level: level)
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.micLevel = Double(level)
+                    self?.evaluateSilence(level: level)
+                }
             }
         }
 
