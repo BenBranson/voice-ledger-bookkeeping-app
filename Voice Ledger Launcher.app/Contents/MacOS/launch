@@ -148,12 +148,39 @@ if pgrep -x VoiceLedgerApp >/dev/null 2>&1; then
     osascript -e 'tell application "System Events" to set frontmost of process "VoiceLedgerApp" to true' >/dev/null 2>&1
 else
     # Runs the app from a real .app bundle (Contents/MacOS +
-    # Contents/Info.plist), not the bare Mach-O — investigating a real,
-    # still-unresolved crash (SIGABRT inside SwiftUI's own Button-gesture
-    # dispatch on a mic-button click); this app had never run as a genuine
-    # bundle before, an unusual setup that could plausibly affect AppKit's
-    # gesture/event routing. See scripts/build-app-bundle.sh's own header
-    # comment for the full history.
+    # Contents/Info.plist), not the bare Mach-O. See
+    # scripts/build-app-bundle.sh's own header comment for the full
+    # history of why the bundle exists at all.
+    #
+    # ROOT CAUSE FOUND AND FIXED 2026-08-29: wrapping the binary in a real
+    # .app bundle was necessary but NOT sufficient — this section used to
+    # launch it with `nohup "$BIN" ... &`, executing the Mach-O directly
+    # instead of going through `open`/LaunchServices. That bypasses the
+    # normal macOS app-launch path entirely: the process comes up without
+    # a real WindowGroup-hosting session, which reproduced as TWO distinct,
+    # confirmed-live symptoms — (1) the app sometimes opens with ZERO
+    # windows at all (confirmed via `osascript`'s window count reporting 0
+    # immediately after launch, repeatably), and (2) when a window DID
+    # appear, pressing any SwiftUI `Button` could SIGABRT inside SwiftUI's
+    # own gesture dispatch (`MainActor.assumeIsolated` failing on the
+    # actual main thread — two real crash reports from tonight,
+    # `~/Library/Logs/DiagnosticReports/VoiceLedgerApp-2026-08-29-*.ips`,
+    # confirm the identical signature). The `.onAppear { NSApp
+    # .setActivationPolicy(.regular) }` workaround in VoiceLedgerApp.swift
+    # papered over this sometimes but not reliably, because it can only
+    # run AFTER a window already exists — it can't fix a launch that never
+    # produces a window at all.
+    #
+    # Fixed by launching via `open -a` instead, which routes through
+    # LaunchServices and gives the process a normal, foreground GUI-app
+    # session — the same path a Dock/Finder double-click uses. Verified
+    # live: repeated launches all produced a real window immediately (vs.
+    # 0/2 for the old `nohup` path just before this fix), and 9 real
+    # SwiftUI button presses via accessibility automation produced zero
+    # crashes afterward. `open` doesn't inherit the calling shell's
+    # environment the way `nohup`/`&` did, so the env vars this app needs
+    # are passed explicitly via `--env` instead; `--stdout`/`--stderr`
+    # preserve the existing log-file behavior.
     #
     # Assembling the bundle (scripts/build-app-bundle.sh) does NOT happen
     # here, even though it's cheap (just cp/codesign, no SwiftPM manifest
@@ -164,7 +191,8 @@ else
     # pre-built bundle, never builds or assembles one — whoever maintains
     # this app runs build-app-bundle.sh from a Terminal session (or Claude
     # Code) after `swift build -c release`.
-    BIN="$DESKTOP_DIR/.build/release/VoiceLedgerApp.app/Contents/MacOS/VoiceLedgerApp"
+    APP_BUNDLE="$DESKTOP_DIR/.build/release/VoiceLedgerApp.app"
+    BIN="$APP_BUNDLE/Contents/MacOS/VoiceLedgerApp"
     if [ ! -x "$BIN" ]; then
         status_lines+=("Voice Ledger app: not built yet. Ask Claude to run \"swift build -c release && ./scripts/build-app-bundle.sh release\" in the desktop folder once, then open this launcher again — it will find and run it from then on without needing to build again.")
     else
@@ -202,26 +230,24 @@ else
             if [ -z "$SESSION_TOKEN" ]; then
                 status_lines+=("Voice Ledger app: could not create a session for the connected company — check ~/Library/Logs/VoiceLedger/app.log")
             else
-                # No `arch -arm64` here (unlike the backend/voice-service
-                # sections above) — investigating a real, live 2026-08-29
-                # crash (SIGABRT inside SwiftUI's own Button-gesture
-                # dispatch, `MainActor.assumeIsolated` failing on the
-                # actual main thread when a Button is pressed) surfaced
-                # that this machine and this binary are BOTH already
-                # native arm64 (`uname -m`/`file "$BIN"` both arm64,
-                # Apple M5) — the `arch -arm64` wrapper here was always a
-                # no-op for THIS binary, unlike the backend's `npm run dev`
-                # (where it fixes a real Rosetta-vs-native mismatch for
-                # better-sqlite3's native module — see that section's own
-                # comment). Removed as the first, safest thing to rule out
-                # while diagnosing the crash; not yet confirmed as the
-                # actual cause.
-                VOICE_LEDGER_BACKEND_URL="http://localhost:$BACKEND_PORT" \
-                VOICE_LEDGER_SESSION_TOKEN="$SESSION_TOKEN" \
-                VOICE_LEDGER_REALM_ID="$REALM_ID" \
-                VOICE_LEDGER_ENVIRONMENT="$REALM_ENV" \
-                nohup "$BIN" >> "$APP_LOG" 2>&1 &
-                disown
+                # `arch -arm64` intentionally NOT used here (unlike the
+                # backend/voice-service sections above) — this machine and
+                # this binary are both already native arm64, so it would be
+                # a no-op; the real fix for the crash this section used to
+                # carry a long comment about was launching via `open`
+                # instead of `nohup`, see this block's header comment.
+                #
+                # `open` does not inherit the calling shell's environment
+                # the way `nohup ... &` did, so the four env vars this app
+                # needs are passed explicitly via `--env`. `--stdout`/
+                # `--stderr` preserve the same log file the old `nohup ...
+                # >> "$APP_LOG" 2>&1` redirect produced.
+                open -a "$APP_BUNDLE" \
+                    --env VOICE_LEDGER_BACKEND_URL="http://localhost:$BACKEND_PORT" \
+                    --env VOICE_LEDGER_SESSION_TOKEN="$SESSION_TOKEN" \
+                    --env VOICE_LEDGER_REALM_ID="$REALM_ID" \
+                    --env VOICE_LEDGER_ENVIRONMENT="$REALM_ENV" \
+                    --stdout "$APP_LOG" --stderr "$APP_LOG"
                 status_lines+=("Voice Ledger app: launched")
             fi
         fi
