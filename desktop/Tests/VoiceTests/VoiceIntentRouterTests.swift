@@ -29,6 +29,23 @@ struct VoiceIntentRouterTests {
         #expect(VoiceIntentRouter.match(text: "Firm Cockpit!", context: .empty) == .navigate(.firmCockpit))
     }
 
+    @Test("Collapses a whole-phrase Whisper duplication — real, live-observed artifact (2026-08-29): 'start review' transcribed as 'start review start review'")
+    func collapsesWholePhraseDuplication() {
+        #expect(VoiceIntentRouter.match(text: "start review start review", context: .empty) == .startReviewQueue)
+        #expect(VoiceIntentRouter.match(text: "Firm Cockpit Firm Cockpit", context: .empty) == .navigate(.firmCockpit))
+    }
+
+    @Test("Does not collapse two genuinely different halves of a sentence")
+    func doesNotOverCollapseGenuineTwoPartSentence() {
+        // "go back" + "show anomalies" are two different real commands
+        // strung together — the halves differ, so this must NOT collapse
+        // to just "go back" and must NOT match anything on its own.
+        let result = VoiceIntentRouter.match(text: "go back show anomalies", context: .empty)
+        if case .unrecognized = result {} else {
+            Issue.record("expected unrecognized — two distinct halves must never be collapsed, got \(result)")
+        }
+    }
+
     @Test("An unrelated sentence that happens to contain a page name substring does not match")
     func doesNotSubstringMatch() {
         let result = VoiceIntentRouter.match(text: "what do you think about the cleanup assessment page design", context: .empty)

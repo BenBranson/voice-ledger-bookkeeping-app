@@ -123,12 +123,32 @@ public enum VoiceIntentRouter {
     /// transcribes "Cleanup" as "clean-up" — a real transcription quirk,
     /// not a hypothetical one, discovered testing the actual STT/TTS
     /// round-trip against this exact page name before this router was
-    /// even written), whitespace collapsed.
+    /// even written), whitespace collapsed, and a whole-phrase repeat
+    /// collapsed to one copy.
+    ///
+    /// That last step is for a second real, live-observed transcription
+    /// artifact (2026-08-29): saying "start review" once was transcribed
+    /// as "start review start review" — the whole phrase duplicated, not
+    /// stuttered mid-word. An exact-match Set lookup treats that as a
+    /// completely different string, so it fell through to the slow
+    /// reasoning fallback instead of the instant deterministic path —
+    /// exactly the kind of thing that makes voice feel sluggish and
+    /// "talks in circles" instead of sharp. `"a b a b"` -> `"a b"`;
+    /// left alone if the two halves genuinely differ, so this never
+    /// silently changes what a real two-part sentence meant.
     static func normalize(_ text: String) -> String {
         var t = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         while let last = t.last, ".!?,".contains(last) { t.removeLast() }
         t = t.replacingOccurrences(of: "-", with: " ")
         t = t.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+
+        let words = t.split(separator: " ")
+        if words.count >= 2, words.count % 2 == 0 {
+            let half = words.count / 2
+            if words[..<half].elementsEqual(words[half...]) {
+                t = words[..<half].joined(separator: " ")
+            }
+        }
         return t
     }
 
