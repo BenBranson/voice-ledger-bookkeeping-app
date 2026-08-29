@@ -39,6 +39,14 @@ let package = Package(
         // build step (Build Order §4 in docs/VOICE_LEDGER_SPEC.md).
         .target(name: "IntegrationsImports", dependencies: ["Core"], path: "Sources/Integrations/Imports"),
 
+        // The desktop client's channel to voice-service (STT/TTS only —
+        // see VoiceServiceClient's own doc comment for why this is
+        // hardcoded to loopback and carries no dependency on Core at all:
+        // this client never sees a realm id or bookkeeping data, only raw
+        // audio/text).
+        .target(name: "IntegrationsVoice", dependencies: [], path: "Sources/Integrations/Voice"),
+        .testTarget(name: "IntegrationsVoiceTests", dependencies: ["IntegrationsVoice"], path: "Tests/IntegrationsVoiceTests"),
+
         // /staging — deferred; stub only (docs/phase-0/10_STAGING_APPROVAL_AUDIT.md).
         .target(name: "Staging", dependencies: ["Core"], path: "Sources/Staging"),
 
@@ -82,7 +90,7 @@ let package = Package(
         // thing that can prove a gate against real data, text-only, no UI.
         .executableTarget(
             name: "VoiceLedgerDevTool",
-            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "DB", "Exporting"],
+            dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "IntegrationsVoice", "DB", "Exporting"],
             path: "Sources/VoiceLedgerDevTool"
         ),
 

@@ -2,6 +2,7 @@ import Foundation
 import Core
 import IntegrationsQuickBooks
 import IntegrationsImports
+import IntegrationsVoice
 import DB
 import Exporting
 
@@ -17,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -65,8 +66,14 @@ guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch
                               table row (docs/VOICE_LEDGER_SPEC.md's
                               Universal Ingestion Tier 2). No network, no
                               realm needed, macOS 26+ only.
+      voice-service-check    Health-checks the local voice-service, then
+                              runs a real synthesize -> transcribe round
+                              trip against it (docs/VOICE_LEDGER_SPEC.md's
+                              /voice module). No realm needed — voice-service
+                              never sees bookkeeping data. Requires
+                              voice-service running locally on port 8790.
 
-    Required environment variables (not needed for export-sample):
+    Required environment variables (not needed for export-sample/voice-service-check):
       VOICE_LEDGER_BACKEND_URL     e.g. https://your-backend.onrender.com
       VOICE_LEDGER_SESSION_TOKEN   from the backend's /oauth/callback response
       VOICE_LEDGER_REALM_ID        the sandbox company's realmId
@@ -139,6 +146,29 @@ if arguments[1] == "xlsx-import-check" {
         exit(0)
     } catch {
         FileHandle.standardError.write("xlsx-import-check failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+}
+
+if arguments[1] == "voice-service-check" {
+    do {
+        let client = VoiceServiceClient()
+        let healthy = try await client.healthCheck()
+        print("voice-service health: \(healthy ? "OK" : "NOT OK")")
+        guard healthy else { exit(2) }
+
+        let speechText = "Cleanup Assessment. Two findings need attention."
+        print("Synthesizing: \(speechText.debugDescription)")
+        let wav = try await client.synthesize(text: speechText)
+        print("  got \(wav.count) bytes of WAV audio")
+
+        print("Transcribing that same audio back...")
+        let transcribed = try await client.transcribe(audioData: wav)
+        print("  heard: \(transcribed.debugDescription)")
+        print("\nRound trip complete. voice-service is working.")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("voice-service-check failed: \(error)\nIs voice-service running? (cd voice-service && .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8790)\n".data(using: .utf8)!)
         exit(2)
     }
 }
