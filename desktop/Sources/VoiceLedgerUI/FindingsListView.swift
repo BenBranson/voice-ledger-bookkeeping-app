@@ -63,11 +63,26 @@ public struct FindingsListView: View {
     private let state: ViewState
     private let onSelect: (Finding) -> Void
     private let onNavigateNextBestAction: (NextBestAction) -> Void
+    /// Owner directive (2026-08-29): "a refresh button in the findings
+    /// section to rescan the app for discrepancies in case I create one
+    /// during the session." A sidebar sync icon already existed, but it's
+    /// easy to miss when this screen is the one being watched "with an
+    /// eagle eye" — this puts the same re-scan action directly on the page.
+    private let onRefresh: () -> Void
+    private let isRefreshing: Bool
 
-    public init(state: ViewState, onSelect: @escaping (Finding) -> Void, onNavigateNextBestAction: @escaping (NextBestAction) -> Void = { _ in }) {
+    public init(
+        state: ViewState,
+        onSelect: @escaping (Finding) -> Void,
+        onNavigateNextBestAction: @escaping (NextBestAction) -> Void = { _ in },
+        onRefresh: @escaping () -> Void = {},
+        isRefreshing: Bool = false
+    ) {
         self.state = state
         self.onSelect = onSelect
         self.onNavigateNextBestAction = onNavigateNextBestAction
+        self.onRefresh = onRefresh
+        self.isRefreshing = isRefreshing
     }
 
     public var body: some View {
@@ -78,6 +93,18 @@ public struct FindingsListView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    Button(action: onRefresh) {
+                        HStack(spacing: VLSpacing.xxs) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                                .animation(isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                            Text(isRefreshing ? "Refreshing…" : "Refresh")
+                        }
+                        .font(VLTypography.label())
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRefreshing)
+                    .help("Re-scan QBO for new or changed discrepancies")
                     VLEnvironmentBadge(state.environment)
                 }
 

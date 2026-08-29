@@ -350,7 +350,9 @@ struct RootView: View {
                         case .completeChecklistItem: state.screen = .monthEndClose
                         case .allClear: break
                         }
-                    }
+                    },
+                    onRefresh: { Task { await state.syncAndEvaluate() } },
+                    isRefreshing: state.loadState == .loading
                 )
             }
 
@@ -394,13 +396,15 @@ struct RootView: View {
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }
                     },
                     onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } },
+                    onMarkDone: { Task { await state.attestCompletion(findingID: findingID, actorName: actorName, note: nil) } },
                     onMarkCarriedForward: { reason in Task { await state.markFindingCarriedForward(findingID: findingID, actorName: actorName, reason: reason) } },
                     onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } },
                     aiStatus: state.aiStatus,
                     askAIAnswer: state.askAIAnswers[findingID],
                     isAskingAI: state.askingAIContextKeys.contains(findingID),
                     askAIError: state.askAIError?.contextKey == findingID ? state.askAIError?.message : nil,
-                    onAskAI: { question in Task { await state.askAI(findingID: findingID, question: question) } }
+                    onAskAI: { question in Task { await state.askAI(findingID: findingID, question: question) } },
+                    onBack: { state.screen = .list }
                 )
             } else {
                 Text("Finding not found — it may already be resolved.")

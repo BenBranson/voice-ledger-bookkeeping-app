@@ -63,6 +63,16 @@ public struct FindingDetailView: View {
     private let onResolvePendingWrite: () -> Void
     private let onRememberVendor: () -> Void
     private let onDismiss: () -> Void
+    /// Owner directive (2026-08-29): "a checkmark ... or a button saying
+    /// finished." Same underlying verified-not-self-reported mechanism as
+    /// `GuidedProcedureView`'s "I completed this in QBO" (records the
+    /// attestation, then `AppState.attestCompletion` immediately re-syncs
+    /// so the finding only actually clears once QBO confirms it) — this is
+    /// just a faster path to it for a bookkeeper who already knows what
+    /// they did and doesn't need the steps/pitfalls walkthrough first. Only
+    /// offered alongside `Approve`/`Dismiss` (manualQBO resolution) — a
+    /// `.stagedAPI` finding's "done" action already is Apply Fix.
+    private let onMarkDone: () -> Void
     private let onMarkCarriedForward: (String?) -> Void
     private let onUnmarkCarriedForward: () -> Void
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel — `nil` `aiStatus` means
@@ -72,6 +82,10 @@ public struct FindingDetailView: View {
     private let isAskingAI: Bool
     private let askAIError: String?
     private let onAskAI: (String) -> Void
+    /// Navigates back to the Findings list. Owner directive (2026-08-29):
+    /// "there needs to be a back button in findings especially when
+    /// looking at the individual finding screens."
+    private let onBack: () -> Void
 
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
@@ -102,13 +116,15 @@ public struct FindingDetailView: View {
         onResolvePendingWrite: @escaping () -> Void = {},
         onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void,
+        onMarkDone: @escaping () -> Void = {},
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
         onUnmarkCarriedForward: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
         askAIAnswer: String? = nil,
         isAskingAI: Bool = false,
         askAIError: String? = nil,
-        onAskAI: @escaping (String) -> Void = { _ in }
+        onAskAI: @escaping (String) -> Void = { _ in },
+        onBack: @escaping () -> Void = {}
     ) {
         self.finding = finding
         self.writeAccessEnabled = writeAccessEnabled
@@ -129,6 +145,7 @@ public struct FindingDetailView: View {
         self.onResolvePendingWrite = onResolvePendingWrite
         self.onRememberVendor = onRememberVendor
         self.onDismiss = onDismiss
+        self.onMarkDone = onMarkDone
         self.onMarkCarriedForward = onMarkCarriedForward
         self.onUnmarkCarriedForward = onUnmarkCarriedForward
         self.aiStatus = aiStatus
@@ -136,11 +153,22 @@ public struct FindingDetailView: View {
         self.isAskingAI = isAskingAI
         self.askAIError = askAIError
         self.onAskAI = onAskAI
+        self.onBack = onBack
     }
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
+                Button(action: onBack) {
+                    HStack(spacing: VLSpacing.xxs) {
+                        Image(systemName: "chevron.left")
+                        Text("Back to Findings")
+                    }
+                    .font(VLTypography.label())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(VLColor.textSecondary)
+
                 header
                 // Gauntlet Loop, Gauntlet B round 17 (2026-08-24): a fresh
                 // critic found this used to render inside `actionSection`,
@@ -272,6 +300,20 @@ public struct FindingDetailView: View {
     /// (`AskAIContext.compose`, Core, pure) — it cannot invent a number
     /// this screen doesn't already show, per CLAUDE.md rule 1's boundary,
     /// enforced independently again by the backend's own system prompt.
+    /// Owner directive (2026-08-29): "use gemma:e4b ... to write out why the
+    /// discrepancy needs investigation, list out options and give a
+    /// recommendation and then write out why it's recommended." The
+    /// underlying facts (evidence, the accounting principle, the one
+    /// proposed action, its consequences, `riskIfIgnored`) are already all
+    /// deterministic Core output, shown above — this button just asks the
+    /// same grounded Ask AI pipeline `AskAIPanelView` already uses (backend
+    /// `AskAIContext.compose`, currently Ollama `gemma4:e4b`) to narrate
+    /// them in plain English in one click, instead of requiring the owner
+    /// to type a question every time. CLAUDE.md rule 1 is unaffected: this
+    /// asks for PROSE about facts already computed and rendered on screen,
+    /// never a new number, severity, or recommendation of its own.
+    private static let explainPrompt = "In plain English: why does this discrepancy need investigating, what's the recommended fix, and why is that the right call here?"
+
     private var askAISection: some View {
         AskAIPanelView(
             disclaimer: "Answers are grounded strictly in this finding's own fields shown above — it cannot state a dollar figure, severity, or judgment beyond what's already here, and it never gives tax or legal advice.",
@@ -280,7 +322,9 @@ public struct FindingDetailView: View {
             answer: askAIAnswer,
             isAsking: isAskingAI,
             error: askAIError,
-            onAsk: onAskAI
+            onAsk: onAskAI,
+            quickAskLabel: "Explain This Finding",
+            onQuickAsk: { onAskAI(Self.explainPrompt) }
         )
     }
 
@@ -595,6 +639,17 @@ public struct FindingDetailView: View {
                         HStack(spacing: VLSpacing.sm) {
                             Button("Approve") { onStartProcedure(action) }
                                 .buttonStyle(.borderedProminent)
+                            // Owner directive (2026-08-29): a fast "I already
+                            // did this in QBO" path that doesn't require
+                            // stepping through Approve's guided procedure
+                            // first — same verified-on-resync mechanism as
+                            // that screen's "I completed this in QBO"
+                            // (`AppState.attestCompletion`), just reachable
+                            // in one click for a bookkeeper working a long
+                            // triage queue.
+                            Button("Mark as Done") { onMarkDone() }
+                                .buttonStyle(.bordered)
+                                .disabled(isFindingActionInFlight)
                             Button("Dismiss") { onDismiss() }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
@@ -610,7 +665,7 @@ public struct FindingDetailView: View {
                         // `RuleContext.dismissedFindingIDs`, which every
                         // rule checks on every future sync) — not a snooze,
                         // not FYI-only.
-                        Text("Dismiss suppresses this exact finding permanently — it will not reappear on future syncs unless something about these two transactions changes.")
+                        Text("Mark as Done re-checks this against QBO right now — it only clears if the underlying issue is actually gone. Dismiss suppresses this exact finding permanently — it will not reappear on future syncs unless something about these two transactions changes.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }

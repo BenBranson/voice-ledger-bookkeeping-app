@@ -20,6 +20,13 @@ public struct AskAIPanelView: View {
     private let isAsking: Bool
     private let error: String?
     private let onAsk: (String) -> Void
+    /// A one-click canned question (e.g. "Explain This Finding") shown
+    /// beside the free-text field, for a caller that has an obvious default
+    /// question to offer rather than always requiring the bookkeeper to
+    /// type one. `nil` (the default) renders nothing extra — the other call
+    /// site (`CleanupAssessmentView`) is unaffected.
+    private let quickAskLabel: String?
+    private let onQuickAsk: () -> Void
 
     @State private var questionDraft = ""
 
@@ -30,7 +37,9 @@ public struct AskAIPanelView: View {
         answer: String?,
         isAsking: Bool,
         error: String?,
-        onAsk: @escaping (String) -> Void
+        onAsk: @escaping (String) -> Void,
+        quickAskLabel: String? = nil,
+        onQuickAsk: @escaping () -> Void = {}
     ) {
         self.disclaimer = disclaimer
         self.placeholder = placeholder
@@ -39,6 +48,8 @@ public struct AskAIPanelView: View {
         self.isAsking = isAsking
         self.error = error
         self.onAsk = onAsk
+        self.quickAskLabel = quickAskLabel
+        self.onQuickAsk = onQuickAsk
     }
 
     public var body: some View {
@@ -61,6 +72,12 @@ public struct AskAIPanelView: View {
                     Text(disclaimer)
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
+
+                    if let quickAskLabel {
+                        Button(isAsking ? "Asking…" : quickAskLabel) { onQuickAsk() }
+                            .buttonStyle(.bordered)
+                            .disabled(isAsking)
+                    }
 
                     if let answer {
                         Text(answer)
