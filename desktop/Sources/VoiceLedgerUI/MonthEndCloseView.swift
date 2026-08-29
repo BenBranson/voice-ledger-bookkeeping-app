@@ -16,17 +16,22 @@ public struct MonthEndCloseView: View {
         /// readiness signal (e.g. the QBO-side reconciliation/closing-date
         /// steps, which Voice Ledger cannot verify itself).
         public let readyDetail: String?
+        /// Owner directive (2026-08-29): backs the "Review Findings" link
+        /// — `nil`/`0` hides it (nothing to review, or this item has no
+        /// automatic readiness signal at all).
+        public let openFindingsCount: Int?
         /// docs/VOICE_LEDGER_HANDOFF.md D3 — `MonthEndChecklist.isStale`,
         /// computed by the caller (this view has no watermark of its own
         /// to compare against). Meaningless when `completion` is `nil`.
         public let isStale: Bool
         public var id: ChecklistItemID { item.id }
 
-        public init(item: ChecklistItem, isUnlocked: Bool, completion: ChecklistItemCompletion?, readyDetail: String?, isStale: Bool = false) {
+        public init(item: ChecklistItem, isUnlocked: Bool, completion: ChecklistItemCompletion?, readyDetail: String?, openFindingsCount: Int? = nil, isStale: Bool = false) {
             self.item = item
             self.isUnlocked = isUnlocked
             self.completion = completion
             self.readyDetail = readyDetail
+            self.openFindingsCount = openFindingsCount
             self.isStale = isStale
         }
     }
@@ -35,6 +40,11 @@ public struct MonthEndCloseView: View {
     private let items: [ItemState]
     private let onComplete: (ChecklistItemID, _ note: String?) -> Void
     private let onUncomplete: (ChecklistItemID) -> Void
+    /// Owner directive (2026-08-29): "a direct 'Go review these findings'
+    /// link on each locked/open item." `nil` (the default) renders no
+    /// link — only the caller (`RootView`) knows how to actually navigate
+    /// to another screen, so this stays a plain pass-through.
+    private let onReviewFindings: ((ChecklistItemID) -> Void)?
 
     @State private var noteDrafts: [ChecklistItemID: String] = [:]
 
@@ -42,13 +52,48 @@ public struct MonthEndCloseView: View {
         environment: VLEnvironmentTone,
         items: [ItemState],
         onComplete: @escaping (ChecklistItemID, _ note: String?) -> Void,
-        onUncomplete: @escaping (ChecklistItemID) -> Void
+        onUncomplete: @escaping (ChecklistItemID) -> Void,
+        onReviewFindings: ((ChecklistItemID) -> Void)? = nil
     ) {
         self.environment = environment
         self.items = items
         self.onComplete = onComplete
         self.onUncomplete = onUncomplete
+        self.onReviewFindings = onReviewFindings
     }
+
+    /// Owner directive (2026-08-29): "light visual grouping... over the
+    /// same five steps." Reuses the sidebar's own existing CLEANUP/CLOSE
+    /// vocabulary (`AppSidebar.swift`'s section titles) rather than
+    /// inventing new stage names — the same five real items, just labeled
+    /// consistently with how the rest of the app already groups them.
+    private static let stageForItemID: [String: String] = [
+        "resolve-cleanup-assessment": "CLEANUP",
+        "review-balance-sheet-integrity": "CLEANUP",
+        "review-bank-feed": "RECONCILIATION",
+        "reconcile-bank-accounts": "RECONCILIATION",
+        "set-qbo-closing-date": "CLOSE"
+    ]
+
+    private var stages: [(label: String, items: [ItemState])] {
+        var seen: [String] = []
+        var buckets: [String: [ItemState]] = [:]
+        for state in items {
+            let label = Self.stageForItemID[state.item.id.rawValue] ?? "OTHER"
+            if buckets[label] == nil { seen.append(label) }
+            buckets[label, default: []].append(state)
+        }
+        return seen.map { (label: $0, items: buckets[$0] ?? []) }
+    }
+
+    /// Owner directive (2026-08-29): "a real progress indicator ('3 of 5
+    /// steps complete')... not a fabricated health score, just surfacing a
+    /// number that already exists." Derived directly from `items` (each
+    /// already carries whether it has a real completion) rather than a
+    /// second source of truth — the same count
+    /// `MonthEndChecklist.completionStatus` computes, just read here from
+    /// what's already on screen.
+    private var completedCount: Int { items.filter { $0.completion != nil }.count }
 
     public var body: some View {
         ScrollView {
@@ -65,13 +110,46 @@ public struct MonthEndCloseView: View {
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
-                ForEach(items) { state in
-                    itemCard(state)
+                progressBar
+
+                ForEach(stages, id: \.label) { stage in
+                    VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                        Text(stage.label)
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        ForEach(stage.items) { state in
+                            itemCard(state)
+                        }
+                    }
                 }
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    private var progressBar: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                HStack {
+                    Text("\(completedCount) of \(items.count) steps complete")
+                        .font(VLTypography.cardTitle())
+                        .foregroundStyle(VLColor.textPrimary)
+                    Spacer()
+                }
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(VLColor.border)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(VLColor.cyan)
+                            .frame(width: items.isEmpty ? 0 : geometry.size.width * CGFloat(completedCount) / CGFloat(items.count))
+                    }
+                }
+                .frame(height: 6)
+            }
+        }
     }
 
     private func itemCard(_ state: ItemState) -> some View {
@@ -106,9 +184,17 @@ public struct MonthEndCloseView: View {
                 }
 
                 if let readyDetail = state.readyDetail {
-                    Text(readyDetail)
-                        .font(VLTypography.caption())
-                        .foregroundStyle(VLColor.textSecondary)
+                    HStack(spacing: VLSpacing.xs) {
+                        Text(readyDetail)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                        if let onReviewFindings, let count = state.openFindingsCount, count > 0 {
+                            Button("Review Findings →") { onReviewFindings(state.item.id) }
+                                .buttonStyle(.plain)
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.cyan)
+                        }
+                    }
                 }
 
                 if let completion = state.completion {

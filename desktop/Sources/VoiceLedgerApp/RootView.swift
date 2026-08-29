@@ -616,7 +616,15 @@ struct RootView: View {
                 environment: state.environment == .production ? .production : .sandbox,
                 items: monthEndChecklistItemStates,
                 onComplete: { itemID, note in Task { await state.completeChecklistItem(itemID, actorName: actorName, note: note) } },
-                onUncomplete: { itemID in Task { await state.uncompleteChecklistItem(itemID) } }
+                onUncomplete: { itemID in Task { await state.uncompleteChecklistItem(itemID) } },
+                onReviewFindings: { itemID in
+                    switch itemID.rawValue {
+                    case "resolve-cleanup-assessment": state.screen = .cleanupAssessment
+                    case "review-balance-sheet-integrity": state.screen = .balanceSheetIntegrity
+                    case "review-bank-feed": state.screen = .bankFeedCleanup
+                    default: break
+                    }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -882,22 +890,32 @@ struct RootView: View {
         let openFindings = state.findings.filter { $0.status == .open }
         let currentWatermark = AppState.currentEvidenceWatermark()
 
-        func detail(for ruleIDs: Set<String>) -> String {
-            let count = openFindings.filter { ruleIDs.contains($0.ruleID.rawValue) }.count
-            return count == 0 ? "No open findings." : "\(count) open finding\(count == 1 ? "" : "s")."
+        func count(for ruleIDs: Set<String>) -> Int {
+            openFindings.filter { ruleIDs.contains($0.ruleID.rawValue) }.count
+        }
+        func detail(for count: Int) -> String {
+            count == 0 ? "No open findings." : "\(count) open finding\(count == 1 ? "" : "s")."
         }
 
         return MonthEndChecklist.defaultItems.map { item in
             let readyDetail: String?
+            let openFindingsCount: Int?
             switch item.id.rawValue {
             case "resolve-cleanup-assessment":
-                readyDetail = detail(for: AppState.cleanupAssessmentRuleIDs)
+                let c = count(for: AppState.cleanupAssessmentRuleIDs)
+                readyDetail = detail(for: c)
+                openFindingsCount = c
             case "review-balance-sheet-integrity":
-                readyDetail = detail(for: AppState.balanceSheetIntegrityRuleIDs)
+                let c = count(for: AppState.balanceSheetIntegrityRuleIDs)
+                readyDetail = detail(for: c)
+                openFindingsCount = c
             case "review-bank-feed":
-                readyDetail = detail(for: ["VL-RECON-MISSING-001", "VL-RECON-AMBIGUOUS-001", "VL-VENDOR-MISMATCH-001"])
+                let c = count(for: ["VL-RECON-MISSING-001", "VL-RECON-AMBIGUOUS-001", "VL-VENDOR-MISMATCH-001"])
+                readyDetail = detail(for: c)
+                openFindingsCount = c
             default:
                 readyDetail = nil
+                openFindingsCount = nil
             }
             let completion = completionsForPeriod.first { $0.itemID == item.id }
             return MonthEndCloseView.ItemState(
@@ -905,6 +923,7 @@ struct RootView: View {
                 isUnlocked: MonthEndChecklist.isUnlocked(item, completedItemIDs: completedIDs),
                 completion: completion,
                 readyDetail: readyDetail,
+                openFindingsCount: openFindingsCount,
                 isStale: completion.map { MonthEndChecklist.isStale($0, currentWatermark: currentWatermark) } ?? false
             )
         }
