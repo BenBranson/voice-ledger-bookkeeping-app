@@ -393,7 +393,23 @@ struct RootView: View {
                     onGenerateHealthReport: { Task { await state.generateHealthReport() } },
                     onGenerateHealthReportSecondOpinion: { Task { await state.generateHealthReportSecondOpinion() } },
                     onGenerateValueSummary: { Task { await state.generateValueSummary() } },
-                    onGenerateValueSummarySecondOpinion: { Task { await state.generateValueSummarySecondOpinion() } }
+                    onGenerateValueSummarySecondOpinion: { Task { await state.generateValueSummarySecondOpinion() } },
+                    onExportHealthReportPDF: {
+                        guard let answer = state.askAIAnswers[AppState.healthReportContextKey] else { return }
+                        state.exportAIReportPDF(reportTitle: "Book Health Report", providerLabel: "Gemma (local, free)", bodyText: answer, suggestedFilename: "Book Health Report")
+                    },
+                    onExportHealthReportSecondOpinionPDF: {
+                        guard let answer = state.secondOpinionAnswers[AppState.healthReportContextKey] else { return }
+                        state.exportAIReportPDF(reportTitle: "Book Health Report", providerLabel: "OpenAI", bodyText: answer, suggestedFilename: "Book Health Report (OpenAI)")
+                    },
+                    onExportValueSummaryPDF: {
+                        guard let answer = state.askAIAnswers[AppState.valueSummaryContextKey] else { return }
+                        state.exportAIReportPDF(reportTitle: "Client Value Summary", providerLabel: "Gemma (local, free)", bodyText: answer, suggestedFilename: "Client Value Summary")
+                    },
+                    onExportValueSummarySecondOpinionPDF: {
+                        guard let answer = state.secondOpinionAnswers[AppState.valueSummaryContextKey] else { return }
+                        state.exportAIReportPDF(reportTitle: "Client Value Summary", providerLabel: "OpenAI", bodyText: answer, suggestedFilename: "Client Value Summary (OpenAI)")
+                    }
                 )
             }
 

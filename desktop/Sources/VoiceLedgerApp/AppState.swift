@@ -1760,6 +1760,34 @@ public final class AppState {
         }
     }
 
+    /// Owner directive (2026-08-29): a client-facing PDF for the two
+    /// AI-generated reports (Book Health Report, Client Value Summary),
+    /// now that the report content itself is proven good. Same
+    /// `NSSavePanel` posture as `exportTable`/`exportClosePackagePDF` — a
+    /// normal local save the owner drives themselves, never sent anywhere
+    /// on its own.
+    public func exportAIReportPDF(reportTitle: String, providerLabel: String, bodyText: String, suggestedFilename: String) {
+        exportError = nil
+        let input = AIReportPDFExporter.Input(
+            reportTitle: reportTitle,
+            companyName: companyInfo?.companyName,
+            environment: environment == .production ? "production" : "sandbox",
+            period: currentPeriod,
+            providerLabel: providerLabel,
+            bodyText: bodyText
+        )
+        let data = AIReportPDFExporter.export(input)
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(suggestedFilename).pdf"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            exportError = "Could not save \(url.lastPathComponent): \(error)"
+        }
+    }
+
     public func clearExportError() {
         exportError = nil
     }

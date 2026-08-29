@@ -128,6 +128,13 @@ public struct FindingsListView: View {
     private let onGenerateHealthReportSecondOpinion: () -> Void
     private let onGenerateValueSummary: () -> Void
     private let onGenerateValueSummarySecondOpinion: () -> Void
+    /// Owner directive (2026-08-29): a client-facing PDF for each of the
+    /// four report/tier combinations — shown as a small button under a
+    /// panel only once it actually has an answer to export.
+    private let onExportHealthReportPDF: () -> Void
+    private let onExportHealthReportSecondOpinionPDF: () -> Void
+    private let onExportValueSummaryPDF: () -> Void
+    private let onExportValueSummarySecondOpinionPDF: () -> Void
 
     public init(
         state: ViewState,
@@ -138,7 +145,11 @@ public struct FindingsListView: View {
         onGenerateHealthReport: @escaping () -> Void = {},
         onGenerateHealthReportSecondOpinion: @escaping () -> Void = {},
         onGenerateValueSummary: @escaping () -> Void = {},
-        onGenerateValueSummarySecondOpinion: @escaping () -> Void = {}
+        onGenerateValueSummarySecondOpinion: @escaping () -> Void = {},
+        onExportHealthReportPDF: @escaping () -> Void = {},
+        onExportHealthReportSecondOpinionPDF: @escaping () -> Void = {},
+        onExportValueSummaryPDF: @escaping () -> Void = {},
+        onExportValueSummarySecondOpinionPDF: @escaping () -> Void = {}
     ) {
         self.state = state
         self.onSelect = onSelect
@@ -149,6 +160,10 @@ public struct FindingsListView: View {
         self.onGenerateHealthReportSecondOpinion = onGenerateHealthReportSecondOpinion
         self.onGenerateValueSummary = onGenerateValueSummary
         self.onGenerateValueSummarySecondOpinion = onGenerateValueSummarySecondOpinion
+        self.onExportHealthReportPDF = onExportHealthReportPDF
+        self.onExportHealthReportSecondOpinionPDF = onExportHealthReportSecondOpinionPDF
+        self.onExportValueSummaryPDF = onExportValueSummaryPDF
+        self.onExportValueSummarySecondOpinionPDF = onExportValueSummarySecondOpinionPDF
     }
 
     public var body: some View {
@@ -234,6 +249,9 @@ public struct FindingsListView: View {
                 quickAskLabel: "Generate Report (Gemma)",
                 onQuickAsk: onGenerateHealthReport
             )
+            if state.healthReportAnswer != nil {
+                exportPDFButton(action: onExportHealthReportPDF)
+            }
             if state.secondOpinionConfigured {
                 AskAIPanelView(
                     title: "BOOK HEALTH REPORT (OPENAI — MORE THOROUGH)",
@@ -246,8 +264,19 @@ public struct FindingsListView: View {
                     quickAskLabel: "Generate Report (OpenAI)",
                     onQuickAsk: onGenerateHealthReportSecondOpinion
                 )
+                if state.healthReportSecondOpinionAnswer != nil {
+                    exportPDFButton(action: onExportHealthReportSecondOpinionPDF)
+                }
             }
         }
+    }
+
+    /// Owner directive (2026-08-29): a client-facing PDF for a generated
+    /// report — shown only once there's an actual answer to export.
+    private func exportPDFButton(action: @escaping () -> Void) -> some View {
+        Button("Export as PDF", action: action)
+            .buttonStyle(.bordered)
+            .font(VLTypography.caption())
     }
 
     private var emptyState: some View {
@@ -278,6 +307,9 @@ public struct FindingsListView: View {
                         quickAskLabel: "Generate Client Value Report (Gemma)",
                         onQuickAsk: onGenerateValueSummary
                     )
+                    if state.valueSummaryAnswer != nil {
+                        exportPDFButton(action: onExportValueSummaryPDF)
+                    }
                     if state.secondOpinionConfigured {
                         AskAIPanelView(
                             title: "CLIENT VALUE SUMMARY (OPENAI — MORE THOROUGH)",
@@ -290,6 +322,9 @@ public struct FindingsListView: View {
                             quickAskLabel: "Generate Client Value Report (OpenAI)",
                             onQuickAsk: onGenerateValueSummarySecondOpinion
                         )
+                        if state.valueSummarySecondOpinionAnswer != nil {
+                            exportPDFButton(action: onExportValueSummarySecondOpinionPDF)
+                        }
                     }
                 }
             }
