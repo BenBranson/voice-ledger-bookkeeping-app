@@ -106,6 +106,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// through — never QBO's `BookCloseDate` (unread; see
     /// `MonthEndChecklist.swift`'s note).
     case transactionInLockedPeriod
+    /// `VL-PERSONAL-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
+    /// table.
+    case personalExpenseOrOwnerDraw
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
