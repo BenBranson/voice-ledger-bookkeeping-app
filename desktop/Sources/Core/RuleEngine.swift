@@ -122,6 +122,9 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VendorPriceIncreaseRule`'s doc comment for why that's one rule, not
     /// two.
     case vendorPriceIncrease
+    /// `VL-RECON-DIFF-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
+    /// table.
+    case bankReconciliationDifference
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
@@ -238,6 +241,12 @@ public struct RuleContext: Sendable {
     /// with no snapshot on disk). `VL-CLOSED-PERIOD-DRIFT-001` is the only
     /// rule that reads this.
     public let periodLockSnapshot: PeriodLockSnapshot?
+    /// `VL-RECON-DIFF-001`'s baseline — the most recent OFX statement's
+    /// stated ending balance per account (`ClientStore.loadBankStatementReconciliationSnapshots`),
+    /// loaded fresh each sync the same way `periodLock`/`periodLockSnapshot`
+    /// are. Empty when no OFX import with a `<LEDGERBAL>` block has ever
+    /// been confirmed.
+    public let bankStatementSnapshots: [BankStatementReconciliationSnapshot]
 
     public init(
         period: AccountingPeriod,
@@ -247,7 +256,8 @@ public struct RuleContext: Sendable {
         gatedTransactionIDs: Set<String> = [],
         asOfDate: AccountingDate = AccountingDate(date: Date()),
         periodLock: PeriodLock? = nil,
-        periodLockSnapshot: PeriodLockSnapshot? = nil
+        periodLockSnapshot: PeriodLockSnapshot? = nil,
+        bankStatementSnapshots: [BankStatementReconciliationSnapshot] = []
     ) {
         self.period = period
         self.materiality = materiality
@@ -257,6 +267,7 @@ public struct RuleContext: Sendable {
         self.asOfDate = asOfDate
         self.periodLock = periodLock
         self.periodLockSnapshot = periodLockSnapshot
+        self.bankStatementSnapshots = bankStatementSnapshots
     }
 
     /// Returns a copy with `gatedTransactionIDs` replaced — used by

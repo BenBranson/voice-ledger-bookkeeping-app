@@ -225,10 +225,11 @@ public final class AppState {
         public let filename: String
         public let rawText: String
         public let transactionCount: Int
-        /// The file's own stated ending balance, shown to the user for a
-        /// manual comparison against their bank's own statement — not an
-        /// automated check (see `OFXBankStatementImporter.Result`'s doc
-        /// comment for why). `nil` when the file has no `<LEDGERBAL>`.
+        /// The file's own stated ending balance, shown to the user before
+        /// confirming. Also the source of `VL-RECON-DIFF-001`'s baseline —
+        /// once confirmed, `confirmOFXImport` persists this per account so
+        /// later syncs can compare it against QBO's own current balance.
+        /// `nil` when the file has no `<LEDGERBAL>`.
         public let statedEndingBalance: Money?
         public let statedAsOfDate: AccountingDate?
     }
@@ -905,7 +906,8 @@ public final class AppState {
             // `currentPeriodLock` immediately above — VL-CLOSED-PERIOD-DRIFT-001
             // needs the on-disk snapshot as of right now.
             let currentPeriodLockSnapshot = try await store.loadPeriodLockSnapshot()
-            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock, periodLockSnapshot: currentPeriodLockSnapshot)
+            let currentBankStatementSnapshots = try await store.loadBankStatementReconciliationSnapshots()
+            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock, periodLockSnapshot: currentPeriodLockSnapshot, bankStatementSnapshots: currentBankStatementSnapshots)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh
@@ -1202,6 +1204,17 @@ public final class AppState {
         }
         do {
             try await store.upsertImportedStatementLines(result.transactions)
+            // VL-RECON-DIFF-001's baseline. Only saved when the file
+            // actually had a `<LEDGERBAL>` block — no invented balance for
+            // a file that never stated one.
+            if let statedEndingBalance = result.statedEndingBalance {
+                let snapshot = BankStatementReconciliationSnapshot(
+                    accountID: statementAccountID,
+                    statedEndingBalance: statedEndingBalance,
+                    statedAsOfDate: result.statedAsOfDate
+                )
+                try await store.saveBankStatementReconciliationSnapshot(snapshot)
+            }
             pendingImport = nil
             await syncAndEvaluate()
         } catch {

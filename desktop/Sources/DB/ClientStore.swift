@@ -39,6 +39,7 @@ public actor ClientStore {
     private var engagementScopeURL: URL { directory.appending(path: "engagement-scope.json") }
     private var periodLockURL: URL { directory.appending(path: "period-lock.json") }
     private var periodLockSnapshotURL: URL { directory.appending(path: "period-lock-snapshot.json") }
+    private var bankStatementReconciliationSnapshotsURL: URL { directory.appending(path: "bank-statement-reconciliation-snapshots.json") }
     private var carryForwardMarksURL: URL { directory.appending(path: "carry-forward-marks.json") }
     private var salesTaxAttestationURL: URL { directory.appending(path: "sales-tax-attestation.json") }
     private var taxEstimateSettingsURL: URL { directory.appending(path: "tax-estimate-settings.json") }
@@ -270,6 +271,23 @@ public actor ClientStore {
 
     public func savePeriodLockSnapshot(_ snapshot: PeriodLockSnapshot) throws {
         try save(snapshot, to: periodLockSnapshotURL)
+    }
+
+    // MARK: - Bank statement reconciliation snapshots (VL-RECON-DIFF-001)
+
+    public func loadBankStatementReconciliationSnapshots() throws -> [BankStatementReconciliationSnapshot] {
+        try load([BankStatementReconciliationSnapshot].self, from: bankStatementReconciliationSnapshotsURL, default: [])
+    }
+
+    /// Upserts by `accountID` — a later statement import for the same
+    /// account replaces the earlier snapshot rather than accumulating a
+    /// history, since only the most recent statement is a meaningful
+    /// reconciliation baseline.
+    public func saveBankStatementReconciliationSnapshot(_ snapshot: BankStatementReconciliationSnapshot) throws {
+        var existing = try loadBankStatementReconciliationSnapshots()
+        existing.removeAll { $0.accountID == snapshot.accountID }
+        existing.append(snapshot)
+        try save(existing, to: bankStatementReconciliationSnapshotsURL)
     }
 
     // MARK: - Carry-forward marks (Close Package)
