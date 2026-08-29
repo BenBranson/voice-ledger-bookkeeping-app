@@ -109,6 +109,11 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// `VL-PERSONAL-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
     /// table.
     case personalExpenseOrOwnerDraw
+    /// `VL-VEND-ANOMALY-001`, docs/phase-0/08_RULE_ENGINE.md §8.8's backlog
+    /// table. Scoped to same-period, same-vendor amount outliers — see
+    /// `VendorAnomalyRule`'s doc comment for what's deliberately NOT
+    /// covered ("unusual timing," "unusual name").
+    case vendorAmountAnomaly
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific
