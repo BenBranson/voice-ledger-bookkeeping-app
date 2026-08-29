@@ -54,6 +54,17 @@ extension Money: AdditiveArithmetic {
     }
 }
 
+extension Money {
+    /// Presentation-only, precision-losing conversion for charting (Swift
+    /// Charts plots `Double`, not `Money`) — same "not authoritative,
+    /// UI-only" framing `description` above already carries. Never use
+    /// this for arithmetic or comparison; the whole point of this type
+    /// storing integer minor units is to make those exact.
+    public var majorUnitsDouble: Double {
+        Double(minorUnits) / 100
+    }
+}
+
 extension Money: CustomStringConvertible {
     /// A minimal, locale-naive rendering good enough for logs and CLI output.
     /// Real UI presentation belongs to a later, UI-approved step.

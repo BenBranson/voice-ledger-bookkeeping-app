@@ -545,8 +545,7 @@ struct RootView: View {
             }
 
         case .balanceSheetReport:
-            FinancialReportView(
-                title: "Balance Sheet",
+            BalanceSheetReportView(
                 sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
                 lines: state.balanceSheetLines,
@@ -567,8 +566,7 @@ struct RootView: View {
             }
 
         case .profitAndLossReport:
-            FinancialReportView(
-                title: "Profit & Loss",
+            ProfitAndLossReportView(
                 sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
                 lines: state.profitAndLossLines,

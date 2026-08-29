@@ -2,17 +2,13 @@ import SwiftUI
 import Core
 import DesignSystem
 
-/// docs/VOICE_LEDGER_SPEC.md Page 12 (Type A), minimal slice: a flattened
-/// view of any single QBO financial-statement report (Balance Sheet,
-/// Profit & Loss — both verified live to share the same recursive section
-/// shape). See `ReportLine`'s doc comment — real QBO section nesting
-/// collapsed to an indent depth, not a fully faithful nested UI.
-/// **Report responses need normalization and won't be pixel-identical to
-/// QBO's rendered reports** (CLAUDE.md) — this shows real numbers straight
-/// from the API, not a branded client-ready document (that's the Close
-/// Package, not built).
-public struct FinancialReportView: View {
-    private let title: String
+/// The Balance Sheet screen — KPI cards and donut charts ABOVE the same
+/// full detailed line-item table `FinancialReportView` already renders
+/// (reused via `ReportLinesTable`, not reimplemented). Per the owner's own
+/// instruction (2026-08-29): charts are ADDED, never a replacement for the
+/// full data — there is no "visual only" mode that hides the detailed
+/// table.
+public struct BalanceSheetReportView: View {
     private let sourceDescription: String
     private let environment: VLEnvironmentTone
     private let lines: [ReportLine]
@@ -20,11 +16,6 @@ public struct FinancialReportView: View {
     private let errorMessage: String?
     private let onRefresh: () -> Void
     private let onExport: (ReportExportFormat) -> Void
-    /// Variance analysis (docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close
-    /// Package section) — optional so this view's other 6 call sites (Cash
-    /// Flow, and every report before this was added) need no changes.
-    /// `nil` prior lines and `false` loading/no error is the same as never
-    /// having asked for a comparison at all.
     private let priorPeriodLines: [ReportLine]?
     private let priorPeriodLabel: String?
     private let isLoadingVariance: Bool
@@ -32,7 +23,6 @@ public struct FinancialReportView: View {
     private let onLoadVariance: (() -> Void)?
 
     public init(
-        title: String,
         sourceDescription: String,
         environment: VLEnvironmentTone,
         lines: [ReportLine],
@@ -46,7 +36,6 @@ public struct FinancialReportView: View {
         varianceError: String? = nil,
         onLoadVariance: (() -> Void)? = nil
     ) {
-        self.title = title
         self.sourceDescription = sourceDescription
         self.environment = environment
         self.lines = lines
@@ -65,7 +54,7 @@ public struct FinancialReportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
                 HStack {
-                    Text(title)
+                    Text("Balance Sheet")
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
@@ -98,6 +87,11 @@ public struct FinancialReportView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                 } else {
+                    KPICardRow(cards: kpiCards)
+                    BalanceSheetDonutChart(
+                        assetSlices: BalanceSheetBreakdown.assetSlices(from: lines),
+                        liabilitiesAndEquitySlices: BalanceSheetBreakdown.liabilitiesAndEquitySlices(from: lines)
+                    )
                     ReportLinesTable(lines: lines)
                 }
 
@@ -115,5 +109,23 @@ public struct FinancialReportView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    private var kpiCards: [KPICardRow.CardData] {
+        [
+            kpiCard(label: "Working Capital", money: FinancialKPIs.workingCapital(from: lines)),
+            kpiCard(label: "Current Ratio", ratio: FinancialKPIs.currentRatio(from: lines)),
+            kpiCard(label: "Quick Ratio", ratio: FinancialKPIs.quickRatio(from: lines))
+        ]
+    }
+
+    private func kpiCard(label: String, money: Money?) -> KPICardRow.CardData {
+        guard let money else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
+        return KPICardRow.CardData(label: label, value: money.description)
+    }
+
+    private func kpiCard(label: String, ratio: Double?) -> KPICardRow.CardData {
+        guard let ratio else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
+        return KPICardRow.CardData(label: label, value: String(format: "%.2fx", ratio))
     }
 }
