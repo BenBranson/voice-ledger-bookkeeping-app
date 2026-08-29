@@ -77,4 +77,52 @@ struct AskAIContextTests {
         #expect(context.contains("Open findings: 0"))
         #expect(!context.contains("more not listed"))
     }
+
+    // MARK: composeRedacted — the opt-in "second opinion" (OpenAI) tier's
+    // context, 2026-08-29.
+
+    @Test("composeRedacted replaces the vendor name with a placeholder")
+    func composeRedactedReplacesVendorName() {
+        let context = AskAIContext.composeRedacted(finding: finding(vendorName: "Permian Supply"))
+        #expect(!context.contains("Permian Supply"))
+        #expect(context.contains("the vendor"))
+    }
+
+    @Test("composeRedacted replaces the vendor name even when it also appears inside the narrative, not just the Vendor: line")
+    func composeRedactedReplacesVendorNameInsideNarrative() {
+        let context = AskAIContext.composeRedacted(finding: finding(
+            narrative: "Two purchases from Permian Supply for $486.20 were posted on the same day.",
+            vendorName: "Permian Supply"
+        ))
+        #expect(!context.contains("Permian Supply"))
+    }
+
+    @Test("composeRedacted is case-insensitive")
+    func composeRedactedIsCaseInsensitive() {
+        let context = AskAIContext.composeRedacted(finding: finding(
+            narrative: "A charge from PERMIAN SUPPLY appeared twice.",
+            vendorName: "Permian Supply"
+        ))
+        #expect(!context.contains("PERMIAN SUPPLY"))
+    }
+
+    @Test("composeRedacted still includes dollar exposure, severity, and dates — only the vendor identity is stripped")
+    func composeRedactedKeepsFinancialFacts() {
+        let context = AskAIContext.composeRedacted(finding: finding(vendorName: "Permian Supply"))
+        #expect(context.contains("486.20") || context.contains("USD 486.20"))
+        #expect(context.contains("high"))
+        #expect(context.contains("2026-07"))
+    }
+
+    @Test("composeRedacted is identical to compose when there is no vendor name")
+    func composeRedactedMatchesComposeWithNoVendor() {
+        let plainFinding = finding()
+        #expect(AskAIContext.composeRedacted(finding: plainFinding) == AskAIContext.compose(finding: plainFinding))
+    }
+
+    @Test("composeRedacted does not attempt to redact a 1-character vendor name — avoids mangling every occurrence of that letter")
+    func composeRedactedSkipsPathologicallyShortVendorName() {
+        let context = AskAIContext.composeRedacted(finding: finding(narrative: "A charge appeared twice.", vendorName: "A"))
+        #expect(context.contains("A charge appeared twice."))
+    }
 }

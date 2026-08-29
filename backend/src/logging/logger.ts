@@ -58,6 +58,12 @@ export interface LogFields {
   readonly minorVersion?: number;
   readonly byteCount?: number;
   readonly error?: string; // the error's `.message` / class name — never a raw stack containing interpolated request data
+  /// Which Ask AI tier served this request — "primary" (the app's default,
+  /// currently local Ollama) or "secondary" (the opt-in, paid, per-question
+  /// OpenAI "second opinion," 2026-08-29). Never a provider name or model —
+  /// just which tier, so an operator can see spend-relevant requests in the
+  /// log without this becoming a place provider/model details leak.
+  readonly tier?: "primary" | "secondary";
 }
 
 export interface LogLine extends LogFields {

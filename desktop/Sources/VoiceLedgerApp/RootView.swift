@@ -404,6 +404,11 @@ struct RootView: View {
                     isAskingAI: state.askingAIContextKeys.contains(findingID),
                     askAIError: state.askAIError?.contextKey == findingID ? state.askAIError?.message : nil,
                     onAskAI: { question in Task { await state.askAI(findingID: findingID, question: question) } },
+                    secondOpinionAnswer: state.secondOpinionAnswers[findingID],
+                    isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(findingID),
+                    secondOpinionError: state.secondOpinionError?.contextKey == findingID ? state.secondOpinionError?.message : nil,
+                    onAskSecondOpinion: { question in Task { await state.askSecondOpinion(findingID: findingID, question: question) } },
+                    secondOpinionConfigured: state.aiStatus?.secondaryConfigured ?? false,
                     onBack: { state.screen = .list }
                 )
             } else {

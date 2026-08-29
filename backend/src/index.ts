@@ -11,7 +11,7 @@
 
 import "dotenv/config"; // local dev convenience only — loads .env if present; on Render, real env vars are set directly and this is a silent no-op
 import express from "express";
-import { resolveAppConfig, resolveQBOCredentials, resolveAIConfig, ConfigError } from "./config.js";
+import { resolveAppConfig, resolveQBOCredentials, resolveAIConfig, resolveSecondaryAIConfig, ConfigError } from "./config.js";
 import { openDatabase } from "./db/sqlite.js";
 import { TokenStore } from "./auth/tokenStore.js";
 import { SessionStore } from "./auth/session.js";
@@ -34,6 +34,7 @@ function main(): void {
   let appConfig;
   let qboCredentials;
   let aiConfig;
+  let secondaryAIConfig;
   try {
     appConfig = resolveAppConfig();
     qboCredentials = resolveQBOCredentials();
@@ -41,6 +42,10 @@ function main(): void {
     // off (`/ai/status` reports `configured: false`), not a startup
     // failure. Unlike QBO, this app has to run fully without it.
     aiConfig = resolveAIConfig();
+    // The opt-in "second opinion" tier (2026-08-29) — independent of
+    // `aiConfig`'s own provider, always OpenAI when a key is present. Also
+    // never throws for the same reason.
+    secondaryAIConfig = resolveSecondaryAIConfig();
   } catch (error) {
     if (error instanceof ConfigError) {
       logEvent("config_error", { error: error.message });
@@ -67,7 +72,7 @@ function main(): void {
   app.use(oauthRoutes(qboCredentials, tokenStore, sessionStore));
   app.use(healthRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(operationsRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
-  app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
+  app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware, secondaryAIConfig));
   app.use(connectionsRoutes(tokenStore, sessionStore, sessionMiddleware));
 
   app.listen(appConfig.port, () => {

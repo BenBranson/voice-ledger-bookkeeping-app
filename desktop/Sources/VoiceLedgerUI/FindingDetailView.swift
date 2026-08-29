@@ -82,6 +82,16 @@ public struct FindingDetailView: View {
     private let isAskingAI: Bool
     private let askAIError: String?
     private let onAskAI: (String) -> Void
+    /// Owner directive (2026-08-29): the opt-in "second opinion" tier —
+    /// separate answer/error/in-flight state from the free tier above so
+    /// both can be visible at once, never one overwriting the other.
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
+    /// `nil` until `/ai/status` has actually been checked — never assumed
+    /// available, same posture as `aiStatus` itself.
+    private let secondOpinionConfigured: Bool
     /// Navigates back to the Findings list. Owner directive (2026-08-29):
     /// "there needs to be a back button in findings especially when
     /// looking at the individual finding screens."
@@ -124,6 +134,11 @@ public struct FindingDetailView: View {
         isAskingAI: Bool = false,
         askAIError: String? = nil,
         onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
         onBack: @escaping () -> Void = {}
     ) {
         self.finding = finding
@@ -153,6 +168,11 @@ public struct FindingDetailView: View {
         self.isAskingAI = isAskingAI
         self.askAIError = askAIError
         self.onAskAI = onAskAI
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
+        self.secondOpinionConfigured = secondOpinionConfigured
         self.onBack = onBack
     }
 
@@ -198,6 +218,9 @@ public struct FindingDetailView: View {
                 }
                 carryForwardSection
                 askAISection
+                if secondOpinionConfigured {
+                    secondOpinionSection
+                }
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -325,6 +348,34 @@ public struct FindingDetailView: View {
             onAsk: onAskAI,
             quickAskLabel: "Explain This Finding",
             onQuickAsk: { onAskAI(Self.explainPrompt) }
+        )
+    }
+
+    /// Owner directive (2026-08-29): an opt-in, per-question "second
+    /// opinion" from OpenAI, distinct from the free/local panel above —
+    /// never automatic, always a deliberate click, since every question
+    /// here is a real, non-free API request. The disclaimer states plainly
+    /// what is and isn't sent, matching `AskAIContext.composeRedacted`'s
+    /// own honest-scope doc comment: the vendor name is redacted, dollar
+    /// amounts/dates/the finding's own description are not.
+    private var secondOpinionSection: some View {
+        AskAIPanelView(
+            title: "SECOND OPINION (OPENAI)",
+            disclaimer: "Sends this finding's numbers, dates, and description to OpenAI's API for a second opinion — the vendor name is redacted first, but other details are not. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+            placeholder: "Ask OpenAI for a second opinion",
+            // This section only renders once `secondOpinionConfigured` is
+            // already true (the caller checked `/ai/status` for real) — no
+            // separate `AIStatus` needed here. `nil` renders the panel's
+            // normal content (not a "not configured"/"disabled" message);
+            // the app-wide AI kill switch is still enforced server-side for
+            // this tier exactly the same as the free one.
+            aiStatus: nil,
+            answer: secondOpinionAnswer,
+            isAsking: isAskingSecondOpinion,
+            error: secondOpinionError,
+            onAsk: onAskSecondOpinion,
+            quickAskLabel: "Get a Second Opinion (OpenAI)",
+            onQuickAsk: { onAskSecondOpinion(Self.explainPrompt) }
         )
     }
 

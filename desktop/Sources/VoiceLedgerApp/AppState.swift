@@ -132,6 +132,14 @@ public final class AppState {
     public private(set) var askAIAnswers: [String: String] = [:]
     public private(set) var askingAIContextKeys: Set<String> = []
     public private(set) var askAIError: (contextKey: String, message: String)?
+    /// The opt-in "second opinion" (OpenAI) tier — 2026-08-29, kept as
+    /// entirely separate state from `askAIAnswers`/etc above rather than a
+    /// mode of the same maps, so a bookkeeper can see the free (Gemma) and
+    /// paid (OpenAI) answers to the same finding side by side instead of
+    /// one overwriting the other.
+    public private(set) var secondOpinionAnswers: [String: String] = [:]
+    public private(set) var askingSecondOpinionContextKeys: Set<String> = []
+    public private(set) var secondOpinionError: (contextKey: String, message: String)?
     public private(set) var isTogglingWriteAccess = false
 
     // Apply Fix (staged API write, VL-CC-PAYMENT-001's first consumer).
@@ -851,6 +859,40 @@ public final class AppState {
     public func askAI(findingID: String, question: String) async {
         guard let finding = finding(id: findingID) else { return }
         await askAI(contextKey: findingID, contextText: AskAIContext.compose(finding: finding), question: question)
+    }
+
+    /// The opt-in "second opinion" tier (2026-08-29, owner directive): asks
+    /// the SAME question through OpenAI instead of the app's default free
+    /// local model, for a bookkeeper who wants a more capable read on a
+    /// finding they're still unsure about. Two things this deliberately
+    /// does differently from `askAI(findingID:question:)` above:
+    ///
+    /// 1. Composes context with `AskAIContext.composeRedacted`, not
+    ///    `.compose` — the vendor name never leaves this machine for this
+    ///    tier (see that function's doc comment for the honest scope of
+    ///    what is and isn't redacted).
+    /// 2. Passes `tier: .secondary`, which the backend only ever honors
+    ///    when explicitly asked — this is never invoked from any
+    ///    automatic/default flow, only from a button the owner clicks
+    ///    themselves each time, since every call here is a real,
+    ///    non-free API request.
+    public func askSecondOpinion(findingID: String, question: String) async {
+        guard let finding = finding(id: findingID) else { return }
+        guard !askingSecondOpinionContextKeys.contains(findingID) else { return }
+        askingSecondOpinionContextKeys.insert(findingID)
+        if secondOpinionError?.contextKey == findingID { secondOpinionError = nil }
+        do {
+            let answer = try await backend.askAI(
+                realmID: realmID,
+                question: question,
+                context: AskAIContext.composeRedacted(finding: finding),
+                tier: .secondary
+            )
+            secondOpinionAnswers[findingID] = answer
+        } catch {
+            secondOpinionError = (contextKey: findingID, message: "\(error)")
+        }
+        askingSecondOpinionContextKeys.remove(findingID)
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

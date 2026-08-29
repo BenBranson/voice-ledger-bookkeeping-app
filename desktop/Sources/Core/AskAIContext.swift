@@ -57,6 +57,35 @@ public enum AskAIContext {
         return lines.joined(separator: "\n")
     }
 
+    /// Owner directive (2026-08-29): before any finding's context leaves
+    /// this machine for the opt-in "second opinion" (OpenAI) tier, the
+    /// vendor name is replaced with a placeholder — deliberately built here
+    /// in Core, deterministically, rather than trusted to a prompt
+    /// instruction, since a system prompt is a request the model could
+    /// ignore, not a guarantee.
+    ///
+    /// **Honest scope, not a claim of full anonymization**: this replaces
+    /// occurrences of `finding.vendorName` specifically (case-insensitive,
+    /// including inside `narrative`/proposed-action text, where it often
+    /// also appears in prose). It does NOT strip dollar amounts, dates,
+    /// account names, or transaction identifiers — those are the facts the
+    /// second opinion needs to be useful at all, and Voice Ledger doesn't
+    /// have a general-purpose PII/entity scrubber to safely remove them
+    /// without risking mangling the numbers themselves. The UI's own
+    /// disclaimer must state this plainly rather than imply a stronger
+    /// guarantee than this function actually provides.
+    public static func composeRedacted(finding: Finding) -> String {
+        var text = compose(finding: finding)
+        // A 1-character vendor name would redact nearly every letter in
+        // the text instead of one identifier — guard against that
+        // pathological case rather than silently mangling the context.
+        guard let vendorName = finding.vendorName, vendorName.count >= 2 else { return text }
+        while let range = text.range(of: vendorName, options: .caseInsensitive) {
+            text.replaceSubrange(range, with: "the vendor")
+        }
+        return text
+    }
+
     /// The page-level counterpart to `compose(finding:)` — added when the
     /// Ask AI panel expanded beyond `FindingDetailView` to other pages
     /// (docs/VOICE_LEDGER_SPEC.md: "Every page ends with an Ask [AI]

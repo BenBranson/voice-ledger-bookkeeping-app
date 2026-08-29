@@ -13,6 +13,11 @@ import DesignSystem
 /// this specific panel's answers are grounded in — the same boundary
 /// CLAUDE.md rule 1 enforces everywhere else in this app.
 public struct AskAIPanelView: View {
+    /// Distinguishes multiple panels on the same screen — e.g.
+    /// `FindingDetailView`'s free (Gemma) and opt-in "second opinion"
+    /// (OpenAI) panels, 2026-08-29. Defaults to the original hardcoded
+    /// text, so the other two call sites are unaffected.
+    private let title: String
     private let disclaimer: String
     private let placeholder: String
     private let aiStatus: AIStatus?
@@ -31,6 +36,7 @@ public struct AskAIPanelView: View {
     @State private var questionDraft = ""
 
     public init(
+        title: String = "ASK AI",
         disclaimer: String,
         placeholder: String = "Ask a question",
         aiStatus: AIStatus?,
@@ -41,6 +47,7 @@ public struct AskAIPanelView: View {
         quickAskLabel: String? = nil,
         onQuickAsk: @escaping () -> Void = {}
     ) {
+        self.title = title
         self.disclaimer = disclaimer
         self.placeholder = placeholder
         self.aiStatus = aiStatus
@@ -55,7 +62,7 @@ public struct AskAIPanelView: View {
     public var body: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
-                Text("ASK AI")
+                Text(title)
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)

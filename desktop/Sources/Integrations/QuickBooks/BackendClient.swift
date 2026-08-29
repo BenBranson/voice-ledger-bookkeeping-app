@@ -233,7 +233,12 @@ public actor BackendClient {
     /// its shape, matching this whole type's transport-only role. The
     /// OpenAI API key itself never reaches this process; only the backend
     /// holds it (CLAUDE.md rule 3).
-    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = []) async throws -> String {
+    /// - Parameter tier: `.primary` (the app's default, free/local tier) or
+    ///   `.secondary` (the opt-in, paid "second opinion" — 2026-08-29). The
+    ///   backend rejects any other value outright rather than silently
+    ///   treating it as primary, so a caller bug here fails loudly instead
+    ///   of ever silently making an unwanted paid request.
+    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = [], tier: AskAITier = .primary) async throws -> String {
         var url = configuration.baseURL
         url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
 
@@ -243,7 +248,7 @@ public actor BackendClient {
         if let token = configuration.sessionToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history))
+        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history, tier: tier.rawValue))
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -328,10 +333,19 @@ struct AISettingsRequest: Encodable, Sendable {
     let enabled: Bool
 }
 
+/// Mirrors `backend/src/routes/ai.ts`'s `tier` field — `"primary"` (the
+/// app's default tier) or `"secondary"` (the opt-in, paid "second
+/// opinion," 2026-08-29).
+public enum AskAITier: String, Sendable {
+    case primary
+    case secondary
+}
+
 struct AskAIRequest: Encodable, Sendable {
     let question: String
     let context: String
     let history: [AskAIHistoryTurn]
+    let tier: String
 }
 
 struct AskAIResponse: Decodable, Sendable {

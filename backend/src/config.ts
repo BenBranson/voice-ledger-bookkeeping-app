@@ -135,6 +135,34 @@ export function resolveAIConfig(env: NodeJS.ProcessEnv = process.env): AIConfig 
   };
 }
 
+/**
+ * The opt-in "second opinion" tier (2026-08-29, per the owner's explicit
+ * request): a bookkeeper who wants a more capable model's read on a finding
+ * can ask for it deliberately, per question — this is INDEPENDENT of
+ * `AI_PROVIDER`/`resolveAIConfig` above, which picks the app's default
+ * (free, local Ollama) tier. Always tries OpenAI specifically, regardless
+ * of what the primary provider is set to; `null` when `OPENAI_API_KEY`
+ * isn't set, same "just not configured, not an error" posture as the
+ * primary resolver.
+ *
+ * Never auto-invoked — `routes/ai.ts`'s `/ask-ai` only reaches this client
+ * when the request explicitly asks for `tier: "secondary"`, which the
+ * desktop app only ever sends from a button the owner clicks themselves
+ * (never from the default "Explain This Finding" flow). Keeping this a
+ * fully separate resolver/client, rather than a mode of the primary one,
+ * means the free local tier can never accidentally fall back to a paid
+ * API call.
+ */
+export function resolveSecondaryAIConfig(env: NodeJS.ProcessEnv = process.env): AIConfig | null {
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.trim() === "") return null;
+  return {
+    provider: "openai",
+    apiKey,
+    model: env.OPENAI_MODEL ?? "gpt-4o-mini"
+  };
+}
+
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const keyHex = requireEnv(env, "TOKEN_ENCRYPTION_KEY");
   const key = Buffer.from(keyHex, "hex");

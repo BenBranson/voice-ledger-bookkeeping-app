@@ -18,11 +18,48 @@ public struct AIStatus: Codable, Sendable, Equatable {
     public let enabled: Bool
     public let provider: String?
     public let model: String?
+    /// The opt-in "second opinion" tier (2026-08-29) — always OpenAI when
+    /// configured, entirely independent of `provider`/`model` above (the
+    /// app's default, currently local Ollama). `false`/`nil` just means no
+    /// `OPENAI_API_KEY` is set on this backend — not an error, the same
+    /// "not configured yet" posture `configured` already has for the
+    /// primary tier. Additive via `decodeIfPresent`, so a backend that
+    /// hasn't been redeployed yet (or a stale cached response) still
+    /// decodes correctly with these simply absent.
+    public let secondaryConfigured: Bool
+    public let secondaryProvider: String?
+    public let secondaryModel: String?
 
-    public init(configured: Bool, enabled: Bool, provider: String? = nil, model: String? = nil) {
+    public init(
+        configured: Bool,
+        enabled: Bool,
+        provider: String? = nil,
+        model: String? = nil,
+        secondaryConfigured: Bool = false,
+        secondaryProvider: String? = nil,
+        secondaryModel: String? = nil
+    ) {
         self.configured = configured
         self.enabled = enabled
         self.provider = provider
         self.model = model
+        self.secondaryConfigured = secondaryConfigured
+        self.secondaryProvider = secondaryProvider
+        self.secondaryModel = secondaryModel
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case configured, enabled, provider, model, secondaryConfigured, secondaryProvider, secondaryModel
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        configured = try container.decode(Bool.self, forKey: .configured)
+        enabled = try container.decode(Bool.self, forKey: .enabled)
+        provider = try container.decodeIfPresent(String.self, forKey: .provider)
+        model = try container.decodeIfPresent(String.self, forKey: .model)
+        secondaryConfigured = try container.decodeIfPresent(Bool.self, forKey: .secondaryConfigured) ?? false
+        secondaryProvider = try container.decodeIfPresent(String.self, forKey: .secondaryProvider)
+        secondaryModel = try container.decodeIfPresent(String.self, forKey: .secondaryModel)
     }
 }

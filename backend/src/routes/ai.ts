@@ -77,26 +77,39 @@ export function sanitizeHistory(raw: unknown): AIChatTurn[] {
   return recent.slice(start);
 }
 
+function buildClient(config: AIConfig | null): AICompletionClient | null {
+  if (!config) return null;
+  return config.provider === "ollama"
+    ? new OllamaClient(config.baseUrl, config.model)
+    : new OpenAIClient(config.apiKey, config.model);
+}
+
 export function aiRoutes(
   aiConfig: AIConfig | null,
   aiSettingsStore: AISettingsStore,
   requireSession: RequestHandler,
   requireRealmMatch: RequestHandler,
-  rateLimitByRealm: RequestHandler
+  rateLimitByRealm: RequestHandler,
+  /// The opt-in "second opinion" tier (2026-08-29) — see
+  /// `config.ts`'s `resolveSecondaryAIConfig` doc comment. Always OpenAI
+  /// when configured, entirely independent of `aiConfig`'s own provider —
+  /// a request only ever reaches this client when it explicitly asks for
+  /// `tier: "secondary"`.
+  secondaryAIConfig: AIConfig | null = null
 ): Router {
   const router = Router();
-  const client: AICompletionClient | null = aiConfig
-    ? aiConfig.provider === "ollama"
-      ? new OllamaClient(aiConfig.baseUrl, aiConfig.model)
-      : new OpenAIClient(aiConfig.apiKey, aiConfig.model)
-    : null;
+  const client = buildClient(aiConfig);
+  const secondaryClient = buildClient(secondaryAIConfig);
 
   router.get("/ai/status", requireSession, (_req, res) => {
     res.json({
       configured: client !== null,
       enabled: aiSettingsStore.isEnabled(),
       provider: aiConfig?.provider ?? null,
-      model: aiConfig?.model ?? null
+      model: aiConfig?.model ?? null,
+      secondaryConfigured: secondaryClient !== null,
+      secondaryProvider: secondaryAIConfig?.provider ?? null,
+      secondaryModel: secondaryAIConfig?.model ?? null
     });
   });
 
@@ -112,7 +125,10 @@ export function aiRoutes(
       configured: client !== null,
       enabled: aiSettingsStore.isEnabled(),
       provider: aiConfig?.provider ?? null,
-      model: aiConfig?.model ?? null
+      model: aiConfig?.model ?? null,
+      secondaryConfigured: secondaryClient !== null,
+      secondaryProvider: secondaryAIConfig?.provider ?? null,
+      secondaryModel: secondaryAIConfig?.model ?? null
     });
   });
 
@@ -129,9 +145,29 @@ export function aiRoutes(
         res.status(503).json({ error: "AI features are turned off for this app. Turn them back on in Settings to use this." });
         return;
       }
-      if (!client) {
-        logEvent("ask_ai_not_configured", { realmId });
-        res.status(503).json({ error: "AI is not configured on this backend yet — no API key is set." });
+
+      // Owner directive (2026-08-29): opt-in "second opinion" tier — a
+      // request only ever routes to `secondaryClient` (OpenAI) when it
+      // explicitly asks, never as a fallback for the default free/local
+      // tier. Anything else in `tier` is rejected outright rather than
+      // silently treated as "primary" — a typo here should never silently
+      // send a paid request nobody asked for, nor silently degrade a
+      // second-opinion request to the free tier without saying so.
+      const tier = req.body?.tier;
+      if (tier !== undefined && tier !== "primary" && tier !== "secondary") {
+        res.status(400).json({ error: 'tier must be "primary" or "secondary" when present.' });
+        return;
+      }
+      const useSecondary = tier === "secondary";
+      const activeClient = useSecondary ? secondaryClient : client;
+
+      if (!activeClient) {
+        logEvent("ask_ai_not_configured", { realmId, tier: useSecondary ? "secondary" : "primary" });
+        res.status(503).json({
+          error: useSecondary
+            ? "The second-opinion tier isn't configured on this backend — no OpenAI API key is set."
+            : "AI is not configured on this backend yet — no API key is set."
+        });
         return;
       }
 
@@ -152,18 +188,18 @@ export function aiRoutes(
 
       const history = sanitizeHistory(req.body?.history);
 
-      logEvent("ask_ai_invoked", { realmId });
+      logEvent("ask_ai_invoked", { realmId, tier: useSecondary ? "secondary" : "primary" });
       try {
         const userMessage = `Context (already computed by the app, not by you):\n${context}\n\nQuestion: ${question}`;
-        const result = await client.complete(SYSTEM_PROMPT, userMessage, history);
-        logEvent("ask_ai_succeeded", { realmId, latencyMs: result.latencyMs });
+        const result = await activeClient.complete(SYSTEM_PROMPT, userMessage, history);
+        logEvent("ask_ai_succeeded", { realmId, tier: useSecondary ? "secondary" : "primary", latencyMs: result.latencyMs });
         res.json({ answer: result.text, model: result.model });
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "UnknownError";
         if (error instanceof OpenAIApiError || error instanceof OllamaApiError) {
-          logEvent("ask_ai_failed", { realmId, httpStatus: error.httpStatus, error: errorName });
+          logEvent("ask_ai_failed", { realmId, tier: useSecondary ? "secondary" : "primary", httpStatus: error.httpStatus, error: errorName });
         } else {
-          logEvent("ask_ai_failed", { realmId, error: errorName });
+          logEvent("ask_ai_failed", { realmId, tier: useSecondary ? "secondary" : "primary", error: errorName });
         }
         res.status(502).json({ error: "The AI request failed. Try again in a moment." });
       }
