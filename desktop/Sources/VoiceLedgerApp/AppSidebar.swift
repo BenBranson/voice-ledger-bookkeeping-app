@@ -141,9 +141,6 @@ struct AppSidebar: View {
         .safeAreaInset(edge: .top) {
             header
         }
-        .safeAreaInset(edge: .bottom) {
-            voiceFooter
-        }
     }
 
     private var header: some View {
@@ -156,6 +153,7 @@ struct AppSidebar: View {
                     .font(VLTypography.cardTitle())
                     .foregroundStyle(VLColor.textPrimary)
                 Spacer()
+                voiceMicButton
                 Button(action: onSync) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .rotationEffect(.degrees(isSyncing ? 360 : 0))
@@ -179,32 +177,32 @@ struct AppSidebar: View {
         .padding(.horizontal, VLSpacing.md)
         .padding(.top, VLSpacing.md)
         .padding(.bottom, VLSpacing.sm)
+        // Real, live-reported bug (2026-08-29): without an opaque
+        // background here, the List's own rows show through/overlap this
+        // header once scrolled — `safeAreaInset` reserves layout space but
+        // doesn't itself paint anything behind its content, so the header
+        // needs its own solid fill to actually occlude what scrolls
+        // underneath it.
+        .background(VLColor.background)
     }
 
-    /// Voice pinned at the bottom of every sidebar view, not buried behind
-    /// the old overflow menu — the owner's own ask. One tap starts a
-    /// conversation from anywhere in the app; `RootView`'s bottom overlay
-    /// still shows the live transcript/level meter/reply once it starts.
-    private var voiceFooter: some View {
+    /// A top icon button, not a bottom text row — the owner's own ask
+    /// (2026-08-29): a plain circular mic glyph, filled solid red only
+    /// while actually listening; an outline/silhouette otherwise, so its
+    /// state reads at a glance without text.
+    private var voiceMicButton: some View {
         Button(action: onToggleVoice) {
-            HStack(spacing: VLSpacing.sm) {
-                Image(systemName: isVoiceListening ? "mic.fill" : "mic")
-                    .foregroundStyle(isVoiceListening ? .red : VLColor.cyan)
-                Text(isVoiceListening ? "Listening…" : (isVoiceProcessing ? "Thinking…" : "Start a conversation"))
-                    .font(VLTypography.bodyEmphasis())
-                    .foregroundStyle(VLColor.textPrimary)
-                Spacer()
-            }
-            .padding(VLSpacing.sm)
-            .background(VLColor.surfaceElevated)
-            .clipShape(RoundedRectangle(cornerRadius: VLRadius.control))
-            .overlay(
-                RoundedRectangle(cornerRadius: VLRadius.control)
-                    .stroke(isVoiceListening ? Color.red.opacity(0.6) : VLColor.border, lineWidth: VLBorder.hairline)
-            )
+            Image(systemName: isVoiceListening ? "mic.fill" : "mic")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isVoiceListening ? .white : VLColor.textMuted)
+                .frame(width: 30, height: 30)
+                .background(isVoiceListening ? Color.red : VLColor.surfaceElevated)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().stroke(isVoiceListening ? Color.red : VLColor.border, lineWidth: VLBorder.hairline)
+                )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, VLSpacing.md)
-        .padding(.vertical, VLSpacing.sm)
+        .help(isVoiceListening ? "Listening… click to stop" : (isVoiceProcessing ? "Thinking…" : "Start a conversation"))
     }
 }

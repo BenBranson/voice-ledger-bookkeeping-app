@@ -185,11 +185,25 @@ else
             if [ -z "$SESSION_TOKEN" ]; then
                 status_lines+=("Voice Ledger app: could not create a session for the connected company — check ~/Library/Logs/VoiceLedger/app.log")
             else
+                # No `arch -arm64` here (unlike the backend/voice-service
+                # sections above) — investigating a real, live 2026-08-29
+                # crash (SIGABRT inside SwiftUI's own Button-gesture
+                # dispatch, `MainActor.assumeIsolated` failing on the
+                # actual main thread when a Button is pressed) surfaced
+                # that this machine and this binary are BOTH already
+                # native arm64 (`uname -m`/`file "$BIN"` both arm64,
+                # Apple M5) — the `arch -arm64` wrapper here was always a
+                # no-op for THIS binary, unlike the backend's `npm run dev`
+                # (where it fixes a real Rosetta-vs-native mismatch for
+                # better-sqlite3's native module — see that section's own
+                # comment). Removed as the first, safest thing to rule out
+                # while diagnosing the crash; not yet confirmed as the
+                # actual cause.
                 VOICE_LEDGER_BACKEND_URL="http://localhost:$BACKEND_PORT" \
                 VOICE_LEDGER_SESSION_TOKEN="$SESSION_TOKEN" \
                 VOICE_LEDGER_REALM_ID="$REALM_ID" \
                 VOICE_LEDGER_ENVIRONMENT="$REALM_ENV" \
-                nohup arch -arm64 "$BIN" >> "$APP_LOG" 2>&1 &
+                nohup "$BIN" >> "$APP_LOG" 2>&1 &
                 disown
                 status_lines+=("Voice Ledger app: launched")
             fi
