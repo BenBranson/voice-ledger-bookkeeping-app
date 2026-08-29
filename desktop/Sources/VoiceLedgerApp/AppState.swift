@@ -178,6 +178,16 @@ public final class AppState {
     // actually about the finding it's showing.
     public private(set) var applyFixError: (findingID: String, message: String)?
 
+    /// docs/VOICE_LEDGER_HANDOFF.md D4's write journal — every `.submitted`/
+    /// `.success`/`.failed`/`.unknown`/`.ambiguous` entry ever recorded for
+    /// this realm, loaded fresh alongside everything else
+    /// `loadFromDiskOnly()`/`syncAndEvaluate()` already load. A
+    /// `.submitted`/`.unknown` entry is what `applyStagedFix` checks
+    /// before allowing a new write to the same purchase+line.
+    public private(set) var writeJournal: [WriteJournalEntry] = []
+    public private(set) var isResolvingWriteJournalEntryIDs: Set<String> = []
+    public private(set) var writeJournalError: String?
+
     /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): a fresh critic
     /// found `attestCompletion`/`dismissFinding` both unconditionally did
     /// `screen = .list` after their `do`/`catch`, including when the catch
@@ -410,6 +420,7 @@ public final class AppState {
             let newCarryForwardMarks = try await store.loadCarryForwardMarks()
             let newSalesTaxAttestation = try await store.loadSalesTaxAttestation()
             let newTaxEstimateSettings = try await store.loadTaxEstimateSettings()
+            let newWriteJournal = try await store.loadWriteJournal()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -420,6 +431,7 @@ public final class AppState {
             carryForwardMarks = newCarryForwardMarks
             salesTaxAttestation = newSalesTaxAttestation
             taxEstimateSettings = newTaxEstimateSettings
+            writeJournal = newWriteJournal
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -1758,6 +1770,18 @@ public final class AppState {
               let details = action.apiWriteDetails,
               !applyingFixFindingIDs.contains(findingID) else { return }
 
+        // docs/VOICE_LEDGER_HANDOFF.md D4: "It blocks all further writes
+        // to that entity until a resolution probe settles it." Checked
+        // BEFORE anything else — a pending `.submitted`/`.unknown` entry
+        // for this exact purchase+line means a prior attempt's true
+        // outcome is still unresolved, so a second write here could
+        // double-apply it.
+        let journalID = "\(details.purchaseID):\(details.lineID)"
+        if let pending = (try? await store.loadWriteJournal())?.first(where: { $0.id == journalID && ($0.state == .submitted || $0.state == .unknown) }) {
+            applyFixError = (findingID: findingID, message: "A previous write to this transaction is still unresolved (recorded \(pending.submittedAt.formatted(date: .abbreviated, time: .shortened))) — resolve it first (\(Self.resolvePendingWriteActionName)) before trying again.")
+            return
+        }
+
         applyingFixFindingIDs.insert(findingID)
         // Gauntlet Loop, Gauntlet B round 20 (2026-08-24): scoped to THIS
         // finding, matching `performFindingAction`'s entry clearing —
@@ -1765,6 +1789,22 @@ public final class AppState {
         // finding's error the instant Apply Fix started on this one.
         if applyFixError?.findingID == findingID { applyFixError = nil }
         if findingActionError?.findingID == findingID { findingActionError = nil }
+
+        // Phase 1 — SUBMITTED, persisted and flushed BEFORE the network
+        // call. A journal written after the call would lose the record of
+        // a write that may have landed but whose response never arrived.
+        let journalEntry = WriteJournalEntry(
+            findingID: findingID, purchaseID: details.purchaseID, lineID: details.lineID,
+            syncTokenBeforeWrite: details.expectedSyncToken, targetAccountID: details.suggestedAccountID
+        )
+        do {
+            try await store.upsertWriteJournalEntry(journalEntry)
+        } catch {
+            applyFixError = (findingID: findingID, message: "Could not record the write attempt before starting it — nothing was sent to QBO: \(error)")
+            applyingFixFindingIDs.remove(findingID)
+            return
+        }
+
         do {
             let result = try await syncClient.reclassifyPurchaseLine(
                 realmID: realmID,
@@ -1774,6 +1814,15 @@ public final class AppState {
                 newAccountID: details.suggestedAccountID
             )
             guard result.verified else {
+                // Phase 2 — the call returned a definite, KNOWN answer:
+                // QBO responded and its own round-trip check said no. Not
+                // ambiguous — safe to mark `.failed` and let a retry
+                // happen.
+                var failedEntry = journalEntry
+                failedEntry.state = .failed
+                failedEntry.resolvedAt = Date()
+                try? await store.upsertWriteJournalEntry(failedEntry)
+
                 let message = "QBO did not confirm the change — nothing was recorded as resolved. Re-sync and check the transaction directly before retrying."
                 applyFixError = (findingID: findingID, message: message)
                 try await store.appendActivityLogEntry(ActivityLogEntry(
@@ -1790,6 +1839,13 @@ public final class AppState {
                 applyingFixFindingIDs.remove(findingID)
                 return
             }
+
+            // Phase 2 — SUCCESS, QBO-verified.
+            var successEntry = journalEntry
+            successEntry.state = .success
+            successEntry.resolvedAt = Date()
+            try? await store.upsertWriteJournalEntry(successEntry)
+
             let entry = ActivityLogEntry(
                 realmID: realmID,
                 actor: .user(actorName),
@@ -1822,19 +1878,86 @@ public final class AppState {
                 screen = .list
             }
         } catch {
-            applyFixError = (findingID: findingID, message: "\(error)")
+            // Phase 2 — UNKNOWN. The call threw before any
+            // `WriteVerificationResult` could be parsed: a timeout, a
+            // dropped connection, a cancelled task. This is NOT the same
+            // as a clean rejection — the request may have already reached
+            // QBO and applied. Recorded as `.unknown`, which blocks any
+            // further write to this same purchase+line until a resolution
+            // probe settles it (`resolvePendingWrite`).
+            var unknownEntry = journalEntry
+            unknownEntry.state = .unknown
+            try? await store.upsertWriteJournalEntry(unknownEntry)
+
+            applyFixError = (findingID: findingID, message: "The write's outcome is unknown — the network call didn't return an answer, so it's not safe to assume it failed. This is now blocked from retrying until resolved (\(Self.resolvePendingWriteActionName)).")
             try? await store.appendActivityLogEntry(ActivityLogEntry(
                 realmID: realmID,
                 actor: .user(actorName),
-                kind: .apiWriteRejected,
+                kind: .apiWriteUnknown,
                 findingID: findingID,
                 ruleID: finding.ruleID,
                 ruleVersion: finding.ruleVersion,
                 findingSummary: finding.title,
-                note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — the call failed before QBO could respond: \(error)"
+                note: "Attempted to reclassify purchase \(details.purchaseID) line \(details.lineID) from \(details.currentAccountName) to \(details.suggestedAccountName) — the call's outcome is unknown (no response received): \(error). This write is blocked from retrying until resolved."
             ))
             activityLog = (try? await store.loadActivityLog()) ?? activityLog
             applyingFixFindingIDs.remove(findingID)
+        }
+    }
+
+    /// Named once so `applyStagedFix`'s two blocking-error messages stay
+    /// in sync with whatever the UI actually calls this action.
+    static let resolvePendingWriteActionName = "Resolve Pending Write"
+
+    /// docs/VOICE_LEDGER_HANDOFF.md D4's resolution probe. Re-reads the
+    /// purchase this journal entry targeted and compares its CURRENT
+    /// `SyncToken`/line account against what the entry recorded before
+    /// the write attempt (`WriteJournalResolution.resolve`, Core, pure —
+    /// this method only fetches the inputs and records the outcome).
+    /// Only meaningful for a `.submitted`/`.unknown` entry; a no-op for
+    /// anything already resolved.
+    public func resolvePendingWrite(journalEntryID: String, actorName: String) async {
+        guard !isResolvingWriteJournalEntryIDs.contains(journalEntryID) else { return }
+        isResolvingWriteJournalEntryIDs.insert(journalEntryID)
+        defer { isResolvingWriteJournalEntryIDs.remove(journalEntryID) }
+
+        do {
+            guard var entry = try await store.loadWriteJournal().first(where: { $0.id == journalEntryID }) else { return }
+            guard entry.state == .submitted || entry.state == .unknown else { return }
+
+            let purchases = try await syncClient.fetchPurchases(realmID: realmID, period: period)
+            let match = purchases.first { $0.id == entry.purchaseID }
+            let currentSyncToken = match?.syncToken
+            let currentAccountID = match?.lines.first { $0.id == entry.lineID }?.accountID
+
+            let resolvedState = WriteJournalResolution.resolve(entry: entry, currentSyncToken: currentSyncToken, currentAccountID: currentAccountID)
+            entry.state = resolvedState
+            entry.resolvedAt = Date()
+            let note: String
+            switch resolvedState {
+            case .failed:
+                note = "Resolved: SyncToken unchanged since the write attempt — it did not land. Safe to retry."
+            case .success:
+                note = "Resolved: SyncToken changed and the line now shows the intended account — the write landed after all."
+            case .ambiguous:
+                note = "Could not resolve automatically — the purchase's SyncToken changed but not to what this write intended (or the purchase could no longer be found). Review this transaction directly in QBO."
+            case .submitted, .unknown:
+                note = "" // unreachable — resolve() never returns these
+            }
+            entry.resolutionNote = note
+            try await store.upsertWriteJournalEntry(entry)
+
+            try await store.appendActivityLogEntry(ActivityLogEntry(
+                realmID: realmID,
+                actor: .user(actorName),
+                kind: resolvedState == .ambiguous ? .apiWriteAmbiguous : .apiWriteUnknownResolved,
+                findingID: entry.findingID,
+                note: note
+            ))
+            activityLog = try await store.loadActivityLog()
+            writeJournal = try await store.loadWriteJournal()
+        } catch {
+            writeJournalError = "Could not resolve this pending write: \(error)"
         }
     }
 

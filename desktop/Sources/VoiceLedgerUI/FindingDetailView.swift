@@ -52,6 +52,15 @@ public struct FindingDetailView: View {
     /// when one exists.
     private let clientQuestionAnswer: String?
     private let onRecordClientQuestionAnswer: (String) -> Void
+    /// docs/VOICE_LEDGER_HANDOFF.md D4's write journal — non-`nil` when a
+    /// prior write attempt against this finding's exact purchase+line is
+    /// still `.submitted`/`.unknown`. While set, `applyFixSection` blocks
+    /// "Apply Fix" and offers "Resolve Pending Write" instead — the same
+    /// block `AppState.applyStagedFix` itself enforces, made visible here
+    /// so a bookkeeper isn't left guessing why the button doesn't work.
+    private let pendingWriteJournalEntry: WriteJournalEntry?
+    private let isResolvingPendingWrite: Bool
+    private let onResolvePendingWrite: () -> Void
     private let onRememberVendor: () -> Void
     private let onDismiss: () -> Void
     private let onMarkCarriedForward: (String?) -> Void
@@ -88,6 +97,9 @@ public struct FindingDetailView: View {
         lastSentClientQuestion: String? = nil,
         clientQuestionAnswer: String? = nil,
         onRecordClientQuestionAnswer: @escaping (String) -> Void = { _ in },
+        pendingWriteJournalEntry: WriteJournalEntry? = nil,
+        isResolvingPendingWrite: Bool = false,
+        onResolvePendingWrite: @escaping () -> Void = {},
         onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void,
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
@@ -112,6 +124,9 @@ public struct FindingDetailView: View {
         self.lastSentClientQuestion = lastSentClientQuestion
         self.clientQuestionAnswer = clientQuestionAnswer
         self.onRecordClientQuestionAnswer = onRecordClientQuestionAnswer
+        self.pendingWriteJournalEntry = pendingWriteJournalEntry
+        self.isResolvingPendingWrite = isResolvingPendingWrite
+        self.onResolvePendingWrite = onResolvePendingWrite
         self.onRememberVendor = onRememberVendor
         self.onDismiss = onDismiss
         self.onMarkCarriedForward = onMarkCarriedForward
@@ -617,6 +632,10 @@ public struct FindingDetailView: View {
                     .foregroundStyle(VLColor.textMuted)
             }
 
+            if let pending = pendingWriteJournalEntry {
+                pendingWriteSection(pending)
+            }
+
             HStack(spacing: VLSpacing.sm) {
                 Text(details.currentAccountName)
                     .strikethrough()
@@ -643,7 +662,7 @@ public struct FindingDetailView: View {
                         onApplyFix()
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(isApplyingFix)
+                    .disabled(isApplyingFix || pendingWriteJournalEntry != nil)
                     Button("Cancel") { isConfirmingApplyFix = false }
                         .buttonStyle(.bordered)
                         .disabled(isApplyingFix)
@@ -652,7 +671,7 @@ public struct FindingDetailView: View {
                 HStack(spacing: VLSpacing.sm) {
                     Button("Apply Fix") { isConfirmingApplyFix = true }
                         .buttonStyle(.borderedProminent)
-                        .disabled(!writeAccessEnabled)
+                        .disabled(!writeAccessEnabled || pendingWriteJournalEntry != nil)
                     Button("Dismiss") { onDismiss() }
                         .buttonStyle(.bordered)
                         .disabled(isFindingActionInFlight)
@@ -660,6 +679,30 @@ public struct FindingDetailView: View {
             }
         }
         .padding(.top, VLSpacing.xs)
+    }
+
+    /// docs/VOICE_LEDGER_HANDOFF.md D4: a `.submitted`/`.unknown` journal
+    /// entry blocks further writes to this exact purchase+line until a
+    /// resolution probe settles it — this is that block, made visible.
+    private func pendingWriteSection(_ pending: WriteJournalEntry) -> some View {
+        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+            Text(pending.state == .unknown ? "A previous write's outcome is unknown" : "A previous write is still in progress")
+                .font(VLTypography.body())
+                .foregroundStyle(.orange)
+            Text(pending.state == .unknown
+                 ? "The last attempt to apply this fix didn't get a confirmed answer from QBO — it may or may not have landed. Applying again is blocked until this is resolved, so the change can't be sent twice."
+                 : "Recorded \(pending.submittedAt.formatted(date: .abbreviated, time: .shortened)) and still in progress.")
+                .font(VLTypography.caption())
+                .foregroundStyle(VLColor.textMuted)
+            Button(isResolvingPendingWrite ? "Checking…" : "Resolve Pending Write") {
+                onResolvePendingWrite()
+            }
+            .buttonStyle(.bordered)
+            .disabled(isResolvingPendingWrite)
+        }
+        .padding(VLSpacing.xs)
+        .background(VLColor.background)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.orange))
     }
 
     /// `ProposedAction.reversal` was computed by every rule but never

@@ -287,6 +287,18 @@ struct RootView: View {
                         .filter { $0.findingID == findingID && $0.kind == .clientQuestionAnswered }
                         .max(by: { $0.recordedAt < $1.recordedAt })?.note,
                     onRecordClientQuestionAnswer: { text in Task { await state.recordClientQuestionAnswer(findingID: findingID, actorName: actorName, answerText: text) } },
+                    pendingWriteJournalEntry: finding.proposedActions.first?.apiWriteDetails.flatMap { details in
+                        let journalID = "\(details.purchaseID):\(details.lineID)"
+                        return state.writeJournal.first { $0.id == journalID && ($0.state == .submitted || $0.state == .unknown) }
+                    },
+                    isResolvingPendingWrite: finding.proposedActions.first?.apiWriteDetails.map { details in
+                        state.isResolvingWriteJournalEntryIDs.contains("\(details.purchaseID):\(details.lineID)")
+                    } ?? false,
+                    onResolvePendingWrite: {
+                        if let journalID = finding.proposedActions.first?.apiWriteDetails.map({ "\($0.purchaseID):\($0.lineID)" }) {
+                            Task { await state.resolvePendingWrite(journalEntryID: journalID, actorName: actorName) }
+                        }
+                    },
                     onRememberVendor: {
                         guard let vendorName = finding.vendorName else { return }
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }

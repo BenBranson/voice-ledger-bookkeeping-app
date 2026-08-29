@@ -85,6 +85,7 @@ public actor ClientStore {
     private let carryForwardMarksKey = "carry-forward-marks"
     private let salesTaxAttestationKey = "sales-tax-attestation"
     private let taxEstimateSettingsKey = "tax-estimate-settings"
+    private let writeJournalKey = "write-journal"
 
     // MARK: - Findings
 
@@ -373,6 +374,24 @@ public actor ClientStore {
 
     public func saveTaxEstimateSettings(_ settings: TaxEstimateSettings) throws {
         try save(settings, key: taxEstimateSettingsKey)
+    }
+
+    // MARK: - Write journal (docs/VOICE_LEDGER_HANDOFF.md D4)
+
+    public func loadWriteJournal() throws -> [WriteJournalEntry] {
+        try load([WriteJournalEntry].self, key: writeJournalKey, default: [])
+    }
+
+    /// Upserts by `id` (`"<purchaseID>:<lineID>"`) — the SAME entry gets
+    /// updated in place as it moves `.submitted` -> `.success`/`.failed`/
+    /// `.unknown`, never duplicated, so "is there a pending write against
+    /// this line" is always a single lookup, not a scan for the latest of
+    /// several rows.
+    public func upsertWriteJournalEntry(_ entry: WriteJournalEntry) throws {
+        var existing = try loadWriteJournal()
+        existing.removeAll { $0.id == entry.id }
+        existing.append(entry)
+        try save(existing, key: writeJournalKey)
     }
 
     // MARK: - Activity log

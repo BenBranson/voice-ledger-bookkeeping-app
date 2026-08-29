@@ -66,6 +66,26 @@ public enum ActivityKind: String, Codable, Sendable {
     /// prove (the ones that didn't go through). The `note` field carries
     /// the rejection/error detail.
     case apiWriteRejected
+    /// docs/VOICE_LEDGER_HANDOFF.md D4's `.unknown` write-journal state,
+    /// made visible in the Activity Log — a write attempt whose network
+    /// call never returned an answer at all (thrown before
+    /// `WriteVerificationResult` could be parsed), distinct from
+    /// `.apiWriteRejected` (a clean, KNOWN failure — QBO responded and
+    /// said no). Genuinely don't know whether this write landed; the
+    /// `note` field carries the underlying error. See `WriteJournalEntry`.
+    case apiWriteUnknown
+    /// A resolution probe settled a `.apiWriteUnknown` entry — the `note`
+    /// field carries which state it resolved to (`success`/`failed`) and
+    /// why. `.ambiguous` resolutions do NOT get this kind — see
+    /// `apiWriteAmbiguous` below; only a probe that reached a confident
+    /// answer produces this one.
+    case apiWriteUnknownResolved
+    /// A resolution probe found the entity changed but not to what was
+    /// intended — D4: "escalates to the human — never guessed." Distinct
+    /// from `apiWriteUnknownResolved` specifically so the Activity Log
+    /// (and a human reading it) can tell "this got resolved automatically"
+    /// from "this needs a human to look at it," at a glance.
+    case apiWriteAmbiguous
 
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package section:
     /// "carry-forward items" — a human's explicit decision to defer an
@@ -91,6 +111,9 @@ public enum ActivityKind: String, Codable, Sendable {
         case .findingResolved: return "Finding resolved"
         case .apiWriteApplied: return "API write applied"
         case .apiWriteRejected: return "API write not confirmed"
+        case .apiWriteUnknown: return "API write outcome unknown"
+        case .apiWriteUnknownResolved: return "API write outcome resolved"
+        case .apiWriteAmbiguous: return "API write outcome ambiguous — needs review"
         case .clientQuestionDrafted: return "Client question sent"
         case .clientQuestionAnswered: return "Client question answered"
         case .findingDismissed: return "Finding dismissed"
@@ -117,7 +140,8 @@ public enum ActivityKind: String, Codable, Sendable {
         switch self {
         case .apiWriteApplied, .manualCompletionAttested:
             return true
-        case .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
+        case .findingDetected, .findingResolved, .apiWriteRejected, .apiWriteUnknown,
+             .apiWriteUnknownResolved, .apiWriteAmbiguous, .clientQuestionDrafted,
              .clientQuestionAnswered, .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
              .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved:
             return false

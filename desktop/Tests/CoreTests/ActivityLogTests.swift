@@ -35,7 +35,8 @@ struct ActivityLogTests {
     func everyActivityKindHasAHumanLabel() {
         let kinds: [ActivityKind] = [
             .findingDetected, .manualCompletionAttested, .findingResolved, .apiWriteApplied,
-            .apiWriteRejected, .clientQuestionDrafted, .clientQuestionAnswered, .findingDismissed,
+            .apiWriteRejected, .apiWriteUnknown, .apiWriteUnknownResolved, .apiWriteAmbiguous,
+            .clientQuestionDrafted, .clientQuestionAnswered, .findingDismissed,
             .clientMemoryRuleCreated, .clientMemoryRuleRemoved, .findingAutoDismissedByClientMemory,
             .findingCarriedForward, .findingCarryForwardRemoved
         ]
@@ -54,6 +55,16 @@ struct ActivityLogTests {
         #expect(ActivityKind.apiWriteApplied.humanLabel != ActivityKind.apiWriteRejected.humanLabel)
     }
 
+    @Test("apiWriteRejected and apiWriteUnknown have distinct labels — a known clean failure is never confusable with a genuinely unknown outcome")
+    func apiWriteRejectedAndUnknownAreDistinct() {
+        #expect(ActivityKind.apiWriteRejected.humanLabel != ActivityKind.apiWriteUnknown.humanLabel)
+    }
+
+    @Test("apiWriteUnknownResolved and apiWriteAmbiguous have distinct labels — an automatically-resolved outcome is never confusable with one that needs a human")
+    func apiWriteUnknownResolvedAndAmbiguousAreDistinct() {
+        #expect(ActivityKind.apiWriteUnknownResolved.humanLabel != ActivityKind.apiWriteAmbiguous.humanLabel)
+    }
+
     @Test("clientQuestionDrafted and clientQuestionAnswered have distinct labels — a sent question is never confusable with a recorded answer")
     func clientQuestionDraftedAndAnsweredAreDistinct() {
         #expect(ActivityKind.clientQuestionDrafted.humanLabel != ActivityKind.clientQuestionAnswered.humanLabel)
@@ -70,7 +81,8 @@ struct ActivityLogTests {
         #expect(ActivityKind.apiWriteApplied.isCorrection)
         #expect(ActivityKind.manualCompletionAttested.isCorrection)
         let nonCorrections: [ActivityKind] = [
-            .findingDetected, .findingResolved, .apiWriteRejected, .clientQuestionDrafted,
+            .findingDetected, .findingResolved, .apiWriteRejected, .apiWriteUnknown,
+            .apiWriteUnknownResolved, .apiWriteAmbiguous, .clientQuestionDrafted,
             .clientQuestionAnswered, .findingDismissed, .clientMemoryRuleCreated, .clientMemoryRuleRemoved,
             .findingAutoDismissedByClientMemory, .findingCarriedForward, .findingCarryForwardRemoved
         ]
