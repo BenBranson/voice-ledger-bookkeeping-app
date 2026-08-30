@@ -409,7 +409,11 @@ struct RootView: View {
                     onExportValueSummarySecondOpinionPDF: {
                         guard let answer = state.secondOpinionAnswers[AppState.valueSummaryContextKey] else { return }
                         state.exportAIReportPDF(reportTitle: "Client Value Summary", providerLabel: "OpenAI", bodyText: answer, suggestedFilename: "Client Value Summary (OpenAI)")
-                    }
+                    },
+                    onAskHealthReportFollowUp: { question in Task { await state.askHealthReportFollowUp(question) } },
+                    onAskHealthReportFollowUpSecondOpinion: { question in Task { await state.askHealthReportFollowUpSecondOpinion(question) } },
+                    onAskValueSummaryFollowUp: { question in Task { await state.askValueSummaryFollowUp(question) } },
+                    onAskValueSummaryFollowUpSecondOpinion: { question in Task { await state.askValueSummaryFollowUpSecondOpinion(question) } }
                 )
             }
 

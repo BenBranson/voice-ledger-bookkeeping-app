@@ -1001,6 +1001,35 @@ public final class AppState {
         if secondOpinionError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
     }
 
+    // Owner directive (2026-08-29): a real bug, found live — the "Ask a
+    // question" box under each report panel was wired to just call
+    // `generateHealthReport()`/etc again, silently discarding whatever the
+    // owner actually typed ("what should I look at first?" produced
+    // another full canned report instead of an answer). These four give
+    // that box a real destination: the SAME composed context (so the
+    // answer is grounded in the real 17-finding data, not re-summarized
+    // from scratch), asked in `.concise` format specifically so the model
+    // answers the actual question instead of regenerating the whole
+    // report structure. Deliberately does NOT call `recordReportGenerated()`
+    // — an incidental follow-up question isn't "a report was generated,"
+    // and shouldn't reset the "since last report" window the real Generate
+    // Report buttons use.
+    public func askHealthReportFollowUp(_ question: String) async {
+        await askAI(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: question, format: .concise)
+    }
+
+    public func askHealthReportFollowUpSecondOpinion(_ question: String) async {
+        await askSecondOpinion(contextKey: Self.healthReportContextKey, contextText: composedHealthReportContext(), question: question, format: .concise)
+    }
+
+    public func askValueSummaryFollowUp(_ question: String) async {
+        await askAI(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: question, format: .concise)
+    }
+
+    public func askValueSummaryFollowUpSecondOpinion(_ question: String) async {
+        await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: question, format: .concise)
+    }
+
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,
     /// normalize, evaluate, persist, re-render. Re-running this is what
     /// makes the isVoided exclusion resolve a finding (§11.1) — see

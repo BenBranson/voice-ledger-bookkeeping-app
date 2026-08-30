@@ -135,6 +135,14 @@ public struct FindingsListView: View {
     private let onExportHealthReportSecondOpinionPDF: () -> Void
     private let onExportValueSummaryPDF: () -> Void
     private let onExportValueSummarySecondOpinionPDF: () -> Void
+    /// Owner directive (2026-08-29): real bug fix — the "Ask a question"
+    /// box under each report used to silently discard whatever was typed
+    /// and just re-trigger report generation again. These actually carry
+    /// the typed question through to a grounded, targeted answer.
+    private let onAskHealthReportFollowUp: (String) -> Void
+    private let onAskHealthReportFollowUpSecondOpinion: (String) -> Void
+    private let onAskValueSummaryFollowUp: (String) -> Void
+    private let onAskValueSummaryFollowUpSecondOpinion: (String) -> Void
 
     public init(
         state: ViewState,
@@ -149,7 +157,11 @@ public struct FindingsListView: View {
         onExportHealthReportPDF: @escaping () -> Void = {},
         onExportHealthReportSecondOpinionPDF: @escaping () -> Void = {},
         onExportValueSummaryPDF: @escaping () -> Void = {},
-        onExportValueSummarySecondOpinionPDF: @escaping () -> Void = {}
+        onExportValueSummarySecondOpinionPDF: @escaping () -> Void = {},
+        onAskHealthReportFollowUp: @escaping (String) -> Void = { _ in },
+        onAskHealthReportFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
+        onAskValueSummaryFollowUp: @escaping (String) -> Void = { _ in },
+        onAskValueSummaryFollowUpSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.state = state
         self.onSelect = onSelect
@@ -164,6 +176,10 @@ public struct FindingsListView: View {
         self.onExportHealthReportSecondOpinionPDF = onExportHealthReportSecondOpinionPDF
         self.onExportValueSummaryPDF = onExportValueSummaryPDF
         self.onExportValueSummarySecondOpinionPDF = onExportValueSummarySecondOpinionPDF
+        self.onAskHealthReportFollowUp = onAskHealthReportFollowUp
+        self.onAskHealthReportFollowUpSecondOpinion = onAskHealthReportFollowUpSecondOpinion
+        self.onAskValueSummaryFollowUp = onAskValueSummaryFollowUp
+        self.onAskValueSummaryFollowUpSecondOpinion = onAskValueSummaryFollowUpSecondOpinion
     }
 
     public var body: some View {
@@ -245,7 +261,7 @@ public struct FindingsListView: View {
                 answer: state.healthReportAnswer,
                 isAsking: state.isGeneratingHealthReport,
                 error: state.healthReportError,
-                onAsk: { _ in onGenerateHealthReport() },
+                onAsk: onAskHealthReportFollowUp,
                 quickAskLabel: "Generate Report (Gemma)",
                 onQuickAsk: onGenerateHealthReport
             )
@@ -260,7 +276,7 @@ public struct FindingsListView: View {
                     answer: state.healthReportSecondOpinionAnswer,
                     isAsking: state.isGeneratingHealthReportSecondOpinion,
                     error: state.healthReportSecondOpinionError,
-                    onAsk: { _ in onGenerateHealthReportSecondOpinion() },
+                    onAsk: onAskHealthReportFollowUpSecondOpinion,
                     quickAskLabel: "Generate Report (OpenAI)",
                     onQuickAsk: onGenerateHealthReportSecondOpinion
                 )
@@ -303,7 +319,7 @@ public struct FindingsListView: View {
                         answer: state.valueSummaryAnswer,
                         isAsking: state.isGeneratingValueSummary,
                         error: state.valueSummaryError,
-                        onAsk: { _ in onGenerateValueSummary() },
+                        onAsk: onAskValueSummaryFollowUp,
                         quickAskLabel: "Generate Client Value Report (Gemma)",
                         onQuickAsk: onGenerateValueSummary
                     )
@@ -318,7 +334,7 @@ public struct FindingsListView: View {
                             answer: state.valueSummarySecondOpinionAnswer,
                             isAsking: state.isGeneratingValueSummarySecondOpinion,
                             error: state.valueSummarySecondOpinionError,
-                            onAsk: { _ in onGenerateValueSummarySecondOpinion() },
+                            onAsk: onAskValueSummaryFollowUpSecondOpinion,
                             quickAskLabel: "Generate Client Value Report (OpenAI)",
                             onQuickAsk: onGenerateValueSummarySecondOpinion
                         )
