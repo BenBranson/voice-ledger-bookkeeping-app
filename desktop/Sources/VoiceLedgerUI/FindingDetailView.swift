@@ -72,7 +72,7 @@ public struct FindingDetailView: View {
     /// they did and doesn't need the steps/pitfalls walkthrough first. Only
     /// offered alongside `Approve`/`Dismiss` (manualQBO resolution) — a
     /// `.stagedAPI` finding's "done" action already is Apply Fix.
-    private let onMarkDone: () -> Void
+    private let onMarkDone: (String?) -> Void
     private let onMarkCarriedForward: (String?) -> Void
     private let onUnmarkCarriedForward: () -> Void
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel — `nil` `aiStatus` means
@@ -105,6 +105,14 @@ public struct FindingDetailView: View {
     @State private var isConfirmingRememberVendor = false
     @State private var isDraftingCarryForwardReason = false
     @State private var carryForwardReasonDraft = ""
+    /// Owner directive (2026-08-29): "for every finding I can mark what I
+    /// did to resolve it" — a resolution type + free-text detail, combined
+    /// into the same `note` `onMarkDone` already accepts (see
+    /// `ResolutionType.combinedNote`'s doc comment for why this isn't a new
+    /// persisted field).
+    @State private var isLoggingResolution = false
+    @State private var resolutionTypeDraft: ResolutionType?
+    @State private var resolutionDetailDraft = ""
 
     public init(
         finding: Finding,
@@ -126,7 +134,7 @@ public struct FindingDetailView: View {
         onResolvePendingWrite: @escaping () -> Void = {},
         onRememberVendor: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void,
-        onMarkDone: @escaping () -> Void = {},
+        onMarkDone: @escaping (String?) -> Void = { _ in },
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
         onUnmarkCarriedForward: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
@@ -685,6 +693,8 @@ public struct FindingDetailView: View {
 
                 if let details = action.apiWriteDetails {
                     applyFixSection(details)
+                } else if isLoggingResolution {
+                    resolutionLogSection
                 } else {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         HStack(spacing: VLSpacing.sm) {
@@ -697,8 +707,13 @@ public struct FindingDetailView: View {
                             // that screen's "I completed this in QBO"
                             // (`AppState.attestCompletion`), just reachable
                             // in one click for a bookkeeper working a long
-                            // triage queue.
-                            Button("Mark as Done") { onMarkDone() }
+                            // triage queue. Reveals `resolutionLogSection`
+                            // rather than firing immediately — the owner's
+                            // own ask (2026-08-29): "for every finding I can
+                            // mark what I did to resolve it," so the client
+                            // value report has something real to report
+                            // beyond "N findings resolved."
+                            Button("Mark as Done") { isLoggingResolution = true }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
                             Button("Dismiss") { onDismiss() }
@@ -724,6 +739,58 @@ public struct FindingDetailView: View {
                 }
             }
         }
+    }
+
+    /// Owner directive (2026-08-29): "for every finding I can mark what I
+    /// did to resolve it... maybe by a dropdown menu with clickable
+    /// options or even have an empty field option to personally write out
+    /// what I did." Both, combined via `ResolutionType.combinedNote` into
+    /// the one `note` `AppState.attestCompletion` already persists and the
+    /// Client Value Report already reads back out — no new schema, no new
+    /// report payload field, just a better-filled-in version of a field
+    /// that already existed and already flowed through.
+    private var resolutionLogSection: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+            // Owner directive (2026-08-29): "the finding isn't resolved
+            // until I click or type in what I did to resolve it" — a
+            // deliberate change from the first version of this section,
+            // which offered this as optional. Picking a category OR typing
+            // a detail (either is enough) is now required before the
+            // button below will actually fire.
+            Text("What did you do to resolve this? Pick a category, or type it out — the Client Value Report will quote this back to show your work.")
+                .font(VLTypography.caption())
+                .foregroundStyle(VLColor.textSecondary)
+
+            Picker("Type", selection: $resolutionTypeDraft) {
+                Text("Choose a category (optional)").tag(ResolutionType?.none)
+                ForEach(ResolutionType.allCases) { type in
+                    Text(type.label).tag(ResolutionType?.some(type))
+                }
+            }
+            .labelsHidden()
+
+            TextEditor(text: $resolutionDetailDraft)
+                .font(VLTypography.body())
+                .frame(minHeight: 70)
+                .padding(VLSpacing.xs)
+                .background(VLColor.background)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+
+            HStack(spacing: VLSpacing.sm) {
+                Button(isFindingActionInFlight ? "Checking…" : "Save & Mark as Done") {
+                    onMarkDone(ResolutionType.combinedNote(type: resolutionTypeDraft, detail: resolutionDetailDraft))
+                    isLoggingResolution = false
+                    resolutionTypeDraft = nil
+                    resolutionDetailDraft = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isFindingActionInFlight || (resolutionTypeDraft == nil && resolutionDetailDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                Button("Cancel") { isLoggingResolution = false }
+                    .buttonStyle(.bordered)
+                    .disabled(isFindingActionInFlight)
+            }
+        }
+        .padding(.top, VLSpacing.xs)
     }
 
     /// The "review" step of CLAUDE.md rule 2's detect -> draft -> review ->

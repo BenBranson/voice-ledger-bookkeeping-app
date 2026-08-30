@@ -20,6 +20,11 @@ public struct GuidedProcedureView: View {
     /// `manualCompletionAttested` Activity Log entries for one click.
     private let isAttesting: Bool
     @State private var note: String = ""
+    /// Owner directive (2026-08-29): "for every finding I can mark what I
+    /// did to resolve it" — same category picker as `FindingDetailView`'s
+    /// fast "Mark as Done" path, combined via `ResolutionType.combinedNote`
+    /// into the same `note` this attestation already sends.
+    @State private var resolutionType: ResolutionType?
     private let onAttest: (String?) -> Void
     private let onCancel: () -> Void
 
@@ -96,7 +101,24 @@ public struct GuidedProcedureView: View {
                         Text("This records your attestation — it does not verify the result. The finding only resolves once the next sync confirms the change in QBO.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
-                        TextField("Optional note", text: $note, axis: .vertical)
+                        // Owner directive (2026-08-29): "the finding isn't
+                        // resolved until I click or type in what I did to
+                        // resolve it, the click could be like a dropdown
+                        // list where I click on something like matched" —
+                        // a category or a typed note, either is enough, but
+                        // one of them is now required before this button
+                        // will fire.
+                        Text("What did you do? Pick a category, or type it out — the Client Value Report will quote this back to show your work.")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                        Picker("Type", selection: $resolutionType) {
+                            Text("Choose a category (optional)").tag(ResolutionType?.none)
+                            ForEach(ResolutionType.allCases) { type in
+                                Text(type.label).tag(ResolutionType?.some(type))
+                            }
+                        }
+                        .labelsHidden()
+                        TextField("Or type what you did", text: $note, axis: .vertical)
                             .textFieldStyle(.roundedBorder)
                         if let attestError {
                             Text(attestError)
@@ -105,10 +127,10 @@ public struct GuidedProcedureView: View {
                         }
                         HStack(spacing: VLSpacing.sm) {
                             Button("I completed this in QBO") {
-                                onAttest(note.isEmpty ? nil : note)
+                                onAttest(ResolutionType.combinedNote(type: resolutionType, detail: note))
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(isAttesting)
+                            .disabled(isAttesting || (resolutionType == nil && note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                             Button("Cancel") { onCancel() }
                                 .buttonStyle(.bordered)
                         }

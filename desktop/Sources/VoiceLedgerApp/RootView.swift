@@ -419,6 +419,20 @@ struct RootView: View {
 
         case .detail(let findingID):
             if let finding = state.finding(id: findingID) {
+                // Extracted to local `let`s (2026-08-29) — the compiler
+                // started timing out type-checking the giant
+                // `FindingDetailView(...)` call below once `onMarkDone`
+                // gained a parameter; these two closures were the most
+                // deeply-nested expressions in that call and splitting
+                // them out is enough to bring it back under the type
+                // checker's time limit, with no behavior change.
+                let pendingWriteJournalEntry: WriteJournalEntry? = finding.proposedActions.first?.apiWriteDetails.flatMap { details in
+                    let journalID = "\(details.purchaseID):\(details.lineID)"
+                    return state.writeJournal.first { $0.id == journalID && ($0.state == .submitted || $0.state == .unknown) }
+                }
+                let isResolvingPendingWrite: Bool = finding.proposedActions.first?.apiWriteDetails.map { details in
+                    state.isResolvingWriteJournalEntryIDs.contains("\(details.purchaseID):\(details.lineID)")
+                } ?? false
                 FindingDetailView(
                     finding: finding,
                     writeAccessEnabled: state.writeAccessEnabled == true,
@@ -440,13 +454,8 @@ struct RootView: View {
                         .filter { $0.findingID == findingID && $0.kind == .clientQuestionAnswered }
                         .max(by: { $0.recordedAt < $1.recordedAt })?.note,
                     onRecordClientQuestionAnswer: { text in Task { await state.recordClientQuestionAnswer(findingID: findingID, actorName: actorName, answerText: text) } },
-                    pendingWriteJournalEntry: finding.proposedActions.first?.apiWriteDetails.flatMap { details in
-                        let journalID = "\(details.purchaseID):\(details.lineID)"
-                        return state.writeJournal.first { $0.id == journalID && ($0.state == .submitted || $0.state == .unknown) }
-                    },
-                    isResolvingPendingWrite: finding.proposedActions.first?.apiWriteDetails.map { details in
-                        state.isResolvingWriteJournalEntryIDs.contains("\(details.purchaseID):\(details.lineID)")
-                    } ?? false,
+                    pendingWriteJournalEntry: pendingWriteJournalEntry,
+                    isResolvingPendingWrite: isResolvingPendingWrite,
                     onResolvePendingWrite: {
                         if let journalID = finding.proposedActions.first?.apiWriteDetails.map({ "\($0.purchaseID):\($0.lineID)" }) {
                             Task { await state.resolvePendingWrite(journalEntryID: journalID, actorName: actorName) }
@@ -457,7 +466,7 @@ struct RootView: View {
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }
                     },
                     onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } },
-                    onMarkDone: { Task { await state.attestCompletion(findingID: findingID, actorName: actorName, note: nil) } },
+                    onMarkDone: { note in Task { await state.attestCompletion(findingID: findingID, actorName: actorName, note: note) } },
                     onMarkCarriedForward: { reason in Task { await state.markFindingCarriedForward(findingID: findingID, actorName: actorName, reason: reason) } },
                     onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } },
                     aiStatus: state.aiStatus,
