@@ -85,8 +85,19 @@ private struct DonutCard: View {
                     }
                     .animation(.default, value: selectedAmount)
 
+                    // Owner directive (2026-08-29): a real, confirmed bug —
+                    // the chart above renders every slice, but this legend
+                    // used to cap at `.prefix(5)`, silently dropping any
+                    // account past the 5th (7 wedges, 5 labels — exactly
+                    // what was reported live, including the unlabeled
+                    // "purple" slice). Every wedge must have a legend row;
+                    // nothing about a real account balance gets hidden.
+                    Text("Click a slice to see its exact label and amount")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                        ForEach(Array(slices.prefix(5).enumerated()), id: \.element.id) { index, slice in
+                        ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
                             HStack(spacing: VLSpacing.xs) {
                                 Circle()
                                     .fill(VLChartPalette.color(at: index))
