@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import Core
 import DesignSystem
 
@@ -34,6 +35,10 @@ public struct AskAIPanelView: View {
     private let onQuickAsk: () -> Void
 
     @State private var questionDraft = ""
+    /// Owner directive (2026-08-29): "a copy text button... to instantly
+    /// copy the box of text." Brief label swap so the click itself gives
+    /// feedback, rather than a silent copy the owner has to trust happened.
+    @State private var didCopy = false
 
     public init(
         title: String = "ASK AI",
@@ -62,10 +67,28 @@ public struct AskAIPanelView: View {
     public var body: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
-                Text(title)
-                    .font(VLTypography.eyebrow())
-                    .tracking(VLTypography.eyebrowTracking)
-                    .foregroundStyle(VLColor.textMuted)
+                HStack {
+                    Text(title)
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    if let answer {
+                        Button(didCopy ? "Copied" : "Copy Text") {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(answer, forType: .string)
+                            didCopy = true
+                            Task {
+                                try? await Task.sleep(for: .seconds(2))
+                                didCopy = false
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(didCopy ? VLColor.textMuted : VLColor.cyan)
+                    }
+                }
 
                 if let aiStatus, !aiStatus.configured {
                     Text("AI isn't configured on this backend yet.")
@@ -90,6 +113,7 @@ public struct AskAIPanelView: View {
                         Text(answer)
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
+                            .textSelection(.enabled)
                             .padding(VLSpacing.xs)
                             .background(VLColor.background)
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
