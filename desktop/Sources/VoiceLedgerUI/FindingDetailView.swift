@@ -39,6 +39,13 @@ public struct FindingDetailView: View {
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit Close Package "carry-forward
     /// items" — `nil` when this finding has no active mark.
     private let carryForwardMark: CarryForwardMark?
+    /// Owner directive (2026-08-29): "I pressed mark as done... yet after
+    /// doing this the page still looks the same" — `true` right after an
+    /// attestation's immediate resync confirmed the underlying issue is
+    /// STILL present, so the screen can say so explicitly instead of
+    /// silently looking unchanged (which is indistinguishable from nothing
+    /// having happened at all).
+    private let justAttestedStillOpen: Bool
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
     private let onSendClientQuestion: (String) -> Void
@@ -123,6 +130,7 @@ public struct FindingDetailView: View {
         isFindingActionInFlight: Bool = false,
         hasClientMemoryRule: Bool = false,
         carryForwardMark: CarryForwardMark? = nil,
+        justAttestedStillOpen: Bool = false,
         onStartProcedure: @escaping (ProposedAction) -> Void,
         onApplyFix: @escaping () -> Void,
         onSendClientQuestion: @escaping (String) -> Void,
@@ -157,6 +165,7 @@ public struct FindingDetailView: View {
         self.isFindingActionInFlight = isFindingActionInFlight
         self.hasClientMemoryRule = hasClientMemoryRule
         self.carryForwardMark = carryForwardMark
+        self.justAttestedStillOpen = justAttestedStillOpen
         self.onStartProcedure = onStartProcedure
         self.onApplyFix = onApplyFix
         self.onSendClientQuestion = onSendClientQuestion
@@ -621,7 +630,19 @@ public struct FindingDetailView: View {
         }
     }
 
+    /// Owner directive (2026-08-29): "I pressed mark as done... yet after
+    /// doing this the page still looks the same." Root-caused: this
+    /// section never checked `finding.status` at all — a finding that
+    /// genuinely became `.resolved` (or `.dismissed`) after a successful
+    /// re-check looked byte-for-byte identical to one still `.open`,
+    /// because the exact same Approve/Mark as Done/Dismiss row rendered
+    /// regardless. `@ViewBuilder` so the resolved/dismissed branch can be a
+    /// visually distinct card instead of reusing this one's shape.
+    @ViewBuilder
     private func actionSection(_ action: ProposedAction) -> some View {
+        if finding.status != .open {
+            resolvedOrDismissedCard
+        } else {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
                 HStack {
@@ -697,6 +718,17 @@ public struct FindingDetailView: View {
                     resolutionLogSection
                 } else {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        // Owner directive (2026-08-29): "I pressed mark as
+                        // done... yet after doing this the page still looks
+                        // the same" — because the re-check correctly found
+                        // the issue still open in QBO, which is honest, but
+                        // silent. Says so explicitly instead of leaving the
+                        // owner to wonder whether the click did anything.
+                        if justAttestedStillOpen {
+                            Text("Checked against QBO just now — this issue is still there. If you already fixed it, give QBO a moment to save the change, then try again.")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(.orange)
+                        }
                         HStack(spacing: VLSpacing.sm) {
                             Button("Approve") { onStartProcedure(action) }
                                 .buttonStyle(.borderedProminent)
@@ -737,6 +769,26 @@ public struct FindingDetailView: View {
                     }
                     .padding(.top, VLSpacing.xs)
                 }
+            }
+        }
+        }
+    }
+
+    /// The confirmation state a bookkeeper actually gets when a finding is
+    /// no longer `.open` — replaces the Approve/Mark as Done/Dismiss row
+    /// entirely, so a genuinely successful resolution is unmistakable
+    /// rather than looking identical to an untouched finding.
+    private var resolvedOrDismissedCard: some View {
+        VLCard(accentRail: finding.status == .resolved ? VLStatus.verified.color : VLColor.textMuted) {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text(finding.status == .resolved ? "✓ Resolved" : "Dismissed")
+                    .font(VLTypography.cardTitle())
+                    .foregroundStyle(finding.status == .resolved ? VLStatus.verified.color : VLColor.textMuted)
+                Text(finding.status == .resolved
+                     ? "The next sync confirmed this is actually fixed in QBO."
+                     : "Reviewed and dismissed as not a real issue — it will not reappear unless something about these transactions changes.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
             }
         }
     }

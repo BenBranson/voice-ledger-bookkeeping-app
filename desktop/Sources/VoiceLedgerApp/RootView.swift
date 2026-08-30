@@ -444,6 +444,7 @@ struct RootView: View {
                         state.clientMemoryRules.contains { $0.matches(ruleID: finding.ruleID, findingVendorName: vendorName) }
                     } ?? false,
                     carryForwardMark: state.carryForwardMarks.first { $0.findingID == findingID },
+                    justAttestedStillOpen: state.attestationOutcome?.findingID == findingID && state.attestationOutcome?.stillOpen == true,
                     onStartProcedure: { action in state.screen = .procedure(findingID: findingID, actionID: action.id) },
                     onApplyFix: { Task { await state.applyStagedFix(findingID: findingID, actorName: actorName) } },
                     onSendClientQuestion: { text in Task { await state.recordClientQuestionSent(findingID: findingID, actorName: actorName, questionText: text) } },

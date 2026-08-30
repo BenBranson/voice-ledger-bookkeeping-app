@@ -221,6 +221,12 @@ public final class AppState {
     /// Conversations" screen. Every real question/answer exchange across
     /// every panel, oldest first (same order `ClientStore` persists it in).
     public private(set) var conversationHistory: [AskAIConversationEntry] = []
+    /// Owner directive (2026-08-29): explicit feedback after "Mark as
+    /// Done"/"I completed this in QBO" — which finding was just checked,
+    /// and whether the resync that follows found it still open. `nil`
+    /// before any attestation this session, or once the owner navigates
+    /// away from the finding it was about.
+    public private(set) var attestationOutcome: (findingID: String, stillOpen: Bool)?
 
     /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): a fresh critic
     /// found `attestCompletion`/`dismissFinding` both unconditionally did
@@ -1640,6 +1646,15 @@ public final class AppState {
         }
         guard findingActionError?.findingID != findingID else { return }
         await syncAndEvaluate()
+        // Owner directive (2026-08-29): "I pressed mark as done... yet
+        // after doing this the page still looks the same" — the resync
+        // above IS the real check (CLAUDE.md rule 5: never trust the
+        // click itself), and here it correctly found the underlying issue
+        // still present in QBO — but nothing told the owner that's what
+        // just happened, so a genuinely-working re-check looked
+        // indistinguishable from nothing happening at all. This records
+        // which outcome just occurred so the screen can say so explicitly.
+        attestationOutcome = (findingID: findingID, stillOpen: self.finding(id: findingID)?.status == .open)
     }
 
     /// The explicit "Remember this vendor" action — deliberately separate

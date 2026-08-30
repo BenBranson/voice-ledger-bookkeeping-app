@@ -153,10 +153,31 @@ struct VoiceLedgerApp: App {
 /// a default that demonstrably wasn't firing here.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var onReopenWithNoWindows: (() -> Void)?
+    /// Defensive guard, live-verified 2026-08-29: without this, a reopen
+    /// callback that fires before launch has actually settled could open a
+    /// window before `WindowGroup`'s own initial one is up, risking a
+    /// duplicate. Debug logging confirmed `applicationShouldHandleReopen`
+    /// does NOT fire during a normal cold launch in practice — only after a
+    /// real post-launch "closed to zero windows, then Dock-clicked" case —
+    /// but gating on `didFinishLaunching` costs nothing and removes the
+    /// possibility outright rather than relying on that being permanent.
+    private var didFinishLaunching = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        didFinishLaunching = true
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
+        // Live-verified 2026-08-29: returning `true` unconditionally made
+        // AppKit ALSO perform its own default reopen behavior on top of the
+        // window `onReopenWithNoWindows` just opened, producing two windows
+        // titled "Voice Ledger" from a single Dock-icon click. Returning
+        // `false` here tells AppKit "already handled it, don't also do your
+        // own thing" — only the `flag == true` case (windows already
+        // visible) should fall through to AppKit's normal behavior.
+        if didFinishLaunching && !flag {
             onReopenWithNoWindows?()
+            return false
         }
         return true
     }
