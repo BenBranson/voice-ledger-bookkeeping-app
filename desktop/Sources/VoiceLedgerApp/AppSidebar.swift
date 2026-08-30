@@ -72,7 +72,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .generalLedgerReport: return "General Ledger"
         case .taxes: return "Taxes"
         case .clientMemory: return "Client Memory"
-        case .voiceHistory: return "Voice History"
+        case .voiceHistory: return "AI Conversations"
         case .connection: return "Connection"
         case .scopeAndPeriodLock: return "Scope & Period Lock"
         }
@@ -101,7 +101,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .generalLedgerReport: return "book.closed"
         case .taxes: return "banknote"
         case .clientMemory: return "brain"
-        case .voiceHistory: return "text.bubble"
+        case .voiceHistory: return "bubble.left.and.text.bubble.right"
         case .connection: return "link"
         case .scopeAndPeriodLock: return "lock.shield"
         }
@@ -120,7 +120,7 @@ let sidebarSections: [SidebarSection] = [
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),
     SidebarSection(title: "CLIENT", items: [.clientMemory]),
-    SidebarSection(title: "VOICE", items: [.voiceHistory]),
+    SidebarSection(title: "AI", items: [.voiceHistory]),
     SidebarSection(title: "SETUP", items: [.connection, .scopeAndPeriodLock])
 ]
 

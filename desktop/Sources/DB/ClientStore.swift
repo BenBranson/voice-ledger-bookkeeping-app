@@ -93,6 +93,7 @@ public actor ClientStore {
     /// "since last report" window — `nil` means no report has ever been
     /// generated for this client yet.
     private let lastReportGeneratedAtKey = "last-report-generated-at"
+    private let askAIConversationHistoryKey = "ask-ai-conversation-history"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
     /// trims to this length so an unattended conversation-mode session left
@@ -100,6 +101,10 @@ public actor ClientStore {
     /// 250 back-and-forth turns, comfortably more than one working session
     /// needs to "read previous conversations" on reopen.
     private static let maxVoiceTranscriptEntries = 500
+    /// Same reasoning as `maxVoiceTranscriptEntries` — a smaller cap since
+    /// each entry here already carries a full question+answer pair (a real
+    /// report can be several paragraphs), not one short utterance.
+    private static let maxAskAIConversationEntries = 200
 
     // MARK: - Findings
 
@@ -448,6 +453,24 @@ public actor ClientStore {
 
     public func loadVoiceTranscript() throws -> [VoiceTranscriptEntry] {
         try load([VoiceTranscriptEntry].self, key: voiceTranscriptKey, default: [])
+    }
+
+    /// Owner directive (2026-08-29): the unified Ask AI conversation log —
+    /// every real question/answer exchange across every panel (per-finding
+    /// explain/second-opinion, the two report buttons and their follow-up
+    /// questions, voice's own reasoning fallback), not just voice. Same
+    /// append-only, capped-length shape as the voice transcript above.
+    public func appendAskAIConversationEntry(_ entry: AskAIConversationEntry) throws {
+        var existing = try load([AskAIConversationEntry].self, key: askAIConversationHistoryKey, default: [])
+        existing.append(entry)
+        if existing.count > Self.maxAskAIConversationEntries {
+            existing.removeFirst(existing.count - Self.maxAskAIConversationEntries)
+        }
+        try save(existing, key: askAIConversationHistoryKey)
+    }
+
+    public func loadAskAIConversationHistory() throws -> [AskAIConversationEntry] {
+        try load([AskAIConversationEntry].self, key: askAIConversationHistoryKey, default: [])
     }
 
     // MARK: - Activity log

@@ -250,6 +250,29 @@ struct ClientStoreTests {
         #expect(loaded.last?.text == "turn 509")
     }
 
+    @Test("Ask AI conversation history is append-only and round-trips")
+    func askAIConversationHistoryAppendOnly() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        try await store.appendAskAIConversationEntry(AskAIConversationEntry(contextLabel: "Book Health Report", tier: .primary, question: "What should I look at first?", answer: "Notes Payable, at $25,000."))
+        try await store.appendAskAIConversationEntry(AskAIConversationEntry(contextLabel: "Notes Payable has a negative liability balance", tier: .secondary, question: "Why?", answer: "Because..."))
+        let loaded = try await store.loadAskAIConversationHistory()
+        #expect(loaded.count == 2)
+        #expect(loaded[0].contextLabel == "Book Health Report")
+        #expect(loaded[1].tier == .secondary)
+    }
+
+    @Test("Ask AI conversation history is capped at 200 entries")
+    func askAIConversationHistoryCapsAt200() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        for i in 0..<210 {
+            try await store.appendAskAIConversationEntry(AskAIConversationEntry(contextLabel: "Test", tier: .primary, question: "q\(i)", answer: "a\(i)"))
+        }
+        let loaded = try await store.loadAskAIConversationHistory()
+        #expect(loaded.count == 200)
+        #expect(loaded.first?.question == "q10")
+        #expect(loaded.last?.question == "q209")
+    }
+
     func sampleStatementLine(id: String) -> LedgerTransaction {
         LedgerTransaction(
             id: id, entityKind: .importedBankStatementLine, vendorName: "PERMIAN SUPPLY",

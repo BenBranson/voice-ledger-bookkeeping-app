@@ -857,7 +857,7 @@ struct RootView: View {
             }
 
         case .voiceHistory:
-            VoiceHistoryView(rows: Self.voiceHistoryRows(state.voiceEngine.transcriptHistory))
+            AIConversationHistoryView(rows: Self.conversationHistoryRows(state.conversationHistory))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Back") { state.screen = .list }
@@ -1008,23 +1008,28 @@ struct RootView: View {
         }
     }
 
-    /// `VoiceTranscriptEntry` -> `VoiceHistoryView.Row`. Lives here, not in
-    /// `VoiceLedgerUI`, for the same reason `vlStatus(for:)` does — only the
-    /// app layer is allowed to bridge a `Core` type into this UI module's
-    /// primitive-only vocabulary.
-    private static func voiceHistoryRows(_ entries: [VoiceTranscriptEntry]) -> [VoiceHistoryView.Row] {
+    /// `AskAIConversationEntry` -> `AIConversationHistoryView.Row`. Lives
+    /// here, not in `VoiceLedgerUI`, for the same reason `vlStatus(for:)`
+    /// does — only the app layer is allowed to bridge a `Core` type into
+    /// this UI module's primitive-only vocabulary. Reversed to most-recent-
+    /// first — `conversationHistory` itself stays oldest-first (the order
+    /// `ClientStore` persists it in, and the order new entries are
+    /// appended), so this is a view-only ordering choice.
+    private static func conversationHistoryRows(_ entries: [AskAIConversationEntry]) -> [AIConversationHistoryView.Row] {
         let formatter: DateFormatter = {
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
             return formatter
         }()
-        return entries.map { entry in
-            VoiceHistoryView.Row(
+        return entries.reversed().map { entry in
+            AIConversationHistoryView.Row(
                 id: entry.id,
-                isUser: entry.speaker == .user,
-                text: entry.text,
-                timeLabel: formatter.string(from: entry.timestamp)
+                contextLabel: entry.contextLabel,
+                tierLabel: entry.tier == .primary ? "Gemma (local, free)" : "OpenAI",
+                question: entry.question,
+                answer: entry.answer,
+                timeLabel: formatter.string(from: entry.askedAt)
             )
         }
     }

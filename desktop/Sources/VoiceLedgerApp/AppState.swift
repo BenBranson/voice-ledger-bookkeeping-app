@@ -216,6 +216,11 @@ public final class AppState {
     /// keyed by `contextKey`) with fixed keys `"health-report"`/
     /// `"value-summary"` — no new state dictionaries needed.
     public private(set) var lastReportGeneratedAt: Date?
+    /// Owner directive (2026-08-29): the unified Ask AI conversation
+    /// history — replaces voice transcript as the sidebar's "AI
+    /// Conversations" screen. Every real question/answer exchange across
+    /// every panel, oldest first (same order `ClientStore` persists it in).
+    public private(set) var conversationHistory: [AskAIConversationEntry] = []
 
     /// Gauntlet Loop, Gauntlet B round 15 (2026-08-24): a fresh critic
     /// found `attestCompletion`/`dismissFinding` both unconditionally did
@@ -459,6 +464,7 @@ public final class AppState {
             let newTaxEstimateSettings = try await store.loadTaxEstimateSettings()
             let newWriteJournal = try await store.loadWriteJournal()
             let newLastReportGeneratedAt = try await store.loadLastReportGeneratedAt()
+            let newConversationHistory = try await store.loadAskAIConversationHistory()
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -471,6 +477,7 @@ public final class AppState {
             taxEstimateSettings = newTaxEstimateSettings
             writeJournal = newWriteJournal
             lastReportGeneratedAt = newLastReportGeneratedAt
+            conversationHistory = newConversationHistory
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")
@@ -867,6 +874,7 @@ public final class AppState {
         do {
             let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format)
             askAIAnswers[contextKey] = answer
+            await recordConversation(contextKey: contextKey, tier: .primary, question: question, answer: answer, format: format)
         } catch {
             askAIError = (contextKey: contextKey, message: "\(error)")
         }
@@ -907,6 +915,7 @@ public final class AppState {
         do {
             let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary, format: format)
             secondOpinionAnswers[contextKey] = answer
+            await recordConversation(contextKey: contextKey, tier: .secondary, question: question, answer: answer, format: format)
         } catch {
             secondOpinionError = (contextKey: contextKey, message: "\(error)")
         }
@@ -974,6 +983,48 @@ public final class AppState {
         let now = Date()
         lastReportGeneratedAt = now
         try? await store.saveLastReportGeneratedAt(now)
+    }
+
+    /// A human-readable name for a raw `contextKey` — the one place that
+    /// mapping happens, so `AskAIConversationEntry`/the on-disk report log
+    /// never carry an internal key like a finding's raw UUID.
+    private func conversationLabel(for contextKey: String) -> String {
+        if contextKey == Self.healthReportContextKey { return "Book Health Report" }
+        if contextKey == Self.valueSummaryContextKey { return "Client Value Summary" }
+        if let title = finding(id: contextKey)?.title { return title }
+        return contextKey
+    }
+
+    /// Owner directive (2026-08-29): "change voice history to the
+    /// conversation from asking gemma and or open ai" plus "when I
+    /// generate a report it logs it somewhere... and possibly on a text
+    /// file." Called from both `askAI`/`askSecondOpinion` on every
+    /// successful answer, primary and secondary tier alike — this is the
+    /// one place both halves of that request are satisfied: the in-app
+    /// history (`conversationHistory`, persisted via `ClientStore`) always
+    /// gets an entry; the on-disk text file only gets one when this was a
+    /// real report generation (`format == .report`), not every incidental
+    /// follow-up question — the file is meant to be a week-over-week/
+    /// month-over-month report record, not a full chat transcript.
+    private func recordConversation(contextKey: String, tier: AskAIConversationEntry.Tier, question: String, answer: String, format: AskAIFormat) async {
+        let entry = AskAIConversationEntry(
+            contextLabel: conversationLabel(for: contextKey),
+            tier: tier,
+            question: question,
+            answer: answer
+        )
+        conversationHistory.append(entry)
+        try? await store.appendAskAIConversationEntry(entry)
+
+        guard format == .report else { return }
+        ReportHistoryLogger.append(
+            reportTitle: entry.contextLabel,
+            companyName: companyInfo?.companyName,
+            environment: environment == .production ? "production" : "sandbox",
+            period: currentPeriod,
+            providerLabel: tier == .primary ? "Gemma (local, free)" : "OpenAI",
+            bodyText: answer
+        )
     }
 
     // The "since last report" baseline only advances on a genuine success
