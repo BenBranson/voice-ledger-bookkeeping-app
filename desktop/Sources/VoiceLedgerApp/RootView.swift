@@ -19,7 +19,7 @@ struct RootView: View {
                 periodLabel: "\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))",
                 environmentTone: state.environment == .production ? .production : .sandbox,
                 isSyncing: state.loadState == .loading,
-                onSync: { Task { await state.syncAndEvaluate() } },
+                onSync: { Task { await state.syncDashboard() } },
                 isVoiceListening: state.voiceEngine.isListening,
                 isVoiceProcessing: state.voiceEngine.isProcessing,
                 onToggleVoice: { state.voiceEngine.toggleListening() },
@@ -138,6 +138,19 @@ struct RootView: View {
     private var content: some View {
         switch state.screen {
         case .clientDashboard:
+            let dashboardOpenFindings = state.findings.filter { $0.status == .open }
+            let dashboardTopFindings = Array(FindingTriage.sorted(dashboardOpenFindings).prefix(5))
+            let dashboardAskAIKey = "page:client-dashboard"
+            let dashboardContext = {
+                var lines = ["Open findings: \(dashboardOpenFindings.count)"]
+                if let workingCapital = FinancialKPIs.workingCapital(from: state.balanceSheetLines) {
+                    lines.append("Working capital: \(workingCapital.description)")
+                }
+                if let netIncome = TaxEstimate.netIncome(from: state.profitAndLossLines) {
+                    lines.append("Net income: \(netIncome.description)")
+                }
+                return AskAIContext.compose(pageTitle: "Client Dashboard", findings: dashboardTopFindings) + "\n" + lines.joined(separator: "\n")
+            }
             ClientDashboardView(
                 state: ClientDashboardView.ViewState(
                     companyName: state.companyInfo?.companyName ?? "No company connected",
@@ -147,11 +160,27 @@ struct RootView: View {
                     balanceSheetLines: state.balanceSheetLines,
                     profitAndLossLines: state.profitAndLossLines,
                     isLoadingReports: state.isLoadingBalanceSheet || state.isLoadingProfitAndLoss,
-                    topFindings: Array(FindingTriage.sorted(state.findings.filter { $0.status == .open }).prefix(5)),
-                    openFindingsCount: state.findings.filter { $0.status == .open }.count
+                    topFindings: dashboardTopFindings,
+                    openFindingsCount: dashboardOpenFindings.count
                 ),
                 onOpenFinding: { finding in state.screen = .detail(findingID: finding.id) },
-                onViewAllFindings: { state.screen = .list }
+                onViewAllFindings: { state.screen = .list },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncDashboard() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[dashboardAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(dashboardAskAIKey),
+                askAIError: state.askAIError?.contextKey == dashboardAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: dashboardAskAIKey, contextText: dashboardContext(), question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[dashboardAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(dashboardAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == dashboardAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: dashboardAskAIKey, contextText: dashboardContext(), question: question) }
+                }
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -181,10 +210,12 @@ struct RootView: View {
             )
 
         case .batchFixes:
+            let batchFixesAskAIKey = "page:batch-fixes"
+            let batchFixItems = BatchFixPlan.preview(findings: state.stagedFixFindings)
             BatchFixesView(
                 environment: state.environment == .production ? .production : .sandbox,
                 writeAccessEnabled: state.writeAccessEnabled == true,
-                items: BatchFixPlan.preview(findings: state.stagedFixFindings),
+                items: batchFixItems,
                 selectedIDs: state.batchFixSelection,
                 applyingFindingIDs: state.applyingFixFindingIDs,
                 applyFixError: state.applyFixError,
@@ -195,6 +226,24 @@ struct RootView: View {
                 onApplyBatch: {
                     let ids = Array(state.batchFixSelection)
                     Task { await state.applyBatchFix(findingIDs: ids, actorName: actorName) }
+                },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[batchFixesAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(batchFixesAskAIKey),
+                askAIError: state.askAIError?.contextKey == batchFixesAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" })
+                    Task { await state.askAI(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[batchFixesAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(batchFixesAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == batchFixesAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" })
+                    Task { await state.askSecondOpinion(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
                 }
             )
             .toolbar {
@@ -204,6 +253,13 @@ struct RootView: View {
             }
 
         case .firmCockpit:
+            let firmCockpitAskAIKey = "page:firm-cockpit"
+            let firmCockpitContext = AskAIContext.compose(
+                pageTitle: "Firm Cockpit",
+                summaryLines: state.firmCockpitSummaries.map { summary in
+                    "\(summary.client.companyName ?? "(unnamed)"): \(summary.openFindingsCount) open findings, \(summary.urgentFindingsCount) urgent, checklist \(summary.checklistCompleted)/\(summary.checklistTotal)"
+                }
+            )
             FirmCockpitView(
                 environment: state.environment == .production ? .production : .sandbox,
                 summaries: state.firmCockpitSummaries,
@@ -215,6 +271,20 @@ struct RootView: View {
                 onRefresh: { Task { await state.loadFirmCockpit() } },
                 onSwitchToClient: { client in
                     Task { await state.switchActiveClient(to: client.realmID, environment: client.environment) }
+                },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[firmCockpitAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(firmCockpitAskAIKey),
+                askAIError: state.askAIError?.contextKey == firmCockpitAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: firmCockpitAskAIKey, contextText: firmCockpitContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[firmCockpitAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(firmCockpitAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == firmCockpitAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: firmCockpitAskAIKey, contextText: firmCockpitContext, question: question) }
                 }
             )
             .task {
@@ -255,6 +325,13 @@ struct RootView: View {
             }
 
         case .salesTaxReview:
+            let salesTaxAskAIKey = "page:sales-tax-review"
+            let salesTaxContext = {
+                var lines = state.taxAgencies.map { "Agency: \($0.displayName)" }
+                lines += state.taxRates.map { "Rate: \($0.name), \($0.ratePercent.map { String(format: "%.2f%%", $0) } ?? "—"), active: \($0.isActive)" }
+                lines += state.taxCodes.map { "Code: \($0.name), taxable: \($0.taxable.map(String.init) ?? "unknown")" }
+                return AskAIContext.compose(pageTitle: "Sales Tax Review", summaryLines: lines)
+            }
             SalesTaxReviewView(
                 environment: state.environment == .production ? .production : .sandbox,
                 taxCodes: state.taxCodes,
@@ -264,7 +341,21 @@ struct RootView: View {
                 errorMessage: state.salesTaxError,
                 attestation: state.salesTaxAttestation,
                 onRefresh: { Task { await state.loadSalesTaxProfile() } },
-                onSaveAttestation: { attestation in Task { await state.updateSalesTaxAttestation(attestation) } }
+                onSaveAttestation: { attestation in Task { await state.updateSalesTaxAttestation(attestation) } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[salesTaxAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(salesTaxAskAIKey),
+                askAIError: state.askAIError?.contextKey == salesTaxAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: salesTaxAskAIKey, contextText: salesTaxContext(), question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[salesTaxAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(salesTaxAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == salesTaxAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: salesTaxAskAIKey, contextText: salesTaxContext(), question: question) }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -273,13 +364,37 @@ struct RootView: View {
             }
 
         case .chartOfAccountsCleanup:
+            let chartOfAccountsAskAIKey = "page:chart-of-accounts-cleanup"
+            let duplicateGroups = ChartOfAccountsCleanup.findDuplicateCandidates(state.accounts)
+            let chartOfAccountsContext = AskAIContext.compose(
+                pageTitle: "Chart of Accounts Cleanup",
+                summaryLines: duplicateGroups.map { group in
+                    "Candidate group: " + group.accounts.map(\.name).joined(separator: ", ")
+                }
+            )
             ChartOfAccountsCleanupView(
                 state: ChartOfAccountsCleanupView.ViewState(
                     environment: state.environment == .production ? .production : .sandbox,
                     totalAccountsCount: state.accounts.count,
                     accountsWithFullyQualifiedNameCount: state.accounts.filter { $0.fullyQualifiedName != nil }.count,
-                    groups: ChartOfAccountsCleanup.findDuplicateCandidates(state.accounts)
-                )
+                    groups: duplicateGroups
+                ),
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[chartOfAccountsAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(chartOfAccountsAskAIKey),
+                askAIError: state.askAIError?.contextKey == chartOfAccountsAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: chartOfAccountsAskAIKey, contextText: chartOfAccountsContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[chartOfAccountsAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(chartOfAccountsAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == chartOfAccountsAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: chartOfAccountsAskAIKey, contextText: chartOfAccountsContext, question: question) }
+                }
             )
 
         case .scopeAndPeriodLock:
@@ -525,6 +640,8 @@ struct RootView: View {
                 summaries: cleanupAssessmentSummaries,
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
                 onExport: { format in state.exportTable(Self.exportTable(findingSummaries: cleanupAssessmentSummaries), format: format, suggestedFilename: "Cleanup Assessment") },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
                 aiStatus: state.aiStatus,
                 askAIAnswer: state.askAIAnswers[cleanupAssessmentAskAIKey],
                 isAskingAI: state.askingAIContextKeys.contains(cleanupAssessmentAskAIKey),
@@ -532,6 +649,14 @@ struct RootView: View {
                 onAskAI: { question in
                     let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings))
                     Task { await state.askAI(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[cleanupAssessmentAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(cleanupAssessmentAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == cleanupAssessmentAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings))
+                    Task { await state.askSecondOpinion(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
                 }
             )
             .toolbar {
@@ -541,12 +666,31 @@ struct RootView: View {
             }
 
         case .balanceSheetIntegrity:
+            let balanceSheetIntegrityAskAIKey = "page:balance-sheet-integrity"
             BalanceSheetIntegrityView(
                 environment: state.environment == .production ? .production : .sandbox,
                 coverageStatus: StatusMapping.status(for: coverageOutcome),
                 coverageDetail: coverageDetail,
                 summaries: balanceSheetIntegritySummaries,
-                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) }
+                onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[balanceSheetIntegrityAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(balanceSheetIntegrityAskAIKey),
+                askAIError: state.askAIError?.contextKey == balanceSheetIntegrityAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings))
+                    Task { await state.askAI(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[balanceSheetIntegrityAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(balanceSheetIntegrityAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == balanceSheetIntegrityAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings))
+                    Task { await state.askSecondOpinion(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -557,6 +701,7 @@ struct RootView: View {
         case .bankFeedCleanup:
             let missingPostingFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" }
             let ambiguousMatchFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-AMBIGUOUS-001" }
+            let bankFeedCleanupAskAIKey = "page:bank-feed-cleanup"
             BankFeedCleanupView(
                 environment: state.environment == .production ? .production : .sandbox,
                 coverageStatus: missingPostingFindings.isEmpty ? .notChecked : .reviewNeeded,
@@ -568,7 +713,25 @@ struct RootView: View {
                     : nil,
                 importError: state.importError,
                 onSelectFinding: { finding in state.screen = .detail(findingID: finding.id) },
-                onImportTapped: { isImportingStatement = true }
+                onImportTapped: { isImportingStatement = true },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[bankFeedCleanupAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(bankFeedCleanupAskAIKey),
+                askAIError: state.askAIError?.contextKey == bankFeedCleanupAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings)
+                    Task { await state.askAI(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[bankFeedCleanupAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(bankFeedCleanupAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == bankFeedCleanupAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings)
+                    Task { await state.askSecondOpinion(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -626,6 +789,13 @@ struct RootView: View {
             }
 
         case .monthEndClose:
+            let monthEndCloseAskAIKey = "page:month-end-close"
+            let monthEndCloseContext = AskAIContext.compose(
+                pageTitle: "Month-End Close",
+                summaryLines: monthEndChecklistItemStates.map { itemState in
+                    "\(itemState.item.title): \(itemState.completion != nil ? "completed" : "not completed")" + (itemState.openFindingsCount.map { " (\($0) open findings)" } ?? "")
+                }
+            )
             MonthEndCloseView(
                 environment: state.environment == .production ? .production : .sandbox,
                 items: monthEndChecklistItemStates,
@@ -638,6 +808,22 @@ struct RootView: View {
                     case "review-bank-feed": state.screen = .bankFeedCleanup
                     default: break
                     }
+                },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[monthEndCloseAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(monthEndCloseAskAIKey),
+                askAIError: state.askAIError?.contextKey == monthEndCloseAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: monthEndCloseAskAIKey, contextText: monthEndCloseContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[monthEndCloseAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(monthEndCloseAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == monthEndCloseAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: monthEndCloseAskAIKey, contextText: monthEndCloseContext, question: question) }
                 }
             )
             .toolbar {
@@ -647,6 +833,8 @@ struct RootView: View {
             }
 
         case .balanceSheetReport:
+            let balanceSheetReportAskAIKey = "page:balance-sheet-report"
+            let balanceSheetReportContext = AskAIContext.compose(pageTitle: "Balance Sheet", summaryLines: state.balanceSheetLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
             BalanceSheetReportView(
                 sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -659,8 +847,33 @@ struct RootView: View {
                 priorPeriodLabel: Self.periodLabel(state.currentPeriod.previousMonth),
                 isLoadingVariance: state.isLoadingVarianceAnalysis,
                 varianceError: state.varianceAnalysisError,
-                onLoadVariance: { Task { await state.loadVarianceAnalysis() } }
+                onLoadVariance: { Task { await state.loadVarianceAnalysis() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[balanceSheetReportAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(balanceSheetReportAskAIKey),
+                askAIError: state.askAIError?.contextKey == balanceSheetReportAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: balanceSheetReportAskAIKey, contextText: balanceSheetReportContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[balanceSheetReportAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(balanceSheetReportAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == balanceSheetReportAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: balanceSheetReportAskAIKey, contextText: balanceSheetReportContext, question: question) }
+                }
             )
+            .task {
+                // Owner directive (2026-08-30): "why should i have to click
+                // on sections and then have to press refresh and wait" —
+                // auto-load on first visit this session, same pattern
+                // Close Package already used, so navigating here doesn't
+                // require a manual Refresh click before there's anything
+                // to look at. Guarded on `isEmpty`, not re-fetched on every
+                // visit, so returning to an already-loaded page doesn't
+                // repeat the API call for no reason.
+                if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -668,6 +881,8 @@ struct RootView: View {
             }
 
         case .profitAndLossReport:
+            let profitAndLossReportAskAIKey = "page:profit-and-loss-report"
+            let profitAndLossReportContext = AskAIContext.compose(pageTitle: "Profit & Loss", summaryLines: state.profitAndLossLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
             ProfitAndLossReportView(
                 sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -680,8 +895,25 @@ struct RootView: View {
                 priorPeriodLabel: Self.periodLabel(state.currentPeriod.previousMonth),
                 isLoadingVariance: state.isLoadingVarianceAnalysis,
                 varianceError: state.varianceAnalysisError,
-                onLoadVariance: { Task { await state.loadVarianceAnalysis() } }
+                onLoadVariance: { Task { await state.loadVarianceAnalysis() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[profitAndLossReportAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(profitAndLossReportAskAIKey),
+                askAIError: state.askAIError?.contextKey == profitAndLossReportAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: profitAndLossReportAskAIKey, contextText: profitAndLossReportContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[profitAndLossReportAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(profitAndLossReportAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == profitAndLossReportAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: profitAndLossReportAskAIKey, contextText: profitAndLossReportContext, question: question) }
+                }
             )
+            .task {
+                if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -689,6 +921,8 @@ struct RootView: View {
             }
 
         case .cashFlowReport:
+            let cashFlowReportAskAIKey = "page:cash-flow-report"
+            let cashFlowReportContext = AskAIContext.compose(pageTitle: "Cash Flow", summaryLines: state.cashFlowLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
             FinancialReportView(
                 title: "Cash Flow",
                 sourceDescription: "Read directly from QuickBooks' own Statement of Cash Flows report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
@@ -697,8 +931,25 @@ struct RootView: View {
                 isLoading: state.isLoadingCashFlow,
                 errorMessage: state.cashFlowError,
                 onRefresh: { Task { await state.loadCashFlow() } },
-                onExport: { format in state.exportTable(Self.exportTable(title: "Cash Flow", lines: state.cashFlowLines), format: format, suggestedFilename: "Cash Flow") }
+                onExport: { format in state.exportTable(Self.exportTable(title: "Cash Flow", lines: state.cashFlowLines), format: format, suggestedFilename: "Cash Flow") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[cashFlowReportAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(cashFlowReportAskAIKey),
+                askAIError: state.askAIError?.contextKey == cashFlowReportAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: cashFlowReportAskAIKey, contextText: cashFlowReportContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[cashFlowReportAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(cashFlowReportAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == cashFlowReportAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: cashFlowReportAskAIKey, contextText: cashFlowReportContext, question: question) }
+                }
             )
+            .task {
+                if state.cashFlowLines.isEmpty { await state.loadCashFlow() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -706,6 +957,8 @@ struct RootView: View {
             }
 
         case .trialBalanceReport:
+            let trialBalanceAskAIKey = "page:trial-balance-report"
+            let trialBalanceContext = AskAIContext.compose(pageTitle: "Trial Balance", summaryLines: state.trialBalanceLines.map { "\($0.label): debit \($0.debit?.description ?? "—"), credit \($0.credit?.description ?? "—")" })
             TrialBalanceReportView(
                 sourceDescription: "Read directly from QuickBooks' own Trial Balance report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -713,8 +966,25 @@ struct RootView: View {
                 isLoading: state.isLoadingTrialBalance,
                 errorMessage: state.trialBalanceError,
                 onRefresh: { Task { await state.loadTrialBalance() } },
-                onExport: { format in state.exportTable(Self.exportTable(trialBalanceLines: state.trialBalanceLines), format: format, suggestedFilename: "Trial Balance") }
+                onExport: { format in state.exportTable(Self.exportTable(trialBalanceLines: state.trialBalanceLines), format: format, suggestedFilename: "Trial Balance") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[trialBalanceAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(trialBalanceAskAIKey),
+                askAIError: state.askAIError?.contextKey == trialBalanceAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: trialBalanceAskAIKey, contextText: trialBalanceContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[trialBalanceAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(trialBalanceAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == trialBalanceAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: trialBalanceAskAIKey, contextText: trialBalanceContext, question: question) }
+                }
             )
+            .task {
+                if state.trialBalanceLines.isEmpty { await state.loadTrialBalance() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -722,6 +992,8 @@ struct RootView: View {
             }
 
         case .agedReceivablesReport:
+            let agedReceivablesAskAIKey = "page:aged-receivables"
+            let agedReceivablesContext = AskAIContext.compose(pageTitle: "Aged Receivables", summaryLines: state.agedReceivablesLines.map { "\($0.label): total \($0.total?.description ?? "—")" })
             AgingReportView(
                 title: "Aged Receivables",
                 rowLabel: "Customer",
@@ -731,8 +1003,25 @@ struct RootView: View {
                 isLoading: state.isLoadingAgedReceivables,
                 errorMessage: state.agedReceivablesError,
                 onRefresh: { Task { await state.loadAgedReceivables() } },
-                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Receivables", agingLines: state.agedReceivablesLines), format: format, suggestedFilename: "Aged Receivables") }
+                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Receivables", agingLines: state.agedReceivablesLines), format: format, suggestedFilename: "Aged Receivables") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[agedReceivablesAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(agedReceivablesAskAIKey),
+                askAIError: state.askAIError?.contextKey == agedReceivablesAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: agedReceivablesAskAIKey, contextText: agedReceivablesContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[agedReceivablesAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(agedReceivablesAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == agedReceivablesAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: agedReceivablesAskAIKey, contextText: agedReceivablesContext, question: question) }
+                }
             )
+            .task {
+                if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -740,6 +1029,8 @@ struct RootView: View {
             }
 
         case .agedPayablesReport:
+            let agedPayablesAskAIKey = "page:aged-payables"
+            let agedPayablesContext = AskAIContext.compose(pageTitle: "Aged Payables", summaryLines: state.agedPayablesLines.map { "\($0.label): total \($0.total?.description ?? "—")" })
             AgingReportView(
                 title: "Aged Payables",
                 rowLabel: "Vendor",
@@ -749,8 +1040,25 @@ struct RootView: View {
                 isLoading: state.isLoadingAgedPayables,
                 errorMessage: state.agedPayablesError,
                 onRefresh: { Task { await state.loadAgedPayables() } },
-                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Payables", agingLines: state.agedPayablesLines), format: format, suggestedFilename: "Aged Payables") }
+                onExport: { format in state.exportTable(Self.exportTable(title: "Aged Payables", agingLines: state.agedPayablesLines), format: format, suggestedFilename: "Aged Payables") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[agedPayablesAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(agedPayablesAskAIKey),
+                askAIError: state.askAIError?.contextKey == agedPayablesAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: agedPayablesAskAIKey, contextText: agedPayablesContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[agedPayablesAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(agedPayablesAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == agedPayablesAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: agedPayablesAskAIKey, contextText: agedPayablesContext, question: question) }
+                }
             )
+            .task {
+                if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -758,6 +1066,8 @@ struct RootView: View {
             }
 
         case .generalLedgerReport:
+            let generalLedgerAskAIKey = "page:general-ledger-report"
+            let generalLedgerContext = AskAIContext.compose(pageTitle: "General Ledger", summaryLines: state.generalLedgerLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—"), balance \($0.balance?.description ?? "—")" })
             GeneralLedgerReportView(
                 sourceDescription: "Read directly from QuickBooks' own General Ledger report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -765,8 +1075,25 @@ struct RootView: View {
                 isLoading: state.isLoadingGeneralLedger,
                 errorMessage: state.generalLedgerError,
                 onRefresh: { Task { await state.loadGeneralLedger() } },
-                onExport: { format in state.exportTable(Self.exportTable(generalLedgerLines: state.generalLedgerLines), format: format, suggestedFilename: "General Ledger") }
+                onExport: { format in state.exportTable(Self.exportTable(generalLedgerLines: state.generalLedgerLines), format: format, suggestedFilename: "General Ledger") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[generalLedgerAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(generalLedgerAskAIKey),
+                askAIError: state.askAIError?.contextKey == generalLedgerAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: generalLedgerAskAIKey, contextText: generalLedgerContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[generalLedgerAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(generalLedgerAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == generalLedgerAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: generalLedgerAskAIKey, contextText: generalLedgerContext, question: question) }
+                }
             )
+            .task {
+                if state.generalLedgerLines.isEmpty { await state.loadGeneralLedger() }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -774,6 +1101,13 @@ struct RootView: View {
             }
 
         case .closePackage:
+            let closePackageAskAIKey = "page:close-package"
+            let closePackageContext = {
+                var lines = state.balanceSheetLines.filter(\.isSummary).map { "Balance Sheet — \($0.label): \($0.amount?.description ?? "—")" }
+                lines += state.profitAndLossLines.filter(\.isSummary).map { "P&L — \($0.label): \($0.amount?.description ?? "—")" }
+                lines += state.cashFlowLines.filter(\.isSummary).map { "Cash Flow — \($0.label): \($0.amount?.description ?? "—")" }
+                return AskAIContext.compose(pageTitle: "Close Package", summaryLines: lines)
+            }
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
                 period: state.currentPeriod,
@@ -838,6 +1172,22 @@ struct RootView: View {
                         recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }
                     )
                     state.exportClosePackagePDF(input)
+                },
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[closePackageAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(closePackageAskAIKey),
+                askAIError: state.askAIError?.contextKey == closePackageAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: closePackageAskAIKey, contextText: closePackageContext(), question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[closePackageAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(closePackageAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == closePackageAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: closePackageAskAIKey, contextText: closePackageContext(), question: question) }
                 }
             )
             .task {

@@ -30,6 +30,18 @@ public struct FinancialReportView: View {
     private let isLoadingVariance: Bool
     private let varianceError: String?
     private let onLoadVariance: (() -> Void)?
+    /// Owner directive (2026-08-30): every page ends in a two-tier Ask AI
+    /// panel — see `TwoTierAskAIPanel`.
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
+    private let secondOpinionConfigured: Bool
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
 
     public init(
         title: String,
@@ -44,7 +56,17 @@ public struct FinancialReportView: View {
         priorPeriodLabel: String? = nil,
         isLoadingVariance: Bool = false,
         varianceError: String? = nil,
-        onLoadVariance: (() -> Void)? = nil
+        onLoadVariance: (() -> Void)? = nil,
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.title = title
         self.sourceDescription = sourceDescription
@@ -59,6 +81,16 @@ public struct FinancialReportView: View {
         self.isLoadingVariance = isLoadingVariance
         self.varianceError = varianceError
         self.onLoadVariance = onLoadVariance
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
+        self.secondOpinionConfigured = secondOpinionConfigured
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
     }
 
     public var body: some View {
@@ -111,6 +143,22 @@ public struct FinancialReportView: View {
                         onLoadVariance: onLoadVariance
                     )
                 }
+
+                TwoTierAskAIPanel(
+                    aiStatus: aiStatus,
+                    placeholder: "Ask a question about this report",
+                    primaryDisclaimer: "Answers are grounded strictly in the report lines shown on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    primaryAnswer: askAIAnswer,
+                    isAskingPrimary: isAskingAI,
+                    primaryError: askAIError,
+                    onAskPrimary: onAskAI,
+                    secondOpinionConfigured: secondOpinionConfigured,
+                    secondOpinionDisclaimer: "Sends this report's line items to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+                    secondOpinionAnswer: secondOpinionAnswer,
+                    isAskingSecondOpinion: isAskingSecondOpinion,
+                    secondOpinionError: secondOpinionError,
+                    onAskSecondOpinion: onAskSecondOpinion
+                )
             }
             .padding(VLSpacing.pageGutter)
         }

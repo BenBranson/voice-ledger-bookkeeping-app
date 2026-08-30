@@ -1332,6 +1332,43 @@ public final class AppState {
         }
     }
 
+    /// Owner directive (2026-08-30): "should refreshing the dashboard
+    /// refresh all the sections... instead of having to click on sections
+    /// and then have to press refresh and wait." The Dashboard renders
+    /// Balance Sheet and P&L KPIs/charts directly on itself (see
+    /// `ClientDashboardView`), so its Sync button refreshes those two
+    /// reports too, not just findings — while every OTHER page's own Sync
+    /// button stays a plain `syncAndEvaluate()`, since those pages don't
+    /// show report data and forcing two extra report fetches on, say, the
+    /// Cleanup Assessment page's Sync button would just slow it down for
+    /// no visible benefit there.
+    ///
+    /// Deliberately calls the existing `loadBalanceSheet()`/
+    /// `loadProfitAndLoss()` rather than reusing the `try?`-collapsed
+    /// fetches already inside `syncAndEvaluate()` (which exist purely to
+    /// feed the rule engine, not the UI) — those swallow a failure into an
+    /// empty array with no memory of whether the fetch actually succeeded,
+    /// so wiring them to `self.balanceSheetLines`/`self.profitAndLossLines`
+    /// directly would erase a page's last-known-good data on a merely
+    /// transient report-fetch failure. `loadBalanceSheet()`/
+    /// `loadProfitAndLoss()` already get this right (an error sets
+    /// `balanceSheetError`/`profitAndLossError` and leaves the prior lines
+    /// alone) — reusing them costs one redundant API call each but avoids
+    /// re-deriving that same correctness inside `syncAndEvaluate()`, a
+    /// method with a long history of subtle atomic-publish bugs (see its
+    /// own comments above) that's worth not touching for this.
+    ///
+    /// Run concurrently via `async let`, not sequentially — `AppState` is
+    /// `@MainActor`-isolated, so this doesn't parallelize CPU work, but it
+    /// does let all three network requests be in flight at once instead of
+    /// waiting for each in turn.
+    public func syncDashboard() async {
+        async let syncTask: Void = syncAndEvaluate()
+        async let balanceSheetTask: Void = loadBalanceSheet()
+        async let profitAndLossTask: Void = loadProfitAndLoss()
+        _ = await (syncTask, balanceSheetTask, profitAndLossTask)
+    }
+
     /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file
     /// (Tier 1, deterministic) and stops there — this does NOT import
     /// anything yet. Format is detected from the file extension only (OFX

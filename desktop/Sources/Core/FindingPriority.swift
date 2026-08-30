@@ -59,3 +59,32 @@ public enum FindingTriage {
         }
     }
 }
+
+public extension Finding {
+    /// Owner directive (2026-08-30), via Gemma's own suggestion on Cleanup
+    /// Assessment: "rank findings not just by severity, but by ease of fix
+    /// vs. dollar impact." `ResolutionKind` already carries the real signal
+    /// this needs — `.stagedAPI` (Apply Fix does the whole thing, then a
+    /// verified round-trip re-check) vs. `.manualQBO` (the bookkeeper has to
+    /// go do it in QBO by hand) IS "ease of fix," not a new invented metric.
+    /// A finding with no proposed action at all counts as manual — nothing
+    /// automatable exists for it, so it can't be a one-click quick win.
+    var isQuickWin: Bool {
+        proposedActions.first?.resolution == .stagedAPI
+    }
+}
+
+/// Owner directive (2026-08-30): "quick wins first" — a bookkeeper working
+/// through a fresh client's books should hit the one-click fixes before the
+/// findings that need real manual work in QBO, since clearing those first
+/// shrinks the list fastest for the same time spent. Ties within each group
+/// fall back to `FindingTriage.sorted`'s own priority ordering, so this is
+/// additive to triage, not a replacement for it.
+public enum QuickWinTriage {
+    public static func sorted(_ findings: [Finding]) -> [Finding] {
+        FindingTriage.sorted(findings).sorted { a, b in
+            if a.isQuickWin != b.isQuickWin { return a.isQuickWin && !b.isQuickWin }
+            return false
+        }
+    }
+}

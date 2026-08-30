@@ -263,4 +263,24 @@ public enum AskAIContext {
         }
         return lines.joined(separator: "\n")
     }
+
+    /// The report-page counterpart to `compose(pageTitle:findings:)` —
+    /// owner directive 2026-08-30: every section of the app should end in
+    /// an Ask AI panel, including the report pages (Balance Sheet, P&L,
+    /// Trial Balance, General Ledger, Aging) that have no `Finding`s at
+    /// all, only report lines. Each report view's own line type (`ReportLine`,
+    /// `TrialBalanceLine`, `AgingLine`, `GeneralLedgerLine`) is different, so
+    /// rather than one composer per type, the caller renders its own lines
+    /// to plain text first (each already has a `label` plus one or more
+    /// `Money?` fields to describe) — this just assembles the page-level
+    /// envelope around whatever lines it's handed, capped the same way
+    /// `compose(pageTitle:findings:)` is.
+    public static func compose(pageTitle: String, summaryLines: [String]) -> String {
+        var lines: [String] = ["Page: \(pageTitle)"]
+        lines.append(contentsOf: summaryLines.prefix(60))
+        if summaryLines.count > 60 {
+            lines.append("...and \(summaryLines.count - 60) more not listed here")
+        }
+        return lines.joined(separator: "\n")
+    }
 }

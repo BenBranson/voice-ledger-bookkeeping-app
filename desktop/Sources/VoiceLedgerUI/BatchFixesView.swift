@@ -30,6 +30,22 @@ public struct BatchFixesView: View {
     private let onSelectAll: () -> Void
     private let onDeselectAll: () -> Void
     private let onApplyBatch: () -> Void
+    /// Owner directive (2026-08-30): "a lot of the sections say unsynced
+    /// yet there is no refresh button for them to sync" — see `SyncButton`.
+    private let isSyncing: Bool
+    private let onSync: () -> Void
+    /// Owner directive (2026-08-30): every page ends in a two-tier Ask AI
+    /// panel — see `TwoTierAskAIPanel`.
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
+    private let secondOpinionConfigured: Bool
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
 
     @State private var isConfirming = false
 
@@ -44,7 +60,19 @@ public struct BatchFixesView: View {
         onToggleSelection: @escaping (String) -> Void,
         onSelectAll: @escaping () -> Void,
         onDeselectAll: @escaping () -> Void,
-        onApplyBatch: @escaping () -> Void
+        onApplyBatch: @escaping () -> Void,
+        isSyncing: Bool = false,
+        onSync: @escaping () -> Void = {},
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.environment = environment
         self.writeAccessEnabled = writeAccessEnabled
@@ -57,6 +85,18 @@ public struct BatchFixesView: View {
         self.onSelectAll = onSelectAll
         self.onDeselectAll = onDeselectAll
         self.onApplyBatch = onApplyBatch
+        self.isSyncing = isSyncing
+        self.onSync = onSync
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
+        self.secondOpinionConfigured = secondOpinionConfigured
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
     }
 
     private var selectedItems: [BatchFixItem] {
@@ -71,6 +111,7 @@ public struct BatchFixesView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    SyncButton(isSyncing: isSyncing, onSync: onSync)
                     VLEnvironmentBadge(environment)
                 }
 
@@ -116,6 +157,22 @@ public struct BatchFixesView: View {
                         previewSection
                     }
                 }
+
+                TwoTierAskAIPanel(
+                    aiStatus: aiStatus,
+                    placeholder: "Ask a question about this page",
+                    primaryDisclaimer: "Answers are grounded strictly in the batch fix candidates listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    primaryAnswer: askAIAnswer,
+                    isAskingPrimary: isAskingAI,
+                    primaryError: askAIError,
+                    onAskPrimary: onAskAI,
+                    secondOpinionConfigured: secondOpinionConfigured,
+                    secondOpinionDisclaimer: "Sends this page's batch fix candidates to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+                    secondOpinionAnswer: secondOpinionAnswer,
+                    isAskingSecondOpinion: isAskingSecondOpinion,
+                    secondOpinionError: secondOpinionError,
+                    onAskSecondOpinion: onAskSecondOpinion
+                )
             }
             .padding(VLSpacing.pageGutter)
         }

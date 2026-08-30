@@ -33,6 +33,10 @@ public struct CleanupAssessmentView: View {
     private let summaries: [RuleSummary]
     private let onSelectFinding: (Finding) -> Void
     private let onExport: (ReportExportFormat) -> Void
+    /// Owner directive (2026-08-30): "a lot of the sections say unsynced
+    /// yet there is no refresh button for them to sync" — see `SyncButton`.
+    private let isSyncing: Bool
+    private let onSync: () -> Void
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel, page-level form — asks
     /// about the whole assessment (every open finding across every rule
     /// here), not one finding. See `AskAIPanelView`/`AskAIContext.compose(pageTitle:findings:)`.
@@ -41,6 +45,14 @@ public struct CleanupAssessmentView: View {
     private let isAskingAI: Bool
     private let askAIError: String?
     private let onAskAI: (String) -> Void
+    /// Owner directive (2026-08-30): every page's Ask AI panel should offer
+    /// both the free/local tier and an opt-in OpenAI second opinion, not
+    /// just the free one — see `TwoTierAskAIPanel`.
+    private let secondOpinionConfigured: Bool
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
 
     public init(
         environment: VLEnvironmentTone,
@@ -49,11 +61,18 @@ public struct CleanupAssessmentView: View {
         summaries: [RuleSummary],
         onSelectFinding: @escaping (Finding) -> Void,
         onExport: @escaping (ReportExportFormat) -> Void = { _ in },
+        isSyncing: Bool = false,
+        onSync: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
         askAIAnswer: String? = nil,
         isAskingAI: Bool = false,
         askAIError: String? = nil,
-        onAskAI: @escaping (String) -> Void = { _ in }
+        onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
@@ -61,11 +80,18 @@ public struct CleanupAssessmentView: View {
         self.summaries = summaries
         self.onSelectFinding = onSelectFinding
         self.onExport = onExport
+        self.isSyncing = isSyncing
+        self.onSync = onSync
         self.aiStatus = aiStatus
         self.askAIAnswer = askAIAnswer
         self.isAskingAI = isAskingAI
         self.askAIError = askAIError
         self.onAskAI = onAskAI
+        self.secondOpinionConfigured = secondOpinionConfigured
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
     }
 
     private var totalFindingCount: Int { summaries.reduce(0) { $0 + $1.findings.count } }
@@ -73,6 +99,27 @@ public struct CleanupAssessmentView: View {
         let all = summaries.flatMap(\.findings)
         guard let first = all.first else { return nil }
         return all.dropFirst().reduce(first.dollarExposure) { $0 + $1.dollarExposure }
+    }
+
+    /// Owner directive (2026-08-30), via Gemma's own suggestion on this
+    /// page: "rank findings by ease of fix vs. dollar impact... quick wins
+    /// first." Capped at 8 so this reads as "start here," not a second copy
+    /// of the full list below.
+    private var quickWins: [Finding] {
+        Array(QuickWinTriage.sorted(summaries.flatMap(\.findings)).prefix(8))
+    }
+
+    /// Owner directive (2026-08-30): "group the findings into logical
+    /// categories... to make the scope manageable" — `CleanupCategory`'s
+    /// static rule→category table, applied to the rule summaries the
+    /// caller already built, in a fixed display order rather than however
+    /// `summaries` happened to be sorted.
+    private var summariesByCategory: [(category: CleanupCategory, summaries: [RuleSummary])] {
+        var buckets: [CleanupCategory: [RuleSummary]] = [:]
+        for summary in summaries {
+            buckets[CleanupCategory.category(forRuleID: summary.ruleID), default: []].append(summary)
+        }
+        return buckets.keys.sorted { $0.sortOrder < $1.sortOrder }.map { ($0, buckets[$0] ?? []) }
     }
 
     public var body: some View {
@@ -83,6 +130,7 @@ public struct CleanupAssessmentView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    SyncButton(isSyncing: isSyncing, onSync: onSync)
                     ExportMenuButton(onExport: onExport)
                     VLEnvironmentBadge(environment)
                 }
@@ -121,24 +169,79 @@ public struct CleanupAssessmentView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                 } else {
-                    ForEach(summaries) { summary in
-                        ruleSection(summary)
+                    if !quickWins.isEmpty {
+                        quickWinsSection
+                    }
+
+                    ForEach(summariesByCategory, id: \.category) { entry in
+                        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                            Text(entry.category.label.uppercased())
+                                .font(VLTypography.eyebrow())
+                                .tracking(VLTypography.eyebrowTracking)
+                                .foregroundStyle(VLColor.textMuted)
+                            ForEach(entry.summaries) { summary in
+                                ruleSection(summary)
+                            }
+                        }
                     }
                 }
 
-                AskAIPanelView(
-                    disclaimer: "Answers are grounded strictly in the findings listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
-                    placeholder: "Ask a question about this assessment",
+                TwoTierAskAIPanel(
                     aiStatus: aiStatus,
-                    answer: askAIAnswer,
-                    isAsking: isAskingAI,
-                    error: askAIError,
-                    onAsk: onAskAI
+                    placeholder: "Ask a question about this assessment",
+                    primaryDisclaimer: "Answers are grounded strictly in the findings listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    primaryAnswer: askAIAnswer,
+                    isAskingPrimary: isAskingAI,
+                    primaryError: askAIError,
+                    onAskPrimary: onAskAI,
+                    secondOpinionConfigured: secondOpinionConfigured,
+                    secondOpinionDisclaimer: "Sends this page's findings to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+                    secondOpinionAnswer: secondOpinionAnswer,
+                    isAskingSecondOpinion: isAskingSecondOpinion,
+                    secondOpinionError: secondOpinionError,
+                    onAskSecondOpinion: onAskSecondOpinion
                 )
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    private var quickWinsSection: some View {
+        VLCard(accentRail: VLColor.cyan) {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("QUICK WINS — START HERE")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text("Ranked by ease of fix, then dollar impact — a one-click Apply Fix candidate, largest dollar exposure first, is worth clearing before the findings below it that need manual work in QBO.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
+                ForEach(quickWins) { finding in
+                    Button {
+                        onSelectFinding(finding)
+                    } label: {
+                        HStack {
+                            Text(finding.title)
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            if let action = finding.proposedActions.first {
+                                VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                            }
+                            Text(finding.dollarExposure.description)
+                                .font(VLTypography.tabularNumeric())
+                                .foregroundStyle(VLColor.textPrimary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    if finding.id != quickWins.last?.id {
+                        Divider().overlay(VLColor.border)
+                    }
+                }
+            }
+        }
     }
 
     private func ruleSection(_ summary: RuleSummary) -> some View {

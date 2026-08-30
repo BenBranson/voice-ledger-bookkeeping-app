@@ -8,9 +8,23 @@ struct FindingPriorityTests {
         severity: Severity,
         confidence: Confidence,
         exposureDollars: Int64,
-        currency: CurrencyCode = .usd
+        currency: CurrencyCode = .usd,
+        resolution: ResolutionKind? = nil
     ) -> Finding {
-        Finding(
+        let proposedActions: [ProposedAction]
+        if let resolution {
+            proposedActions = [ProposedAction(
+                id: "\(id)-action",
+                title: "Test action",
+                resolution: resolution,
+                guidedProcedure: nil,
+                consequences: [],
+                reversal: .irreversible
+            )]
+        } else {
+            proposedActions = []
+        }
+        return Finding(
             id: id,
             ruleID: RuleID(rawValue: "VL-TEST-001"),
             ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0),
@@ -21,7 +35,7 @@ struct FindingPriorityTests {
             confidence: confidence,
             dollarExposure: Money(minorUnits: exposureDollars * 100, currency: currency),
             evidence: [],
-            proposedActions: [],
+            proposedActions: proposedActions,
             provenance: []
         )
     }
@@ -80,5 +94,37 @@ struct FindingPriorityTests {
         let b = Self.makeFinding(id: "a-finding", severity: .high, confidence: .high, exposureDollars: 3_000)
         let sorted = FindingTriage.sorted([a, b])
         #expect(sorted.map(\.id) == ["a-finding", "b-finding"])
+    }
+
+    // MARK: isQuickWin / QuickWinTriage — 2026-08-30, Gemma's own suggestion
+    // on Cleanup Assessment: rank by ease of fix (one-click Apply Fix
+    // available) as well as severity/dollar impact.
+
+    @Test("isQuickWin is true only when the first proposed action is stagedAPI")
+    func isQuickWinReflectsResolutionKind() {
+        let staged = Self.makeFinding(id: "a", severity: .high, confidence: .high, exposureDollars: 100, resolution: .stagedAPI)
+        let manual = Self.makeFinding(id: "b", severity: .high, confidence: .high, exposureDollars: 100, resolution: .manualQBO)
+        let none = Self.makeFinding(id: "c", severity: .high, confidence: .high, exposureDollars: 100)
+        #expect(staged.isQuickWin)
+        #expect(!manual.isQuickWin)
+        #expect(!none.isQuickWin)
+    }
+
+    @Test("QuickWinTriage.sorted puts every stagedAPI finding ahead of every manualQBO finding, even when the manual one scores higher on priority")
+    func quickWinTriagePutsStagedFirst() {
+        let highManual = Self.makeFinding(id: "high-manual", severity: .high, confidence: .high, exposureDollars: 50_000, resolution: .manualQBO)
+        let lowStaged = Self.makeFinding(id: "low-staged", severity: .low, confidence: .low, exposureDollars: 50, resolution: .stagedAPI)
+
+        let sorted = QuickWinTriage.sorted([highManual, lowStaged])
+        #expect(sorted.map(\.id) == ["low-staged", "high-manual"])
+    }
+
+    @Test("QuickWinTriage.sorted preserves FindingTriage's priority order within the quick-win group")
+    func quickWinTriagePreservesPriorityOrderWithinGroup() {
+        let bigStaged = Self.makeFinding(id: "big-staged", severity: .high, confidence: .high, exposureDollars: 40_000, resolution: .stagedAPI)
+        let smallStaged = Self.makeFinding(id: "small-staged", severity: .low, confidence: .low, exposureDollars: 10, resolution: .stagedAPI)
+
+        let sorted = QuickWinTriage.sorted([smallStaged, bigStaged])
+        #expect(sorted.map(\.id) == ["big-staged", "small-staged"])
     }
 }

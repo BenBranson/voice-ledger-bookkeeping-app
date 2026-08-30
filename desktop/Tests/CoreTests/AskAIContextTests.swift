@@ -253,4 +253,26 @@ struct AskAIContextTests {
         #expect(context.contains("Reclassified a credit card payment"))
         #expect(context.contains("Moved to the correct liability account"))
     }
+
+    // MARK: compose(pageTitle:summaryLines:) — the report-page counterpart
+    // to compose(pageTitle:findings:), 2026-08-30: report pages (Balance
+    // Sheet, Trial Balance, General Ledger, Aging) have no `Finding`s, only
+    // report lines, so this takes pre-rendered lines instead.
+
+    @Test("compose(pageTitle:summaryLines:) includes the page title and every line, capped at 60")
+    func composeSummaryLinesIncludesPageTitleAndLines() {
+        let context = AskAIContext.compose(pageTitle: "Trial Balance", summaryLines: ["Cash: $100.00", "Accounts Payable: $50.00"])
+        #expect(context.contains("Page: Trial Balance"))
+        #expect(context.contains("Cash: $100.00"))
+        #expect(context.contains("Accounts Payable: $50.00"))
+    }
+
+    @Test("compose(pageTitle:summaryLines:) caps at 60 lines and notes the remainder rather than dumping everything")
+    func composeSummaryLinesCapsAt60() {
+        let lines = (1...75).map { "Line \($0)" }
+        let context = AskAIContext.compose(pageTitle: "General Ledger", summaryLines: lines)
+        #expect(context.contains("Line 60"))
+        #expect(!context.contains("Line 61"))
+        #expect(context.contains("...and 15 more not listed here"))
+    }
 }

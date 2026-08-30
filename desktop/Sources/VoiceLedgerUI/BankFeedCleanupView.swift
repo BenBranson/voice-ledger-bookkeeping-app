@@ -25,6 +25,22 @@ public struct BankFeedCleanupView: View {
     private let importError: String?
     private let onSelectFinding: (Finding) -> Void
     private let onImportTapped: () -> Void
+    /// Owner directive (2026-08-30): "a lot of the sections say unsynced
+    /// yet there is no refresh button for them to sync" — see `SyncButton`.
+    private let isSyncing: Bool
+    private let onSync: () -> Void
+    /// Owner directive (2026-08-30): every page ends in a two-tier Ask AI
+    /// panel — see `TwoTierAskAIPanel`.
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
+    private let secondOpinionConfigured: Bool
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
 
     public init(
         environment: VLEnvironmentTone,
@@ -35,7 +51,19 @@ public struct BankFeedCleanupView: View {
         reconciliationSummary: ReconciliationSummary? = nil,
         importError: String?,
         onSelectFinding: @escaping (Finding) -> Void,
-        onImportTapped: @escaping () -> Void
+        onImportTapped: @escaping () -> Void,
+        isSyncing: Bool = false,
+        onSync: @escaping () -> Void = {},
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
@@ -46,6 +74,18 @@ public struct BankFeedCleanupView: View {
         self.importError = importError
         self.onSelectFinding = onSelectFinding
         self.onImportTapped = onImportTapped
+        self.isSyncing = isSyncing
+        self.onSync = onSync
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
+        self.secondOpinionConfigured = secondOpinionConfigured
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
     }
 
     public var body: some View {
@@ -56,6 +96,7 @@ public struct BankFeedCleanupView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    SyncButton(isSyncing: isSyncing, onSync: onSync)
                     VLEnvironmentBadge(environment)
                 }
 
@@ -145,6 +186,22 @@ public struct BankFeedCleanupView: View {
                         }
                     }
                 }
+
+                TwoTierAskAIPanel(
+                    aiStatus: aiStatus,
+                    placeholder: "Ask a question about this page",
+                    primaryDisclaimer: "Answers are grounded strictly in the findings listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    primaryAnswer: askAIAnswer,
+                    isAskingPrimary: isAskingAI,
+                    primaryError: askAIError,
+                    onAskPrimary: onAskAI,
+                    secondOpinionConfigured: secondOpinionConfigured,
+                    secondOpinionDisclaimer: "Sends this page's findings to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+                    secondOpinionAnswer: secondOpinionAnswer,
+                    isAskingSecondOpinion: isAskingSecondOpinion,
+                    secondOpinionError: secondOpinionError,
+                    onAskSecondOpinion: onAskSecondOpinion
+                )
             }
             .padding(VLSpacing.pageGutter)
         }
