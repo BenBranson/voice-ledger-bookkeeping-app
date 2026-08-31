@@ -22,6 +22,21 @@ public struct TaxesView: View {
     private let settings: TaxEstimateSettings
     private let onRefresh: () -> Void
     private let onSaveSettings: (TaxEstimateSettings) -> Void
+    /// Owner directive (2026-08-31): every page ends in a two-tier Ask AI
+    /// panel — see `TwoTierAskAIPanel`. The existing system prompt's own
+    /// "never give definitive tax, legal, or filing advice" rule already
+    /// covers this page specifically — nothing new needed to keep this
+    /// page's own strict non-advice posture intact.
+    private let aiStatus: AIStatus?
+    private let askAIAnswer: String?
+    private let isAskingAI: Bool
+    private let askAIError: String?
+    private let onAskAI: (String) -> Void
+    private let secondOpinionConfigured: Bool
+    private let secondOpinionAnswer: String?
+    private let isAskingSecondOpinion: Bool
+    private let secondOpinionError: String?
+    private let onAskSecondOpinion: (String) -> Void
 
     @State private var actorNameDraft: String = NSFullUserName()
     @State private var rateDraft: String = ""
@@ -37,7 +52,17 @@ public struct TaxesView: View {
         errorMessage: String?,
         settings: TaxEstimateSettings,
         onRefresh: @escaping () -> Void,
-        onSaveSettings: @escaping (TaxEstimateSettings) -> Void
+        onSaveSettings: @escaping (TaxEstimateSettings) -> Void,
+        aiStatus: AIStatus? = nil,
+        askAIAnswer: String? = nil,
+        isAskingAI: Bool = false,
+        askAIError: String? = nil,
+        onAskAI: @escaping (String) -> Void = { _ in },
+        secondOpinionConfigured: Bool = false,
+        secondOpinionAnswer: String? = nil,
+        isAskingSecondOpinion: Bool = false,
+        secondOpinionError: String? = nil,
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
     ) {
         self.environment = environment
         self.currentPeriodLabel = currentPeriodLabel
@@ -49,6 +74,16 @@ public struct TaxesView: View {
         self.settings = settings
         self.onRefresh = onRefresh
         self.onSaveSettings = onSaveSettings
+        self.aiStatus = aiStatus
+        self.askAIAnswer = askAIAnswer
+        self.isAskingAI = isAskingAI
+        self.askAIError = askAIError
+        self.onAskAI = onAskAI
+        self.secondOpinionConfigured = secondOpinionConfigured
+        self.secondOpinionAnswer = secondOpinionAnswer
+        self.isAskingSecondOpinion = isAskingSecondOpinion
+        self.secondOpinionError = secondOpinionError
+        self.onAskSecondOpinion = onAskSecondOpinion
         _rateDraft = State(initialValue: settings.ratePercent.map { String($0) } ?? "")
         _noteDraft = State(initialValue: settings.note ?? "")
     }
@@ -97,6 +132,22 @@ public struct TaxesView: View {
 
                 trendSection
                 setAsideSection
+
+                TwoTierAskAIPanel(
+                    aiStatus: aiStatus,
+                    placeholder: "Ask a question about this page",
+                    primaryDisclaimer: "Answers are grounded strictly in the net income figures and set-aside calculation shown on this page — it never gives tax, legal, or filing advice, and cannot state a dollar figure beyond what's already here.",
+                    primaryAnswer: askAIAnswer,
+                    isAskingPrimary: isAskingAI,
+                    primaryError: askAIError,
+                    onAskPrimary: onAskAI,
+                    secondOpinionConfigured: secondOpinionConfigured,
+                    secondOpinionDisclaimer: "Sends this page's net income and set-aside figures to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Never gives tax, legal, or filing advice.",
+                    secondOpinionAnswer: secondOpinionAnswer,
+                    isAskingSecondOpinion: isAskingSecondOpinion,
+                    secondOpinionError: secondOpinionError,
+                    onAskSecondOpinion: onAskSecondOpinion
+                )
             }
             .padding(VLSpacing.pageGutter)
         }

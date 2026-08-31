@@ -299,6 +299,18 @@ struct RootView: View {
             }
 
         case .taxes:
+            let taxesAskAIKey = "page:taxes"
+            let taxesContext = {
+                var lines = ["Current period (\(Self.periodLabel(state.currentPeriod))) net income: \(TaxEstimate.netIncome(from: state.profitAndLossLines)?.description ?? "not loaded")"]
+                lines.append("Prior period (\(Self.periodLabel(state.currentPeriod.previousMonth))) net income: \(TaxEstimate.netIncome(from: state.priorPeriodProfitAndLossLines)?.description ?? "not loaded")")
+                if let rate = state.taxEstimateSettings.ratePercent {
+                    lines.append("Bookkeeper-provided rate: \(rate)%")
+                    if let setAside = TaxEstimate.estimatedSetAside(netIncome: TaxEstimate.netIncome(from: state.profitAndLossLines), ratePercent: rate) {
+                        lines.append("Illustrative set-aside at that rate: \(setAside.description)")
+                    }
+                }
+                return AskAIContext.compose(pageTitle: "Taxes", summaryLines: lines)
+            }
             TaxesView(
                 environment: state.environment == .production ? .production : .sandbox,
                 currentPeriodLabel: Self.periodLabel(state.currentPeriod),
@@ -314,7 +326,21 @@ struct RootView: View {
                         await state.loadVarianceAnalysis()
                     }
                 },
-                onSaveSettings: { settings in Task { await state.updateTaxEstimateSettings(settings) } }
+                onSaveSettings: { settings in Task { await state.updateTaxEstimateSettings(settings) } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[taxesAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(taxesAskAIKey),
+                askAIError: state.askAIError?.contextKey == taxesAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: taxesAskAIKey, contextText: taxesContext(), question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[taxesAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(taxesAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == taxesAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: taxesAskAIKey, contextText: taxesContext(), question: question) }
+                }
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -640,9 +666,30 @@ struct RootView: View {
             }
 
         case .activityLog:
+            let activityLogAskAIKey = "page:activity-log"
+            let activityLogContext = AskAIContext.compose(
+                pageTitle: "Activity & Correction Log",
+                summaryLines: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }.prefix(60).map {
+                    "\($0.recordedAt.formatted(date: .abbreviated, time: .shortened)) — \($0.kind.humanLabel)\($0.findingSummary.map { s in ": \(s)" } ?? "") (\($0.actor.displayLabel))"
+                }
+            )
             ActivityLogView(
                 entries: state.activityLog,
-                onExport: { format in state.exportTable(Self.exportTable(activityLog: state.activityLog), format: format, suggestedFilename: "Activity Log") }
+                onExport: { format in state.exportTable(Self.exportTable(activityLog: state.activityLog), format: format, suggestedFilename: "Activity Log") },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[activityLogAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(activityLogAskAIKey),
+                askAIError: state.askAIError?.contextKey == activityLogAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: activityLogAskAIKey, contextText: activityLogContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[activityLogAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(activityLogAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == activityLogAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: activityLogAskAIKey, contextText: activityLogContext, question: question) }
+                }
             )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -1276,10 +1323,29 @@ struct RootView: View {
             }
 
         case .clientMemory:
+            let clientMemoryAskAIKey = "page:client-memory"
+            let clientMemoryContext = AskAIContext.compose(
+                pageTitle: "Client Memory",
+                summaryLines: state.clientMemoryRules.map { "\($0.ruleID.rawValue) — \($0.vendorName), created by \($0.createdBy)\($0.note.map { n in ": \(n)" } ?? "")" }
+            )
             ClientMemoryView(
                 environment: state.environment == .production ? .production : .sandbox,
                 rules: state.clientMemoryRules,
-                onForget: { rule in Task { await state.removeClientMemoryRule(id: rule.id, actorName: actorName) } }
+                onForget: { rule in Task { await state.removeClientMemoryRule(id: rule.id, actorName: actorName) } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[clientMemoryAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(clientMemoryAskAIKey),
+                askAIError: state.askAIError?.contextKey == clientMemoryAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: clientMemoryAskAIKey, contextText: clientMemoryContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[clientMemoryAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(clientMemoryAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == clientMemoryAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: clientMemoryAskAIKey, contextText: clientMemoryContext, question: question) }
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
