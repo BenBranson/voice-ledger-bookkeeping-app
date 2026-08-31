@@ -43,7 +43,7 @@ public struct PricingCalculatorView: View {
     private let quoteDraftSecondOpinionError: String?
     private let onDraftQuoteSecondOpinion: (String) -> Void
 
-    @State private var needsCleanup = false
+    @State private var needsCleanup: Bool
 
     // Monthly retainer inputs
     @State private var volumeTier: PricingCalculator.VolumeTier = .light
@@ -55,12 +55,21 @@ public struct PricingCalculatorView: View {
 
     // Cleanup project inputs
     @State private var monthsBehind: PricingCalculator.MonthsBehindTier = .threeToSix
-    @State private var multipleUncategorized = false
-    @State private var personalBusinessMixed = false
+    // Owner directive (2026-08-31): close the gap between Cleanup
+    // Assessment (which already computes real, rule-based findings for
+    // this client) and this page's cleanup-issue checkboxes, which were
+    // otherwise pure manual guesswork re-derived by eye from that other
+    // page. Seeded from `openFindings` at init time (see below) only for
+    // the three flags with an exact, provable rule match — the other four
+    // (payroll/sales tax/inventory/duplicated accounts) have no
+    // corresponding rule in this codebase yet, so they stay honestly
+    // manual rather than a fabricated auto-detection.
+    @State private var multipleUncategorized: Bool
+    @State private var personalBusinessMixed: Bool
     @State private var payrollNotReconciled = false
     @State private var salesTaxNotFiled = false
     @State private var inventoryTrackingIssues = false
-    @State private var negativeBalances = false
+    @State private var negativeBalances: Bool
     @State private var duplicatedAccounts = false
 
     @State private var includeFindingsSummary = true
@@ -82,6 +91,16 @@ public struct PricingCalculatorView: View {
         self.environment = environment
         self.aiStatus = aiStatus
         self.openFindings = openFindings
+
+        let ruleIDs = Set(openFindings.map(\.ruleID.rawValue))
+        let hasUncategorized = ruleIDs.contains("VL-CAT-UNCAT-001")
+        let hasPersonalMixed = ruleIDs.contains("VL-PERSONAL-001")
+        let hasNegativeBalances = ruleIDs.contains("VL-BS-NEGBAL-001")
+        _multipleUncategorized = State(initialValue: hasUncategorized)
+        _personalBusinessMixed = State(initialValue: hasPersonalMixed)
+        _negativeBalances = State(initialValue: hasNegativeBalances)
+        _needsCleanup = State(initialValue: hasUncategorized || hasPersonalMixed || hasNegativeBalances)
+
         self.quoteDraftAnswer = quoteDraftAnswer
         self.isDraftingQuote = isDraftingQuote
         self.quoteDraftError = quoteDraftError
@@ -346,12 +365,12 @@ public struct PricingCalculatorView: View {
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.violet)
-                Toggle("Multiple uncategorized transactions", isOn: $multipleUncategorized)
-                Toggle("Personal and business mixed together", isOn: $personalBusinessMixed)
+                detectableToggle("Multiple uncategorized transactions", isOn: $multipleUncategorized, detected: openFindings.contains { $0.ruleID.rawValue == "VL-CAT-UNCAT-001" })
+                detectableToggle("Personal and business mixed together", isOn: $personalBusinessMixed, detected: openFindings.contains { $0.ruleID.rawValue == "VL-PERSONAL-001" })
                 Toggle("Payroll not reconciled", isOn: $payrollNotReconciled)
                 Toggle("Sales tax not filed", isOn: $salesTaxNotFiled)
                 Toggle("Inventory tracking issues", isOn: $inventoryTrackingIssues)
-                Toggle("Negative balances", isOn: $negativeBalances)
+                detectableToggle("Negative balances", isOn: $negativeBalances, detected: openFindings.contains { $0.ruleID.rawValue == "VL-BS-NEGBAL-001" })
                 Toggle("Duplicated accounts", isOn: $duplicatedAccounts)
             }
         }
@@ -466,6 +485,21 @@ public struct PricingCalculatorView: View {
                     }
                 }
                 .opacity(includeFindingsSummary ? 1 : 0.4)
+            }
+        }
+    }
+
+    /// Same as a plain `Toggle`, but with a small "detected in this
+    /// client's findings" note when `detected` is true — always still
+    /// editable, never a claim stronger than what was actually checked.
+    private func detectableToggle(_ label: String, isOn: Binding<Bool>, detected: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(label, isOn: isOn)
+            if detected {
+                Text("Detected in this client's synced findings — pre-checked, still editable.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.cyan)
+                    .padding(.leading, VLSpacing.lg)
             }
         }
     }
