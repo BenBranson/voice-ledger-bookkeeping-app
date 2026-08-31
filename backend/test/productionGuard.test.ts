@@ -97,7 +97,7 @@ describe("resolveAIConfig — AI features are optional, never a startup requirem
 
   it("AI_PROVIDER=ollama needs no API key at all — it's a local server, not a hosted one", () => {
     const config = resolveAIConfig({ AI_PROVIDER: "ollama" } as NodeJS.ProcessEnv);
-    expect(config).toEqual({ provider: "ollama", baseUrl: "http://localhost:11434", model: "gemma4:e4b" });
+    expect(config).toEqual({ provider: "ollama", baseUrl: "http://localhost:11434", model: "gemma4:12b" });
   });
 
   it("honors explicit OLLAMA_BASE_URL / OLLAMA_MODEL overrides", () => {

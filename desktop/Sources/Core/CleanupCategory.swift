@@ -53,6 +53,7 @@ public enum CleanupCategory: String, CaseIterable, Sendable {
         "VL-DUP-PAY-001": .duplicatesAndUnresolvedItems,
         "VL-VENDCREDIT-UNAPPLIED-001": .duplicatesAndUnresolvedItems,
         "VL-PERIOD-CLOSED-001": .duplicatesAndUnresolvedItems,
+        "VL-TRANSPOSITION-001": .duplicatesAndUnresolvedItems,
 
         "VL-CC-PAYMENT-001": .categorizationAndCoding,
         "VL-PAYROLL-LUMP-001": .categorizationAndCoding,

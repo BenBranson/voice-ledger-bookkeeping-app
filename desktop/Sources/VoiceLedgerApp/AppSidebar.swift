@@ -24,6 +24,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     /// not an actual dashboard.
     case dashboard
     case findings
+    /// Owner directive (2026-08-31): a dedicated, always-reachable
+    /// exact-dollar-amount lookup across every synced transaction — for
+    /// spotting phantom duplicates, split payments, and transposition
+    /// errors by amount alone. Distinct from the quick in-view amount
+    /// filters on General Ledger/Findings/Cleanup Assessment (narrower,
+    /// scoped to what's already on that page) — this one searches
+    /// everything synced, from anywhere in the app.
+    case amountSearch
     case firmCockpit
     case cleanupAssessment
     case balanceSheetIntegrity
@@ -53,6 +61,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: return "Dashboard"
         case .findings: return "Findings"
+        case .amountSearch: return "Search by Amount"
         case .firmCockpit: return "Firm Cockpit"
         case .cleanupAssessment: return "Cleanup Assessment"
         case .balanceSheetIntegrity: return "Balance Sheet Integrity"
@@ -82,6 +91,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: return "gauge.with.dots.needle.50percent"
         case .findings: return "list.bullet.rectangle.portrait"
+        case .amountSearch: return "magnifyingglass.circle"
         case .firmCockpit: return "square.grid.2x2"
         case .cleanupAssessment: return "checkmark.seal"
         case .balanceSheetIntegrity: return "chart.bar.doc.horizontal"
@@ -115,7 +125,7 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .amountSearch]),
     SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),

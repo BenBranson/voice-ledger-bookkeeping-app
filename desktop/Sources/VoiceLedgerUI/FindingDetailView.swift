@@ -99,6 +99,15 @@ public struct FindingDetailView: View {
     /// `nil` until `/ai/status` has actually been checked — never assumed
     /// available, same posture as `aiStatus` itself.
     private let secondOpinionConfigured: Bool
+    /// Owner directive (2026-08-31): "a 'Draft a message to the client
+    /// about this' button" — separate answer/error/in-flight state from
+    /// `askAIAnswer` above, same reasoning as the second-opinion tier: a
+    /// different `AppState.draftClientMessage` call, different
+    /// `contextKey`, must never overwrite the regular Q&A panel's answer.
+    private let clientMessageAnswer: String?
+    private let isDraftingClientMessage: Bool
+    private let clientMessageError: String?
+    private let onDraftClientMessage: (String) -> Void
     /// Navigates back to the Findings list. Owner directive (2026-08-29):
     /// "there needs to be a back button in findings especially when
     /// looking at the individual finding screens."
@@ -155,6 +164,10 @@ public struct FindingDetailView: View {
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
         secondOpinionConfigured: Bool = false,
+        clientMessageAnswer: String? = nil,
+        isDraftingClientMessage: Bool = false,
+        clientMessageError: String? = nil,
+        onDraftClientMessage: @escaping (String) -> Void = { _ in },
         onBack: @escaping () -> Void = {}
     ) {
         self.finding = finding
@@ -190,6 +203,10 @@ public struct FindingDetailView: View {
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
         self.secondOpinionConfigured = secondOpinionConfigured
+        self.clientMessageAnswer = clientMessageAnswer
+        self.isDraftingClientMessage = isDraftingClientMessage
+        self.clientMessageError = clientMessageError
+        self.onDraftClientMessage = onDraftClientMessage
         self.onBack = onBack
     }
 
@@ -230,6 +247,7 @@ public struct FindingDetailView: View {
                     actionSection(action)
                 }
                 clientQuestionSection
+                clientMessageSection
                 if let vendorName = finding.vendorName {
                     clientMemorySection(vendorName)
                 }
@@ -347,7 +365,7 @@ public struct FindingDetailView: View {
     /// proposed action, its consequences, `riskIfIgnored`) are already all
     /// deterministic Core output, shown above — this button just asks the
     /// same grounded Ask AI pipeline `AskAIPanelView` already uses (backend
-    /// `AskAIContext.compose`, currently Ollama `gemma4:e4b`) to narrate
+    /// `AskAIContext.compose`, currently Ollama `gemma4:12b`) to narrate
     /// them in plain English in one click, instead of requiring the owner
     /// to type a question every time. CLAUDE.md rule 1 is unaffected: this
     /// asks for PROSE about facts already computed and rendered on screen,
@@ -395,6 +413,31 @@ public struct FindingDetailView: View {
             onQuickAsk: { onAskSecondOpinion(Self.explainPrompt) }
         )
     }
+
+    /// Owner directive (2026-08-31): "a 'Draft a message to the client
+    /// about this' button." A DIFFERENT feature from `clientQuestionSection`
+    /// below — that one is a fixed, non-AI template for "I'm not sure, can
+    /// you confirm this?" uncertain findings. This one is AI-narrated
+    /// (`format: .clientMessage`, its own client-facing system prompt on
+    /// the backend — no internal tool jargon, no invented figures), for
+    /// when the bookkeeper already knows what's going on and wants a
+    /// flexible, plain-English update explaining it to the client.
+    private var clientMessageSection: some View {
+        AskAIPanelView(
+            title: "DRAFT CLIENT MESSAGE",
+            disclaimer: "AI-drafted, grounded strictly in this finding's own fields shown above — always review and edit before sending, Voice Ledger never sends anything itself. Different from the Client Question above: this explains what's going on, in plain language with no internal jargon, rather than asking the client to confirm something.",
+            placeholder: "Ask for a different version (e.g. \"make it more formal\")",
+            aiStatus: aiStatus,
+            answer: clientMessageAnswer,
+            isAsking: isDraftingClientMessage,
+            error: clientMessageError,
+            onAsk: onDraftClientMessage,
+            quickAskLabel: "Draft a Message",
+            onQuickAsk: { onDraftClientMessage(Self.draftClientMessageDefaultPrompt) }
+        )
+    }
+
+    private static let draftClientMessageDefaultPrompt = "Draft a short, professional message explaining this to the client and what, if anything, is needed from them."
 
     /// docs/VOICE_LEDGER_SPEC.md's Firm Cockpit "Client Question Builder" —
     /// see `ClientQuestionDrafter`'s doc comment for exactly what this is

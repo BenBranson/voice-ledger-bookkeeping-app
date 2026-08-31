@@ -144,6 +144,11 @@ public struct FindingsListView: View {
     private let onAskValueSummaryFollowUp: (String) -> Void
     private let onAskValueSummaryFollowUpSecondOpinion: (String) -> Void
 
+    /// Owner directive (2026-08-31): "a quick-click filter component
+    /// inside... the Findings views" — purely local, filtering
+    /// `state.findings` (already loaded) by exact dollar exposure.
+    @State private var amountFilter = ""
+
     public init(
         state: ViewState,
         onSelect: @escaping (Finding) -> Void,
@@ -180,6 +185,17 @@ public struct FindingsListView: View {
         self.onAskHealthReportFollowUpSecondOpinion = onAskHealthReportFollowUpSecondOpinion
         self.onAskValueSummaryFollowUp = onAskValueSummaryFollowUp
         self.onAskValueSummaryFollowUpSecondOpinion = onAskValueSummaryFollowUpSecondOpinion
+    }
+
+    private var parsedAmountFilter: Money? {
+        AmountSearch.parseAmount(amountFilter)
+    }
+
+    private var filteredFindings: [Finding] {
+        guard let parsedAmountFilter else { return state.findings }
+        return state.findings.filter {
+            $0.dollarExposure.currency == parsedAmountFilter.currency && abs($0.dollarExposure.minorUnits) == abs(parsedAmountFilter.minorUnits)
+        }
     }
 
     public var body: some View {
@@ -226,11 +242,27 @@ public struct FindingsListView: View {
 
                 healthReportSection
 
+                if !state.findings.isEmpty {
+                    HStack {
+                        TextField("Filter by dollar amount (e.g. 142.50)", text: $amountFilter)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 260)
+                        if !amountFilter.trimmingCharacters(in: .whitespaces).isEmpty {
+                            if parsedAmountFilter == nil {
+                                Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
+                            } else {
+                                Text("\(filteredFindings.count) matching finding\(filteredFindings.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                            }
+                            Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
+                        }
+                    }
+                }
+
                 if state.findings.isEmpty {
                     emptyState
                 } else {
                     VStack(spacing: VLSpacing.sm) {
-                        ForEach(state.findings) { finding in
+                        ForEach(filteredFindings) { finding in
                             Button {
                                 onSelect(finding)
                             } label: {

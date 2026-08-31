@@ -27,6 +27,12 @@ public struct GeneralLedgerReportView: View {
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
 
+    /// Owner directive (2026-08-31): "a quick-click filter component
+    /// inside the General Ledger... views" — purely local to this view
+    /// (every line is already in `lines`, nothing to fetch), see
+    /// `AmountSearch` (Core) for the exact-cents matching itself.
+    @State private var amountFilter = ""
+
     public init(
         sourceDescription: String,
         environment: VLEnvironmentTone,
@@ -63,6 +69,20 @@ public struct GeneralLedgerReportView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+    }
+
+    private var parsedAmountFilter: Money? {
+        AmountSearch.parseAmount(amountFilter)
+    }
+
+    /// Drops account-header rows while a filter is active — a flat list
+    /// of just the matching leaf rows is more useful for "pinpoint a
+    /// duplicate" than headers for accounts that have no match at all.
+    private var filteredLines: [GeneralLedgerLine] {
+        guard let parsedAmountFilter else { return lines }
+        return lines.filter { line in
+            !line.isAccountHeader && [line.amount, line.balance].contains { $0 != nil && abs($0!.minorUnits) == abs(parsedAmountFilter.minorUnits) && $0!.currency == parsedAmountFilter.currency }
+        }
     }
 
     public var body: some View {
@@ -102,6 +122,20 @@ public struct GeneralLedgerReportView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                 } else {
+                    HStack {
+                        TextField("Filter by amount (e.g. 142.50)", text: $amountFilter)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 240)
+                        if !amountFilter.trimmingCharacters(in: .whitespaces).isEmpty {
+                            if parsedAmountFilter == nil {
+                                Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
+                            } else {
+                                Text("\(filteredLines.count) matching line\(filteredLines.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                            }
+                            Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
+                        }
+                    }
+
                     VLCard {
                         ScrollView(.horizontal) {
                             VStack(alignment: .leading, spacing: VLSpacing.xxs) {
@@ -110,7 +144,7 @@ public struct GeneralLedgerReportView: View {
                                         Text(header).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).frame(width: 110, alignment: .leading)
                                     }
                                 }
-                                ForEach(lines) { line in
+                                ForEach(filteredLines) { line in
                                     if line.isAccountHeader {
                                         Text(line.label)
                                             .font(VLTypography.cardTitle())

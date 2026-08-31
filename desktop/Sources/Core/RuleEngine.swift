@@ -140,6 +140,12 @@ public enum FindingCategory: String, Hashable, Codable, Sendable {
     /// "goalie" audit-engine spec (2026-08-29) that genuinely wasn't
     /// already built; every other category on that list already existed.
     case missingPayee
+    /// `VL-TRANSPOSITION-001` — see `TransactionAmountTranspositionRule`'s
+    /// doc comment. Deliberately distinct from `duplicateExpense` etc.
+    /// above (which already cover matching/near-matching amounts):
+    /// this flags a pair of DIFFERENT amounts likely to be the SAME real
+    /// transaction with a digit typo, not two postings of the same event.
+    case amountTransposition
 }
 
 /// docs/phase-0/04_DATA_MODEL.md §4.12 — declares a rule's QBO-specific

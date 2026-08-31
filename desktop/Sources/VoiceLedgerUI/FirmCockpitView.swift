@@ -128,6 +128,8 @@ public struct FirmCockpitView: View {
                     isAskingPrimary: isAskingAI,
                     primaryError: askAIError,
                     onAskPrimary: onAskAI,
+                    quickAskLabel: "What Needs My Attention Today?",
+                    onQuickAsk: { onAskAI(Self.digestPrompt) },
                     secondOpinionConfigured: secondOpinionConfigured,
                     secondOpinionDisclaimer: "Sends this page's client summaries to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
                     secondOpinionAnswer: secondOpinionAnswer,
@@ -205,4 +207,12 @@ public struct FirmCockpitView: View {
                 .foregroundStyle(VLColor.textMuted)
         }
     }
+
+    /// Owner directive (2026-08-31): a cross-client digest — "what needs
+    /// my attention across all of them today." No new Core/backend work:
+    /// the page's own Ask AI panel already narrates `summaries` (every
+    /// connected client's real open/urgent finding counts and checklist
+    /// status), so this is just a one-click default question against data
+    /// already grounded there — not a separate feature to build.
+    private static let digestPrompt = "Across all these clients, which ones need my attention first today, and why? Prioritize by urgent findings and open finding count."
 }

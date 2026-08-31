@@ -37,6 +37,15 @@ public enum ClosePackagePDFExporter {
         public let corrections: [ActivityLogEntry]
         public let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
         public let recentActivity: [ActivityLogEntry]
+        /// Owner directive (2026-08-31): an AI-narrated executive summary
+        /// paragraph, generated on the Close Package page (edited by the
+        /// bookkeeper before export, same "review before it's real"
+        /// posture as everything else AI-drafted in this app) — `nil`
+        /// entirely omits the section rather than rendering an empty
+        /// placeholder, since generating it is optional, not automatic.
+        /// The exporter itself never calls AI or computes anything about
+        /// this text; it only lays out whatever string it's handed.
+        public let executiveSummary: String?
 
         public init(
             companyName: String?,
@@ -55,7 +64,8 @@ public enum ClosePackagePDFExporter {
             agedPayablesLines: [AgingLine],
             corrections: [ActivityLogEntry],
             carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)],
-            recentActivity: [ActivityLogEntry]
+            recentActivity: [ActivityLogEntry],
+            executiveSummary: String? = nil
         ) {
             self.companyName = companyName
             self.environment = environment
@@ -74,6 +84,7 @@ public enum ClosePackagePDFExporter {
             self.corrections = corrections
             self.carryForwardItems = carryForwardItems
             self.recentActivity = recentActivity
+            self.executiveSummary = executiveSummary
         }
     }
 
@@ -148,6 +159,63 @@ public enum ClosePackagePDFExporter {
             ensureRoom()
             PDFReportExporter.drawLine(text, x: margin, y: y, font: bodyFont, color: muted ? mutedColor : textColor, in: context, maxWidth: pageWidth - 2 * margin)
             y -= lineHeight
+        }
+
+        // Owner directive (2026-08-31): an AI-narrated executive summary
+        // paragraph, unlike every other line in this exporter, is real
+        // prose that can run well past one line — `bodyLine`/`drawLine`'s
+        // `maxWidth` only TRUNCATES a single line (see `drawLine`'s own
+        // comment: "truncate visually... a real column-width solver is out
+        // of scope"), which is correct for this file's other short data
+        // rows but would silently cut off most of a real paragraph here.
+        // Reuses the same `CTFramesetter` word-wrapping technique
+        // `AIReportPDFExporter` already built and tested for exactly this
+        // reason, scoped down to one wrapped block within this exporter's
+        // existing section-by-section page flow rather than that other
+        // exporter's whole-document pagination.
+        func drawWrappedParagraph(_ text: String) {
+            let attributed = NSAttributedString(string: text, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): bodyFont,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): textColor
+            ])
+            let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+            let totalLength = attributed.length
+            var consumed = 0
+            while consumed < totalLength {
+                ensureRoom(lineHeight * 2)
+                let availableHeight = y - margin
+                let path = CGPath(rect: CGRect(x: margin, y: margin, width: pageWidth - 2 * margin, height: availableHeight), transform: nil)
+                let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(consumed, 0), path, nil)
+                CTFrameDraw(frame, context)
+
+                let visibleRange = CTFrameGetVisibleStringRange(frame)
+                let newConsumed = visibleRange.location + visibleRange.length
+                // Same zero-progress guard as `AIReportPDFExporter` — a
+                // single "word" wider than the column would otherwise loop
+                // forever instead of just cutting it off.
+                consumed = newConsumed > consumed ? newConsumed : totalLength
+
+                let frameLines = CTFrameGetLines(frame) as! [CTLine]
+                if !frameLines.isEmpty {
+                    var origins = [CGPoint](repeating: .zero, count: frameLines.count)
+                    CTFrameGetLineOrigins(frame, CFRangeMake(0, frameLines.count), &origins)
+                    y = origins[frameLines.count - 1].y - lineHeight
+                }
+
+                if consumed < totalLength {
+                    context.endPDFPage()
+                    context.beginPDFPage(nil)
+                    y = pageHeight - margin
+                }
+            }
+        }
+
+        if let executiveSummary = input.executiveSummary, !executiveSummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            sectionHeader("Executive Summary")
+            for paragraph in executiveSummary.components(separatedBy: "\n") where !paragraph.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                drawWrappedParagraph(paragraph)
+                y -= lineHeight * 0.5
+            }
         }
 
         sectionHeader("Month-End Checklist")

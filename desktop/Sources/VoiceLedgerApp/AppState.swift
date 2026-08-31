@@ -47,6 +47,11 @@ public final class AppState {
         case closePackage
         case clientMemory
         case voiceHistory
+        /// Owner directive (2026-08-31): "search for a specific dollar
+        /// amount and it brings back all the transactions that are that
+        /// amount." Searches `transactions` (already synced, already in
+        /// memory) client-side — no new QBO call.
+        case amountSearch
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -54,7 +59,7 @@ public final class AppState {
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
     /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
     /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001", "VL-VEND-PRICE-001", "VL-CAT-MISCODE-001", "VL-BS-DRCR-001", "VL-RELATIONSHIP-003", "VL-RELATIONSHIP-005"]
+    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001", "VL-VEND-PRICE-001", "VL-CAT-MISCODE-001", "VL-BS-DRCR-001", "VL-RELATIONSHIP-003", "VL-RELATIONSHIP-005", "VL-TRANSPOSITION-001"]
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just
@@ -895,6 +900,30 @@ public final class AppState {
         await askAI(contextKey: findingID, contextText: AskAIContext.compose(finding: finding), question: question)
     }
 
+    /// Owner directive (2026-08-31): "a 'Draft a message to the client
+    /// about this' button on a finding." Deliberately a DIFFERENT feature
+    /// from `ClientQuestionDrafter` (Core, pure, no AI) — that one is a
+    /// fixed template for "I'm not sure, can you confirm this?" uncertain
+    /// findings; this narrates a flexible, plain-English update for when
+    /// the bookkeeper wants to explain what's going on, adapted to this
+    /// finding's actual specifics, using `format: .clientMessage`'s
+    /// separate client-facing system prompt (backend `routes/ai.ts`) — no
+    /// internal tool jargon, never a wrong number (same Context-grounded
+    /// boundary as every other Ask AI call). A distinct `contextKey`
+    /// ("client-message:<id>", not the bare finding ID `askAI(findingID:)`
+    /// uses) so its answer/error state doesn't collide with that panel's.
+    private static let draftClientMessagePrompt = "Draft a short, professional message explaining this to the client and what, if anything, is needed from them."
+
+    public func draftClientMessage(findingID: String, question: String? = nil) async {
+        guard let finding = finding(id: findingID) else { return }
+        await askAI(
+            contextKey: "client-message:\(findingID)",
+            contextText: AskAIContext.compose(finding: finding),
+            question: question ?? Self.draftClientMessagePrompt,
+            format: .clientMessage
+        )
+    }
+
     /// The opt-in "second opinion" tier (2026-08-29, owner directive): asks
     /// the SAME question through OpenAI instead of the app's default free
     /// local model, for a bookkeeper who wants a more capable read on a
@@ -966,6 +995,8 @@ public final class AppState {
             profitAndLossLines: profitAndLossLines,
             priorBalanceSheetLines: priorPeriodBalanceSheetLines,
             priorProfitAndLossLines: priorPeriodProfitAndLossLines,
+            agedReceivablesLines: agedReceivablesLines.isEmpty ? nil : agedReceivablesLines,
+            agedPayablesLines: agedPayablesLines.isEmpty ? nil : agedPayablesLines,
             period: currentPeriod
         )
     }

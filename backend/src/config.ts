@@ -122,7 +122,7 @@ export function resolveAIConfig(env: NodeJS.ProcessEnv = process.env): AIConfig 
     return {
       provider: "ollama",
       baseUrl: env.OLLAMA_BASE_URL ?? "http://localhost:11434",
-      model: env.OLLAMA_MODEL ?? "gemma4:e4b"
+      model: env.OLLAMA_MODEL ?? "gemma4:12b"
     };
   }
 

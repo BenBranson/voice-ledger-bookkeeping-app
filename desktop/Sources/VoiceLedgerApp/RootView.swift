@@ -100,6 +100,7 @@ struct RootView: View {
                 case .agedReceivablesReport: return .agedReceivablesReport
                 case .agedPayablesReport: return .agedPayablesReport
                 case .generalLedgerReport: return .generalLedgerReport
+                case .amountSearch: return .amountSearch
                 }
             },
             set: { newValue in
@@ -129,6 +130,7 @@ struct RootView: View {
                 case .agedReceivablesReport: state.screen = .agedReceivablesReport
                 case .agedPayablesReport: state.screen = .agedPayablesReport
                 case .generalLedgerReport: state.screen = .generalLedgerReport
+                case .amountSearch: state.screen = .amountSearch
                 }
             }
         )
@@ -541,13 +543,26 @@ struct RootView: View {
                 // deeply-nested expressions in that call and splitting
                 // them out is enough to bring it back under the type
                 // checker's time limit, with no behavior change.
-                let pendingWriteJournalEntry: WriteJournalEntry? = finding.proposedActions.first?.apiWriteDetails.flatMap { details in
+                let pendingWriteJournalEntry: WriteJournalEntry? = finding.proposedActions.first?.apiWriteDetails.flatMap { details -> WriteJournalEntry? in
                     let journalID = "\(details.purchaseID):\(details.lineID)"
-                    return state.writeJournal.first { $0.id == journalID && ($0.state == .submitted || $0.state == .unknown) }
+                    for entry in state.writeJournal {
+                        let isPending = entry.state == .submitted || entry.state == .unknown
+                        if entry.id == journalID && isPending {
+                            return entry
+                        }
+                    }
+                    return nil
                 }
                 let isResolvingPendingWrite: Bool = finding.proposedActions.first?.apiWriteDetails.map { details in
                     state.isResolvingWriteJournalEntryIDs.contains("\(details.purchaseID):\(details.lineID)")
                 } ?? false
+                // Same type-checker-timeout reasoning as the two lets
+                // above — added 2026-08-31 once `clientMessageAnswer`/etc
+                // pushed this call over the limit again.
+                let clientMessageContextKey = "client-message:\(findingID)"
+                let clientMessageAnswer = state.askAIAnswers[clientMessageContextKey]
+                let isDraftingClientMessage = state.askingAIContextKeys.contains(clientMessageContextKey)
+                let clientMessageError = state.askAIError?.contextKey == clientMessageContextKey ? state.askAIError?.message : nil
                 FindingDetailView(
                     finding: finding,
                     writeAccessEnabled: state.writeAccessEnabled == true,
@@ -595,6 +610,10 @@ struct RootView: View {
                     secondOpinionError: state.secondOpinionError?.contextKey == findingID ? state.secondOpinionError?.message : nil,
                     onAskSecondOpinion: { question in Task { await state.askSecondOpinion(findingID: findingID, question: question) } },
                     secondOpinionConfigured: state.aiStatus?.secondaryConfigured ?? false,
+                    clientMessageAnswer: clientMessageAnswer,
+                    isDraftingClientMessage: isDraftingClientMessage,
+                    clientMessageError: clientMessageError,
+                    onDraftClientMessage: { question in Task { await state.draftClientMessage(findingID: findingID, question: question) } },
                     onBack: { state.screen = .list }
                 )
             } else {
@@ -958,7 +977,21 @@ struct RootView: View {
 
         case .trialBalanceReport:
             let trialBalanceAskAIKey = "page:trial-balance-report"
-            let trialBalanceContext = AskAIContext.compose(pageTitle: "Trial Balance", summaryLines: state.trialBalanceLines.map { "\($0.label): debit \($0.debit?.description ?? "—"), credit \($0.credit?.description ?? "—")" })
+            // Owner directive (2026-08-31): summarize account totals rather
+            // than blindly cap-and-drop when there are more accounts than
+            // reasonably fit an Ask AI context — see
+            // `AskAIContext.summarizeAccountTotals`'s doc comment. A full
+            // Trial Balance (every account, not just summary rows) is
+            // exactly the "more accounts than fit" case this exists for.
+            let trialBalanceContext = AskAIContext.compose(
+                pageTitle: "Trial Balance",
+                summaryLines: AskAIContext.summarizeAccountTotals(state.trialBalanceLines.map { line in
+                    (
+                        text: "\(line.label): debit \(line.debit?.description ?? "—"), credit \(line.credit?.description ?? "—")",
+                        amount: line.debit ?? line.credit ?? Money(minorUnits: 0, currency: .usd)
+                    )
+                })
+            )
             TrialBalanceReportView(
                 sourceDescription: "Read directly from QuickBooks' own Trial Balance report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -993,7 +1026,12 @@ struct RootView: View {
 
         case .agedReceivablesReport:
             let agedReceivablesAskAIKey = "page:aged-receivables"
-            let agedReceivablesContext = AskAIContext.compose(pageTitle: "Aged Receivables", summaryLines: state.agedReceivablesLines.map { "\($0.label): total \($0.total?.description ?? "—")" })
+            let agedReceivablesContext = AskAIContext.compose(
+                pageTitle: "Aged Receivables",
+                summaryLines: AskAIContext.summarizeAccountTotals(state.agedReceivablesLines.map { line in
+                    (text: "\(line.label): total \(line.total?.description ?? "—")", amount: line.total ?? Money(minorUnits: 0, currency: .usd))
+                })
+            )
             AgingReportView(
                 title: "Aged Receivables",
                 rowLabel: "Customer",
@@ -1030,7 +1068,12 @@ struct RootView: View {
 
         case .agedPayablesReport:
             let agedPayablesAskAIKey = "page:aged-payables"
-            let agedPayablesContext = AskAIContext.compose(pageTitle: "Aged Payables", summaryLines: state.agedPayablesLines.map { "\($0.label): total \($0.total?.description ?? "—")" })
+            let agedPayablesContext = AskAIContext.compose(
+                pageTitle: "Aged Payables",
+                summaryLines: AskAIContext.summarizeAccountTotals(state.agedPayablesLines.map { line in
+                    (text: "\(line.label): total \(line.total?.description ?? "—")", amount: line.total ?? Money(minorUnits: 0, currency: .usd))
+                })
+            )
             AgingReportView(
                 title: "Aged Payables",
                 rowLabel: "Vendor",
@@ -1067,7 +1110,15 @@ struct RootView: View {
 
         case .generalLedgerReport:
             let generalLedgerAskAIKey = "page:general-ledger-report"
-            let generalLedgerContext = AskAIContext.compose(pageTitle: "General Ledger", summaryLines: state.generalLedgerLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—"), balance \($0.balance?.description ?? "—")" })
+            let generalLedgerContext = AskAIContext.compose(
+                pageTitle: "General Ledger",
+                summaryLines: AskAIContext.summarizeAccountTotals(state.generalLedgerLines.filter(\.isSummary).map { line in
+                    (
+                        text: "\(line.label): \(line.amount?.description ?? "—"), balance \(line.balance?.description ?? "—")",
+                        amount: line.balance ?? line.amount ?? Money(minorUnits: 0, currency: .usd)
+                    )
+                })
+            )
             GeneralLedgerReportView(
                 sourceDescription: "Read directly from QuickBooks' own General Ledger report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -1108,6 +1159,13 @@ struct RootView: View {
                 lines += state.cashFlowLines.filter(\.isSummary).map { "Cash Flow — \($0.label): \($0.amount?.description ?? "—")" }
                 return AskAIContext.compose(pageTitle: "Close Package", summaryLines: lines)
             }
+            // Owner directive (2026-08-31): "a narrated summary in the
+            // Close Package PDF" — a distinct contextKey/prompt from the
+            // page's general Q&A panel above, so a random follow-up
+            // question never becomes what silently ends up in an exported
+            // client PDF.
+            let closePackageSummaryAskAIKey = "close-package-summary"
+            let closePackageSummaryPrompt = "Write a short executive summary (2-4 sentences) of this close package for the client, in plain non-technical language: overall health, anything open worth noting, and what's already been handled this period."
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
                 period: state.currentPeriod,
@@ -1148,7 +1206,7 @@ struct RootView: View {
                         suggestedFilename: "Close Package"
                     )
                 },
-                onExportBrandedPDF: {
+                onExportBrandedPDF: { executiveSummary in
                     let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
                     let input = ClosePackagePDFExporter.Input(
                         companyName: state.companyInfo?.companyName,
@@ -1169,7 +1227,8 @@ struct RootView: View {
                             guard let finding = state.finding(id: mark.findingID) else { return nil }
                             return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
                         },
-                        recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }
+                        recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
+                        executiveSummary: executiveSummary
                     )
                     state.exportClosePackagePDF(input)
                 },
@@ -1188,6 +1247,18 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == closePackageAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: closePackageAskAIKey, contextText: closePackageContext(), question: question) }
+                },
+                executiveSummaryAnswer: state.askAIAnswers[closePackageSummaryAskAIKey],
+                isGeneratingExecutiveSummary: state.askingAIContextKeys.contains(closePackageSummaryAskAIKey),
+                executiveSummaryError: state.askAIError?.contextKey == closePackageSummaryAskAIKey ? state.askAIError?.message : nil,
+                onGenerateExecutiveSummary: {
+                    Task { await state.askAI(contextKey: closePackageSummaryAskAIKey, contextText: closePackageContext(), question: closePackageSummaryPrompt, format: .report) }
+                },
+                executiveSummarySecondOpinionAnswer: state.secondOpinionAnswers[closePackageSummaryAskAIKey],
+                isGeneratingExecutiveSummarySecondOpinion: state.askingSecondOpinionContextKeys.contains(closePackageSummaryAskAIKey),
+                executiveSummarySecondOpinionError: state.secondOpinionError?.contextKey == closePackageSummaryAskAIKey ? state.secondOpinionError?.message : nil,
+                onGenerateExecutiveSummarySecondOpinion: {
+                    Task { await state.askSecondOpinion(contextKey: closePackageSummaryAskAIKey, contextText: closePackageContext(), question: closePackageSummaryPrompt, format: .report) }
                 }
             )
             .task {
@@ -1223,6 +1294,13 @@ struct RootView: View {
                         Button("Back") { state.screen = .list }
                     }
                 }
+
+        case .amountSearch:
+            AmountSearchView(
+                environment: state.environment == .production ? .production : .sandbox,
+                transactions: state.transactions,
+                accounts: state.accounts
+            )
         }
     }
 

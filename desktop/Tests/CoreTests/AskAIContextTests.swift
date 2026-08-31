@@ -3,17 +3,17 @@ import Testing
 
 @Suite("AskAIContext.compose")
 struct AskAIContextTests {
-    func finding(narrative: String? = nil, riskIfIgnored: String? = nil, vendorName: String? = nil) -> Finding {
+    func finding(id: String = "f1", narrative: String? = nil, riskIfIgnored: String? = nil, vendorName: String? = nil, ruleID: String = "VL-DUP-EXP-001", exposureMinorUnits: Int64 = 48_620, currency: CurrencyCode = .usd) -> Finding {
         Finding(
-            id: "f1",
-            ruleID: RuleID(rawValue: "VL-DUP-EXP-001"),
+            id: id,
+            ruleID: RuleID(rawValue: ruleID),
             ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0),
             realmID: RealmID(rawValue: "realm-a"),
             period: AccountingPeriod(year: 2026, month: 7),
             title: "Possible duplicate expense",
             severity: .high,
             confidence: .high,
-            dollarExposure: Money(minorUnits: 48_620, currency: .usd),
+            dollarExposure: Money(minorUnits: exposureMinorUnits, currency: currency),
             evidence: [],
             proposedActions: [],
             provenance: [],
@@ -218,6 +218,50 @@ struct AskAIContextTests {
         #expect(context.contains("Working capital") || context.contains("Current ratio"))
     }
 
+    @Test("composeHealthReport omits the DATA HYGIENE & AGING section entirely when there's nothing to report")
+    func composeHealthReportOmitsHygieneSectionWhenEmpty() {
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [], resolvedFindings: [], dismissedFindings: [],
+            balanceSheetLines: [], profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        #expect(!context.contains("DATA HYGIENE"))
+    }
+
+    @Test("composeHealthReport sums real Uncategorized findings (VL-CAT-UNCAT-001) into a real dollar total, not a guess")
+    func composeHealthReportSumsUncategorizedFindings() {
+        let a = finding(id: "u1", ruleID: "VL-CAT-UNCAT-001", exposureMinorUnits: 10_000)
+        let b = finding(id: "u2", ruleID: "VL-CAT-UNCAT-001", exposureMinorUnits: 5_000)
+        let unrelated = finding(id: "other", ruleID: "VL-DUP-EXP-001", exposureMinorUnits: 999_00)
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [a, b, unrelated], resolvedFindings: [], dismissedFindings: [],
+            balanceSheetLines: [], profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        #expect(context.contains("DATA HYGIENE"))
+        #expect(context.contains("2 transaction(s)"))
+        // 10000 + 5000 minor units = $150.00, a real sum, not invented.
+        #expect(context.contains("USD 150.00"))
+    }
+
+    @Test("composeHealthReport includes real AR/AP over-60-day totals from aging report lines, excluding the summary row")
+    func composeHealthReportIncludesAgingOver60() {
+        let arLines = [
+            AgingLine(label: "Customer A", current: nil, days1to30: nil, days31to60: nil, days61to90: Money(minorUnits: 5_000, currency: .usd), days91AndOver: nil, total: Money(minorUnits: 5_000, currency: .usd), depth: 0, isSummary: false),
+            AgingLine(label: "Customer B", current: nil, days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: Money(minorUnits: 3_000, currency: .usd), total: Money(minorUnits: 3_000, currency: .usd), depth: 0, isSummary: false),
+            AgingLine(label: "TOTAL", current: nil, days1to30: nil, days31to60: nil, days61to90: Money(minorUnits: 8_000, currency: .usd), days91AndOver: nil, total: Money(minorUnits: 8_000, currency: .usd), depth: 0, isSummary: true)
+        ]
+        let context = AskAIContext.composeHealthReport(
+            openFindings: [], resolvedFindings: [], dismissedFindings: [],
+            balanceSheetLines: [], profitAndLossLines: [], priorBalanceSheetLines: nil, priorProfitAndLossLines: nil,
+            agedReceivablesLines: arLines,
+            period: AccountingPeriod(year: 2026, month: 7)
+        )
+        // 5000 + 3000 minor units from the two LEAF rows = $80.00 — the
+        // summary row's own $80.00 must not also be added (no double-count).
+        #expect(context.contains("Accounts Receivable over 60 days: USD 80.00"))
+    }
+
     // MARK: composeValueSummary — the "Client Value Report" button, shown
     // once every finding is cleared, 2026-08-29.
 
@@ -274,5 +318,66 @@ struct AskAIContextTests {
         #expect(context.contains("Line 60"))
         #expect(!context.contains("Line 61"))
         #expect(context.contains("...and 15 more not listed here"))
+    }
+
+    // MARK: summarizeAccountTotals — 2026-08-31, owner directive: "when a
+    // client's general ledger or P&L data payload exceeds a safe token
+    // threshold, the code should summarize account totals first." Real gap
+    // this closes: General Ledger/Trial Balance can carry more accounts
+    // than a flat 60-line cap, and blindly keeping "whichever 60 came
+    // first" could drop a materially large account while keeping several
+    // tiny ones.
+
+    @Test("summarizeAccountTotals returns every entry as-is when under keepTop, no aggregation")
+    func summarizeAccountTotalsReturnsAllWhenUnderLimit() {
+        let entries: [(text: String, amount: Money)] = [
+            (text: "Cash: USD 100.00", amount: Money(minorUnits: 10_000, currency: .usd)),
+            (text: "Accounts Payable: -USD 50.00", amount: Money(minorUnits: -5_000, currency: .usd))
+        ]
+        let lines = AskAIContext.summarizeAccountTotals(entries, keepTop: 15)
+        #expect(lines.count == 2)
+        #expect(lines.contains("Cash: USD 100.00"))
+        #expect(lines.contains("Accounts Payable: -USD 50.00"))
+    }
+
+    @Test("summarizeAccountTotals keeps the largest accounts by absolute dollar size, not insertion order")
+    func summarizeAccountTotalsKeepsLargestByMagnitude() {
+        let entries: [(text: String, amount: Money)] = [
+            (text: "Tiny Account: USD 1.00", amount: Money(minorUnits: 100, currency: .usd)),
+            (text: "Huge Liability: -USD 9000.00", amount: Money(minorUnits: -900_000, currency: .usd)),
+            (text: "Medium Asset: USD 50.00", amount: Money(minorUnits: 5_000, currency: .usd))
+        ]
+        let lines = AskAIContext.summarizeAccountTotals(entries, keepTop: 1)
+        #expect(lines.first == "Huge Liability: -USD 9000.00")
+        #expect(!lines.contains(where: { $0.hasPrefix("Tiny Account") }))
+    }
+
+    @Test("summarizeAccountTotals collapses the remainder into one real, summed total — never drops accounts silently")
+    func summarizeAccountTotalsAggregatesRemainderWithRealSum() {
+        let entries: [(text: String, amount: Money)] = [
+            (text: "Big One: USD 1000.00", amount: Money(minorUnits: 100_000, currency: .usd)),
+            (text: "Small A: USD 10.00", amount: Money(minorUnits: 1_000, currency: .usd)),
+            (text: "Small B: USD 20.00", amount: Money(minorUnits: 2_000, currency: .usd))
+        ]
+        let lines = AskAIContext.summarizeAccountTotals(entries, keepTop: 1)
+        #expect(lines.count == 2)
+        // 1000 + 2000 minor units = $30.00, a real computed sum, not a guess.
+        #expect(lines.last?.contains("2 more account(s)") == true)
+        #expect(lines.last?.contains("USD 30.00") == true)
+    }
+
+    @Test("summarizeAccountTotals states mixed-currency remainder honestly instead of fabricating a cross-currency total")
+    func summarizeAccountTotalsHandlesMixedCurrencyRemainder() {
+        let entries: [(text: String, amount: Money)] = [
+            (text: "USD Big: USD 1000.00", amount: Money(minorUnits: 100_000, currency: .usd)),
+            (text: "USD Small: USD 5.00", amount: Money(minorUnits: 500, currency: .usd)),
+            (text: "EUR Small: EUR 5.00", amount: Money(minorUnits: 500, currency: CurrencyCode(rawValue: "EUR")))
+        ]
+        // Should not crash (Money.+ traps on a currency mismatch) and
+        // should say plainly that these weren't summarized, not invent a
+        // number across currencies.
+        let lines = AskAIContext.summarizeAccountTotals(entries, keepTop: 1)
+        #expect(lines.last?.contains("mixed currencies") == true)
+        #expect(lines.last?.contains("2 more account(s)") == true)
     }
 }

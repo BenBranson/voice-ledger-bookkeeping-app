@@ -20,6 +20,15 @@ public struct TwoTierAskAIPanel: View {
     private let isAskingPrimary: Bool
     private let primaryError: String?
     private let onAskPrimary: (String) -> Void
+    /// Owner directive (2026-08-31): a one-click default question (e.g.
+    /// "Draft a Client Message," "Summarize What Needs Attention") for a
+    /// caller with an obvious default ask, same as `AskAIPanelView`'s own
+    /// `quickAskLabel` — surfaced only on the free/local tier, since a
+    /// quick action shouldn't default to a paid API call. `nil` (the
+    /// default) renders nothing extra; every existing caller of this view
+    /// is unaffected.
+    private let quickAskLabel: String?
+    private let onQuickAsk: () -> Void
 
     private let secondOpinionConfigured: Bool
     private let secondOpinionDisclaimer: String
@@ -36,6 +45,8 @@ public struct TwoTierAskAIPanel: View {
         isAskingPrimary: Bool,
         primaryError: String?,
         onAskPrimary: @escaping (String) -> Void,
+        quickAskLabel: String? = nil,
+        onQuickAsk: @escaping () -> Void = {},
         secondOpinionConfigured: Bool,
         secondOpinionDisclaimer: String,
         secondOpinionAnswer: String?,
@@ -50,6 +61,8 @@ public struct TwoTierAskAIPanel: View {
         self.isAskingPrimary = isAskingPrimary
         self.primaryError = primaryError
         self.onAskPrimary = onAskPrimary
+        self.quickAskLabel = quickAskLabel
+        self.onQuickAsk = onQuickAsk
         self.secondOpinionConfigured = secondOpinionConfigured
         self.secondOpinionDisclaimer = secondOpinionDisclaimer
         self.secondOpinionAnswer = secondOpinionAnswer
@@ -67,7 +80,9 @@ public struct TwoTierAskAIPanel: View {
                 answer: primaryAnswer,
                 isAsking: isAskingPrimary,
                 error: primaryError,
-                onAsk: onAskPrimary
+                onAsk: onAskPrimary,
+                quickAskLabel: quickAskLabel,
+                onQuickAsk: onQuickAsk
             )
 
             if secondOpinionConfigured {

@@ -127,6 +127,26 @@ public enum AskAIContext {
     /// `priorBalanceSheetLines`/`priorProfitAndLossLines` are optional —
     /// when `nil` (prior-period data hasn't been loaded), the month-over-
     /// month section is simply omitted rather than fabricated.
+    /// Owner directive (2026-08-31): "when you first open a client's books,
+    /// you want a high-impact overview that highlights anomalies,
+    /// compliance risks, and health metrics instantly" — a "Danger Zone"
+    /// hygiene section, added onto the existing health report rather than
+    /// as a separate report type, so this signal is available every time
+    /// this report runs, not just once. Two of the four signals originally
+    /// proposed for this (bank reconciliation status, "Ask My Accountant"
+    /// totals) are deliberately NOT included here: nothing in this
+    /// codebase reads a last-reconciled-date from QBO today, and
+    /// "Ask My Accountant" has no rule coverage the way `Uncategorized
+    /// Expense/Income/Asset` does (`UncategorizedTransactionRule`,
+    /// live-verified against this sandbox's real account IDs) — CLAUDE.md
+    /// rule 6 means neither ships in a report until it's verified against
+    /// this app's real data sources, not assumed from a general QBO
+    /// feature list.
+    ///
+    /// `agedReceivablesLines`/`agedPayablesLines` optional for the same
+    /// reason `priorBalanceSheetLines` is — a caller that hasn't loaded
+    /// that report yet still gets a valid report, just without this
+    /// section, rather than being forced to fetch it first.
     public static func composeHealthReport(
         openFindings: [Finding],
         resolvedFindings: [Finding],
@@ -135,6 +155,8 @@ public enum AskAIContext {
         profitAndLossLines: [ReportLine],
         priorBalanceSheetLines: [ReportLine]?,
         priorProfitAndLossLines: [ReportLine]?,
+        agedReceivablesLines: [AgingLine]? = nil,
+        agedPayablesLines: [AgingLine]? = nil,
         period: AccountingPeriod
     ) -> String {
         let periodLabel = "\(period.year)-\(String(format: "%02d", period.month))"
@@ -177,6 +199,29 @@ public enum AskAIContext {
             lines.append("Net income: \(netIncome.description)")
         }
 
+        let uncategorizedFindings = openFindings.filter { $0.ruleID.rawValue == "VL-CAT-UNCAT-001" }
+        let arOver60 = sumAgingOver60Days(agedReceivablesLines)
+        let apOver60 = sumAgingOver60Days(agedPayablesLines)
+        if !uncategorizedFindings.isEmpty || arOver60 != nil || apOver60 != nil {
+            lines.append("")
+            lines.append("DATA HYGIENE & AGING:")
+            if !uncategorizedFindings.isEmpty {
+                let currency = uncategorizedFindings[0].dollarExposure.currency
+                if uncategorizedFindings.allSatisfy({ $0.dollarExposure.currency == currency }) {
+                    let total = uncategorizedFindings.dropFirst().reduce(uncategorizedFindings[0].dollarExposure) { $0 + $1.dollarExposure }
+                    lines.append("Uncategorized Expense/Income/Asset: \(uncategorizedFindings.count) transaction(s) still sitting in QBO's catch-all accounts, totaling \(total.description).")
+                } else {
+                    lines.append("Uncategorized Expense/Income/Asset: \(uncategorizedFindings.count) transaction(s) still sitting in QBO's catch-all accounts (mixed currencies, not summed).")
+                }
+            }
+            if let arOver60 {
+                lines.append("Accounts Receivable over 60 days: \(arOver60.description).")
+            }
+            if let apOver60 {
+                lines.append("Accounts Payable over 60 days: \(apOver60.description).")
+            }
+        }
+
         if let priorBalanceSheetLines, let priorProfitAndLossLines {
             lines.append("")
             lines.append("CHANGE SINCE LAST PERIOD (summary lines only):")
@@ -190,6 +235,29 @@ public enum AskAIContext {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    /// Sums the 61-90 and 91-and-over buckets across non-summary (leaf)
+    /// aging rows — the report's own summary row is excluded so this
+    /// doesn't double-count it alongside the leaf rows it already totals.
+    /// Same-currency-guarded like every other sum in this file; `nil`
+    /// (rather than a fabricated zero) when there's nothing to sum, so the
+    /// caller can tell "genuinely zero over 60 days" apart from "this
+    /// report hasn't been loaded."
+    private static func sumAgingOver60Days(_ lines: [AgingLine]?) -> Money? {
+        guard let lines, !lines.isEmpty else { return nil }
+        let leafLines = lines.filter { !$0.isSummary }
+        guard !leafLines.isEmpty else { return nil }
+        let amounts = leafLines.compactMap { line -> Money? in
+            switch (line.days61to90, line.days91AndOver) {
+            case (nil, nil): return nil
+            case (let a?, nil): return a
+            case (nil, let b?): return b
+            case (let a?, let b?): return a + b
+            }
+        }
+        guard let first = amounts.first, amounts.allSatisfy({ $0.currency == first.currency }) else { return nil }
+        return amounts.dropFirst().reduce(first) { $0 + $1 }
     }
 
     /// Owner directive (2026-08-29): the "value summary" button, shown once
@@ -282,5 +350,61 @@ public enum AskAIContext {
             lines.append("...and \(summaryLines.count - 60) more not listed here")
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Owner directive (2026-08-31): "when a client's general ledger or P&L
+    /// data payload exceeds a safe token threshold, the code should
+    /// summarize account totals first." A real gap this closes: General
+    /// Ledger and Trial Balance can legitimately carry more accounts than
+    /// `compose(pageTitle:summaryLines:)`'s own 60-line cap — and that cap
+    /// previously just kept whichever 60 happened to come first (however
+    /// the caller had them ordered) and silently dropped the rest with a
+    /// bare "...and N more," which could drop a materially large account
+    /// while keeping several tiny ones. This keeps the `keepTop` accounts
+    /// by absolute dollar size instead — the ones an Ask AI answer is
+    /// actually likely to be asked about — and, instead of just dropping
+    /// the remainder, collapses it into one REAL summed total (never an AI
+    /// guess — CLAUDE.md rule 1). Every account is still accounted for in
+    /// the output, either individually or inside that aggregate.
+    ///
+    /// Sorted by `abs(minorUnits)` directly rather than via `Money`'s own
+    /// `<` (which `precondition`-traps on a currency mismatch, by design —
+    /// see `Money.swift`) — comparing raw magnitudes sidesteps that trap
+    /// entirely, which matters here since this may run over a full chart
+    /// of accounts that isn't guaranteed single-currency.
+    ///
+    /// Not a token counter — "safe token threshold" in practice, for the
+    /// English/number-heavy text these contexts are made of, tracks closely
+    /// enough with line/entry COUNT that a count-based cap is the honest
+    /// choice here: an estimated token count from character length would
+    /// be a guess dressed up as a measurement, which is worse than a plain,
+    /// correct entry count the caller can reason about directly.
+    /// `text` is the caller's own fully-formatted display line for that
+    /// entry — e.g. Trial Balance wants both "debit X, credit Y" shown
+    /// together, not a single collapsed amount, so the ranking/aggregation
+    /// key (`amount`) is kept separate from what's actually rendered.
+    public static func summarizeAccountTotals(_ entries: [(text: String, amount: Money)], keepTop: Int = 15) -> [String] {
+        guard entries.count > keepTop else {
+            return entries.map(\.text)
+        }
+
+        let sorted = entries.sorted { abs($0.amount.minorUnits) > abs($1.amount.minorUnits) }
+        let kept = sorted.prefix(keepTop)
+        let remainder = sorted.dropFirst(keepTop)
+
+        var lines = kept.map(\.text)
+
+        let currency = remainder.first?.amount.currency
+        if let currency, remainder.allSatisfy({ $0.amount.currency == currency }) {
+            let remainderTotal = remainder.reduce(Money(minorUnits: 0, currency: currency)) { $0 + $1.amount }
+            lines.append("...and \(remainder.count) more account(s), totaling \(remainderTotal.description) — the largest \(keepTop) accounts by dollar size are listed above in full")
+        } else {
+            // Mixed currencies in the remainder: summing them would be
+            // meaningless (`Money`'s own `+` traps on this for the same
+            // reason `<` does), so this states the real count honestly
+            // instead of a fabricated total.
+            lines.append("...and \(remainder.count) more account(s) not summarized here (mixed currencies) — the largest \(keepTop) accounts by dollar size are listed above in full")
+        }
+        return lines
     }
 }

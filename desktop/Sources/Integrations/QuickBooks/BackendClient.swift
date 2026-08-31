@@ -346,9 +346,14 @@ public enum AskAITier: String, Sendable {
 /// instead of the brief, spoken-friendly default. Used ONLY by the two
 /// report-generation buttons (`AppState.generateHealthReport`/
 /// `generateValueSummary`); every other caller keeps `.concise`.
+/// `.clientMessage` (2026-08-31): drafts written for the CLIENT to read,
+/// not the bookkeeper — a different register (no "severity," "materiality,"
+/// or other internal jargon), used by `AppState.draftClientMessage` and
+/// the Close Package executive summary.
 public enum AskAIFormat: String, Sendable {
     case concise
     case report
+    case clientMessage = "client_message"
 }
 
 struct AskAIRequest: Encodable, Sendable {

@@ -8,9 +8,26 @@
  * mitigate AI usage since it costs money").
  *
  * Response shape confirmed live (2026-08-29) against a real running
- * Ollama server with `gemma4:e4b` loaded:
+ * Ollama server with `gemma4:e4b` loaded, and reconfirmed (2026-08-30)
+ * against `gemma4:12b`, the current default:
  * `{ model, message: { role, content }, done, ... }` — not the
  * OpenAI-shaped `{ choices: [{ message }] }`.
+ *
+ * `think: false` in the request body (2026-08-31): `gemma4:12b` is a
+ * reasoning-capable model that, left to its own defaults, generates a
+ * hidden `thinking` chain-of-thought BEFORE `content` on every single
+ * request — confirmed live this was the actual cause of the slow
+ * generation times previously blamed on the model/hardware being simply
+ * slow (see the timeout comment below): a trivial "reply with OK" request
+ * spent 39 output tokens and 2.4s on an invisible thinking trace nobody
+ * ever saw, and a real report-format request that took 127s with
+ * thinking on took 27s for a LONGER, more detailed report with thinking
+ * off — real numbers, not an estimate. Setting `think: false` disables
+ * that reasoning pass entirely; since this endpoint only ever narrates
+ * numbers the app already computed (never asked to reason its way to an
+ * answer — CLAUDE.md rule 1), there was never anything for the thinking
+ * pass to usefully do here in the first place. `data.message.content` is
+ * still the only field ever read below, unaffected either way.
  */
 
 import type { AIChatTurn, AICompletionClient, AICompletionResult } from "./aiClient.js";
@@ -47,6 +64,12 @@ export class OllamaClient implements AICompletionClient {
           { role: "user", content: userMessage }
         ],
         stream: false,
+        // See this file's own doc comment — disables gemma4:12b's hidden
+        // reasoning pass, which was the actual dominant cost in every
+        // request, not model size or hardware. Harmless on a model that
+        // doesn't support "thinking" at all (e.g. gemma4:e4b): Ollama
+        // simply ignores the field rather than erroring.
+        think: false,
         options: {
           // Same deterministic-leaning reasoning as OpenAIClient's own
           // temperature: this explains an already-computed finding, it
@@ -62,6 +85,20 @@ export class OllamaClient implements AICompletionClient {
       // (routes/ai.ts) deliberately asks for a genuinely longer,
       // multi-paragraph answer — a real report-length response could
       // exceed 90s on its own without ever being stuck.
+      //
+      // Re-benchmarked 2026-08-30 after switching the default to
+      // gemma4:12b: ~7.7-9.8 tokens/sec, similar to e4b — but a real
+      // "report"-format request (routes/ai.ts's REPORT_CLOSING) took 127s
+      // for a modest 1240-token report in testing, uncomfortably close to
+      // this 180s ceiling.
+      //
+      // Root-caused and fixed 2026-08-31: that slowness was never model
+      // speed — it was the hidden `thinking` pass this request now
+      // disables (see this file's top doc comment). The same report
+      // request, same hardware, thinking off: 27s for a LONGER report.
+      // 180s is now a very comfortable ceiling rather than a real risk;
+      // left as-is since there's no live evidence it needs to move either
+      // direction, not raised or lowered on a guess.
       signal: AbortSignal.timeout(180_000)
     });
     const latencyMs = Date.now() - startedAt;

@@ -47,6 +47,20 @@ describe("OllamaClient", () => {
     ]);
   });
 
+  it("sends think:false — live-verified 2026-08-31: gemma4:12b's hidden reasoning pass, not model speed, was the actual cause of report-generation requests approaching the timeout", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ model: "gemma4:12b", message: { content: "ok" } })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new OllamaClient("http://localhost:11434", "gemma4:12b");
+    await client.complete("sys", "user");
+    const [, requestInit] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse(requestInit.body);
+    expect(body.think).toBe(false);
+  });
+
   it("throws OllamaApiError on a non-2xx response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     const client = new OllamaClient("http://localhost:11434", "gemma4:e4b");

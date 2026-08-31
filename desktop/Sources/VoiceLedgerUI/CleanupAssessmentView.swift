@@ -54,6 +54,11 @@ public struct CleanupAssessmentView: View {
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
 
+    /// Owner directive (2026-08-31): "a quick-click filter component
+    /// inside... Cleanup Assessment" — purely local, filtering the
+    /// findings already in `summaries` by exact dollar exposure.
+    @State private var amountFilter = ""
+
     public init(
         environment: VLEnvironmentTone,
         coverageStatus: VLStatus,
@@ -101,12 +106,30 @@ public struct CleanupAssessmentView: View {
         return all.dropFirst().reduce(first.dollarExposure) { $0 + $1.dollarExposure }
     }
 
+    private var parsedAmountFilter: Money? {
+        AmountSearch.parseAmount(amountFilter)
+    }
+
+    /// Each `RuleSummary`'s `findings` narrowed to exact-dollar-exposure
+    /// matches when a filter is active; a summary with zero matches is
+    /// dropped entirely rather than shown as a misleading empty section.
+    private var filteredSummaries: [RuleSummary] {
+        guard let parsedAmountFilter else { return summaries }
+        return summaries.compactMap { summary in
+            let matches = summary.findings.filter {
+                $0.dollarExposure.currency == parsedAmountFilter.currency && abs($0.dollarExposure.minorUnits) == abs(parsedAmountFilter.minorUnits)
+            }
+            guard !matches.isEmpty else { return nil }
+            return RuleSummary(ruleID: summary.ruleID, title: summary.title, findings: matches)
+        }
+    }
+
     /// Owner directive (2026-08-30), via Gemma's own suggestion on this
     /// page: "rank findings by ease of fix vs. dollar impact... quick wins
     /// first." Capped at 8 so this reads as "start here," not a second copy
     /// of the full list below.
     private var quickWins: [Finding] {
-        Array(QuickWinTriage.sorted(summaries.flatMap(\.findings)).prefix(8))
+        Array(QuickWinTriage.sorted(filteredSummaries.flatMap(\.findings)).prefix(8))
     }
 
     /// Owner directive (2026-08-30): "group the findings into logical
@@ -116,7 +139,7 @@ public struct CleanupAssessmentView: View {
     /// `summaries` happened to be sorted.
     private var summariesByCategory: [(category: CleanupCategory, summaries: [RuleSummary])] {
         var buckets: [CleanupCategory: [RuleSummary]] = [:]
-        for summary in summaries {
+        for summary in filteredSummaries {
             buckets[CleanupCategory.category(forRuleID: summary.ruleID), default: []].append(summary)
         }
         return buckets.keys.sorted { $0.sortOrder < $1.sortOrder }.map { ($0, buckets[$0] ?? []) }
@@ -160,6 +183,22 @@ public struct CleanupAssessmentView: View {
                         Text("Estimated hours and price band: not yet available — needs the reconciliation gap map and uncategorized-transaction count, neither built yet. Not shown rather than guessed.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+
+                if !summaries.isEmpty {
+                    HStack {
+                        TextField("Filter by dollar amount (e.g. 142.50)", text: $amountFilter)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 260)
+                        if !amountFilter.trimmingCharacters(in: .whitespaces).isEmpty {
+                            if parsedAmountFilter == nil {
+                                Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
+                            } else {
+                                Text("\(filteredSummaries.flatMap(\.findings).count) matching finding\(filteredSummaries.flatMap(\.findings).count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                            }
+                            Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
+                        }
                     }
                 }
 

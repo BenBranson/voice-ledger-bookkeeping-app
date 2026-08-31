@@ -67,7 +67,11 @@ public struct ClosePackageView: View {
     /// A separate button rather than a fourth `ReportExportFormat` case:
     /// that enum is shared by every export menu in the app, and no other
     /// page has a "branded" mode to offer.
-    private let onExportBrandedPDF: () -> Void
+    /// Owner directive (2026-08-31): now takes whatever executive-summary
+    /// draft text the bookkeeper has generated/edited on this page (`nil`
+    /// if they never generated one) — the exporter itself never calls AI,
+    /// this is the one place that draft becomes part of the exported file.
+    private let onExportBrandedPDF: (String?) -> Void
     /// Owner directive (2026-08-30): "a lot of the sections say unsynced
     /// yet there is no refresh button for them to sync" — see `SyncButton`.
     private let isSyncing: Bool
@@ -84,6 +88,21 @@ public struct ClosePackageView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    /// Owner directive (2026-08-31): "a narrated summary in the Close
+    /// Package PDF" — separate answer/error/in-flight state from the Q&A
+    /// panel above, same reasoning as every other dedicated-purpose Ask AI
+    /// call in this app: a different `contextKey`, must never collide with
+    /// the general Q&A panel's own answer.
+    private let executiveSummaryAnswer: String?
+    private let isGeneratingExecutiveSummary: Bool
+    private let executiveSummaryError: String?
+    private let onGenerateExecutiveSummary: () -> Void
+    private let executiveSummarySecondOpinionAnswer: String?
+    private let isGeneratingExecutiveSummarySecondOpinion: Bool
+    private let executiveSummarySecondOpinionError: String?
+    private let onGenerateExecutiveSummarySecondOpinion: () -> Void
+
+    @State private var executiveSummaryDraft: String = ""
 
     public init(
         environment: VLEnvironmentTone,
@@ -100,7 +119,7 @@ public struct ClosePackageView: View {
         recentActivity: [ActivityLogEntry],
         carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
         onExport: @escaping (ReportExportFormat) -> Void = { _ in },
-        onExportBrandedPDF: @escaping () -> Void = {},
+        onExportBrandedPDF: @escaping (String?) -> Void = { _ in },
         isSyncing: Bool = false,
         onSync: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
@@ -112,7 +131,15 @@ public struct ClosePackageView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        executiveSummaryAnswer: String? = nil,
+        isGeneratingExecutiveSummary: Bool = false,
+        executiveSummaryError: String? = nil,
+        onGenerateExecutiveSummary: @escaping () -> Void = {},
+        executiveSummarySecondOpinionAnswer: String? = nil,
+        isGeneratingExecutiveSummarySecondOpinion: Bool = false,
+        executiveSummarySecondOpinionError: String? = nil,
+        onGenerateExecutiveSummarySecondOpinion: @escaping () -> Void = {}
     ) {
         self.environment = environment
         self.period = period
@@ -141,6 +168,14 @@ public struct ClosePackageView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.executiveSummaryAnswer = executiveSummaryAnswer
+        self.isGeneratingExecutiveSummary = isGeneratingExecutiveSummary
+        self.executiveSummaryError = executiveSummaryError
+        self.onGenerateExecutiveSummary = onGenerateExecutiveSummary
+        self.executiveSummarySecondOpinionAnswer = executiveSummarySecondOpinionAnswer
+        self.isGeneratingExecutiveSummarySecondOpinion = isGeneratingExecutiveSummarySecondOpinion
+        self.executiveSummarySecondOpinionError = executiveSummarySecondOpinionError
+        self.onGenerateExecutiveSummarySecondOpinion = onGenerateExecutiveSummarySecondOpinion
     }
 
     public var body: some View {
@@ -152,8 +187,11 @@ public struct ClosePackageView: View {
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
                     SyncButton(isSyncing: isSyncing, onSync: onSync)
-                    Button("Export Branded PDF") { onExportBrandedPDF() }
-                        .buttonStyle(.bordered)
+                    Button("Export Branded PDF") {
+                        let trimmed = executiveSummaryDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                        onExportBrandedPDF(trimmed.isEmpty ? nil : executiveSummaryDraft)
+                    }
+                    .buttonStyle(.bordered)
                     ExportMenuButton(onExport: onExport)
                     VLEnvironmentBadge(environment)
                 }
@@ -162,6 +200,7 @@ public struct ClosePackageView: View {
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
+                executiveSummarySection
                 checklistSection
                 cleanupSection
 
@@ -210,6 +249,63 @@ public struct ClosePackageView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+        // Seeds the editable draft whenever a NEW generation actually
+        // completes — `onChange` only fires on a real value change, so
+        // this never clobbers text the bookkeeper is mid-edit on.
+        .onChange(of: executiveSummaryAnswer) { _, newValue in
+            if let newValue { executiveSummaryDraft = newValue }
+        }
+        .onChange(of: executiveSummarySecondOpinionAnswer) { _, newValue in
+            if let newValue { executiveSummaryDraft = newValue }
+        }
+    }
+
+    /// Owner directive (2026-08-31): "a narrated summary in the Close
+    /// Package PDF." The exporter itself (`ClosePackagePDFExporter`) never
+    /// calls AI or computes anything about this text — it only lays out
+    /// whatever string is in `executiveSummaryDraft` at export time. Always
+    /// editable before export (same "review before it's real" posture as
+    /// `clientQuestionSection` on `FindingDetailView`), never baked in
+    /// straight from the raw AI answer.
+    private var executiveSummarySection: some View {
+        VLCard(accentRail: VLColor.violet) {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("EXECUTIVE SUMMARY — FOR EXPORTED PDF")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text("Optional. AI-drafted from the report summaries and activity below, grounded strictly in what's already on this page — edit freely below. Left blank, \"Export Branded PDF\" omits this section entirely rather than including an empty one.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
+
+                HStack(spacing: VLSpacing.sm) {
+                    Button(isGeneratingExecutiveSummary ? "Generating…" : "Generate (Gemma)") { onGenerateExecutiveSummary() }
+                        .buttonStyle(.bordered)
+                        .disabled(isGeneratingExecutiveSummary)
+                    if secondOpinionConfigured {
+                        Button(isGeneratingExecutiveSummarySecondOpinion ? "Generating…" : "Generate (OpenAI)") { onGenerateExecutiveSummarySecondOpinion() }
+                            .buttonStyle(.bordered)
+                            .disabled(isGeneratingExecutiveSummarySecondOpinion)
+                    }
+                }
+
+                if let executiveSummaryError {
+                    Text(executiveSummaryError).font(VLTypography.caption()).foregroundStyle(.red)
+                }
+                if let executiveSummarySecondOpinionError {
+                    Text(executiveSummarySecondOpinionError).font(VLTypography.caption()).foregroundStyle(.red)
+                }
+
+                if !executiveSummaryDraft.isEmpty {
+                    TextEditor(text: $executiveSummaryDraft)
+                        .font(VLTypography.body())
+                        .frame(minHeight: 120)
+                        .padding(VLSpacing.xs)
+                        .background(VLColor.background)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(VLColor.border))
+                }
+            }
+        }
     }
 
     private var checklistSection: some View {

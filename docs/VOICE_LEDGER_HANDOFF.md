@@ -1136,6 +1136,16 @@ Filed as backlog. **Do not build without explicit approval.** As of 2026-08-16, 
 
 **Deliberately not committed past step 2.** Half the backlog will matter more than expected and some of it won't matter at all, and no amount of planning will reveal which before real data does.
 
+## "Ask My Accountant" account — checked against this sandbox, 2026-08-31
+
+While scoping additions to the health report's "DATA HYGIENE" section (alongside the already-shipped `UncategorizedTransactionRule` coverage of Uncategorized Expense/Income/Asset), checked whether "Ask My Accountant" — a QBO default catch-all account on some company files — exists in this sandbox the same way. **It does not.** Queried the full chart of accounts live (`SELECT Id, Name, AccountType, AccountSubType, Active FROM Account MAXRESULTS 1000` via `QboRawClient`, `backend/spike/checkAskMyAccountant.ts`): 90 accounts total, zero matches for "accountant" anywhere in the name. This sandbox's chart of accounts is a Landscaping-industry template (`Decks and Patios`, `Sprinklers and Drip Systems`, etc.) and simply doesn't carry that account.
+
+This is a **can't-verify-here** gap, not a **doesn't-exist** one — "Ask My Accountant" is a common default on many real QBO company files, so a future real client is likely to have it. `UncategorizedTransactionRule`'s exact-name-match mechanism would extend to it trivially (add the string to `uncategorizedAccountNames`), but per CLAUDE.md rule 6, that addition should wait until either (a) this sandbox has a real "Ask My Accountant" account + transaction to prove the match actually fires against live data (seedable via `spike/seed.ts`'s existing pattern, sandbox-only per rule 7), or (b) a real connected client's books have one. Not built yet — flagged here so the next session doesn't have to re-run this exact query to find out the same thing.
+
+## Bank reconciliation status/history — no new investigation needed, already settled
+
+Re-raised 2026-08-31 (a proposed "Opening Review" report wanted a "last reconciled date per account" field). **Already fully answered, twice, 2026-08-18 — not re-investigated, just re-confirmed from this file:** the Hard API Limits table (above) already lists "No reconciliation history, statement balances, or attached statement — Import or screenshot only" as VERIFIED, and the per-transaction question ("can the API tell us a transaction is reconciled?") was independently DISPROVEN against both a real reconciled and a real unreconciled sandbox transaction (`backend/spike/checkReconciledStatus.ts`, Wave 4 item 44). Both findings are the same underlying limit at two different grains (transaction-level and account-level) — neither a "last reconciled date" nor a "days since reconciled" field is fetchable from QBO's API for this app, period. Nothing about the newer proposal changes that; it's restated here only so a future session sees it's a closed question, not an open one.
+
 ---
 
 # 20. Context that would otherwise be lost
