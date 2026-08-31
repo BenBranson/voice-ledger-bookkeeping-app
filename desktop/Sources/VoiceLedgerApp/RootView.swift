@@ -101,6 +101,7 @@ struct RootView: View {
                 case .agedPayablesReport: return .agedPayablesReport
                 case .generalLedgerReport: return .generalLedgerReport
                 case .amountSearch: return .amountSearch
+                case .pricingCalculator: return .pricingCalculator
                 }
             },
             set: { newValue in
@@ -131,6 +132,7 @@ struct RootView: View {
                 case .agedPayablesReport: state.screen = .agedPayablesReport
                 case .generalLedgerReport: state.screen = .generalLedgerReport
                 case .amountSearch: state.screen = .amountSearch
+                case .pricingCalculator: state.screen = .pricingCalculator
                 }
             }
         )
@@ -1366,6 +1368,33 @@ struct RootView: View {
                 environment: state.environment == .production ? .production : .sandbox,
                 transactions: state.transactions,
                 accounts: state.accounts
+            )
+
+        case .pricingCalculator:
+            // This page owns its own inputs as private view state (see
+            // `PricingCalculatorView`'s own doc comment on `onDraftQuote`)
+            // — it hands back the FULL composed context already built from
+            // its current numbers, so this wiring just asks one fixed
+            // question against whatever it's given, unlike every other
+            // page's context-composition closures above.
+            let pricingCalculatorAskAIKey = "page:pricing-calculator"
+            let pricingCalculatorPrompt = "Draft a short, professional client-facing proposal using exactly the numbers given above, and follow any additional instruction given."
+            PricingCalculatorView(
+                environment: state.environment == .production ? .production : .sandbox,
+                aiStatus: state.aiStatus,
+                quoteDraftAnswer: state.askAIAnswers[pricingCalculatorAskAIKey],
+                isDraftingQuote: state.askingAIContextKeys.contains(pricingCalculatorAskAIKey),
+                quoteDraftError: state.askAIError?.contextKey == pricingCalculatorAskAIKey ? state.askAIError?.message : nil,
+                onDraftQuote: { context in
+                    Task { await state.askAI(contextKey: pricingCalculatorAskAIKey, contextText: context, question: pricingCalculatorPrompt, format: .clientMessage) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                quoteDraftSecondOpinionAnswer: state.secondOpinionAnswers[pricingCalculatorAskAIKey],
+                isDraftingQuoteSecondOpinion: state.askingSecondOpinionContextKeys.contains(pricingCalculatorAskAIKey),
+                quoteDraftSecondOpinionError: state.secondOpinionError?.contextKey == pricingCalculatorAskAIKey ? state.secondOpinionError?.message : nil,
+                onDraftQuoteSecondOpinion: { context in
+                    Task { await state.askSecondOpinion(contextKey: pricingCalculatorAskAIKey, contextText: context, question: pricingCalculatorPrompt, format: .clientMessage) }
+                }
             )
         }
     }

@@ -32,6 +32,10 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     /// scoped to what's already on that page) — this one searches
     /// everything synced, from anywhere in the app.
     case amountSearch
+    /// Owner directive (2026-08-31): "quote cleanup and monthly ongoing
+    /// bookkeeping as two separate line items" — a pricing tool for
+    /// discovery calls, usable before a prospect ever connects QBO.
+    case pricingCalculator
     case firmCockpit
     case cleanupAssessment
     case balanceSheetIntegrity
@@ -62,6 +66,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "Dashboard"
         case .findings: return "Findings"
         case .amountSearch: return "Search by Amount"
+        case .pricingCalculator: return "Pricing Calculator"
         case .firmCockpit: return "Firm Cockpit"
         case .cleanupAssessment: return "Cleanup Assessment"
         case .balanceSheetIntegrity: return "Balance Sheet Integrity"
@@ -92,6 +97,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .dashboard: return "gauge.with.dots.needle.50percent"
         case .findings: return "list.bullet.rectangle.portrait"
         case .amountSearch: return "magnifyingglass.circle"
+        case .pricingCalculator: return "dollarsign.circle"
         case .firmCockpit: return "square.grid.2x2"
         case .cleanupAssessment: return "checkmark.seal"
         case .balanceSheetIntegrity: return "chart.bar.doc.horizontal"
@@ -125,7 +131,7 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .amountSearch]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .amountSearch, .pricingCalculator]),
     SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),

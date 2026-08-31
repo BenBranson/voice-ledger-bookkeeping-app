@@ -52,6 +52,10 @@ public final class AppState {
         /// amount." Searches `transactions` (already synced, already in
         /// memory) client-side — no new QBO call.
         case amountSearch
+        /// Owner directive (2026-08-31): a monthly-retainer + cleanup-project
+        /// pricing calculator for quoting a prospect — deliberately usable
+        /// with no client connected at all.
+        case pricingCalculator
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
