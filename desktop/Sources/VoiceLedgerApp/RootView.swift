@@ -1379,9 +1379,11 @@ struct RootView: View {
             // page's context-composition closures above.
             let pricingCalculatorAskAIKey = "page:pricing-calculator"
             let pricingCalculatorPrompt = "Draft a short, professional client-facing proposal using exactly the numbers given above, and follow any additional instruction given."
+            let pricingCalculatorOpenFindings = state.findings.filter { $0.status == .open }
             PricingCalculatorView(
                 environment: state.environment == .production ? .production : .sandbox,
                 aiStatus: state.aiStatus,
+                openFindings: pricingCalculatorOpenFindings,
                 quoteDraftAnswer: state.askAIAnswers[pricingCalculatorAskAIKey],
                 isDraftingQuote: state.askingAIContextKeys.contains(pricingCalculatorAskAIKey),
                 quoteDraftError: state.askAIError?.contextKey == pricingCalculatorAskAIKey ? state.askAIError?.message : nil,

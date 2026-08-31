@@ -15,6 +15,15 @@ import DesignSystem
 public struct PricingCalculatorView: View {
     private let environment: VLEnvironmentTone
     private let aiStatus: AIStatus?
+    /// Owner directive (2026-08-31): the proposal email should be able to
+    /// cite a connected prospect's real, already-computed findings (high-
+    /// severity count, total dollar exposure) to justify the cleanup
+    /// pricing — pulled straight from `state.findings`, never a free-text
+    /// box the bookkeeper has to paste into by hand. Empty when no client
+    /// is connected yet (a discovery call before QBO access), in which
+    /// case the findings section simply doesn't render and the email is
+    /// pricing-only, exactly like before this feature existed.
+    private let openFindings: [Finding]
     private let quoteDraftAnswer: String?
     private let isDraftingQuote: Bool
     private let quoteDraftError: String?
@@ -54,9 +63,12 @@ public struct PricingCalculatorView: View {
     @State private var negativeBalances = false
     @State private var duplicatedAccounts = false
 
+    @State private var includeFindingsSummary = true
+
     public init(
         environment: VLEnvironmentTone,
         aiStatus: AIStatus? = nil,
+        openFindings: [Finding] = [],
         quoteDraftAnswer: String? = nil,
         isDraftingQuote: Bool = false,
         quoteDraftError: String? = nil,
@@ -69,6 +81,7 @@ public struct PricingCalculatorView: View {
     ) {
         self.environment = environment
         self.aiStatus = aiStatus
+        self.openFindings = openFindings
         self.quoteDraftAnswer = quoteDraftAnswer
         self.isDraftingQuote = isDraftingQuote
         self.quoteDraftError = quoteDraftError
@@ -125,19 +138,59 @@ public struct PricingCalculatorView: View {
         return lines.joined(separator: "\n")
     }
 
+    private var highSeverityFindingsCount: Int {
+        openFindings.filter { $0.severity == .high }.count
+    }
+
+    /// `nil` when there's nothing to sum or the open findings mix
+    /// currencies — same same-currency guard `AskAIContext` uses
+    /// throughout, rather than a fabricated or misleading total.
+    private var totalFindingsExposure: Money? {
+        guard let currency = openFindings.first?.dollarExposure.currency,
+              openFindings.allSatisfy({ $0.dollarExposure.currency == currency }) else { return nil }
+        return openFindings.reduce(Money(minorUnits: 0, currency: currency)) { $0 + $1.dollarExposure }
+    }
+
+    /// Real, already-computed findings data serialized for the AI —
+    /// counts and dollar exposure only, capped at the 5 highest-severity
+    /// titles as concrete examples, not a full itemized dump (this is a
+    /// pricing-justification summary, not the Findings page's own report).
+    private var findingsSummaryLines: [String] {
+        guard !openFindings.isEmpty else { return [] }
+        var lines = ["\(openFindings.count) open finding(s) — \(highSeverityFindingsCount) high severity."]
+        if let totalFindingsExposure {
+            lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.description).")
+        }
+        let highlighted = openFindings.filter { $0.severity == .high }.prefix(5)
+        for finding in highlighted {
+            lines.append("- \(finding.title) (\(finding.dollarExposure.description))")
+        }
+        return lines
+    }
+
+    private func composedContext(includeFindings: Bool) -> String {
+        var lines = [composedNumbersContext]
+        if includeFindings, !findingsSummaryLines.isEmpty {
+            lines.append("")
+            lines.append("Findings from this client's books (already verified, not estimates):")
+            lines.append(contentsOf: findingsSummaryLines)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private func requestDraft(instruction: String) {
-        let numbers = composedNumbersContext
+        let context = composedContext(includeFindings: includeFindingsSummary)
         let combined = instruction == Self.draftQuotePrompt
-            ? numbers
-            : "\(numbers)\n\nAdditional instruction from the bookkeeper: \(instruction)"
+            ? context
+            : "\(context)\n\nAdditional instruction from the bookkeeper: \(instruction)"
         onDraftQuote(combined)
     }
 
     private func requestDraftSecondOpinion(instruction: String) {
-        let numbers = composedNumbersContext
+        let context = composedContext(includeFindings: includeFindingsSummary)
         let combined = instruction == Self.draftQuotePrompt
-            ? numbers
-            : "\(numbers)\n\nAdditional instruction from the bookkeeper: \(instruction)"
+            ? context
+            : "\(context)\n\nAdditional instruction from the bookkeeper: \(instruction)"
         onDraftQuoteSecondOpinion(combined)
     }
 
@@ -192,6 +245,10 @@ public struct PricingCalculatorView: View {
                     .frame(width: 340)
                 }
 
+                if !openFindings.isEmpty {
+                    findingsSummarySection
+                }
+
                 TwoTierAskAIPanel(
                     aiStatus: aiStatus,
                     placeholder: "Ask for a different version (e.g. \"make it more formal\")",
@@ -200,7 +257,7 @@ public struct PricingCalculatorView: View {
                     isAskingPrimary: isDraftingQuote,
                     primaryError: quoteDraftError,
                     onAskPrimary: requestDraft,
-                    quickAskLabel: needsCleanup ? "Draft Client Proposal" : "Draft Client Quote",
+                    quickAskLabel: "✨ Generate Professional Proposal Email",
                     onQuickAsk: { requestDraft(instruction: Self.draftQuotePrompt) },
                     secondOpinionConfigured: secondOpinionConfigured,
                     secondOpinionDisclaimer: "Sends these computed numbers to OpenAI's API for a second opinion on the proposal wording. This costs money per question and only runs when you ask.",
@@ -215,7 +272,7 @@ public struct PricingCalculatorView: View {
         .background(VLColor.background)
     }
 
-    private static let draftQuotePrompt = "Draft a short, professional client-facing proposal using exactly the numbers given above — state the price(s) clearly and what's included."
+    private static let draftQuotePrompt = "Write a professional, warm, and persuasive client proposal email. Use exactly the numbers given above — never alter or recalculate them. If a findings summary is included, briefly explain why those specific issues matter for the client's business health before presenting the pricing as the clear next step. State the price(s) clearly and what's included, and maintain a consultative, high-value tone throughout."
 
     // MARK: Inputs
 
@@ -384,6 +441,31 @@ public struct PricingCalculatorView: View {
                 Text("Then \(monthlyQuote.monthlyInvestment.description)/mo ongoing.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
+            }
+        }
+    }
+
+    /// Shown only when this client is connected and synced (`openFindings`
+    /// non-empty) — auto-pulled from real, already-computed findings, not
+    /// a paste box, so the proposal email can cite verified numbers rather
+    /// than whatever the bookkeeper remembers or retypes.
+    private var findingsSummarySection: some View {
+        VLCard(accentRail: VLColor.violet) {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("FINDINGS SUMMARY (AUTO-INCLUDED)")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.violet)
+                Toggle("Include this client's findings in the proposal email", isOn: $includeFindingsSummary)
+                    .font(VLTypography.body())
+                VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                    ForEach(findingsSummaryLines, id: \.self) { line in
+                        Text(line)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                    }
+                }
+                .opacity(includeFindingsSummary ? 1 : 0.4)
             }
         }
     }
