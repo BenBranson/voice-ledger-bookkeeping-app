@@ -332,6 +332,36 @@ public enum AskAIContext {
         return lines.joined(separator: "\n")
     }
 
+    /// Owner-reported problem (2026-09-06): every page's Ask AI panel was
+    /// grounded ONLY in that page's own data — a real, live-hit UX
+    /// failure ("it told me it could only talk about the current page").
+    /// `VoiceEngine.reasoningFallback`'s general (no-specific-finding-open)
+    /// case already did the right thing by accident, composing from
+    /// `appState.findings` app-wide rather than one page's subset — this
+    /// gives every ON-SCREEN page's context the same reach, WITHOUT
+    /// replacing that page's own primary framing: append this to
+    /// whatever `compose(pageTitle:...)` string a page already built, so
+    /// the page's own data is still what's listed first/most prominently,
+    /// and a cross-page question ("what about the balance sheet issues"
+    /// asked while on Cleanup Assessment) can still be answered from
+    /// real, already-computed data instead of the app refusing. Same
+    /// cap/format as `compose(pageTitle:findings:)` for consistency;
+    /// `""` (nothing appended) when there's nothing else open, so a page
+    /// with zero cross-page findings doesn't grow a pointless empty
+    /// section.
+    public static func crossPageFindingsAddendum(_ allOpenFindings: [Finding]) -> String {
+        guard !allOpenFindings.isEmpty else { return "" }
+        var lines = ["", "OTHER OPEN FINDINGS ELSEWHERE IN THE APP (for questions not about this page specifically):"]
+        for finding in allOpenFindings.prefix(20) {
+            let periodLabel = "\(finding.period.year)-\(String(format: "%02d", finding.period.month))"
+            lines.append("- \(finding.title) — severity \(finding.severity.rawValue), exposure \(finding.dollarExposure.description), period \(periodLabel)")
+        }
+        if allOpenFindings.count > 20 {
+            lines.append("...and \(allOpenFindings.count - 20) more not listed here")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     /// The report-page counterpart to `compose(pageTitle:findings:)` —
     /// owner directive 2026-08-30: every section of the app should end in
     /// an Ask AI panel, including the report pages (Balance Sheet, P&L,

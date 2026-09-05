@@ -78,6 +78,42 @@ struct AskAIContextTests {
         #expect(!context.contains("more not listed"))
     }
 
+    // MARK: crossPageFindingsAddendum — owner-reported fix, 2026-09-06:
+    // every page's Ask AI panel used to be grounded ONLY in that page's
+    // own data ("it told me it could only talk about the current page").
+
+    @Test("crossPageFindingsAddendum is empty when there are no other open findings")
+    func crossPageAddendumEmptyWhenNoFindings() {
+        #expect(AskAIContext.crossPageFindingsAddendum([]).isEmpty)
+    }
+
+    @Test("crossPageFindingsAddendum lists real findings with their real fields")
+    func crossPageAddendumListsFindings() {
+        let addendum = AskAIContext.crossPageFindingsAddendum([finding(id: "f1"), finding(id: "f2", vendorName: "Acme")])
+        #expect(addendum.contains("OTHER OPEN FINDINGS ELSEWHERE IN THE APP"))
+        #expect(addendum.contains("Possible duplicate expense"))
+        #expect(addendum.contains("2026-07"))
+    }
+
+    @Test("crossPageFindingsAddendum caps at 20 and notes the rest, same as compose(pageTitle:findings:)")
+    func crossPageAddendumCapsAtTwenty() {
+        let findings = (1...25).map { finding(id: "f\($0)") }
+        let addendum = AskAIContext.crossPageFindingsAddendum(findings)
+        #expect(addendum.contains("...and 5 more not listed here"))
+    }
+
+    @Test("Appending crossPageFindingsAddendum to a page's own context keeps both this page's own finding count and the cross-page section")
+    func appendedAddendumMakesBothScopesVisible() {
+        let pageFinding = finding(id: "on-this-page", exposureMinorUnits: 10_000)
+        let otherFinding = finding(id: "elsewhere", exposureMinorUnits: 99_900)
+        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: [pageFinding])
+            + AskAIContext.crossPageFindingsAddendum([otherFinding])
+        #expect(context.contains("Cleanup Assessment"))
+        #expect(context.contains("Open findings: 1")) // this page's own count is unaffected by the addendum
+        #expect(context.contains("OTHER OPEN FINDINGS ELSEWHERE IN THE APP"))
+        #expect(context.contains("999.00")) // the OTHER page's finding is genuinely reachable now
+    }
+
     // MARK: composeRedacted — the opt-in "second opinion" (OpenAI) tier's
     // context, 2026-08-29.
 

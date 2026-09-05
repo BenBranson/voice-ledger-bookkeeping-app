@@ -136,7 +136,7 @@ public struct TaxesView: View {
                 TwoTierAskAIPanel(
                     aiStatus: aiStatus,
                     placeholder: "Ask a question about this page",
-                    primaryDisclaimer: "Answers are grounded strictly in the net income figures and set-aside calculation shown on this page — it never gives tax, legal, or filing advice, and cannot state a dollar figure beyond what's already here.",
+                    primaryDisclaimer: "Answers are grounded in the net income figures and set-aside calculation on this page, plus a summary of every other open finding across the app — it never gives tax, legal, or filing advice, and cannot state a dollar figure beyond what's already computed.",
                     primaryAnswer: askAIAnswer,
                     isAskingPrimary: isAskingAI,
                     primaryError: askAIError,

@@ -153,7 +153,7 @@ struct RootView: View {
                 if let netIncome = TaxEstimate.netIncome(from: state.profitAndLossLines) {
                     lines.append("Net income: \(netIncome.description)")
                 }
-                return AskAIContext.compose(pageTitle: "Client Dashboard", findings: dashboardTopFindings) + "\n" + lines.joined(separator: "\n")
+                return AskAIContext.compose(pageTitle: "Client Dashboard", findings: dashboardTopFindings) + "\n" + lines.joined(separator: "\n") + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             }
             ClientDashboardView(
                 state: ClientDashboardView.ViewState(
@@ -238,7 +238,7 @@ struct RootView: View {
                 isAskingAI: state.askingAIContextKeys.contains(batchFixesAskAIKey),
                 askAIError: state.askAIError?.contextKey == batchFixesAskAIKey ? state.askAIError?.message : nil,
                 onAskAI: { question in
-                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" })
+                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
                     Task { await state.askAI(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
                 },
                 secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
@@ -246,7 +246,7 @@ struct RootView: View {
                 isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(batchFixesAskAIKey),
                 secondOpinionError: state.secondOpinionError?.contextKey == batchFixesAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
-                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" })
+                    let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
                     Task { await state.askSecondOpinion(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
                 }
             )
@@ -263,7 +263,7 @@ struct RootView: View {
                 summaryLines: state.firmCockpitSummaries.map { summary in
                     "\(summary.client.companyName ?? "(unnamed)"): \(summary.openFindingsCount) open findings, \(summary.urgentFindingsCount) urgent, checklist \(summary.checklistCompleted)/\(summary.checklistTotal)"
                 }
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             FirmCockpitView(
                 environment: state.environment == .production ? .production : .sandbox,
                 summaries: state.firmCockpitSummaries,
@@ -311,7 +311,7 @@ struct RootView: View {
                         lines.append("Illustrative set-aside at that rate: \(setAside.description)")
                     }
                 }
-                return AskAIContext.compose(pageTitle: "Taxes", summaryLines: lines)
+                return AskAIContext.compose(pageTitle: "Taxes", summaryLines: lines) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             }
             TaxesView(
                 environment: state.environment == .production ? .production : .sandbox,
@@ -360,7 +360,7 @@ struct RootView: View {
                 var lines = state.taxAgencies.map { "Agency: \($0.displayName)" }
                 lines += state.taxRates.map { "Rate: \($0.name), \($0.ratePercent.map { String(format: "%.2f%%", $0) } ?? "—"), active: \($0.isActive)" }
                 lines += state.taxCodes.map { "Code: \($0.name), taxable: \($0.taxable.map(String.init) ?? "unknown")" }
-                return AskAIContext.compose(pageTitle: "Sales Tax Review", summaryLines: lines)
+                return AskAIContext.compose(pageTitle: "Sales Tax Review", summaryLines: lines) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             }
             SalesTaxReviewView(
                 environment: state.environment == .production ? .production : .sandbox,
@@ -401,7 +401,7 @@ struct RootView: View {
                 summaryLines: duplicateGroups.map { group in
                     "Candidate group: " + group.accounts.map(\.name).joined(separator: ", ")
                 }
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             ChartOfAccountsCleanupView(
                 state: ChartOfAccountsCleanupView.ViewState(
                     environment: state.environment == .production ? .production : .sandbox,
@@ -674,7 +674,7 @@ struct RootView: View {
                 summaryLines: state.activityLog.sorted { $0.recordedAt > $1.recordedAt }.prefix(60).map {
                     "\($0.recordedAt.formatted(date: .abbreviated, time: .shortened)) — \($0.kind.humanLabel)\($0.findingSummary.map { s in ": \(s)" } ?? "") (\($0.actor.displayLabel))"
                 }
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             ActivityLogView(
                 entries: state.activityLog,
                 onExport: { format in state.exportTable(Self.exportTable(activityLog: state.activityLog), format: format, suggestedFilename: "Activity Log") },
@@ -715,7 +715,7 @@ struct RootView: View {
                 isAskingAI: state.askingAIContextKeys.contains(cleanupAssessmentAskAIKey),
                 askAIError: state.askAIError?.contextKey == cleanupAssessmentAskAIKey ? state.askAIError?.message : nil,
                 onAskAI: { question in
-                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings))
+                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askAI(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
                 },
                 secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
@@ -723,7 +723,7 @@ struct RootView: View {
                 isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(cleanupAssessmentAskAIKey),
                 secondOpinionError: state.secondOpinionError?.contextKey == cleanupAssessmentAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
-                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings))
+                    let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
                 }
             )
@@ -748,7 +748,7 @@ struct RootView: View {
                 isAskingAI: state.askingAIContextKeys.contains(balanceSheetIntegrityAskAIKey),
                 askAIError: state.askAIError?.contextKey == balanceSheetIntegrityAskAIKey ? state.askAIError?.message : nil,
                 onAskAI: { question in
-                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings))
+                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askAI(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
                 },
                 secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
@@ -756,7 +756,7 @@ struct RootView: View {
                 isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(balanceSheetIntegrityAskAIKey),
                 secondOpinionError: state.secondOpinionError?.contextKey == balanceSheetIntegrityAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
-                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings))
+                    let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
                 }
             )
@@ -789,7 +789,7 @@ struct RootView: View {
                 isAskingAI: state.askingAIContextKeys.contains(bankFeedCleanupAskAIKey),
                 askAIError: state.askAIError?.contextKey == bankFeedCleanupAskAIKey ? state.askAIError?.message : nil,
                 onAskAI: { question in
-                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings)
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
                     Task { await state.askAI(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
                 },
                 secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
@@ -797,7 +797,7 @@ struct RootView: View {
                 isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(bankFeedCleanupAskAIKey),
                 secondOpinionError: state.secondOpinionError?.contextKey == bankFeedCleanupAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
-                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings)
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
                     Task { await state.askSecondOpinion(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
                 }
             )
@@ -865,7 +865,7 @@ struct RootView: View {
                 summaryLines: monthEndChecklistItemStates.map { itemState in
                     "\(itemState.item.title): \(itemState.completion != nil ? "completed" : "not completed")" + (itemState.openFindingsCount.map { " (\($0) open findings)" } ?? "")
                 }
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             MonthEndCloseView(
                 environment: state.environment == .production ? .production : .sandbox,
                 items: monthEndChecklistItemStates,
@@ -904,7 +904,7 @@ struct RootView: View {
 
         case .balanceSheetReport:
             let balanceSheetReportAskAIKey = "page:balance-sheet-report"
-            let balanceSheetReportContext = AskAIContext.compose(pageTitle: "Balance Sheet", summaryLines: state.balanceSheetLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
+            let balanceSheetReportContext = AskAIContext.compose(pageTitle: "Balance Sheet", summaryLines: state.balanceSheetLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             BalanceSheetReportView(
                 sourceDescription: "Read directly from QuickBooks' own Balance Sheet report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -952,7 +952,7 @@ struct RootView: View {
 
         case .profitAndLossReport:
             let profitAndLossReportAskAIKey = "page:profit-and-loss-report"
-            let profitAndLossReportContext = AskAIContext.compose(pageTitle: "Profit & Loss", summaryLines: state.profitAndLossLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
+            let profitAndLossReportContext = AskAIContext.compose(pageTitle: "Profit & Loss", summaryLines: state.profitAndLossLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             ProfitAndLossReportView(
                 sourceDescription: "Read directly from QuickBooks' own Profit & Loss report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -992,7 +992,7 @@ struct RootView: View {
 
         case .cashFlowReport:
             let cashFlowReportAskAIKey = "page:cash-flow-report"
-            let cashFlowReportContext = AskAIContext.compose(pageTitle: "Cash Flow", summaryLines: state.cashFlowLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" })
+            let cashFlowReportContext = AskAIContext.compose(pageTitle: "Cash Flow", summaryLines: state.cashFlowLines.filter(\.isSummary).map { "\($0.label): \($0.amount?.description ?? "—")" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             FinancialReportView(
                 title: "Cash Flow",
                 sourceDescription: "Read directly from QuickBooks' own Statement of Cash Flows report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
@@ -1042,7 +1042,7 @@ struct RootView: View {
                         amount: line.debit ?? line.credit ?? Money(minorUnits: 0, currency: .usd)
                     )
                 })
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             TrialBalanceReportView(
                 sourceDescription: "Read directly from QuickBooks' own Trial Balance report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -1082,7 +1082,7 @@ struct RootView: View {
                 summaryLines: AskAIContext.summarizeAccountTotals(state.agedReceivablesLines.map { line in
                     (text: "\(line.label): total \(line.total?.description ?? "—")", amount: line.total ?? Money(minorUnits: 0, currency: .usd))
                 })
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             AgingReportView(
                 title: "Aged Receivables",
                 rowLabel: "Customer",
@@ -1124,7 +1124,7 @@ struct RootView: View {
                 summaryLines: AskAIContext.summarizeAccountTotals(state.agedPayablesLines.map { line in
                     (text: "\(line.label): total \(line.total?.description ?? "—")", amount: line.total ?? Money(minorUnits: 0, currency: .usd))
                 })
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             AgingReportView(
                 title: "Aged Payables",
                 rowLabel: "Vendor",
@@ -1169,7 +1169,7 @@ struct RootView: View {
                         amount: line.balance ?? line.amount ?? Money(minorUnits: 0, currency: .usd)
                     )
                 })
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             GeneralLedgerReportView(
                 sourceDescription: "Read directly from QuickBooks' own General Ledger report for the synced period. Not a branded client-ready document — see the Close Package page for a consolidated summary.",
                 environment: state.environment == .production ? .production : .sandbox,
@@ -1208,7 +1208,7 @@ struct RootView: View {
                 var lines = state.balanceSheetLines.filter(\.isSummary).map { "Balance Sheet — \($0.label): \($0.amount?.description ?? "—")" }
                 lines += state.profitAndLossLines.filter(\.isSummary).map { "P&L — \($0.label): \($0.amount?.description ?? "—")" }
                 lines += state.cashFlowLines.filter(\.isSummary).map { "Cash Flow — \($0.label): \($0.amount?.description ?? "—")" }
-                return AskAIContext.compose(pageTitle: "Close Package", summaryLines: lines)
+                return AskAIContext.compose(pageTitle: "Close Package", summaryLines: lines) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             }
             // Owner directive (2026-08-31): "a narrated summary in the
             // Close Package PDF" — a distinct contextKey/prompt from the
@@ -1331,7 +1331,7 @@ struct RootView: View {
             let clientMemoryContext = AskAIContext.compose(
                 pageTitle: "Client Memory",
                 summaryLines: state.clientMemoryRules.map { "\($0.ruleID.rawValue) — \($0.vendorName), created by \($0.createdBy)\($0.note.map { n in ": \(n)" } ?? "")" }
-            )
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
             ClientMemoryView(
                 environment: state.environment == .production ? .production : .sandbox,
                 rules: state.clientMemoryRules,

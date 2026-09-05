@@ -123,7 +123,7 @@ public struct FirmCockpitView: View {
                 TwoTierAskAIPanel(
                     aiStatus: aiStatus,
                     placeholder: "Ask a question about your clients",
-                    primaryDisclaimer: "Answers are grounded strictly in the client summaries listed on this page — it cannot state a dollar figure, severity, or judgment beyond what's already shown, and it never gives tax or legal advice.",
+                    primaryDisclaimer: "Answers are grounded in the client summaries on this page, plus a summary of every other open finding for the active client across the app — it cannot state a dollar figure, severity, or judgment beyond what's already computed, and it never gives tax or legal advice.",
                     primaryAnswer: askAIAnswer,
                     isAskingPrimary: isAskingAI,
                     primaryError: askAIError,
@@ -131,7 +131,7 @@ public struct FirmCockpitView: View {
                     quickAskLabel: "What Needs My Attention Today?",
                     onQuickAsk: { onAskAI(Self.digestPrompt) },
                     secondOpinionConfigured: secondOpinionConfigured,
-                    secondOpinionDisclaimer: "Sends this page's client summaries to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already on this screen, and never gives tax or legal advice.",
+                    secondOpinionDisclaimer: "Sends this page's client summaries, plus a summary of every other open finding for the active client across the app, to OpenAI's API for a second opinion. This costs money per question and only runs when you ask. Still cannot state a dollar figure or judgment beyond what's already computed, and never gives tax or legal advice.",
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
