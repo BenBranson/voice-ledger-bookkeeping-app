@@ -838,6 +838,7 @@ struct RootView: View {
                         suggestedFields: pending.suggestedFields,
                         appliedHint: pending.appliedHint,
                         accounts: state.accounts,
+                        isConfirming: state.isConfirmingImport,
                         onConfirm: { mappings, accountID in Task { await state.confirmCSVImport(mappings: mappings, statementAccountID: accountID) } },
                         onCancel: { state.cancelPendingImport() }
                     )
@@ -848,6 +849,7 @@ struct RootView: View {
                         statedEndingBalance: pending.statedEndingBalance,
                         statedAsOfDate: pending.statedAsOfDate,
                         accounts: state.accounts,
+                        isConfirming: state.isConfirmingImport,
                         onConfirm: { accountID in Task { await state.confirmOFXImport(statementAccountID: accountID) } },
                         onCancel: { state.cancelPendingImport() }
                     )
@@ -1333,6 +1335,8 @@ struct RootView: View {
             ClientMemoryView(
                 environment: state.environment == .production ? .production : .sandbox,
                 rules: state.clientMemoryRules,
+                inFlightRuleIDs: state.clientMemoryActionInFlightIDs,
+                actionError: state.clientMemoryActionError,
                 onForget: { rule in Task { await state.removeClientMemoryRule(id: rule.id, actorName: actorName) } },
                 aiStatus: state.aiStatus,
                 askAIAnswer: state.askAIAnswers[clientMemoryAskAIKey],

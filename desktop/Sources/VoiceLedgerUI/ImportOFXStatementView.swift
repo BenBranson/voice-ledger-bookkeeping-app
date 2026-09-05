@@ -12,6 +12,9 @@ public struct ImportOFXStatementView: View {
     private let statedEndingBalance: Money?
     private let statedAsOfDate: AccountingDate?
     private let accounts: [LedgerAccount]
+    /// See `ImportBankStatementView`'s identical property — `true` while
+    /// `AppState.confirmOFXImport` is awaiting.
+    private let isConfirming: Bool
     private let onConfirm: (_ statementAccountID: String) -> Void
     private let onCancel: () -> Void
 
@@ -23,6 +26,7 @@ public struct ImportOFXStatementView: View {
         statedEndingBalance: Money? = nil,
         statedAsOfDate: AccountingDate? = nil,
         accounts: [LedgerAccount],
+        isConfirming: Bool = false,
         onConfirm: @escaping (_ statementAccountID: String) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -31,6 +35,7 @@ public struct ImportOFXStatementView: View {
         self.statedEndingBalance = statedEndingBalance
         self.statedAsOfDate = statedAsOfDate
         self.accounts = accounts
+        self.isConfirming = isConfirming
         self.onConfirm = onConfirm
         self.onCancel = onCancel
     }
@@ -89,15 +94,25 @@ public struct ImportOFXStatementView: View {
                     }
                 }
 
+                if isConfirming {
+                    HStack(spacing: VLSpacing.xs) {
+                        ProgressView().controlSize(.small)
+                        Text("Importing…")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+
                 HStack {
                     Button("Cancel") { onCancel() }
+                        .disabled(isConfirming)
                     Spacer()
                     Button("Confirm & Import") {
                         guard let accountID = selectedAccountID else { return }
                         onConfirm(accountID)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(selectedAccountID == nil)
+                    .disabled(selectedAccountID == nil || isConfirming)
                 }
             }
             .padding(VLSpacing.pageGutter)

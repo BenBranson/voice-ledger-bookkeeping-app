@@ -286,10 +286,23 @@ public actor ClientStore {
     /// The reversal for `addClientMemoryRule` — "with approval" cuts both
     /// ways; a client memory rule the human no longer wants must be just as
     /// easy to remove as it was to create.
-    public func removeClientMemoryRule(id: String) throws {
+    ///
+    /// Returns whether this call actually removed a rule. Fixed 2026-09-05
+    /// (was a documented, deliberately-deferred gap, Gauntlet Loop round
+    /// 23, 2026-08-24): this used to be a silent no-op on an unknown id
+    /// with no return value, while `AppState.removeClientMemoryRule`
+    /// unconditionally logged `.clientMemoryRuleRemoved` regardless — a
+    /// double-tap on "Forget" made the second call a genuine no-op that
+    /// still got logged as if it removed something, a false record in the
+    /// Activity Log. Mirrors `dismissFinding`'s identical round-22 fix.
+    @discardableResult
+    public func removeClientMemoryRule(id: String) throws -> Bool {
         var existing = try loadClientMemoryRules()
+        let countBefore = existing.count
         existing.removeAll { $0.id == id }
+        guard existing.count != countBefore else { return false }
         try save(existing, key: clientMemoryRulesKey)
+        return true
     }
 
     // MARK: - Scope & Period Lock (docs/VOICE_LEDGER_SPEC.md Page 2)

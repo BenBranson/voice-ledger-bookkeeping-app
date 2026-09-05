@@ -302,26 +302,26 @@ public final class AppState {
         case csv(PendingCSVImport)
         case ofx(PendingOFXImport)
     }
-    /// Known gap (Gauntlet Loop, Gauntlet B round 21, 2026-08-24,
-    /// deliberately NOT fixed here): the same "single scalar meant for one
-    /// in-flight operation, actually shared across however many a user can
-    /// start" shape that `applyingFixFindingIDs`/`findingActionInFlightIDs`
-    /// had before rounds 19/20 fixed them. `ImportBankStatementView`'s
-    /// Cancel is never disabled while `confirmCSVImport`/`confirmOFXImport`
-    /// awaits — cancel this import, start a second one on a different
-    /// file, and the FIRST import's `Task` resuming later unconditionally
-    /// overwrites `pendingImport`/`importError` with `nil`/its own value,
-    /// silently discarding the second import's confirm-sheet state (or a
-    /// real newer error) with zero indication anything happened. Correctly
-    /// out of scope for THIS hardening run: Bank Feed Cleanup (Page 4) is
-    /// a genuinely different page from `FindingDetailView`/`VL-DUP-EXP-001`'s
-    /// finding surface — the same scope test round 17 applied to
-    /// `removeClientMemoryRule`. Needs the identical `Set`/keyed-by-id
-    /// treatment (or a simpler "only one import confirm sheet can be open,
-    /// disable Cancel while confirming" guard) whenever Bank Feed Cleanup
-    /// itself is hardened.
     public private(set) var pendingImport: PendingImport?
     public private(set) var importError: String?
+    /// Fixed 2026-09-05 — was a documented, deliberately-deferred gap
+    /// (Gauntlet Loop, Gauntlet B round 21, 2026-08-24): the same "single
+    /// scalar meant for one in-flight operation, actually shared across
+    /// however many a user can start" shape that
+    /// `applyingFixFindingIDs`/`findingActionInFlightIDs` had before
+    /// rounds 19/20 fixed them. `ImportBankStatementView`'s Cancel was
+    /// never disabled while `confirmCSVImport`/`confirmOFXImport` awaited
+    /// — cancelling and starting a second import on a different file let
+    /// the FIRST import's `Task` resuming later unconditionally overwrite
+    /// `pendingImport`/`importError`, silently discarding the second
+    /// import's confirm-sheet state (or a real newer error). Applied the
+    /// simpler of the two fixes the deferred writeup suggested: only one
+    /// import confirm can be in flight at a time, `cancelPendingImport()`
+    /// is a no-op while this is true, and the view layer disables Cancel
+    /// (and Confirm) for the same reason — belt and suspenders, since a
+    /// disabled button can still be raced by a rapid double-tap before
+    /// SwiftUI re-renders, but the state-layer guard cannot be.
+    public private(set) var isConfirmingImport = false
     /// Loaded on launch and refreshed after every confirmed CSV import —
     /// `selectFileForImport` reads this in-memory cache rather than
     /// hitting the store itself on every call (it gained an `async`
@@ -332,6 +332,11 @@ public final class AppState {
     /// Approval" — loaded at launch and refreshed after every mutation,
     /// same caching reason as `mappingHints`.
     public private(set) var clientMemoryRules: [ClientMemoryRule] = []
+    /// See `removeClientMemoryRule`'s doc comment — page-scoped in-flight
+    /// guard and error, keyed by `ClientMemoryRule.id`, mirroring the
+    /// finding surface's `findingActionInFlightIDs`/`findingActionError`.
+    public private(set) var clientMemoryActionInFlightIDs: Set<String> = []
+    public private(set) var clientMemoryActionError: (ruleID: String, message: String)?
 
     // Month-End Close checklist (Page 11) state.
     public private(set) var checklistCompletions: [ChecklistItemCompletion] = []
@@ -1503,7 +1508,14 @@ public final class AppState {
         }
     }
 
+    /// No-op while a confirm is already in flight (`isConfirmingImport`) —
+    /// see that property's doc comment. Without this guard, cancelling
+    /// mid-confirm would clear `pendingImport` out from under the awaiting
+    /// `confirmCSVImport`/`confirmOFXImport` call, which would then let a
+    /// second, newly-started import through only for the first call's
+    /// eventual completion to silently clobber it.
     public func cancelPendingImport() {
+        guard !isConfirmingImport else { return }
         pendingImport = nil
     }
 
@@ -1513,7 +1525,9 @@ public final class AppState {
     /// lines via `ClientStore` and immediately re-evaluates so the result
     /// is visible without a separate manual sync.
     public func confirmCSVImport(mappings: [ColumnMapping], statementAccountID: String) async {
-        guard case .csv(let pending) = pendingImport else { return }
+        guard case .csv(let pending) = pendingImport, !isConfirmingImport else { return }
+        isConfirmingImport = true
+        defer { isConfirmingImport = false }
         let documentID = ImportedDocumentID(rawValue: "\(pending.filename)-\(Date().timeIntervalSince1970)")
         let result = BankStatementCSVImporter.import(
             rows: pending.allRows,
@@ -1551,7 +1565,9 @@ public final class AppState {
     /// OFX's counterpart — no column mapping to confirm (self-describing
     /// tags), so only the account needs an explicit human choice.
     public func confirmOFXImport(statementAccountID: String) async {
-        guard case .ofx(let pending) = pendingImport else { return }
+        guard case .ofx(let pending) = pendingImport, !isConfirmingImport else { return }
+        isConfirmingImport = true
+        defer { isConfirmingImport = false }
         let documentID = ImportedDocumentID(rawValue: "\(pending.filename)-\(Date().timeIntervalSince1970)")
         let result = OFXBankStatementImporter.import(
             ofxText: pending.rawText,
@@ -1820,37 +1836,31 @@ public final class AppState {
     /// one-way posture `ClientStore.dismissFinding` already has, documented
     /// there as a real, acknowledged gap rather than an oversight.
     ///
-    /// Known gap (Gauntlet Loop, Gauntlet B round 17, 2026-08-24, deliberately
-    /// NOT fixed here): this has the identical silent-failure shape rounds
-    /// 13-16 fixed everywhere on `VL-DUP-EXP-001`'s own finding surface —
-    /// on failure it only sets the unread `loadState.failed`, and its only
-    /// caller, `ClientMemoryView` (via `RootView.swift`'s `onForget`), has
-    /// no error parameter to render one even if this method grew one.
-    /// Correctly out of scope for THIS run: `ClientMemoryView` is a
-    /// separate page (`.clientMemory`), not `FindingDetailView` or any type
-    /// this rule's finding surface renders — unlike round 16's finding
-    /// (buttons literally ON `FindingDetailView`), this one doesn't meet
-    /// this run's own scope test. Needs its own error field (not
-    /// `findingActionError` — this method isn't scoped to a finding, it
-    /// acts on a `ClientMemoryRule.id`) and its own UI plumbing in
-    /// `ClientMemoryView.swift` whenever that page is hardened.
+    /// Fixed 2026-09-05 — was two documented, deliberately-deferred gaps
+    /// (Gauntlet Loop, Gauntlet B rounds 17 and 23, 2026-08-24):
     ///
-    /// Second known gap (round 23, 2026-08-24, also deliberately not fixed
-    /// here, same scope reasoning): `ClientStore.removeClientMemoryRule`
-    /// is a silent no-op on an unknown id (no return value at all, unlike
-    /// `ClientStore.dismissFinding`'s round-22 fix), but this method
-    /// unconditionally logs `.clientMemoryRuleRemoved` regardless. A
-    /// double-tap on `ClientMemoryView`'s "Forget" button (no in-flight
-    /// disabling exists) — or any two concurrent removals of the same
-    /// rule — makes the second call a genuine no-op that still gets
-    /// logged as if it removed something. Same false-positive-log-on-
-    /// no-op-success class round 22 fixed for `dismissFinding`; needs the
-    /// same `ClientStore.removeClientMemoryRule` → `Bool` treatment
-    /// whenever this page is hardened.
+    /// 1. On failure this used to only set the unread `loadState.failed`,
+    ///    with no page-scoped error field or in-flight guard — a double-tap
+    ///    on `ClientMemoryView`'s "Forget" could fire two concurrent
+    ///    removals of the same rule with no indication anything went wrong.
+    ///    Fixed the same way `findingActionInFlightIDs`/`findingActionError`
+    ///    fixed the identical shape on the finding surface, scoped to
+    ///    `ClientMemoryRule.id` instead of a finding id via
+    ///    `clientMemoryActionInFlightIDs`/`clientMemoryActionError` below.
+    /// 2. `ClientStore.removeClientMemoryRule` used to be a silent no-op on
+    ///    an unknown id with no return value, while this method
+    ///    unconditionally logged `.clientMemoryRuleRemoved` regardless — a
+    ///    double-tap's second call was a genuine no-op still logged as if
+    ///    it removed something, a false record in the Activity Log. Now
+    ///    mirrors `dismissFinding`'s identical round-22 fix: only logs when
+    ///    the store call actually removed a rule.
     public func removeClientMemoryRule(id: String, actorName: String) async {
-        guard let rule = clientMemoryRules.first(where: { $0.id == id }) else { return }
+        guard let rule = clientMemoryRules.first(where: { $0.id == id }), !clientMemoryActionInFlightIDs.contains(id) else { return }
+        if clientMemoryActionError?.ruleID == id { clientMemoryActionError = nil }
+        clientMemoryActionInFlightIDs.insert(id)
+        defer { clientMemoryActionInFlightIDs.remove(id) }
         do {
-            try await store.removeClientMemoryRule(id: id)
+            guard try await store.removeClientMemoryRule(id: id) else { return }
             try await store.appendActivityLogEntry(ActivityLogEntry(
                 realmID: realmID,
                 actor: .user(actorName),
@@ -1867,7 +1877,7 @@ public final class AppState {
             clientMemoryRules = newClientMemoryRules
             activityLog = newActivityLog
         } catch {
-            loadState = .failed("\(error)")
+            clientMemoryActionError = (ruleID: id, message: "This rule wasn't removed: \(error). Try again.")
         }
     }
 

@@ -39,6 +39,13 @@ public struct ImportBankStatementView: View {
     /// header row — `nil` means no hint matched, so every picker starts at
     /// `.unmapped` as before.
     private let appliedHint: (id: MappingHintID, timesUsed: Int)?
+    /// Owner-facing fix (2026-09-05, docs/VOICE_LEDGER_HANDOFF.md's
+    /// documented "Cancel never disables during confirm" gap): `true`
+    /// while `AppState.confirmCSVImport` is awaiting. Disables Cancel and
+    /// Confirm so a second import can't be started underneath the first
+    /// one's still-resolving `Task` — see `AppState.isConfirmingImport`'s
+    /// own doc comment for the full failure mode this prevents.
+    private let isConfirming: Bool
     private let onConfirm: ([ColumnMapping], _ statementAccountID: String) -> Void
     private let onCancel: () -> Void
     private let initialSuggestedFields: [MappedField]
@@ -52,6 +59,7 @@ public struct ImportBankStatementView: View {
         suggestedFields: [MappedField] = [],
         appliedHint: (id: MappingHintID, timesUsed: Int)? = nil,
         accounts: [LedgerAccount],
+        isConfirming: Bool = false,
         onConfirm: @escaping ([ColumnMapping], _ statementAccountID: String) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -59,6 +67,7 @@ public struct ImportBankStatementView: View {
         self.columns = columns
         self.appliedHint = appliedHint
         self.accounts = accounts
+        self.isConfirming = isConfirming
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         let initialSelections = suggestedFields.count == columns.count ? suggestedFields : Array(repeating: .unmapped, count: columns.count)
@@ -154,8 +163,18 @@ public struct ImportBankStatementView: View {
                         .foregroundStyle(VLColor.textMuted)
                 }
 
+                if isConfirming {
+                    HStack(spacing: VLSpacing.xs) {
+                        ProgressView().controlSize(.small)
+                        Text("Importing…")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+
                 HStack {
                     Button("Cancel") { onCancel() }
+                        .disabled(isConfirming)
                     Spacer()
                     Button("Confirm & Import") {
                         guard let accountID = selectedAccountID else { return }
@@ -179,7 +198,7 @@ public struct ImportBankStatementView: View {
                         onConfirm(mappings, accountID)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!canImport)
+                    .disabled(!canImport || isConfirming)
                 }
             }
             .padding(VLSpacing.pageGutter)

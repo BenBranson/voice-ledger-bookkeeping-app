@@ -10,6 +10,12 @@ import DesignSystem
 public struct ClientMemoryView: View {
     private let environment: VLEnvironmentTone
     private let rules: [ClientMemoryRule]
+    /// Owner-facing fix (2026-09-05, docs/VOICE_LEDGER_HANDOFF.md's
+    /// documented double-tap gap): which rule ids currently have a
+    /// "Forget" call in flight, and the last error for a given rule id, if
+    /// any — see `AppState.removeClientMemoryRule`'s doc comment.
+    private let inFlightRuleIDs: Set<String>
+    private let actionError: (ruleID: String, message: String)?
     private let onForget: (ClientMemoryRule) -> Void
     /// Owner directive (2026-08-31): every page ends in a two-tier Ask AI
     /// panel — see `TwoTierAskAIPanel`.
@@ -27,6 +33,8 @@ public struct ClientMemoryView: View {
     public init(
         environment: VLEnvironmentTone,
         rules: [ClientMemoryRule],
+        inFlightRuleIDs: Set<String> = [],
+        actionError: (ruleID: String, message: String)? = nil,
         onForget: @escaping (ClientMemoryRule) -> Void,
         aiStatus: AIStatus? = nil,
         askAIAnswer: String? = nil,
@@ -41,6 +49,8 @@ public struct ClientMemoryView: View {
     ) {
         self.environment = environment
         self.rules = rules
+        self.inFlightRuleIDs = inFlightRuleIDs
+        self.actionError = actionError
         self.onForget = onForget
         self.aiStatus = aiStatus
         self.askAIAnswer = askAIAnswer
@@ -77,18 +87,26 @@ public struct ClientMemoryView: View {
                 } else {
                     ForEach(rules) { rule in
                         VLCard {
-                            HStack {
-                                VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                                    Text("\(rule.ruleID.rawValue) — \(rule.vendorName)")
-                                        .font(VLTypography.body())
-                                        .foregroundStyle(VLColor.textPrimary)
-                                    Text("Created by \(rule.createdBy)" + (rule.note.map { " — \($0)" } ?? ""))
-                                        .font(VLTypography.caption())
-                                        .foregroundStyle(VLColor.textMuted)
+                            VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                                        Text("\(rule.ruleID.rawValue) — \(rule.vendorName)")
+                                            .font(VLTypography.body())
+                                            .foregroundStyle(VLColor.textPrimary)
+                                        Text("Created by \(rule.createdBy)" + (rule.note.map { " — \($0)" } ?? ""))
+                                            .font(VLTypography.caption())
+                                            .foregroundStyle(VLColor.textMuted)
+                                    }
+                                    Spacer()
+                                    Button(inFlightRuleIDs.contains(rule.id) ? "Forgetting…" : "Forget") { onForget(rule) }
+                                        .buttonStyle(.bordered)
+                                        .disabled(inFlightRuleIDs.contains(rule.id))
                                 }
-                                Spacer()
-                                Button("Forget") { onForget(rule) }
-                                    .buttonStyle(.bordered)
+                                if actionError?.ruleID == rule.id {
+                                    Text(actionError?.message ?? "")
+                                        .font(VLTypography.caption())
+                                        .foregroundStyle(.red)
+                                }
                             }
                         }
                     }

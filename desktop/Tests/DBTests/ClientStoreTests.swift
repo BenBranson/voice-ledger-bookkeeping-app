@@ -189,9 +189,33 @@ struct ClientStoreTests {
         let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
         let rule = ClientMemoryRule(ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), vendorName: "VL Spike Amex", createdBy: "Test")
         try await store.addClientMemoryRule(rule)
-        try await store.removeClientMemoryRule(id: rule.id)
+        let removed = try await store.removeClientMemoryRule(id: rule.id)
+        #expect(removed == true)
         let loaded = try await store.loadClientMemoryRules()
         #expect(loaded.isEmpty)
+    }
+
+    /// Fixed 2026-09-05 (was a documented, deliberately-deferred gap,
+    /// Gauntlet Loop round 23, 2026-08-24): a second removal of the same
+    /// id — the shape a double-tap on "Forget" produces — must report it
+    /// changed nothing, mirroring `dismissFinding`'s identical round-22
+    /// fix. `AppState.removeClientMemoryRule` relies on this return value
+    /// to avoid logging a false `.clientMemoryRuleRemoved` Activity Log
+    /// entry for a no-op.
+    @Test("removeClientMemoryRule reports false on an unknown or already-removed id")
+    func removeClientMemoryRuleReportsFalseOnNoOp() async throws {
+        let store = try ClientStore(realmID: RealmID(rawValue: "realm-a"), rootDirectory: tempRoot())
+        let rule = ClientMemoryRule(ruleID: RuleID(rawValue: "VL-CC-PAYMENT-001"), vendorName: "VL Spike Amex", createdBy: "Test")
+        try await store.addClientMemoryRule(rule)
+
+        let firstRemoval = try await store.removeClientMemoryRule(id: rule.id)
+        #expect(firstRemoval == true)
+
+        let secondRemoval = try await store.removeClientMemoryRule(id: rule.id)
+        #expect(secondRemoval == false)
+
+        let neverExisted = try await store.removeClientMemoryRule(id: "not-a-real-id")
+        #expect(neverExisted == false)
     }
 
     @Test("Two realms never see each other's findings — isolation is a directory boundary, not a query filter")
