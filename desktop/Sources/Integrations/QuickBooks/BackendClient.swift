@@ -238,7 +238,18 @@ public actor BackendClient {
     ///   backend rejects any other value outright rather than silently
     ///   treating it as primary, so a caller bug here fails loudly instead
     ///   of ever silently making an unwanted paid request.
-    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = [], tier: AskAITier = .primary, format: AskAIFormat = .concise) async throws -> String {
+    /// `model` (2026-09-06): an opt-in override of the primary/Ollama
+    /// tier's model for THIS call only — the backend's own
+    /// `ALLOWED_MODEL_OVERRIDES` allowlist is the actual enforcement point
+    /// (`backend/src/routes/ai.ts`), this is just the passthrough. Added
+    /// for `VoiceEngine`'s two spoken reasoning-fallback call sites: the
+    /// app's global default (`gemma4:12b`) reads well for the two
+    /// on-screen report buttons but is noticeably slower than
+    /// `gemma4:e4b` for a live spoken answer — confirmed live 2026-09-06,
+    /// 12.0s vs. 5.3s for the same question, same grounded-answer quality.
+    /// `nil` (the default) leaves every other call site's behavior exactly
+    /// as it was.
+    public func askAI(realmID: RealmID, question: String, context: String, history: [AskAIHistoryTurn] = [], tier: AskAITier = .primary, format: AskAIFormat = .concise, model: String? = nil) async throws -> String {
         var url = configuration.baseURL
         url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
 
@@ -248,7 +259,7 @@ public actor BackendClient {
         if let token = configuration.sessionToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history, tier: tier.rawValue, format: format.rawValue))
+        request.httpBody = try JSONEncoder().encode(AskAIRequest(question: question, context: context, history: history, tier: tier.rawValue, format: format.rawValue, model: model))
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -362,6 +373,10 @@ struct AskAIRequest: Encodable, Sendable {
     let history: [AskAIHistoryTurn]
     let tier: String
     let format: String
+    /// `nil` (omitted from the encoded JSON) unless the caller explicitly
+    /// wants a different Ollama model for this one call — see `askAI`'s
+    /// own doc comment.
+    let model: String?
 }
 
 struct AskAIResponse: Decodable, Sendable {

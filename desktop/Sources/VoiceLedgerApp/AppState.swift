@@ -891,12 +891,16 @@ public final class AppState {
     /// `AskAIContext`, Core, pure — this method never adds anything to it
     /// itself, preserving CLAUDE.md rule 1's boundary no matter which page
     /// calls this).
-    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = [], format: AskAIFormat = .concise) async {
+    /// `model` — see `BackendClient.askAI`'s doc comment. `VoiceEngine`'s
+    /// two spoken reasoning-fallback call sites pass `"gemma4:e4b"`; every
+    /// other caller (every on-screen Ask AI panel) leaves this `nil` and
+    /// keeps using the app's configured default.
+    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = [], format: AskAIFormat = .concise, model: String? = nil) async {
         guard !askingAIContextKeys.contains(contextKey) else { return }
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format)
+            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format, model: model)
             askAIAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: .primary, question: question, answer: answer, format: format)
         } catch {

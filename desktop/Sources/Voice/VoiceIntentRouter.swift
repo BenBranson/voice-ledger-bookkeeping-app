@@ -17,9 +17,18 @@ import Foundation
 /// change nobody actually proposed. `context.pendingAction == nil` means
 /// confirm/reject words are ordinary conversation, not a yes/no answer.
 public enum VoiceIntentRouter {
+    /// Owner-reported gap (2026-09-06): "pull up X" / "bring up X" — the
+    /// user's own words for asking to navigate somewhere — were only ever
+    /// handled for a bare "pull it up"/"bring that up" referring to
+    /// something ALREADY on screen (`openLastEntityPhrases` below), never
+    /// for "pull up the cleanup assessment" naming a real destination.
+    /// That phrase fell through every check here to the slow AI reasoning
+    /// fallback, which only speaks — it never navigates — so the person's
+    /// actual request (see the page) silently never happened.
     private static let navigationPrefixes = [
         "go to the ", "go to ", "open the ", "open ", "show me the ", "show the ",
-        "show me ", "take me to the ", "take me to ", "navigate to the ", "navigate to "
+        "show me ", "take me to the ", "take me to ", "navigate to the ", "navigate to ",
+        "pull up the ", "pull up ", "bring up the ", "bring up "
     ]
 
     /// Each destination's recognized phrases, already normalized (lowercase,

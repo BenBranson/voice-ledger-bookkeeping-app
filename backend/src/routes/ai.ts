@@ -141,6 +141,31 @@ function buildClient(config: AIConfig | null): AICompletionClient | null {
     : new OpenAIClient(config.apiKey, config.model);
 }
 
+/**
+ * Owner directive (2026-09-06): "gemma4:e4b is 3 times faster than
+ * gemma4:12b" (the owner's own live benchmark) — and the app's ONE global
+ * `OLLAMA_MODEL` config was being used for both the two report buttons
+ * (a user-initiated click, tolerant of taking longer for a more thorough
+ * answer) AND Voice Ledger's own in-app voice assistant's reasoning
+ * fallback (`VoiceEngine.explainCurrentEntity`/`reasoningFallback` — a
+ * SPOKEN answer, where every extra second is a silence the person waiting
+ * on it can actually feel). One shared model config forced a choice
+ * between "voice feels sluggish" and "reports read thin" with no way to
+ * have both be right.
+ *
+ * `model` is an OPT-IN per-request override, primary/Ollama tier only —
+ * the secondary tier is always OpenAI with its own fixed model, and
+ * letting a request pick that provider's model doesn't apply here.
+ * Restricted to a small explicit allowlist rather than accepting any
+ * string the client sends: this is a single-user local Ollama instance,
+ * not a multi-tenant service, so the risk isn't cost/abuse — it's a typo
+ * or a stale value silently asking Ollama to load a model that was never
+ * pulled, which would fail confusingly deep inside `OllamaClient` instead
+ * of with a clear 400 here. Add a model to this list only after
+ * confirming (`ollama list`) it's actually pulled on this machine.
+ */
+const ALLOWED_MODEL_OVERRIDES = ["gemma4:e4b", "gemma4:12b"];
+
 export function aiRoutes(
   aiConfig: AIConfig | null,
   aiSettingsStore: AISettingsStore,
@@ -216,7 +241,27 @@ export function aiRoutes(
         return;
       }
       const useSecondary = tier === "secondary";
-      const activeClient = useSecondary ? secondaryClient : client;
+
+      // See ALLOWED_MODEL_OVERRIDES's doc comment. Only ever swaps the
+      // PRIMARY tier's model, and only within the explicit allowlist — a
+      // fresh `OllamaClient` per overridden request is cheap (it just
+      // wraps a base URL and model string; no persistent connection to
+      // tear down), so this doesn't need to live any longer than the
+      // request itself.
+      const requestedModel = req.body?.model;
+      if (requestedModel !== undefined && typeof requestedModel !== "string") {
+        res.status(400).json({ error: "model must be a string when present." });
+        return;
+      }
+      if (requestedModel !== undefined && !ALLOWED_MODEL_OVERRIDES.includes(requestedModel)) {
+        res.status(400).json({ error: `model must be one of: ${ALLOWED_MODEL_OVERRIDES.join(", ")}.` });
+        return;
+      }
+      const overrideClient =
+        !useSecondary && requestedModel !== undefined && aiConfig?.provider === "ollama"
+          ? new OllamaClient(aiConfig.baseUrl, requestedModel)
+          : null;
+      const activeClient = overrideClient ?? (useSecondary ? secondaryClient : client);
 
       if (!activeClient) {
         logEvent("ask_ai_not_configured", { realmId, tier: useSecondary ? "secondary" : "primary" });

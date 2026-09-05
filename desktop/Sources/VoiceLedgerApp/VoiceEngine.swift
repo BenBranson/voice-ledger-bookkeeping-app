@@ -109,6 +109,17 @@ public final class VoiceEngine: NSObject {
     /// per-finding keys and `CleanupAssessmentView`'s page key.
     private static let reasoningContextKey = "voice-reasoning"
 
+    /// Owner directive (2026-09-06): "gemma4:e4b is 3 times faster than
+    /// gemma4:12b" — confirmed live (12.0s vs. 5.3s for the same real
+    /// question, same grounded-answer quality). The app's global default
+    /// model (`gemma4:12b`, set once on the backend) was tuned for the
+    /// two on-screen report buttons, where a few extra seconds is
+    /// invisible — but every second here is a live silence someone is
+    /// listening to. `AppState.askAI`'s `model` param overrides just
+    /// these two call sites; every on-screen Ask AI panel elsewhere in
+    /// the app is untouched and keeps using the configured default.
+    private static let voiceModel = "gemma4:e4b"
+
     public init(appState: AppState, voiceService: VoiceServiceClient = VoiceServiceClient(), actorName: String = NSFullUserName()) {
         self.appState = appState
         self.voiceService = voiceService
@@ -730,7 +741,8 @@ public final class VoiceEngine: NSObject {
             contextKey: Self.reasoningContextKey,
             contextText: contextText,
             question: "In two or three short sentences I can read aloud: why is this flagged, and what would you recommend as the next step? Reference only the proposed resolution(s) already listed above — never invent a new fix.",
-            history: recentHistory()
+            history: recentHistory(),
+            model: Self.voiceModel
         )
         // Real, requested fix (2026-08-29 — "the screen doesn't follow the
         // conversation"): every explain/fix-options answer re-syncs the
@@ -758,7 +770,7 @@ public final class VoiceEngine: NSObject {
             openFindingsCount = openFindings.count
             contextText = AskAIContext.compose(pageTitle: "Voice Ledger", findings: openFindings)
         }
-        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText, history: recentHistory())
+        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText, history: recentHistory(), model: Self.voiceModel)
         if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
             // Deterministic (Swift-authored, not model-authored) nudge
             // toward the review queue — real, live-tested gap (2026-08-29):

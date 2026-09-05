@@ -44,6 +44,14 @@ struct VoiceIntentRouterTests {
         #expect(VoiceIntentRouter.match(text: "show me the bank feed", context: .empty) == .navigate(.bankFeedCleanup))
     }
 
+    @Test("'Pull up X'/'bring up X' navigate — owner-reported gap (2026-09-06): only the referring-to-something-onscreen form ('pull it up') worked before, naming an actual destination did not")
+    func pullUpAndBringUpNavigate() {
+        #expect(VoiceIntentRouter.match(text: "pull up the cleanup assessment", context: .empty) == .navigate(.cleanupAssessment))
+        #expect(VoiceIntentRouter.match(text: "pull up firm cockpit", context: .empty) == .navigate(.firmCockpit))
+        #expect(VoiceIntentRouter.match(text: "bring up the bank feed", context: .empty) == .navigate(.bankFeedCleanup))
+        #expect(VoiceIntentRouter.match(text: "bring up trial balance", context: .empty) == .navigate(.trialBalanceReport))
+    }
+
     @Test("Tolerates Whisper's real hyphenation quirk — 'clean-up assessment' still matches, live-verified against the real STT service")
     func tolerantOfHyphenation() {
         #expect(VoiceIntentRouter.match(text: "clean-up assessment", context: .empty) == .navigate(.cleanupAssessment))
