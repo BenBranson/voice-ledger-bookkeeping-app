@@ -70,4 +70,21 @@ public enum CleanupCategory: String, CaseIterable, Sendable {
     public static func category(forRuleID ruleID: String) -> CleanupCategory {
         ruleCategories[ruleID] ?? .other
     }
+
+    /// The exact rule IDs Cleanup Assessment evaluates — literally this
+    /// type's own `ruleCategories` keys, exposed as a `Set` so every layer
+    /// that needs this list (`AppState`, `voiceledger-mcp`) shares the
+    /// ONE place it can be edited. Moved here 2026-09-06: this was
+    /// previously `AppState.cleanupAssessmentRuleIDs`, a hand-typed
+    /// literal duplicating these same 23 IDs — and `CleanupCategoryTests`
+    /// had ALSO hand-mirrored a third copy of the identical list (its own
+    /// doc comment explained why: `VoiceLedgerApp` can't be imported from
+    /// `CoreTests` without inverting the module boundary
+    /// `check-module-boundaries.sh` enforces). Three independently-typed
+    /// copies of one list is exactly the kind of drift risk this app's own
+    /// history keeps finding and fixing elsewhere — deriving this from the
+    /// dictionary that already has to list every one of these rule IDs
+    /// anyway makes divergence structurally impossible instead of merely
+    /// unlikely.
+    public static let ruleIDs: Set<String> = Set(ruleCategories.keys)
 }

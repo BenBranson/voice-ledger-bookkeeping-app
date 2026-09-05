@@ -61,9 +61,13 @@ public final class AppState {
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
     /// findings list — `Finding` itself doesn't carry a page/category
     /// distinction, only `ruleID`, so the view layer keys off the ID set.
-    /// Fine at 3 rules; worth promoting to a real `Finding.sourcePage`
-    /// field if the rule count grows enough to make this list unwieldy.
-    public static let cleanupAssessmentRuleIDs: Set<String> = ["VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001", "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001", "VL-CLOSED-PERIOD-DRIFT-001", "VL-VEND-PRICE-001", "VL-CAT-MISCODE-001", "VL-BS-DRCR-001", "VL-RELATIONSHIP-003", "VL-RELATIONSHIP-005", "VL-TRANSPOSITION-001"]
+    /// Moved to `Core.CleanupCategory.ruleIDs` 2026-09-06 — this used to be
+    /// its own hand-typed literal (with a THIRD hand-mirrored copy in
+    /// `CleanupCategoryTests`, since Core can't import `VoiceLedgerApp`),
+    /// duplicating the exact same rule IDs `CleanupCategory`'s own
+    /// category table already had to list. See that property's doc
+    /// comment for why deriving from one dictionary beats three lists.
+    public static let cleanupAssessmentRuleIDs: Set<String> = CleanupCategory.ruleIDs
 
     /// Page 8's rules — a subset of `cleanupAssessmentRuleIDs` that also
     /// belong to the real Balance Sheet Integrity workflow page, not just

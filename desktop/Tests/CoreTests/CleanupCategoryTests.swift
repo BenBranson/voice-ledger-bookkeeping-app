@@ -3,27 +3,28 @@ import Testing
 
 @Suite("CleanupCategory")
 struct CleanupCategoryTests {
-    /// Mirrors `AppState.cleanupAssessmentRuleIDs` (VoiceLedgerApp can't be
-    /// imported from CoreTests without inverting the module boundary
-    /// `check-module-boundaries.sh` enforces) — kept in sync manually.
-    /// Every one of these must resolve to a real category, not `.other`:
-    /// `.other` existing at all is a safety net for a rule added to the
-    /// assessment later and forgotten here, not an acceptable steady state
-    /// for a rule that's been in the set since this test was written.
-    private static let cleanupAssessmentRuleIDs = [
-        "VL-CC-PAYMENT-001", "VL-PAYROLL-LUMP-001", "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001",
-        "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001",
-        "VL-BS-UNDEP-001", "VL-VENDCREDIT-UNAPPLIED-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001",
-        "VL-FEE-AVOIDABLE-001", "VL-PERIOD-CLOSED-001", "VL-PERSONAL-001", "VL-VEND-ANOMALY-001",
-        "VL-CLOSED-PERIOD-DRIFT-001", "VL-VEND-PRICE-001", "VL-CAT-MISCODE-001", "VL-BS-DRCR-001",
-        "VL-RELATIONSHIP-003", "VL-RELATIONSHIP-005", "VL-TRANSPOSITION-001"
-    ]
-
+    /// Fixed 2026-09-06: this test used to hand-mirror `AppState
+    /// .cleanupAssessmentRuleIDs` as a THIRD independently-typed copy of
+    /// the same 23 rule IDs (`CleanupCategory`'s own category table below
+    /// already had to list every one), since `VoiceLedgerApp` can't be
+    /// imported from `CoreTests` without inverting the module boundary
+    /// `check-module-boundaries.sh` enforces. Now iterates
+    /// `CleanupCategory.ruleIDs` itself — derived from the same
+    /// dictionary `category(forRuleID:)` reads, so this test can no longer
+    /// silently drift from what it's supposed to be checking.
     @Test("Every Cleanup Assessment rule ID resolves to a real category, never .other")
     func everyRuleHasACategory() {
-        for ruleID in Self.cleanupAssessmentRuleIDs {
+        for ruleID in CleanupCategory.ruleIDs {
             #expect(CleanupCategory.category(forRuleID: ruleID) != .other, "\(ruleID) has no category mapping")
         }
+    }
+
+    @Test("ruleIDs has the expected count and contains no surprises")
+    func ruleIDsMatchesKnownSet() {
+        #expect(CleanupCategory.ruleIDs.count == 23)
+        #expect(CleanupCategory.ruleIDs.contains("VL-CC-PAYMENT-001"))
+        #expect(CleanupCategory.ruleIDs.contains("VL-TRANSPOSITION-001"))
+        #expect(!CleanupCategory.ruleIDs.contains("VL-CAT-UNCAT-001")) // a real rule, deliberately NOT a Cleanup Assessment one
     }
 
     @Test("An unknown rule ID falls back to .other rather than crashing")
