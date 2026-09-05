@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "VoiceLedgerUI", targets: ["VoiceLedgerUI"]),
         .library(name: "Exporting", targets: ["Exporting"]),
         .executable(name: "voiceledger-devtool", targets: ["VoiceLedgerDevTool"]),
+        .executable(name: "voiceledger-mcp", targets: ["VoiceLedgerMCP"]),
         .executable(name: "VoiceLedgerApp", targets: ["VoiceLedgerApp"])
     ],
     targets: [
@@ -96,6 +97,25 @@ let package = Package(
             name: "VoiceLedgerDevTool",
             dependencies: ["Core", "IntegrationsQuickBooks", "IntegrationsImports", "IntegrationsVoice", "DB", "Exporting"],
             path: "Sources/VoiceLedgerDevTool"
+        ),
+
+        // A real Model Context Protocol server (JSON-RPC 2.0 over stdio,
+        // newline-delimited — the MCP stdio transport's actual framing, no
+        // Content-Length headers) exposing Voice Ledger's real, already-
+        // computed data (findings, connection health) to any MCP client:
+        // Claude Code/Desktop today, and Moneypenny's own MCP client later
+        // (docs/MONEYPENNY_INTEGRATION.md). Read-only in v1, on purpose —
+        // mirrors `Voice.VoiceIntent`'s own pattern of having no case that
+        // can apply a QBO write, so "an MCP client can never finalize a
+        // write" is a property of which tools exist, not a runtime check
+        // to remember. Depends on the same three targets `VoiceLedgerApp`
+        // itself uses to read a realm's real local data and check backend
+        // health (`ClientStore`, `BackendClient`) — deliberately NOT a new,
+        // parallel way of reading this data.
+        .executableTarget(
+            name: "VoiceLedgerMCP",
+            dependencies: ["Core", "IntegrationsQuickBooks", "DB"],
+            path: "Sources/VoiceLedgerMCP"
         ),
 
         // Phase 1 step 1.6's minimal UI (docs/phase-0/11_VERTICAL_SLICE.md
