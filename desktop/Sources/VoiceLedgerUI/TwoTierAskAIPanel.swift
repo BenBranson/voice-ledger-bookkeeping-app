@@ -37,6 +37,41 @@ public struct TwoTierAskAIPanel: View {
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
 
+    /// Owner directive (2026-09-06): "I downloaded qwen3:8b, make every
+    /// section... also have a button for asking qwen3:8b, I want to see
+    /// if I get better responses." A single bundled struct rather than 5
+    /// more individually-named parameters — every one of the ~20 call
+    /// sites already passes a same-shaped answer/isAsking/error/onAsk
+    /// group for BOTH tiers above; a third named quintuple would make an
+    /// already-long init harder to read for no real benefit, since the
+    /// caller builds this the same way either way. Still local and free
+    /// like the primary tier (this is a comparison of two local models
+    /// answering the SAME context, not a second paid API), so it's
+    /// rendered as a THIRD `AskAIPanelView`, styled like the primary one,
+    /// not like the opt-in-cost second-opinion tier below it. `nil` (the
+    /// default) renders nothing extra — every existing call site is
+    /// unaffected until `RootView` opts a page in.
+    public struct AlternateModelTier {
+        public let label: String
+        public let modelName: String
+        public let disclaimer: String
+        public let answer: String?
+        public let isAsking: Bool
+        public let error: String?
+        public let onAsk: (String) -> Void
+
+        public init(label: String, modelName: String, disclaimer: String, answer: String?, isAsking: Bool, error: String?, onAsk: @escaping (String) -> Void) {
+            self.label = label
+            self.modelName = modelName
+            self.disclaimer = disclaimer
+            self.answer = answer
+            self.isAsking = isAsking
+            self.error = error
+            self.onAsk = onAsk
+        }
+    }
+    private let alternateModelTier: AlternateModelTier?
+
     public init(
         aiStatus: AIStatus?,
         placeholder: String,
@@ -52,7 +87,8 @@ public struct TwoTierAskAIPanel: View {
         secondOpinionAnswer: String?,
         isAskingSecondOpinion: Bool,
         secondOpinionError: String?,
-        onAskSecondOpinion: @escaping (String) -> Void
+        onAskSecondOpinion: @escaping (String) -> Void,
+        alternateModelTier: AlternateModelTier? = nil
     ) {
         self.aiStatus = aiStatus
         self.placeholder = placeholder
@@ -69,6 +105,7 @@ public struct TwoTierAskAIPanel: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
     }
 
     public var body: some View {
@@ -84,6 +121,19 @@ public struct TwoTierAskAIPanel: View {
                 quickAskLabel: quickAskLabel,
                 onQuickAsk: onQuickAsk
             )
+
+            if let alternateModelTier {
+                AskAIPanelView(
+                    title: alternateModelTier.label,
+                    disclaimer: alternateModelTier.disclaimer,
+                    placeholder: "Ask \(alternateModelTier.modelName) a question",
+                    aiStatus: nil,
+                    answer: alternateModelTier.answer,
+                    isAsking: alternateModelTier.isAsking,
+                    error: alternateModelTier.error,
+                    onAsk: alternateModelTier.onAsk
+                )
+            }
 
             if secondOpinionConfigured {
                 AskAIPanelView(

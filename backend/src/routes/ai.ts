@@ -165,7 +165,7 @@ function buildClient(config: AIConfig | null): AICompletionClient | null {
  * of with a clear 400 here. Add a model to this list only after
  * confirming (`ollama list`) it's actually pulled on this machine.
  */
-const ALLOWED_MODEL_OVERRIDES = ["gemma4:e4b", "gemma4:12b"];
+const ALLOWED_MODEL_OVERRIDES = ["gemma4:e4b", "gemma4:12b", "qwen3:8b"];
 
 export function aiRoutes(
   aiConfig: AIConfig | null,

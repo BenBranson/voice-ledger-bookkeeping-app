@@ -42,6 +42,7 @@ public struct ChartOfAccountsCleanupView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
 
     public init(
         state: ViewState,
@@ -56,7 +57,8 @@ public struct ChartOfAccountsCleanupView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
     ) {
         self.state = state
         self.isSyncing = isSyncing
@@ -71,6 +73,7 @@ public struct ChartOfAccountsCleanupView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
     }
 
     private var hasUsableCoverage: Bool {
@@ -137,7 +140,8 @@ public struct ChartOfAccountsCleanupView: View {
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
-                    onAskSecondOpinion: onAskSecondOpinion
+                    onAskSecondOpinion: onAskSecondOpinion,
+                    alternateModelTier: alternateModelTier
                 )
             }
             .padding(VLSpacing.pageGutter)

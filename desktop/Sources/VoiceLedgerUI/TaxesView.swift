@@ -37,6 +37,7 @@ public struct TaxesView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
 
     @State private var actorNameDraft: String = NSFullUserName()
     @State private var rateDraft: String = ""
@@ -62,7 +63,8 @@ public struct TaxesView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
     ) {
         self.environment = environment
         self.currentPeriodLabel = currentPeriodLabel
@@ -84,6 +86,7 @@ public struct TaxesView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
         _rateDraft = State(initialValue: settings.ratePercent.map { String($0) } ?? "")
         _noteDraft = State(initialValue: settings.note ?? "")
     }
@@ -146,7 +149,8 @@ public struct TaxesView: View {
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
-                    onAskSecondOpinion: onAskSecondOpinion
+                    onAskSecondOpinion: onAskSecondOpinion,
+                    alternateModelTier: alternateModelTier
                 )
             }
             .padding(VLSpacing.pageGutter)

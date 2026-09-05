@@ -26,6 +26,7 @@ public struct GeneralLedgerReportView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
 
     /// Owner directive (2026-08-31): "a quick-click filter component
     /// inside the General Ledger... views" — purely local to this view
@@ -50,7 +51,8 @@ public struct GeneralLedgerReportView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
     ) {
         self.sourceDescription = sourceDescription
         self.environment = environment
@@ -69,6 +71,7 @@ public struct GeneralLedgerReportView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
     }
 
     private var parsedAmountFilter: Money? {
@@ -181,7 +184,8 @@ public struct GeneralLedgerReportView: View {
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
-                    onAskSecondOpinion: onAskSecondOpinion
+                    onAskSecondOpinion: onAskSecondOpinion,
+                    alternateModelTier: alternateModelTier
                 )
             }
             .padding(VLSpacing.pageGutter)

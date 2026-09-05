@@ -41,6 +41,7 @@ public struct BankFeedCleanupView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
 
     public init(
         environment: VLEnvironmentTone,
@@ -63,7 +64,8 @@ public struct BankFeedCleanupView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
@@ -86,6 +88,7 @@ public struct BankFeedCleanupView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
     }
 
     public var body: some View {
@@ -200,7 +203,8 @@ public struct BankFeedCleanupView: View {
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
-                    onAskSecondOpinion: onAskSecondOpinion
+                    onAskSecondOpinion: onAskSecondOpinion,
+                    alternateModelTier: alternateModelTier
                 )
             }
             .padding(VLSpacing.pageGutter)

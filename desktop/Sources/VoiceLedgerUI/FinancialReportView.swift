@@ -42,6 +42,7 @@ public struct FinancialReportView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
+    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
 
     public init(
         title: String,
@@ -66,7 +67,8 @@ public struct FinancialReportView: View {
         secondOpinionAnswer: String? = nil,
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
-        onAskSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskSecondOpinion: @escaping (String) -> Void = { _ in },
+        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
     ) {
         self.title = title
         self.sourceDescription = sourceDescription
@@ -91,6 +93,7 @@ public struct FinancialReportView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
+        self.alternateModelTier = alternateModelTier
     }
 
     public var body: some View {
@@ -157,7 +160,8 @@ public struct FinancialReportView: View {
                     secondOpinionAnswer: secondOpinionAnswer,
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
-                    onAskSecondOpinion: onAskSecondOpinion
+                    onAskSecondOpinion: onAskSecondOpinion,
+                    alternateModelTier: alternateModelTier
                 )
             }
             .padding(VLSpacing.pageGutter)

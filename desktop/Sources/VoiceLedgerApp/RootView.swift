@@ -184,7 +184,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == dashboardAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: dashboardAskAIKey, contextText: dashboardContext(), question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(dashboardAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(dashboardAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(dashboardAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(dashboardAskAIKey)-qwen", contextText: dashboardContext(), question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -248,7 +257,19 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
                     Task { await state.askSecondOpinion(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(batchFixesAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(batchFixesAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(batchFixesAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
+                        Task { await state.askAI(contextKey: "\(batchFixesAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
+                    }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -289,7 +310,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == firmCockpitAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: firmCockpitAskAIKey, contextText: firmCockpitContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(firmCockpitAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(firmCockpitAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(firmCockpitAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(firmCockpitAskAIKey)-qwen", contextText: firmCockpitContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.firmCockpitSummaries.isEmpty { await state.loadFirmCockpit() }
@@ -342,7 +372,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == taxesAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: taxesAskAIKey, contextText: taxesContext(), question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(taxesAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(taxesAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(taxesAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(taxesAskAIKey)-qwen", contextText: taxesContext(), question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -385,7 +424,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == salesTaxAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: salesTaxAskAIKey, contextText: salesTaxContext(), question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(salesTaxAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(salesTaxAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(salesTaxAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(salesTaxAskAIKey)-qwen", contextText: salesTaxContext(), question: question, model: "qwen3:8b") } }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -424,7 +472,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == chartOfAccountsAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: chartOfAccountsAskAIKey, contextText: chartOfAccountsContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(chartOfAccountsAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(chartOfAccountsAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(chartOfAccountsAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(chartOfAccountsAskAIKey)-qwen", contextText: chartOfAccountsContext, question: question, model: "qwen3:8b") } }
+                )
             )
 
         case .scopeAndPeriodLock:
@@ -691,7 +748,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == activityLogAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: activityLogAskAIKey, contextText: activityLogContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(activityLogAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(activityLogAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(activityLogAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(activityLogAskAIKey)-qwen", contextText: activityLogContext, question: question, model: "qwen3:8b") } }
+                )
             )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -725,7 +791,19 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(cleanupAssessmentAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(cleanupAssessmentAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(cleanupAssessmentAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
+                        Task { await state.askAI(contextKey: "\(cleanupAssessmentAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
+                    }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -758,7 +836,19 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(balanceSheetIntegrityAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(balanceSheetIntegrityAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(balanceSheetIntegrityAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
+                        Task { await state.askAI(contextKey: "\(balanceSheetIntegrityAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
+                    }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -799,7 +889,19 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
                     Task { await state.askSecondOpinion(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(bankFeedCleanupAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(bankFeedCleanupAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(bankFeedCleanupAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                        Task { await state.askAI(contextKey: "\(bankFeedCleanupAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
+                    }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -894,7 +996,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == monthEndCloseAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: monthEndCloseAskAIKey, contextText: monthEndCloseContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(monthEndCloseAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(monthEndCloseAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(monthEndCloseAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(monthEndCloseAskAIKey)-qwen", contextText: monthEndCloseContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -931,7 +1042,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == balanceSheetReportAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: balanceSheetReportAskAIKey, contextText: balanceSheetReportContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(balanceSheetReportAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(balanceSheetReportAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(balanceSheetReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(balanceSheetReportAskAIKey)-qwen", contextText: balanceSheetReportContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 // Owner directive (2026-08-30): "why should i have to click
@@ -979,7 +1099,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == profitAndLossReportAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: profitAndLossReportAskAIKey, contextText: profitAndLossReportContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(profitAndLossReportAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(profitAndLossReportAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(profitAndLossReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(profitAndLossReportAskAIKey)-qwen", contextText: profitAndLossReportContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -1015,7 +1144,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == cashFlowReportAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: cashFlowReportAskAIKey, contextText: cashFlowReportContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(cashFlowReportAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(cashFlowReportAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(cashFlowReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowReportAskAIKey)-qwen", contextText: cashFlowReportContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.cashFlowLines.isEmpty { await state.loadCashFlow() }
@@ -1064,7 +1202,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == trialBalanceAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: trialBalanceAskAIKey, contextText: trialBalanceContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(trialBalanceAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(trialBalanceAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(trialBalanceAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(trialBalanceAskAIKey)-qwen", contextText: trialBalanceContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.trialBalanceLines.isEmpty { await state.loadTrialBalance() }
@@ -1106,7 +1253,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == agedReceivablesAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: agedReceivablesAskAIKey, contextText: agedReceivablesContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(agedReceivablesAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(agedReceivablesAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(agedReceivablesAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(agedReceivablesAskAIKey)-qwen", contextText: agedReceivablesContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
@@ -1148,7 +1304,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == agedPayablesAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: agedPayablesAskAIKey, contextText: agedPayablesContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(agedPayablesAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(agedPayablesAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(agedPayablesAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(agedPayablesAskAIKey)-qwen", contextText: agedPayablesContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
@@ -1191,7 +1356,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == generalLedgerAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: generalLedgerAskAIKey, contextText: generalLedgerContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(generalLedgerAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(generalLedgerAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(generalLedgerAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(generalLedgerAskAIKey)-qwen", contextText: generalLedgerContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .task {
                 if state.generalLedgerLines.isEmpty { await state.loadGeneralLedger() }
@@ -1299,6 +1473,15 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: closePackageAskAIKey, contextText: closePackageContext(), question: question) }
                 },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(closePackageAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(closePackageAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(closePackageAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(closePackageAskAIKey)-qwen", contextText: closePackageContext(), question: question, model: "qwen3:8b") } }
+                ),
                 executiveSummaryAnswer: state.askAIAnswers[closePackageSummaryAskAIKey],
                 isGeneratingExecutiveSummary: state.askingAIContextKeys.contains(closePackageSummaryAskAIKey),
                 executiveSummaryError: state.askAIError?.contextKey == closePackageSummaryAskAIKey ? state.askAIError?.message : nil,
@@ -1351,7 +1534,16 @@ struct RootView: View {
                 secondOpinionError: state.secondOpinionError?.contextKey == clientMemoryAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: clientMemoryAskAIKey, contextText: clientMemoryContext, question: question) }
-                }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(clientMemoryAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(clientMemoryAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(clientMemoryAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(clientMemoryAskAIKey)-qwen", contextText: clientMemoryContext, question: question, model: "qwen3:8b") } }
+                )
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
