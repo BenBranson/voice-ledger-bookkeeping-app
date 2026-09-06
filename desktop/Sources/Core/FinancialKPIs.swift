@@ -83,6 +83,20 @@ public enum FinancialKPIs {
         summaryAmount(["Total Income"], in: profitAndLossLines)
     }
 
+    /// Total Income − Net Income, derived arithmetically rather than
+    /// looking up an unverified "Total Expenses" label — same reasoning
+    /// `ProfitAndLossWaterfall.segments`'s own "Expenses" bar already uses
+    /// (see that file's doc comment): this stays internally consistent by
+    /// construction, never a wrong number from a label that didn't match.
+    /// Added 2026-09-06 for the dashboard's Days Payable Outstanding
+    /// estimate (`AgingSummary.daysOutstanding`).
+    public static func totalExpenses(from profitAndLossLines: [ReportLine]) -> Money? {
+        guard let totalIncome = summaryAmount(["Total Income"], in: profitAndLossLines),
+              let netIncome = TaxEstimate.netIncome(from: profitAndLossLines),
+              totalIncome.currency == netIncome.currency else { return nil }
+        return totalIncome - netIncome
+    }
+
     /// (Cash + Accounts Receivable) / Total Current Liabilities. "Cash"
     /// tries a bare "Cash" summary line first, falling back to "Total Bank
     /// Accounts" — this sandbox company (confirmed live 2026-08-29) has no

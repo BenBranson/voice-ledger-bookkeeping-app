@@ -56,6 +56,14 @@ public final class AppState {
         /// pricing calculator for quoting a prospect — deliberately usable
         /// with no client connected at all.
         case pricingCalculator
+        /// Owner directive (2026-09-06): pick an audio input/output device
+        /// from within the app instead of System Settings.
+        case audioSettings
+        /// Owner directive (2026-09-06): "build cash flow forecasting."
+        case cashFlowForecast
+        /// Owner directive (2026-09-06): "build... recurring-vendor
+        /// detection."
+        case recurringVendors
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -523,7 +531,7 @@ public final class AppState {
             conversationHistory = newConversationHistory
             loadState = .loaded
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -548,7 +556,7 @@ public final class AppState {
                 try? await store.savePeriodLockSnapshot(snapshot)
             }
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -559,7 +567,7 @@ public final class AppState {
             try await store.clearPeriodLock()
             periodLock = nil
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -571,7 +579,7 @@ public final class AppState {
             try await store.saveEngagementScope(scope)
             engagementScope = scope
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -587,7 +595,7 @@ public final class AppState {
             try await store.upsertChecklistCompletion(completion)
             checklistCompletions = try await store.loadChecklistCompletions()
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -607,7 +615,7 @@ public final class AppState {
             try await store.removeChecklistCompletion(itemID: itemID, period: period)
             checklistCompletions = try await store.loadChecklistCompletions()
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -620,7 +628,7 @@ public final class AppState {
         do {
             balanceSheetLines = try await syncClient.fetchBalanceSheet(realmID: realmID, period: period)
         } catch {
-            balanceSheetError = "\(error)"
+            balanceSheetError = error.localizedDescription
         }
         isLoadingBalanceSheet = false
     }
@@ -631,7 +639,7 @@ public final class AppState {
         do {
             profitAndLossLines = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
         } catch {
-            profitAndLossError = "\(error)"
+            profitAndLossError = error.localizedDescription
         }
         isLoadingProfitAndLoss = false
     }
@@ -642,7 +650,7 @@ public final class AppState {
         do {
             cashFlowLines = try await syncClient.fetchCashFlow(realmID: realmID, period: period)
         } catch {
-            cashFlowError = "\(error)"
+            cashFlowError = error.localizedDescription
         }
         isLoadingCashFlow = false
     }
@@ -653,7 +661,7 @@ public final class AppState {
         do {
             trialBalanceLines = try await syncClient.fetchTrialBalance(realmID: realmID, period: period)
         } catch {
-            trialBalanceError = "\(error)"
+            trialBalanceError = error.localizedDescription
         }
         isLoadingTrialBalance = false
     }
@@ -664,7 +672,7 @@ public final class AppState {
         do {
             agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
         } catch {
-            agedReceivablesError = "\(error)"
+            agedReceivablesError = error.localizedDescription
         }
         isLoadingAgedReceivables = false
     }
@@ -675,9 +683,65 @@ public final class AppState {
         do {
             agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
         } catch {
-            agedPayablesError = "\(error)"
+            agedPayablesError = error.localizedDescription
         }
         isLoadingAgedPayables = false
+    }
+
+    /// Owner directive (2026-09-06): "recurring-vendor detection" needs
+    /// several months of `Purchase` history to tell a real pattern from
+    /// a coincidence — a single period's data (everything else in this
+    /// file) isn't enough. Loops `fetchPurchases` per trailing period —
+    /// the same call `VL-VEND-PRICE-001` already makes for exactly one
+    /// prior period — rather than requiring a new backend endpoint.
+    /// `try?`-wrapped per period, same posture as `syncAndEvaluate()`'s
+    /// independent report fetches: one month's fetch failing (or
+    /// genuinely having zero purchases) must not blank out the other
+    /// five months' real data.
+    public private(set) var trailingPurchases: [LedgerTransaction] = []
+    public private(set) var isLoadingTrailingPurchases = false
+
+    public static let trailingPurchasesMonths = 6
+
+    public func loadTrailingPurchases() async {
+        isLoadingTrailingPurchases = true
+        var collected: [LedgerTransaction] = []
+        var scanPeriod = period
+        for _ in 0..<Self.trailingPurchasesMonths {
+            if let fetched = try? await syncClient.fetchPurchases(realmID: realmID, period: scanPeriod) {
+                collected.append(contentsOf: fetched)
+            }
+            scanPeriod = scanPeriod.previousMonth
+        }
+        trailingPurchases = collected
+        isLoadingTrailingPurchases = false
+    }
+
+    /// Deterministic over already-loaded `trailingPurchases` — recomputed
+    /// on every access rather than cached, since the input is bounded
+    /// (a few hundred transactions at most) and this keeps it impossible
+    /// for a stale cached result to survive a `trailingPurchases` reload.
+    public var recurringVendors: [RecurringVendor] {
+        RecurringVendorDetector.detect(from: trailingPurchases)
+    }
+
+    public var missingRecurringVendors: [RecurringVendor] {
+        RecurringVendorDetector.missingAsOf(recurringVendors, asOf: AccountingDate(date: Date()))
+    }
+
+    /// Owner directive (2026-09-06): "build cash flow forecasting" — see
+    /// `CashFlowForecastEngine`'s own doc comment for the model. `asOf`
+    /// is real wall-clock "today," not this client's loaded accounting
+    /// period end, since the forecast is inherently forward-looking from
+    /// right now.
+    public var cashFlowForecast: CashFlowForecast {
+        CashFlowForecastEngine.compute(
+            currentCash: FinancialKPIs.cashBalance(from: balanceSheetLines),
+            agedReceivablesLines: agedReceivablesLines,
+            agedPayablesLines: agedPayablesLines,
+            recurringVendors: recurringVendors,
+            asOf: AccountingDate(date: Date())
+        )
     }
 
     public func loadGeneralLedger() async {
@@ -686,7 +750,7 @@ public final class AppState {
         do {
             generalLedgerLines = try await syncClient.fetchGeneralLedger(realmID: realmID, period: period)
         } catch {
-            generalLedgerError = "\(error)"
+            generalLedgerError = error.localizedDescription
         }
         isLoadingGeneralLedger = false
     }
@@ -786,7 +850,26 @@ public final class AppState {
         isLoadingFirmCockpit = true
         firmCockpitError = nil
         do {
-            let connections = try await backend.getConnections()
+            // Owner-reported bug (2026-09-06): Firm Cockpit showed
+            // "(unnamed company)" for the ACTIVE client even though every
+            // other page in the app has its real name — the backend's own
+            // connection record never got a company name written to it at
+            // connect time, but `companyInfo` (fetched live from QBO on
+            // this client's own connect/sync) already has it. Backfilling
+            // only the active realm's row here is honest, not a guess:
+            // it's the exact same name already trusted and displayed
+            // everywhere else in this running session.
+            let connections = try await backend.getConnections().map { connection -> ConnectedClient in
+                guard connection.realmID == realmID, connection.companyName == nil, let activeName = companyInfo?.companyName else { return connection }
+                return ConnectedClient(
+                    realmID: connection.realmID,
+                    companyName: activeName,
+                    environment: connection.environment,
+                    writeEnabled: connection.writeEnabled,
+                    lastHealthCheckAt: connection.lastHealthCheckAt,
+                    lastHealthCheckStatus: connection.lastHealthCheckStatus
+                )
+            }
             guard let rootDirectory = clientStoreRootDirectory else {
                 firmCockpitSummaries = []
                 firmCockpitError = "Firm Cockpit needs a local store location this session wasn't given."
@@ -812,7 +895,7 @@ public final class AppState {
             }
             firmCockpitSummaries = summaries
         } catch {
-            firmCockpitError = "\(error)"
+            firmCockpitError = error.localizedDescription
         }
         isLoadingFirmCockpit = false
     }
@@ -825,7 +908,7 @@ public final class AppState {
             try await store.saveSalesTaxAttestation(attestation)
             salesTaxAttestation = attestation
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -837,7 +920,7 @@ public final class AppState {
             try await store.saveTaxEstimateSettings(settings)
             taxEstimateSettings = settings
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -857,7 +940,7 @@ public final class AppState {
             companyInfo = infoValue
             writeAccessEnabled = writeAccessValue
         } catch {
-            healthCheckError = "\(error)"
+            healthCheckError = error.localizedDescription
         }
         isCheckingHealth = false
     }
@@ -871,7 +954,7 @@ public final class AppState {
         do {
             writeAccessEnabled = try await backend.setWriteAccess(realmID: realmID, enabled: enabled)
         } catch {
-            healthCheckError = "\(error)"
+            healthCheckError = error.localizedDescription
         }
         isTogglingWriteAccess = false
     }
@@ -884,7 +967,7 @@ public final class AppState {
         do {
             aiStatus = try await backend.getAIStatus()
         } catch {
-            aiStatusError = "\(error)"
+            aiStatusError = error.localizedDescription
         }
         isCheckingAIStatus = false
     }
@@ -897,7 +980,7 @@ public final class AppState {
         do {
             aiStatus = try await backend.setAIEnabled(enabled)
         } catch {
-            aiStatusError = "\(error)"
+            aiStatusError = error.localizedDescription
         }
         isTogglingAIEnabled = false
     }
@@ -923,7 +1006,7 @@ public final class AppState {
             askAIAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: .primary, question: question, answer: answer, format: format)
         } catch {
-            askAIError = (contextKey: contextKey, message: "\(error)")
+            askAIError = (contextKey: contextKey, message: error.localizedDescription)
         }
         askingAIContextKeys.remove(contextKey)
     }
@@ -997,7 +1080,7 @@ public final class AppState {
             secondOpinionAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: .secondary, question: question, answer: answer, format: format)
         } catch {
-            secondOpinionError = (contextKey: contextKey, message: "\(error)")
+            secondOpinionError = (contextKey: contextKey, message: error.localizedDescription)
         }
         askingSecondOpinionContextKeys.remove(contextKey)
     }
@@ -1161,6 +1244,61 @@ public final class AppState {
 
     public func askValueSummaryFollowUpSecondOpinion(_ question: String) async {
         await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: question, format: .concise)
+    }
+
+    // MARK: - Finding comparison
+
+    /// Owner directive (2026-09-06): "the app should be able to find
+    /// similarities and detect if they are a duplicate or explain and
+    /// justify when they are totally different." Reuses the same generic
+    /// `askAI(contextKey:...)`/`askAIAnswers` machinery as every other Ask
+    /// AI surface — a comparison is keyed by its exact (sorted, so order
+    /// doesn't matter) set of finding ids, so re-opening the same
+    /// comparison later reuses the cached answer instead of re-asking, and
+    /// a DIFFERENT set of findings never collides with it.
+    private static let comparisonPrompt = "Explain whether these findings are duplicates of each other, meaningfully similar, or genuinely different. Justify your answer using only the finding details and computed comparison signals given — never assert a similarity or difference the signals don't support."
+
+    public func comparisonContextKey(for findingIDs: [String]) -> String {
+        "compare-" + findingIDs.sorted().joined(separator: ",")
+    }
+
+    public func generateComparisonAnalysis() async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        let comparedFindings = ids.compactMap { finding(id: $0) }
+        await askAI(
+            contextKey: comparisonContextKey(for: ids),
+            contextText: AskAIContext.composeComparison(findings: comparedFindings),
+            question: Self.comparisonPrompt,
+            format: .concise
+        )
+    }
+
+    public func generateComparisonAnalysisSecondOpinion() async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        let comparedFindings = ids.compactMap { finding(id: $0) }
+        await askSecondOpinion(
+            contextKey: comparisonContextKey(for: ids),
+            contextText: AskAIContext.composeComparison(findings: comparedFindings),
+            question: Self.comparisonPrompt,
+            format: .concise
+        )
+    }
+
+    /// Same "an incidental follow-up isn't a full re-analysis" reasoning as
+    /// `askHealthReportFollowUp` above — a typed follow-up question about
+    /// the same compared set, grounded in the identical composed context.
+    public func askComparisonFollowUp(_ question: String) async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        await askAI(contextKey: comparisonContextKey(for: ids), contextText: AskAIContext.composeComparison(findings: ids.compactMap { finding(id: $0) }), question: question, format: .concise)
+    }
+
+    public func askComparisonFollowUpSecondOpinion(_ question: String) async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        await askSecondOpinion(contextKey: comparisonContextKey(for: ids), contextText: AskAIContext.composeComparison(findings: ids.compactMap { finding(id: $0) }), question: question, format: .concise)
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,
@@ -1405,7 +1543,7 @@ public final class AppState {
             lastSyncedAt = Date()
             loadState = .loaded
         } catch {
-            loadState = .failed("\(error)")
+            loadState = .failed(error.localizedDescription)
         }
     }
 
@@ -1595,7 +1733,7 @@ public final class AppState {
             pendingImport = nil
             await syncAndEvaluate()
         } catch {
-            importError = "\(error)"
+            importError = error.localizedDescription
         }
     }
 
@@ -1633,7 +1771,7 @@ public final class AppState {
             pendingImport = nil
             await syncAndEvaluate()
         } catch {
-            importError = "\(error)"
+            importError = error.localizedDescription
         }
     }
 
@@ -1863,7 +2001,7 @@ public final class AppState {
             do {
                 try await work()
             } catch {
-                loadState = .failed("\(error)")
+                loadState = .failed(error.localizedDescription)
             }
         }
     }

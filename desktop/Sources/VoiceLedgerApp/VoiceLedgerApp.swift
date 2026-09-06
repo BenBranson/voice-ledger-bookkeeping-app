@@ -74,9 +74,54 @@ struct VoiceLedgerApp: App {
                 appDelegate.onReopenWithNoWindows = { openWindow(id: Self.mainWindowID) }
             }
         }
+
+        // Owner-reported bug (2026-09-06): the finding-comparison popup
+        // used to be a `.sheet`, which doesn't offer a resize grip on
+        // macOS regardless of frame flexibility. A real `Window` scene
+        // gets genuine user resizability and native traffic-light window
+        // controls for free — `RootView` opens/closes it by id as
+        // `AppState.comparedFindingIDs` transitions to/from empty (see its
+        // `.onChange` there); this closure re-reads `appState` fresh every
+        // time the window's content re-renders, so it always reflects
+        // whichever `AppState` is current (client switches replace the
+        // whole instance, same as the main window above).
+        Window("Comparing Findings", id: Self.comparisonWindowID) {
+            if let appState {
+                FindingComparisonView(
+                    findings: appState.comparedFindingIDs.compactMap { appState.finding(id: $0) },
+                    onSelectFinding: { finding in
+                        appState.comparedFindingIDs = []
+                        appState.screen = .detail(findingID: finding.id)
+                    },
+                    onClose: { finding in
+                        appState.comparedFindingIDs.removeAll { $0 == finding.id }
+                    },
+                    onCloseAll: { appState.comparedFindingIDs = [] },
+                    analysisAnswer: appState.askAIAnswers[appState.comparisonContextKey(for: appState.comparedFindingIDs)],
+                    isGeneratingAnalysis: appState.askingAIContextKeys.contains(appState.comparisonContextKey(for: appState.comparedFindingIDs)),
+                    analysisError: appState.askAIError?.contextKey == appState.comparisonContextKey(for: appState.comparedFindingIDs) ? appState.askAIError?.message : nil,
+                    onAnalyze: { Task { await appState.generateComparisonAnalysis() } },
+                    onAskFollowUp: { question in Task { await appState.askComparisonFollowUp(question) } },
+                    secondOpinionConfigured: appState.aiStatus?.secondaryConfigured ?? false,
+                    analysisSecondOpinionAnswer: appState.secondOpinionAnswers[appState.comparisonContextKey(for: appState.comparedFindingIDs)],
+                    isGeneratingAnalysisSecondOpinion: appState.askingSecondOpinionContextKeys.contains(appState.comparisonContextKey(for: appState.comparedFindingIDs)),
+                    analysisSecondOpinionError: appState.secondOpinionError?.contextKey == appState.comparisonContextKey(for: appState.comparedFindingIDs) ? appState.secondOpinionError?.message : nil,
+                    onAnalyzeSecondOpinion: { Task { await appState.generateComparisonAnalysisSecondOpinion() } },
+                    onAskFollowUpSecondOpinion: { question in Task { await appState.askComparisonFollowUpSecondOpinion(question) } }
+                )
+                // A real window's own close control (red traffic light,
+                // Cmd-W) bypasses `RootView`'s `.onChange` entirely — this
+                // is what keeps `comparedFindingIDs` in sync when the
+                // window is closed that way instead of via the in-view "X".
+                .onDisappear { appState.comparedFindingIDs = [] }
+            }
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 800, height: 640)
     }
 
     private static let mainWindowID = "main"
+    static let comparisonWindowID = "finding-comparison"
 
     private func configure() {
         do {

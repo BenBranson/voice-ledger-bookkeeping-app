@@ -143,11 +143,23 @@ public struct FindingsListView: View {
     private let onAskHealthReportFollowUpSecondOpinion: (String) -> Void
     private let onAskValueSummaryFollowUp: (String) -> Void
     private let onAskValueSummaryFollowUpSecondOpinion: (String) -> Void
+    /// Owner directive (2026-09-06): checked findings, in the order they
+    /// appear on screen (not `Set` iteration order, which is unspecified) —
+    /// opens the (now unlimited) `FindingComparisonView` with exactly the
+    /// checked findings.
+    private let onCompareSelected: ([String]) -> Void
 
     /// Owner directive (2026-08-31): "a quick-click filter component
     /// inside... the Findings views" — purely local, filtering
     /// `state.findings` (already loaded) by exact dollar exposure.
     @State private var amountFilter = ""
+    /// Owner directive (2026-09-06): "there should be a clickable box on
+    /// each one and i should be able to press compare and analyze these
+    /// findings that are checked in the box." Purely local selection state
+    /// (same pattern as `amountFilter` above) — only surfaced to the
+    /// caller once "Compare & Analyze" is actually pressed, via
+    /// `onCompareSelected`.
+    @State private var checkedFindingIDs: Set<String> = []
 
     public init(
         state: ViewState,
@@ -166,7 +178,8 @@ public struct FindingsListView: View {
         onAskHealthReportFollowUp: @escaping (String) -> Void = { _ in },
         onAskHealthReportFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUp: @escaping (String) -> Void = { _ in },
-        onAskValueSummaryFollowUpSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskValueSummaryFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
+        onCompareSelected: @escaping ([String]) -> Void = { _ in }
     ) {
         self.state = state
         self.onSelect = onSelect
@@ -185,6 +198,7 @@ public struct FindingsListView: View {
         self.onAskHealthReportFollowUpSecondOpinion = onAskHealthReportFollowUpSecondOpinion
         self.onAskValueSummaryFollowUp = onAskValueSummaryFollowUp
         self.onAskValueSummaryFollowUpSecondOpinion = onAskValueSummaryFollowUpSecondOpinion
+        self.onCompareSelected = onCompareSelected
     }
 
     private var parsedAmountFilter: Money? {
@@ -258,17 +272,42 @@ public struct FindingsListView: View {
                     }
                 }
 
+                if !filteredFindings.isEmpty {
+                    compareBar
+                }
+
                 if state.findings.isEmpty {
                     emptyState
                 } else {
                     VStack(spacing: VLSpacing.sm) {
                         ForEach(filteredFindings) { finding in
-                            Button {
-                                onSelect(finding)
-                            } label: {
-                                FindingRow(finding: finding)
+                            HStack(spacing: VLSpacing.sm) {
+                                // Owner directive (2026-09-06): "there
+                                // should be a clickable box on each one" —
+                                // a separate tap target from the row itself
+                                // so checking a box for comparison never
+                                // also opens that finding's detail page.
+                                Button {
+                                    if checkedFindingIDs.contains(finding.id) {
+                                        checkedFindingIDs.remove(finding.id)
+                                    } else {
+                                        checkedFindingIDs.insert(finding.id)
+                                    }
+                                } label: {
+                                    Image(systemName: checkedFindingIDs.contains(finding.id) ? "checkmark.square.fill" : "square")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(checkedFindingIDs.contains(finding.id) ? VLColor.cyan : VLColor.textMuted)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Select for comparison")
+
+                                Button {
+                                    onSelect(finding)
+                                } label: {
+                                    FindingRow(finding: finding)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -276,6 +315,37 @@ public struct FindingsListView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// Owner directive (2026-09-06): shown only once at least one finding
+    /// is checked — stays out of the way otherwise. "Compare & Analyze"
+    /// requires 2+ (comparing one finding to itself isn't a comparison);
+    /// a single checked finding can still be cleared from here.
+    @ViewBuilder
+    private var compareBar: some View {
+        if !checkedFindingIDs.isEmpty {
+            HStack(spacing: VLSpacing.sm) {
+                Text("\(checkedFindingIDs.count) selected")
+                    .font(VLTypography.label())
+                    .foregroundStyle(VLColor.textSecondary)
+                Button("Compare & Analyze") {
+                    let orderedIDs = filteredFindings.filter { checkedFindingIDs.contains($0.id) }.map(\.id)
+                    onCompareSelected(orderedIDs)
+                    checkedFindingIDs = []
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(checkedFindingIDs.count < 2)
+                .help(checkedFindingIDs.count < 2 ? "Check at least 2 findings to compare" : "Open these \(checkedFindingIDs.count) findings side by side")
+                Button("Clear Selection") { checkedFindingIDs = [] }
+                    .buttonStyle(.plain)
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.cyan)
+            }
+            .padding(.horizontal, VLSpacing.sm)
+            .padding(.vertical, VLSpacing.xs)
+            .background(VLColor.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     /// Owner directive (2026-08-29): "at the top of findings there should

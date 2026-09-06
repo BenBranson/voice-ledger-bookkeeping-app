@@ -24,6 +24,22 @@ public struct AccountingPeriod: Hashable, Codable, Sendable {
     public var previousMonth: AccountingPeriod {
         month == 1 ? AccountingPeriod(year: year - 1, month: 12) : AccountingPeriod(year: year, month: month - 1)
     }
+
+    /// Added for `AgingSummary.daysOutstanding` (DSO/DPO estimates) — a
+    /// plain calendar fact, not a QBO-sourced value, so no "not available"
+    /// case is needed.
+    public var daysInMonth: Int {
+        switch month {
+        case 1, 3, 5, 7, 8, 10, 12: return 31
+        case 4, 6, 9, 11: return 30
+        case 2: return isLeapYear ? 29 : 28
+        default: return 30
+        }
+    }
+
+    private var isLeapYear: Bool {
+        (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+    }
 }
 
 /// A calendar date with no time-of-day or timezone component. QBO's
@@ -94,5 +110,20 @@ public struct AccountingDate: Hashable, Codable, Sendable, Comparable {
         calendar.timeZone = TimeZone(identifier: "UTC")!
         let date = calendar.date(from: comps)!
         return Int(date.timeIntervalSince1970 / 86_400)
+    }
+
+    /// Added 2026-09-06 for `RecurringVendorDetector`/`CashFlowForecastEngine`
+    /// — projecting a next-expected date forward by N days. Proleptic
+    /// Gregorian via `Calendar`, same posture as `daysBetween` above.
+    public func adding(days: Int) -> AccountingDate {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        comps.day = day
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let date = calendar.date(from: comps)!
+        let shifted = calendar.date(byAdding: .day, value: days, to: date)!
+        return AccountingDate(date: shifted)
     }
 }

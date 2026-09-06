@@ -10,6 +10,8 @@ struct RootView: View {
     @State private var actorName = NSFullUserName()
     @State private var isImportingStatement = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -70,22 +72,21 @@ struct RootView: View {
                 ChartPopupView(request: request) { state.presentedChart = nil }
             }
         }
-        // Owner-facing (2026-09-06): "pull up two transactions... side by
-        // side" (`VoiceUIAction.openFindings`) — resolves ids to real
-        // `Finding`s fresh from `state.findings` every render, so a
-        // finding resolved/dismissed elsewhere while the sheet is open
-        // never shows stale data.
-        .sheet(isPresented: Binding(get: { !state.comparedFindingIDs.isEmpty }, set: { if !$0 { state.comparedFindingIDs = [] } })) {
-            FindingComparisonView(
-                findings: state.comparedFindingIDs.compactMap { state.finding(id: $0) },
-                onSelectFinding: { finding in
-                    state.comparedFindingIDs = []
-                    state.screen = .detail(findingID: finding.id)
-                },
-                onClose: { finding in
-                    state.comparedFindingIDs.removeAll { $0 == finding.id }
-                }
-            )
+        // Owner-reported bug (2026-09-06): a macOS `.sheet` doesn't offer a
+        // resize grip regardless of frame flexibility. Comparing findings —
+        // "pull up two transactions... side by side," later "shouldn't be
+        // just limited to 2" — now opens a real `Window` scene instead
+        // (declared in `VoiceLedgerApp.body`), which gets genuine
+        // resizability and native traffic-light controls for free. This
+        // view only needs to open/close that window as `comparedFindingIDs`
+        // transitions to/from empty; the window's own content reads
+        // `state` directly (see `VoiceLedgerApp.swift`).
+        .onChange(of: state.comparedFindingIDs.isEmpty) { _, isEmpty in
+            if isEmpty {
+                dismissWindow(id: VoiceLedgerApp.comparisonWindowID)
+            } else {
+                openWindow(id: VoiceLedgerApp.comparisonWindowID)
+            }
         }
     }
 
@@ -128,6 +129,9 @@ struct RootView: View {
                 case .generalLedgerReport: return .generalLedgerReport
                 case .amountSearch: return .amountSearch
                 case .pricingCalculator: return .pricingCalculator
+                case .audioSettings: return .audioSettings
+                case .cashFlowForecast: return .cashFlowForecast
+                case .recurringVendors: return .recurringVendors
                 }
             },
             set: { newValue in
@@ -159,6 +163,9 @@ struct RootView: View {
                 case .generalLedgerReport: state.screen = .generalLedgerReport
                 case .amountSearch: state.screen = .amountSearch
                 case .pricingCalculator: state.screen = .pricingCalculator
+                case .audioSettings: state.screen = .audioSettings
+                case .cashFlowForecast: state.screen = .cashFlowForecast
+                case .recurringVendors: state.screen = .recurringVendors
                 }
             }
         )
@@ -190,11 +197,34 @@ struct RootView: View {
                     balanceSheetLines: state.balanceSheetLines,
                     profitAndLossLines: state.profitAndLossLines,
                     isLoadingReports: state.isLoadingBalanceSheet || state.isLoadingProfitAndLoss,
+                    priorBalanceSheetLines: state.priorPeriodBalanceSheetLines,
+                    priorProfitAndLossLines: state.priorPeriodProfitAndLossLines,
+                    agedReceivablesLines: state.agedReceivablesLines,
+                    agedPayablesLines: state.agedPayablesLines,
+                    topVendors: VendorSpendSummary.top(5, from: state.transactions),
+                    monthEndChecklistProgress: {
+                        let progress = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
+                        return progress.total > 0 ? progress : nil
+                    }(),
+                    period: state.currentPeriod,
+                    cashFlowForecast: state.cashFlowForecast,
+                    missingRecurringVendorsCount: state.missingRecurringVendors.count,
                     topFindings: dashboardTopFindings,
                     openFindingsCount: dashboardOpenFindings.count
                 ),
                 onOpenFinding: { finding in state.screen = .detail(findingID: finding.id) },
                 onViewAllFindings: { state.screen = .list },
+                onViewMonthEndClose: { state.screen = .monthEndClose },
+                onNavigateToReport: { destination in
+                    switch destination {
+                    case .balanceSheet: state.screen = .balanceSheetReport
+                    case .profitAndLoss: state.screen = .profitAndLossReport
+                    case .agedReceivables: state.screen = .agedReceivablesReport
+                    case .agedPayables: state.screen = .agedPayablesReport
+                    case .cashFlowForecast: state.screen = .cashFlowForecast
+                    case .recurringVendors: state.screen = .recurringVendors
+                    }
+                },
                 isSyncing: state.loadState == .loading,
                 onSync: { Task { await state.syncDashboard() } },
                 aiStatus: state.aiStatus,
@@ -224,6 +254,10 @@ struct RootView: View {
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
+                if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
+                if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
+                if state.priorPeriodBalanceSheetLines.isEmpty || state.priorPeriodProfitAndLossLines.isEmpty { await state.loadVarianceAnalysis() }
+                if state.trailingPurchases.isEmpty { await state.loadTrailingPurchases() }
             }
 
         case .connection:
@@ -657,7 +691,8 @@ struct RootView: View {
                     onAskHealthReportFollowUp: { question in Task { await state.askHealthReportFollowUp(question) } },
                     onAskHealthReportFollowUpSecondOpinion: { question in Task { await state.askHealthReportFollowUpSecondOpinion(question) } },
                     onAskValueSummaryFollowUp: { question in Task { await state.askValueSummaryFollowUp(question) } },
-                    onAskValueSummaryFollowUpSecondOpinion: { question in Task { await state.askValueSummaryFollowUpSecondOpinion(question) } }
+                    onAskValueSummaryFollowUpSecondOpinion: { question in Task { await state.askValueSummaryFollowUpSecondOpinion(question) } },
+                    onCompareSelected: { ids in state.comparedFindingIDs = ids }
                 )
             }
 
@@ -1636,6 +1671,109 @@ struct RootView: View {
                     Task { await state.askSecondOpinion(contextKey: pricingCalculatorAskAIKey, contextText: context, question: pricingCalculatorPrompt, format: .clientMessage) }
                 }
             )
+
+        case .audioSettings:
+            AudioSettingsView()
+
+        case .cashFlowForecast:
+            let cashFlowAskAIKey = "page:cash-flow-forecast"
+            let forecast = state.cashFlowForecast
+            let cashFlowContext = AskAIContext.compose(
+                pageTitle: "Cash Flow Forecast",
+                summaryLines: [
+                    "Starting cash: \(forecast.startingCash?.description ?? "not available")"
+                ] + forecast.horizons.map { horizon in
+                    "In \(horizon.days) days: expected in \(horizon.expectedInflow?.description ?? "not available"), expected out \(horizon.expectedOutflow?.description ?? "not available"), projected ending cash \(horizon.projectedEndingCash?.description ?? "not available")"
+                } + [
+                    "At-risk receivables (91+ days overdue, not counted as expected cash): \(forecast.atRiskReceivables?.description ?? "none")"
+                ]
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
+            CashFlowForecastView(
+                state: CashFlowForecastView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    forecast: forecast,
+                    isLoading: state.isLoadingBalanceSheet || state.isLoadingAgedReceivables || state.isLoadingAgedPayables || state.isLoadingTrailingPurchases
+                ),
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[cashFlowAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(cashFlowAskAIKey),
+                askAIError: state.askAIError?.contextKey == cashFlowAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: cashFlowAskAIKey, contextText: cashFlowContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[cashFlowAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(cashFlowAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == cashFlowAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: cashFlowAskAIKey, contextText: cashFlowContext, question: question) }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(cashFlowAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(cashFlowAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(cashFlowAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowAskAIKey)-qwen", contextText: cashFlowContext, question: question, model: "qwen3:8b") } }
+                )
+            )
+            .task {
+                if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
+                if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
+                if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
+                if state.trailingPurchases.isEmpty { await state.loadTrailingPurchases() }
+            }
+
+        case .recurringVendors:
+            let recurringVendorsAskAIKey = "page:recurring-vendors"
+            let recurringVendors = state.recurringVendors
+            let missingVendors = state.missingRecurringVendors
+            let recurringVendorsContext = AskAIContext.compose(
+                pageTitle: "Recurring Vendors",
+                summaryLines: recurringVendors.map { vendor in
+                    "\(vendor.vendorName): \(vendor.averageAmount.description) roughly every \(Int(vendor.averageIntervalDays.rounded())) days, \(vendor.occurrenceCount) charges seen, next expected \(vendor.expectedNextChargeDate.formatted)\(vendor.lastAmountChanged ? " — last charge's amount changed" : "")\(missingVendors.contains(where: { $0.id == vendor.id }) ? " — OVERDUE for expected charge" : "")"
+                }
+            ) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
+            RecurringVendorsView(
+                state: RecurringVendorsView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    recurringVendors: recurringVendors,
+                    missingVendors: missingVendors,
+                    monthsOfHistoryScanned: AppState.trailingPurchasesMonths,
+                    isLoading: state.isLoadingTrailingPurchases
+                ),
+                isSyncing: state.loadState == .loading,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                aiStatus: state.aiStatus,
+                askAIAnswer: state.askAIAnswers[recurringVendorsAskAIKey],
+                isAskingAI: state.askingAIContextKeys.contains(recurringVendorsAskAIKey),
+                askAIError: state.askAIError?.contextKey == recurringVendorsAskAIKey ? state.askAIError?.message : nil,
+                onAskAI: { question in
+                    Task { await state.askAI(contextKey: recurringVendorsAskAIKey, contextText: recurringVendorsContext, question: question) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                secondOpinionAnswer: state.secondOpinionAnswers[recurringVendorsAskAIKey],
+                isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(recurringVendorsAskAIKey),
+                secondOpinionError: state.secondOpinionError?.contextKey == recurringVendorsAskAIKey ? state.secondOpinionError?.message : nil,
+                onAskSecondOpinion: { question in
+                    Task { await state.askSecondOpinion(contextKey: recurringVendorsAskAIKey, contextText: recurringVendorsContext, question: question) }
+                },
+                alternateModelTier: .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(recurringVendorsAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(recurringVendorsAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(recurringVendorsAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(recurringVendorsAskAIKey)-qwen", contextText: recurringVendorsContext, question: question, model: "qwen3:8b") } }
+                )
+            )
+            .task {
+                if state.trailingPurchases.isEmpty { await state.loadTrailingPurchases() }
+            }
         }
     }
 

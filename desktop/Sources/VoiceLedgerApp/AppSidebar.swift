@@ -37,12 +37,17 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     /// discovery calls, usable before a prospect ever connects QBO.
     case pricingCalculator
     case firmCockpit
+    /// Owner directive (2026-09-06): "build cash flow forecasting."
+    case cashFlowForecast
     case cleanupAssessment
     case balanceSheetIntegrity
     case chartOfAccountsCleanup
     case bankFeedCleanup
     case batchFixes
     case salesTaxReview
+    /// Owner directive (2026-09-06): "build... recurring-vendor
+    /// detection."
+    case recurringVendors
     case monthEndClose
     case closePackage
     case activityLog
@@ -58,6 +63,9 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case voiceHistory
     case connection
     case scopeAndPeriodLock
+    /// Owner directive (2026-09-06): "Voice Ledger should have a settings
+    /// menu for audio input... and pick for audio output."
+    case audioSettings
 
     var id: String { rawValue }
 
@@ -68,12 +76,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .amountSearch: return "Search by Amount"
         case .pricingCalculator: return "Pricing Calculator"
         case .firmCockpit: return "Firm Cockpit"
+        case .cashFlowForecast: return "Cash Flow Forecast"
         case .cleanupAssessment: return "Cleanup Assessment"
         case .balanceSheetIntegrity: return "Balance Sheet Integrity"
         case .chartOfAccountsCleanup: return "Chart of Accounts"
         case .bankFeedCleanup: return "Bank Feed Cleanup"
         case .batchFixes: return "Batch Fixes"
         case .salesTaxReview: return "Sales Tax Review"
+        case .recurringVendors: return "Recurring Vendors"
         case .monthEndClose: return "Month-End Close"
         case .closePackage: return "Close Package"
         case .activityLog: return "Activity Log"
@@ -89,6 +99,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .voiceHistory: return "AI Conversations"
         case .connection: return "Connection"
         case .scopeAndPeriodLock: return "Scope & Period Lock"
+        case .audioSettings: return "Audio Settings"
         }
     }
 
@@ -99,12 +110,14 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .amountSearch: return "magnifyingglass.circle"
         case .pricingCalculator: return "dollarsign.circle"
         case .firmCockpit: return "square.grid.2x2"
+        case .cashFlowForecast: return "chart.line.uptrend.xyaxis.circle"
         case .cleanupAssessment: return "checkmark.seal"
         case .balanceSheetIntegrity: return "chart.bar.doc.horizontal"
         case .chartOfAccountsCleanup: return "folder.badge.gearshape"
         case .bankFeedCleanup: return "building.columns"
         case .batchFixes: return "wand.and.stars"
         case .salesTaxReview: return "percent"
+        case .recurringVendors: return "arrow.triangle.2.circlepath.circle"
         case .monthEndClose: return "calendar.badge.clock"
         case .closePackage: return "shippingbox"
         case .activityLog: return "clock.arrow.circlepath"
@@ -120,6 +133,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .voiceHistory: return "bubble.left.and.text.bubble.right"
         case .connection: return "link"
         case .scopeAndPeriodLock: return "lock.shield"
+        case .audioSettings: return "waveform.badge.mic"
         }
     }
 }
@@ -131,13 +145,13 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .amountSearch, .pricingCalculator]),
-    SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .cashFlowForecast, .amountSearch, .pricingCalculator]),
+    SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview, .recurringVendors]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),
     SidebarSection(title: "CLIENT", items: [.clientMemory]),
     SidebarSection(title: "AI", items: [.voiceHistory]),
-    SidebarSection(title: "SETUP", items: [.connection, .scopeAndPeriodLock])
+    SidebarSection(title: "SETUP", items: [.connection, .scopeAndPeriodLock, .audioSettings])
 ]
 
 struct AppSidebar: View {
@@ -157,10 +171,27 @@ struct AppSidebar: View {
     var body: some View {
         List(selection: $selection) {
             ForEach(sidebarSections) { section in
-                Section(section.title) {
+                let sectionColor = VLNavColor.forSection(section.title)
+                Section {
                     ForEach(section.items) { item in
-                        Label(item.title, systemImage: item.icon).tag(item)
+                        Label {
+                            // Owner directive (2026-09-06): "the left panel
+                            // is currently just white font" — every row's
+                            // icon now carries its section's full color and
+                            // its text a softer tint of that same color, so
+                            // sections are tellable apart at a glance
+                            // (ADHD-friendly categorization) without
+                            // reaching for the accounting status vocabulary
+                            // (`VLStatus`) or losing legibility.
+                            Text(item.title).foregroundStyle(sectionColor.opacity(0.82))
+                        } icon: {
+                            Image(systemName: item.icon).foregroundStyle(sectionColor)
+                        }
+                        .tag(item)
                     }
+                } header: {
+                    Text(section.title)
+                        .foregroundStyle(sectionColor)
                 }
             }
         }

@@ -52,7 +52,12 @@ public struct ChartPopupView: View {
             }
         }
         .padding(VLSpacing.pageGutter)
-        .frame(minWidth: 520, minHeight: 380)
+        // Same fix as `FindingComparisonView`: a `maxWidth`/`maxHeight` of
+        // `.infinity` gives the sheet a flexible dimension to grow along,
+        // so it can be dragged larger instead of being stuck at its
+        // minimum size with no resize affordance.
+        .frame(minWidth: 520, idealWidth: 620, maxWidth: .infinity,
+               minHeight: 380, idealHeight: 460, maxHeight: .infinity)
         .background(VLColor.background)
     }
 

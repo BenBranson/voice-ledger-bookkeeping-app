@@ -43,6 +43,17 @@ private struct DonutCard: View {
         }
     }
 
+    /// The center-of-donut total — same same-currency guard every other
+    /// sum in this app uses (e.g. `ChartPopupView.paretoEntries`) rather
+    /// than silently adding across currencies.
+    private var totalAmount: Money {
+        guard let first = slices.first, slices.allSatisfy({ $0.amount.currency == first.amount.currency }) else {
+            return slices.first?.amount ?? Money(minorUnits: 0, currency: .usd)
+        }
+        let total = slices.reduce(Int64(0)) { $0 + $1.amount.minorUnits }
+        return Money(minorUnits: total, currency: first.amount.currency)
+    }
+
     var body: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
@@ -57,18 +68,46 @@ private struct DonutCard: View {
                         .foregroundStyle(VLColor.textMuted)
                         .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
-                    HStack(spacing: VLSpacing.sm) {
+                    HStack(spacing: VLSpacing.md) {
+                        // Owner directive (2026-09-06): "the graphs in this
+                        // app look primitive... like in Excel, Power BI,
+                        // and Tableau" — a radial gradient per wedge (glossy
+                        // depth instead of a flat fill), a larger chart, and
+                        // a center total (the number the whole donut adds
+                        // up to, which Power BI/Tableau donuts always show)
+                        // instead of a plain colored ring.
                         Chart(Array(slices.enumerated()), id: \.element.id) { index, slice in
-                            SectorMark(angle: .value("Amount", slice.amount.majorUnitsDouble), innerRadius: .ratio(0.6), angularInset: 1.5)
-                                .foregroundStyle(VLChartPalette.color(at: index))
-                                .cornerRadius(3)
+                            SectorMark(angle: .value("Amount", slice.amount.majorUnitsDouble), innerRadius: .ratio(0.62), angularInset: 2)
+                                .foregroundStyle(VLChartPalette.radialGradient(at: index))
+                                .cornerRadius(4)
                                 // Dims every slice except the selected one,
                                 // so a click visibly highlights which wedge
                                 // the callout is describing.
                                 .opacity(selectedSlice == nil || selectedSlice?.id == slice.id ? 1 : 0.35)
                         }
                         .chartAngleSelection(value: $selectedAmount)
-                        .frame(width: 140, height: 140)
+                        .chartBackground { proxy in
+                            GeometryReader { geometry in
+                                if let plotFrame = proxy.plotFrame {
+                                    let frame = geometry[plotFrame]
+                                    VStack(spacing: 2) {
+                                        Text("TOTAL")
+                                            .font(VLTypography.eyebrow())
+                                            .tracking(VLTypography.eyebrowTracking)
+                                            .foregroundStyle(VLColor.textMuted)
+                                        Text(totalAmount.description)
+                                            .font(VLTypography.tabularNumeric())
+                                            .fontWeight(.semibold)
+                                            .foregroundStyle(VLColor.textPrimary)
+                                            .minimumScaleFactor(0.6)
+                                            .lineLimit(1)
+                                    }
+                                    .frame(width: frame.width * 0.62)
+                                    .position(x: frame.midX, y: frame.midY)
+                                }
+                            }
+                        }
+                        .frame(width: 180, height: 180)
 
                         if let selectedSlice {
                             VStack(alignment: .leading, spacing: VLSpacing.xxs) {

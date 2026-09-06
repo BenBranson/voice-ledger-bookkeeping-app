@@ -92,6 +92,37 @@ extension VoiceEngine {
             }
             return (lines.joined(separator: "; "), nil)
 
+        case "get_cash_flow_forecast":
+            if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+            if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+            let forecast = appState.cashFlowForecast
+            guard forecast.startingCash != nil else { return ("No balance sheet or aging data available yet to build a forecast — try syncing first.", nil) }
+            var lines = ["Starting cash: \(forecast.startingCash?.description ?? "not available")"]
+            for horizon in forecast.horizons {
+                lines.append("In \(horizon.days) days: expected in \(horizon.expectedInflow?.description ?? "not available"), expected out \(horizon.expectedOutflow?.description ?? "not available"), projected ending cash \(horizon.projectedEndingCash?.description ?? "not available")")
+            }
+            if let atRisk = forecast.atRiskReceivables, atRisk.minorUnits != 0 {
+                lines.append("At-risk receivables (91+ days overdue, not counted as expected cash): \(atRisk.description)")
+            }
+            return (lines.joined(separator: "; "), .navigate(.cashFlowForecast))
+
+        case "get_recurring_vendors":
+            if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+            let recurring = appState.recurringVendors
+            guard !recurring.isEmpty else { return ("No recurring vendors detected in the trailing \(AppState.trailingPurchasesMonths) months of purchase history.", .navigate(.recurringVendors)) }
+            let missing = appState.missingRecurringVendors
+            var lines = recurring.map { vendor -> String in
+                let changedNote = vendor.lastAmountChanged ? " (last charge's amount changed)" : ""
+                let overdueNote = missing.contains(where: { $0.id == vendor.id }) ? " — OVERDUE for expected charge" : ""
+                return "\(vendor.vendorName): \(vendor.averageAmount.description) roughly every \(Int(vendor.averageIntervalDays.rounded())) days, next expected \(vendor.expectedNextChargeDate.formatted)\(changedNote)\(overdueNote)"
+            }
+            if lines.count > 10 {
+                lines = Array(lines.prefix(10)) + ["...and \(recurring.count - 10) more not listed here"]
+            }
+            return (lines.joined(separator: "; "), .navigate(.recurringVendors))
+
         case "switch_client":
             let name = call.arguments["name"]?.stringValue ?? ""
             if appState.firmCockpitSummaries.isEmpty { await appState.loadFirmCockpit() }

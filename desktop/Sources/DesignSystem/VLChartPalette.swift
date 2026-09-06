@@ -34,4 +34,24 @@ public enum VLChartPalette {
     public static func color(at index: Int) -> Color {
         series[index % series.count]
     }
+
+    /// Owner directive (2026-09-06): "the graphs in this app look
+    /// primitive, is there a way to look more professional like in Excel,
+    /// Power BI, and Tableau?" A flat solid fill reads flatter than those
+    /// tools' charts, which lean on a subtle light-to-full gradient across
+    /// each bar/segment for a sense of depth. Same underlying hue as
+    /// `color(at:)` — this is a rendering style, not a new color, so it
+    /// carries no separate accent/status/environment meaning of its own.
+    public static func gradient(at index: Int) -> LinearGradient {
+        let base = color(at: index)
+        return LinearGradient(colors: [base.opacity(0.6), base], startPoint: .leading, endPoint: .trailing)
+    }
+
+    /// The donut-chart counterpart to `gradient(at:)` — a radial gradient
+    /// reads as a glossy, lit-from-center wedge rather than a flat pie
+    /// slice, closer to how Power BI/Tableau render donut charts.
+    public static func radialGradient(at index: Int) -> RadialGradient {
+        let base = color(at: index)
+        return RadialGradient(colors: [base.opacity(0.55), base], center: .center, startRadius: 8, endRadius: 90)
+    }
 }

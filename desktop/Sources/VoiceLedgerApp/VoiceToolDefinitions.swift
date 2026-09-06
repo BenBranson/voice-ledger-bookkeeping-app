@@ -20,7 +20,7 @@ extension VoiceEngine {
     Rules:
     - Call a tool whenever the person's request needs one. Do not just describe what you would do — call the tool.
     - If a request is genuinely ambiguous (e.g. "show me a chart" with no clear subject), ask a short clarifying question instead of guessing which tool or argument to use.
-    - This app does NOT compute: accounts receivable/payable aging insights, cash runway or burn-rate forecasts, recurring-subscription detection, or missing-receipt detection. If asked about any of these, say plainly that Voice Ledger doesn't compute that yet, rather than guessing or calling an unrelated tool.
+    - This app computes a cash flow forecast (`get_cash_flow_forecast`) and recurring-vendor detection (`get_recurring_vendors`) — use those tools rather than declining. It still does NOT compute: missing-receipt detection, or anything about a client not already connected. If asked about those, say plainly that Voice Ledger doesn't compute that yet, rather than guessing or calling an unrelated tool.
     - Financial totals (spend by vendor, revenue, cash balance) reflect only the client's CURRENTLY LOADED accounting period, not necessarily a full year or quarter — say so plainly if the person asked for a longer range than that.
     - Never invent a dollar figure, date, or vendor name that wasn't in a tool's own result.
     """
@@ -115,6 +115,18 @@ extension VoiceEngine {
             properties: [
                 "limit": .object(["type": .string("number"), "description": .string("How many clients to return, e.g. 3.")])
             ],
+            required: []
+        ),
+        tool(
+            name: "get_cash_flow_forecast",
+            description: "Report the 30/60/90-day cash flow forecast for this client: today's real cash balance, expected receivables/payables/recurring-vendor charges in each window, and the projected ending cash. A disclosed projection from real aging and recurring-vendor data — not a guess.",
+            properties: [:],
+            required: []
+        ),
+        tool(
+            name: "get_recurring_vendors",
+            description: "List vendors this client is charged at a consistent recurring interval and amount (detected from Purchase history), including any that are overdue for their expected next charge — useful for \"any recurring subscriptions,\" \"what are we paying for regularly,\" or \"anything that stopped charging.\"",
+            properties: [:],
             required: []
         ),
         tool(

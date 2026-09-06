@@ -585,6 +585,8 @@ public final class VoiceEngine: NSObject {
         case .agedReceivablesReport: return .agedReceivablesReport
         case .agedPayablesReport: return .agedPayablesReport
         case .generalLedgerReport: return .generalLedgerReport
+        case .cashFlowForecast: return .cashFlowForecast
+        case .recurringVendors: return .recurringVendors
         }
     }
 
@@ -749,6 +751,8 @@ public final class VoiceEngine: NSObject {
         case .agedReceivablesReport: return "Aged Receivables."
         case .agedPayablesReport: return "Aged Payables."
         case .generalLedgerReport: return "General Ledger."
+        case .cashFlowForecast: return "Cash Flow Forecast."
+        case .recurringVendors: return "Recurring Vendors."
         }
     }
 

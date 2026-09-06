@@ -54,12 +54,13 @@ public struct RankedMoneyBarChart: View {
                             x: .value("Amount", entry.amount.majorUnitsDouble),
                             y: .value("Label", entry.label)
                         )
-                        .foregroundStyle(VLChartPalette.color(at: index))
-                        .cornerRadius(3)
+                        .foregroundStyle(VLChartPalette.gradient(at: index))
+                        .cornerRadius(6)
                         .annotation(position: .trailing) {
                             Text(entry.cumulativePercent.map { "\(entry.amount.description) — \(String(format: "%.0f%%", $0)) cumulative" } ?? entry.amount.description)
-                                .font(VLTypography.caption())
-                                .foregroundStyle(VLColor.textSecondary)
+                                .font(VLTypography.tabularNumeric())
+                                .fontWeight(.medium)
+                                .foregroundStyle(VLColor.textPrimary)
                         }
                     }
                     .chartXAxis {

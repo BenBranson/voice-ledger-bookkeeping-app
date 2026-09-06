@@ -57,6 +57,60 @@ public enum AskAIContext {
         return lines.joined(separator: "\n")
     }
 
+    /// Owner directive (2026-09-06): "the app should be able to find
+    /// similarities and detect if they are a duplicate or explain and
+    /// justify when they are totally different" — for the multi-finding
+    /// comparison view. CLAUDE.md rule 1's boundary applies here exactly
+    /// as it does to `compose(finding:)`: whether two findings share a
+    /// vendor, dollar amount, period, or rule category is a plain equality
+    /// check this function computes deterministically, listed under
+    /// "computed comparison signals" — the model's job is to explain what
+    /// those already-computed signals mean in plain English, never to
+    /// perform the matching itself and risk calling two different amounts
+    /// "the same."
+    public static func composeComparison(findings: [Finding]) -> String {
+        guard findings.count >= 2 else {
+            return findings.map(compose(finding:)).joined(separator: "\n\n")
+        }
+
+        var lines: [String] = ["Comparing \(findings.count) findings side by side."]
+        for (index, finding) in findings.enumerated() {
+            lines.append("\n--- Finding \(index + 1) ---")
+            lines.append(compose(finding: finding))
+        }
+
+        lines.append("\n--- Computed comparison signals (already determined by this app — explain these, do not recompute or contradict them) ---")
+
+        let vendors = Set(findings.map { $0.vendorName ?? "" })
+        if findings.allSatisfy({ $0.vendorName != nil }) && vendors.count == 1 {
+            lines.append("Same vendor on every finding: yes (\(vendors.first ?? ""))")
+        } else {
+            lines.append("Same vendor on every finding: no")
+        }
+
+        let currencies = Set(findings.map { $0.dollarExposure.currency })
+        if currencies.count == 1 {
+            let amounts = Set(findings.map { $0.dollarExposure.minorUnits })
+            lines.append(amounts.count == 1
+                ? "Same dollar exposure on every finding: yes (\(findings[0].dollarExposure.description))"
+                : "Same dollar exposure on every finding: no")
+        } else {
+            lines.append("Same dollar exposure on every finding: no (different currencies)")
+        }
+
+        let periods = Set(findings.map { "\($0.period.year)-\(String(format: "%02d", $0.period.month))" })
+        lines.append(periods.count == 1
+            ? "Same accounting period on every finding: yes (\(periods.first ?? ""))"
+            : "Same accounting period on every finding: no")
+
+        let ruleIDs = Set(findings.map { $0.ruleID.rawValue })
+        lines.append(ruleIDs.count == 1
+            ? "Same finding category on every finding: yes"
+            : "Same finding category on every finding: no (\(ruleIDs.count) distinct categories)")
+
+        return lines.joined(separator: "\n")
+    }
+
     /// Owner directive (2026-08-29): before any finding's context leaves
     /// this machine for the opt-in "second opinion" (OpenAI) tier, the
     /// vendor name is replaced with a placeholder — deliberately built here

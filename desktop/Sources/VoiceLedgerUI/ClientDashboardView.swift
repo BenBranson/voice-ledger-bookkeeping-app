@@ -21,6 +21,24 @@ import DesignSystem
 /// now, using the same `FindingTriage.sorted` priority queue the Findings
 /// screen itself is sorted by.
 public struct ClientDashboardView: View {
+    /// Owner directive (2026-09-06): "the cards on the dashboard should be
+    /// clickable to take the user to where it was calculated, for
+    /// instance net margin takes the user to balance sheet or P and L if
+    /// thats more correct and beneficial" — Net Margin is a P&L figure
+    /// (Net Income / Total Income, both P&L lines), so it goes to Profit &
+    /// Loss; Working Capital/Current Ratio/Quick Ratio/Cash Balance are
+    /// Balance Sheet figures. Kept as this view's own small enum (not a
+    /// dependency on `AppState.Screen`) so `VoiceLedgerUI` stays decoupled
+    /// from the app target, matching this module's existing boundary.
+    public enum ReportDestination {
+        case balanceSheet
+        case profitAndLoss
+        case agedReceivables
+        case agedPayables
+        case cashFlowForecast
+        case recurringVendors
+    }
+
     public struct ViewState {
         public let companyName: String
         public let environment: VLEnvironmentTone
@@ -29,6 +47,27 @@ public struct ClientDashboardView: View {
         public let balanceSheetLines: [ReportLine]
         public let profitAndLossLines: [ReportLine]
         public let isLoadingReports: Bool
+        /// Owner directive (2026-09-06): "does the dashboard have all the
+        /// KPIs I need... add all please" — the prior-period comparison
+        /// (trend arrows), AR/AP aging, vendor concentration, and
+        /// month-end close progress this dashboard was missing. Every one
+        /// of these reuses data/computations that already existed
+        /// elsewhere in the app (variance analysis, aging reports, vendor
+        /// spend, the month-end checklist) — nothing here is a new kind of
+        /// claim, just surfaced where a bookkeeper's eye lands first.
+        public let priorBalanceSheetLines: [ReportLine]
+        public let priorProfitAndLossLines: [ReportLine]
+        public let agedReceivablesLines: [AgingLine]
+        public let agedPayablesLines: [AgingLine]
+        public let topVendors: [VendorSpendSummary.VendorTotal]
+        public let monthEndChecklistProgress: (completed: Int, total: Int)?
+        public let period: AccountingPeriod
+        /// Owner directive (2026-09-06): "build cash flow forecasting and
+        /// recurring-vendor detection" — surfaced on the dashboard the
+        /// same way Month-End Close's progress is: a compact summary here,
+        /// full detail on its own page.
+        public let cashFlowForecast: CashFlowForecast?
+        public let missingRecurringVendorsCount: Int
         /// Already sorted and capped by the caller (`FindingTriage.sorted`,
         /// then `.prefix(5)`) — this view has no opinion about ordering,
         /// same "dumb rendering of what it's given" posture as
@@ -44,6 +83,15 @@ public struct ClientDashboardView: View {
             balanceSheetLines: [ReportLine],
             profitAndLossLines: [ReportLine],
             isLoadingReports: Bool,
+            priorBalanceSheetLines: [ReportLine] = [],
+            priorProfitAndLossLines: [ReportLine] = [],
+            agedReceivablesLines: [AgingLine] = [],
+            agedPayablesLines: [AgingLine] = [],
+            topVendors: [VendorSpendSummary.VendorTotal] = [],
+            monthEndChecklistProgress: (completed: Int, total: Int)? = nil,
+            period: AccountingPeriod,
+            cashFlowForecast: CashFlowForecast? = nil,
+            missingRecurringVendorsCount: Int = 0,
             topFindings: [Finding],
             openFindingsCount: Int
         ) {
@@ -54,6 +102,15 @@ public struct ClientDashboardView: View {
             self.balanceSheetLines = balanceSheetLines
             self.profitAndLossLines = profitAndLossLines
             self.isLoadingReports = isLoadingReports
+            self.priorBalanceSheetLines = priorBalanceSheetLines
+            self.priorProfitAndLossLines = priorProfitAndLossLines
+            self.agedReceivablesLines = agedReceivablesLines
+            self.agedPayablesLines = agedPayablesLines
+            self.topVendors = topVendors
+            self.monthEndChecklistProgress = monthEndChecklistProgress
+            self.period = period
+            self.cashFlowForecast = cashFlowForecast
+            self.missingRecurringVendorsCount = missingRecurringVendorsCount
             self.topFindings = topFindings
             self.openFindingsCount = openFindingsCount
         }
@@ -78,6 +135,8 @@ public struct ClientDashboardView: View {
     private let state: ViewState
     private let onOpenFinding: (Finding) -> Void
     private let onViewAllFindings: () -> Void
+    private let onViewMonthEndClose: () -> Void
+    private let onNavigateToReport: (ReportDestination) -> Void
     /// Owner directive (2026-08-30): "a lot of the sections say unsynced
     /// yet there is no refresh button for them to sync" — see `SyncButton`.
     /// This is the landing screen, so it's the single most likely place a
@@ -102,6 +161,8 @@ public struct ClientDashboardView: View {
         state: ViewState,
         onOpenFinding: @escaping (Finding) -> Void,
         onViewAllFindings: @escaping () -> Void,
+        onViewMonthEndClose: @escaping () -> Void = {},
+        onNavigateToReport: @escaping (ReportDestination) -> Void = { _ in },
         isSyncing: Bool = false,
         onSync: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
@@ -119,6 +180,8 @@ public struct ClientDashboardView: View {
         self.state = state
         self.onOpenFinding = onOpenFinding
         self.onViewAllFindings = onViewAllFindings
+        self.onViewMonthEndClose = onViewMonthEndClose
+        self.onNavigateToReport = onNavigateToReport
         self.isSyncing = isSyncing
         self.onSync = onSync
         self.aiStatus = aiStatus
@@ -180,6 +243,29 @@ public struct ClientDashboardView: View {
                         }
                         ExpenseDriverBarChart(drivers: TopExpenseDrivers.top(5, from: state.profitAndLossLines))
                     }
+                }
+
+                if let arApCards = arApKPICards {
+                    KPICardRow(cards: arApCards)
+                }
+
+                if !state.topVendors.isEmpty {
+                    RankedMoneyBarChart(
+                        title: "Top Vendors by Spend",
+                        entries: state.topVendors.map { .init(id: $0.id, label: $0.vendorName, amount: $0.total) }
+                    )
+                }
+
+                if let forecast = state.cashFlowForecast, forecast.startingCash != nil {
+                    cashFlowForecastCard(forecast)
+                }
+
+                if state.missingRecurringVendorsCount > 0 {
+                    recurringVendorsAlertCard
+                }
+
+                if let progress = state.monthEndChecklistProgress {
+                    monthEndCloseCard(progress)
                 }
 
                 topFindingsSection
@@ -257,36 +343,208 @@ public struct ClientDashboardView: View {
 
     private var balanceSheetKPICards: [KPICardRow.CardData] {
         [
-            kpiCard(label: "Working Capital", money: FinancialKPIs.workingCapital(from: state.balanceSheetLines)),
-            kpiCard(label: "Current Ratio", ratio: FinancialKPIs.currentRatio(from: state.balanceSheetLines)),
-            kpiCard(label: "Quick Ratio", ratio: FinancialKPIs.quickRatio(from: state.balanceSheetLines))
+            kpiCard(
+                label: "Cash Balance",
+                money: FinancialKPIs.cashBalance(from: state.balanceSheetLines),
+                trend: moneyTrend(current: FinancialKPIs.cashBalance(from: state.balanceSheetLines), prior: FinancialKPIs.cashBalance(from: state.priorBalanceSheetLines)),
+                onTap: { onNavigateToReport(.balanceSheet) }
+            ),
+            kpiCard(
+                label: "Working Capital",
+                money: FinancialKPIs.workingCapital(from: state.balanceSheetLines),
+                trend: moneyTrend(current: FinancialKPIs.workingCapital(from: state.balanceSheetLines), prior: FinancialKPIs.workingCapital(from: state.priorBalanceSheetLines)),
+                onTap: { onNavigateToReport(.balanceSheet) }
+            ),
+            kpiCard(
+                label: "Current Ratio",
+                ratio: FinancialKPIs.currentRatio(from: state.balanceSheetLines),
+                trend: pointsTrend(current: FinancialKPIs.currentRatio(from: state.balanceSheetLines), prior: FinancialKPIs.currentRatio(from: state.priorBalanceSheetLines), suffix: "x"),
+                onTap: { onNavigateToReport(.balanceSheet) }
+            ),
+            kpiCard(
+                label: "Quick Ratio",
+                ratio: FinancialKPIs.quickRatio(from: state.balanceSheetLines),
+                trend: pointsTrend(current: FinancialKPIs.quickRatio(from: state.balanceSheetLines), prior: FinancialKPIs.quickRatio(from: state.priorBalanceSheetLines), suffix: "x"),
+                onTap: { onNavigateToReport(.balanceSheet) }
+            )
         ]
     }
 
     private var profitAndLossKPICards: [KPICardRow.CardData] {
         [
-            kpiCard(label: "Gross Margin", percent: FinancialKPIs.grossMarginPercent(from: state.profitAndLossLines)),
-            kpiCard(label: "Net Margin", percent: FinancialKPIs.netMarginPercent(from: state.profitAndLossLines)),
-            KPICardRow.CardData(
+            kpiCard(
+                label: "Gross Margin",
+                percent: FinancialKPIs.grossMarginPercent(from: state.profitAndLossLines),
+                trend: pointsTrend(current: FinancialKPIs.grossMarginPercent(from: state.profitAndLossLines), prior: FinancialKPIs.grossMarginPercent(from: state.priorProfitAndLossLines), suffix: "pts"),
+                onTap: { onNavigateToReport(.profitAndLoss) }
+            ),
+            kpiCard(
+                label: "Net Margin",
+                percent: FinancialKPIs.netMarginPercent(from: state.profitAndLossLines),
+                trend: pointsTrend(current: FinancialKPIs.netMarginPercent(from: state.profitAndLossLines), prior: FinancialKPIs.netMarginPercent(from: state.priorProfitAndLossLines), suffix: "pts"),
+                onTap: { onNavigateToReport(.profitAndLoss) }
+            ),
+            kpiCard(
                 label: "Net Income",
-                value: TaxEstimate.netIncome(from: state.profitAndLossLines)?.description ?? "Not available",
-                isAvailable: TaxEstimate.netIncome(from: state.profitAndLossLines) != nil
+                money: TaxEstimate.netIncome(from: state.profitAndLossLines),
+                trend: moneyTrend(current: TaxEstimate.netIncome(from: state.profitAndLossLines), prior: TaxEstimate.netIncome(from: state.priorProfitAndLossLines)),
+                onTap: { onNavigateToReport(.profitAndLoss) }
             )
         ]
     }
 
-    private func kpiCard(label: String, money: Money?) -> KPICardRow.CardData {
+    /// `nil` when there's no aging data for either receivables or payables
+    /// at all — the whole row stays hidden rather than showing four
+    /// "Not available" cards, same "don't render decoration with nothing
+    /// behind it" posture as `topVendors`/`monthEndChecklistProgress` below.
+    private var arApKPICards: [KPICardRow.CardData]? {
+        let receivables = AgingSummary.summarize(state.agedReceivablesLines)
+        let payables = AgingSummary.summarize(state.agedPayablesLines)
+        guard receivables != nil || payables != nil else { return nil }
+
+        var cards: [KPICardRow.CardData] = []
+        if let receivables {
+            cards.append(KPICardRow.CardData(
+                label: "Accounts Receivable",
+                value: receivables.totalAmount?.description ?? "Not available",
+                isAvailable: receivables.totalAmount != nil,
+                detail: receivables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
+                onTap: { onNavigateToReport(.agedReceivables) }
+            ))
+            cards.append(kpiCard(
+                label: "Days Sales Outstanding (approx.)",
+                value: AgingSummary.daysOutstanding(balance: receivables.totalAmount, periodAmount: FinancialKPIs.totalIncome(from: state.profitAndLossLines), daysInPeriod: state.period.daysInMonth).map { String(format: "%.0f days", $0) },
+                onTap: { onNavigateToReport(.agedReceivables) }
+            ))
+        }
+        if let payables {
+            cards.append(KPICardRow.CardData(
+                label: "Accounts Payable",
+                value: payables.totalAmount?.description ?? "Not available",
+                isAvailable: payables.totalAmount != nil,
+                detail: payables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
+                onTap: { onNavigateToReport(.agedPayables) }
+            ))
+            cards.append(kpiCard(
+                label: "Days Payable Outstanding (approx.)",
+                value: AgingSummary.daysOutstanding(balance: payables.totalAmount, periodAmount: FinancialKPIs.totalExpenses(from: state.profitAndLossLines), daysInPeriod: state.period.daysInMonth).map { String(format: "%.0f days", $0) },
+                onTap: { onNavigateToReport(.agedPayables) }
+            ))
+        }
+        return cards
+    }
+
+    private func cashFlowForecastCard(_ forecast: CashFlowForecast) -> some View {
+        Button { onNavigateToReport(.cashFlowForecast) } label: {
+            VLCard {
+                VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                    HStack {
+                        Text("CASH FLOW FORECAST")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    HStack(spacing: VLSpacing.sm) {
+                        ForEach(forecast.horizons) { horizon in
+                            VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                                Text("IN \(horizon.days) DAYS")
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                                Text(horizon.projectedEndingCash?.description ?? "Not available")
+                                    .font(VLTypography.metricMedium())
+                                    .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var recurringVendorsAlertCard: some View {
+        Button { onNavigateToReport(.recurringVendors) } label: {
+            VLCard(accentRail: VLColor.violet) {
+                HStack {
+                    VLStatusPill(.reviewNeeded, label: "\(state.missingRecurringVendorsCount) recurring vendor(s) overdue for their expected charge")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(VLColor.textMuted)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func monthEndCloseCard(_ progress: (completed: Int, total: Int)) -> some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                HStack {
+                    Text("MONTH-END CLOSE PROGRESS")
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    Button("Open Checklist") { onViewMonthEndClose() }
+                        .buttonStyle(.plain)
+                        .font(VLTypography.caption())
+                }
+                HStack(spacing: VLSpacing.sm) {
+                    ProgressView(value: progress.total > 0 ? Double(progress.completed) / Double(progress.total) : 0)
+                        .tint(VLColor.cyan)
+                    Text("\(progress.completed) of \(progress.total)")
+                        .font(VLTypography.label())
+                        .foregroundStyle(VLColor.textSecondary)
+                }
+            }
+        }
+    }
+
+    private func kpiCard(label: String, money: Money?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
         guard let money else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: money.description)
+        return KPICardRow.CardData(label: label, value: money.description, trend: trend, onTap: onTap)
     }
 
-    private func kpiCard(label: String, ratio: Double?) -> KPICardRow.CardData {
+    private func kpiCard(label: String, ratio: Double?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
         guard let ratio else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: String(format: "%.2fx", ratio))
+        return KPICardRow.CardData(label: label, value: String(format: "%.2fx", ratio), trend: trend, onTap: onTap)
     }
 
-    private func kpiCard(label: String, percent: Double?) -> KPICardRow.CardData {
+    private func kpiCard(label: String, percent: Double?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
         guard let percent else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: String(format: "%.1f%%", percent))
+        return KPICardRow.CardData(label: label, value: String(format: "%.1f%%", percent), trend: trend, onTap: onTap)
+    }
+
+    private func kpiCard(label: String, value: String?, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
+        guard let value else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
+        return KPICardRow.CardData(label: label, value: value, onTap: onTap)
+    }
+
+    /// "vs last month" period-over-period change for a `Money` KPI —
+    /// `nil` (no trend shown) rather than a fabricated 0% when the prior
+    /// period isn't loaded yet or the two amounts aren't in the same
+    /// currency.
+    private func moneyTrend(current: Money?, prior: Money?) -> KPICardRow.Trend? {
+        guard let current, let prior, current.currency == prior.currency, prior.minorUnits != 0 else { return nil }
+        let percentChange = Double(current.minorUnits - prior.minorUnits) / Double(abs(prior.minorUnits)) * 100
+        let direction: KPICardRow.Trend.Direction = percentChange > 0.5 ? .up : (percentChange < -0.5 ? .down : .flat)
+        return KPICardRow.Trend(direction: direction, label: String(format: "%.1f%% vs last month", abs(percentChange)))
+    }
+
+    /// The ratio/margin counterpart to `moneyTrend` — a plain point
+    /// difference (e.g. current ratio 1.25x vs. 1.10x is "+0.15x"), not a
+    /// percent-of-a-percent, which reads more naturally for a ratio or
+    /// margin than a compounded percentage would.
+    private func pointsTrend(current: Double?, prior: Double?, suffix: String) -> KPICardRow.Trend? {
+        guard let current, let prior else { return nil }
+        let delta = current - prior
+        let direction: KPICardRow.Trend.Direction = delta > 0.05 ? .up : (delta < -0.05 ? .down : .flat)
+        return KPICardRow.Trend(direction: direction, label: String(format: "%.2f\(suffix) vs last month", abs(delta)))
     }
 }

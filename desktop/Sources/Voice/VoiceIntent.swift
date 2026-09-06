@@ -29,6 +29,8 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case agedReceivablesReport
     case agedPayablesReport
     case generalLedgerReport
+    case cashFlowForecast
+    case recurringVendors
 }
 
 /// A closed set of what a voice command can ever mean. Deliberately has NO

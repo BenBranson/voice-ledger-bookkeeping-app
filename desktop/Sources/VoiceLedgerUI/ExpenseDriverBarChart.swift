@@ -30,12 +30,13 @@ public struct ExpenseDriverBarChart: View {
                             x: .value("Amount", driver.amount.majorUnitsDouble),
                             y: .value("Expense", driver.label)
                         )
-                        .foregroundStyle(VLChartPalette.color(at: index))
-                        .cornerRadius(3)
+                        .foregroundStyle(VLChartPalette.gradient(at: index))
+                        .cornerRadius(6)
                         .annotation(position: .trailing) {
                             Text(driver.amount.description)
-                                .font(VLTypography.caption())
-                                .foregroundStyle(VLColor.textSecondary)
+                                .font(VLTypography.tabularNumeric())
+                                .fontWeight(.medium)
+                                .foregroundStyle(VLColor.textPrimary)
                         }
                     }
                     .chartXAxis {
