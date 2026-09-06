@@ -39,7 +39,11 @@ export class OpenAIClient implements AICompletionClient {
    * composing `userMessage`/`history` from whatever context (a finding's
    * fields, a question, recent transcript) needs to be included.
    */
-  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = []): Promise<OpenAICompletionResult> {
+  /** `tools` is accepted only to satisfy `AICompletionClient`'s shared
+   * signature and is deliberately ignored — the voice tool-calling loop
+   * only ever targets the primary/Ollama tier (see `routes/ai.ts`), never
+   * this secondary/OpenAI client. */
+  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = [], _tools?: unknown[]): Promise<OpenAICompletionResult> {
     const startedAt = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

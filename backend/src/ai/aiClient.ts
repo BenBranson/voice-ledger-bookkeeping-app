@@ -10,6 +10,24 @@ export interface AICompletionResult {
   readonly text: string;
   readonly model: string;
   readonly latencyMs: number;
+  /// Owner directive (2026-09-06): Voice Ledger's own in-app voice
+  /// assistant moving off phrase-matching onto real tool-calling (see
+  /// `routes/ai.ts`'s `tools` param) — populated only when the caller
+  /// passed `tools` AND the model actually chose to call one; `undefined`
+  /// for every other request, so every existing plain-text caller
+  /// (every on-screen Ask AI panel) is completely unaffected.
+  readonly toolCalls?: AIToolCall[] | undefined;
+}
+
+/** One function call the model chose to make, in response to a `tools`-
+ * enabled request — see `AICompletionResult.toolCalls`. `arguments` is
+ * whatever JSON shape the model produced for that tool's own schema;
+ * the caller (never this file) is responsible for validating it against
+ * the specific tool it named. */
+export interface AIToolCall {
+  readonly id?: string | undefined;
+  readonly name: string;
+  readonly arguments: Record<string, unknown>;
 }
 
 /**
@@ -31,5 +49,9 @@ export interface AIChatTurn {
 }
 
 export interface AICompletionClient {
-  complete(systemPrompt: string, userMessage: string, history?: AIChatTurn[]): Promise<AICompletionResult>;
+  /** `tools` — see `AICompletionResult.toolCalls`'s doc comment. Optional
+   * and ignored by providers that don't implement function-calling for
+   * this app's purposes (`OpenAIClient`, never used by the voice tool
+   * loop); `OllamaClient` is the one real implementation. */
+  complete(systemPrompt: string, userMessage: string, history?: AIChatTurn[], tools?: unknown[]): Promise<AICompletionResult>;
 }

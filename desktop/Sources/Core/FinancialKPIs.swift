@@ -66,6 +66,23 @@ public enum FinancialKPIs {
         return currentAssets.majorUnitsDouble / currentLiabilities.majorUnitsDouble
     }
 
+    /// The client's current cash/bank balance — same label candidates
+    /// `quickRatio` already verified live against this sandbox company
+    /// ("Cash" first, falling back to "Total Bank Accounts"). Added
+    /// 2026-09-06 for `VoiceToolLoop`'s `get_financial_summary` tool —
+    /// previously this amount was only ever computed as a hidden
+    /// intermediate inside `quickRatio`, never exposed on its own.
+    public static func cashBalance(from balanceSheetLines: [ReportLine]) -> Money? {
+        summaryAmount(["Cash", "Total Bank Accounts"], in: balanceSheetLines)
+    }
+
+    /// Total revenue for the period — same label `grossMarginPercent`/
+    /// `netMarginPercent` already use as their denominator, exposed on its
+    /// own for `VoiceToolLoop`'s `get_financial_summary` tool.
+    public static func totalIncome(from profitAndLossLines: [ReportLine]) -> Money? {
+        summaryAmount(["Total Income"], in: profitAndLossLines)
+    }
+
     /// (Cash + Accounts Receivable) / Total Current Liabilities. "Cash"
     /// tries a bare "Cash" summary line first, falling back to "Total Bank
     /// Accounts" — this sandbox company (confirmed live 2026-08-29) has no

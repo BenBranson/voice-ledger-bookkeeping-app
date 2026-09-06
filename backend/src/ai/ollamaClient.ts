@@ -30,7 +30,7 @@
  * still the only field ever read below, unaffected either way.
  */
 
-import type { AIChatTurn, AICompletionClient, AICompletionResult } from "./aiClient.js";
+import type { AIChatTurn, AICompletionClient, AICompletionResult, AIToolCall } from "./aiClient.js";
 
 export class OllamaApiError extends Error {
   constructor(
@@ -50,8 +50,18 @@ export class OllamaClient implements AICompletionClient {
 
   /** `history` (see `AIChatTurn`'s doc comment): prior turns of the SAME
    * voice conversation, replayed between the system prompt and the final
-   * user message so a follow-up isn't answered from zero context. */
-  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = []): Promise<AICompletionResult> {
+   * user message so a follow-up isn't answered from zero context.
+   *
+   * `tools` (2026-09-06): Voice Ledger's own in-app voice assistant moving
+   * off exact-phrase matching onto real function-calling — confirmed live
+   * against this exact model (`gemma4:12b`) before this was wired in:
+   * given a `tools` array, it correctly returns `message.tool_calls`
+   * (empty `content`) rather than guessing at prose, and forwarding a
+   * `role: "tool"` result back in a follow-up `history` turn produces a
+   * correctly grounded final answer. Omitted entirely from the request
+   * body when not provided (`undefined` inside `JSON.stringify` is
+   * dropped, not sent as `null`), so every non-voice caller is unaffected. */
+  async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = [], tools?: unknown[]): Promise<AICompletionResult> {
     const startedAt = Date.now();
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
@@ -70,6 +80,7 @@ export class OllamaClient implements AICompletionClient {
         // doesn't support "thinking" at all (e.g. gemma4:e4b): Ollama
         // simply ignores the field rather than erroring.
         think: false,
+        tools,
         options: {
           // Same deterministic-leaning reasoning as OpenAIClient's own
           // temperature: this explains an already-computed finding, it
@@ -110,14 +121,27 @@ export class OllamaClient implements AICompletionClient {
     }
 
     const data = (await response.json()) as {
-      message?: { content?: string };
+      message?: {
+        content?: string;
+        tool_calls?: { id?: string; function: { name: string; arguments: Record<string, unknown> } }[];
+      };
       model?: string;
     };
+    const rawToolCalls = data.message?.tool_calls;
+    const toolCalls: AIToolCall[] | undefined =
+      rawToolCalls && rawToolCalls.length > 0
+        ? rawToolCalls.map((call) => ({ id: call.id, name: call.function.name, arguments: call.function.arguments }))
+        : undefined;
+
     const text = data.message?.content;
-    if (typeof text !== "string" || text.trim() === "") {
+    // A tool-call response legitimately has empty `content` — confirmed
+    // live (see this method's own doc comment) — so only requests that
+    // did NOT produce a tool call are held to the "must have real text"
+    // rule every other caller of this client still depends on.
+    if (!toolCalls && (typeof text !== "string" || text.trim() === "")) {
       throw new OllamaApiError("Ollama response had no completion text", response.status);
     }
 
-    return { text, model: data.model ?? this.model, latencyMs };
+    return { text: text ?? "", model: data.model ?? this.model, latencyMs, toolCalls };
   }
 }

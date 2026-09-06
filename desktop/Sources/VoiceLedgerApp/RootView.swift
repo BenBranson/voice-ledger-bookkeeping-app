@@ -61,6 +61,32 @@ struct RootView: View {
         } message: {
             Text(state.exportError ?? "")
         }
+        // Owner-facing (2026-09-06): the voice assistant's chart-popup
+        // capability (`VoiceUIAction.presentChart`) — global, not
+        // per-page, matching the voice status panel above: a chart can be
+        // requested from any screen.
+        .sheet(isPresented: Binding(get: { state.presentedChart != nil }, set: { if !$0 { state.presentedChart = nil } })) {
+            if let request = state.presentedChart {
+                ChartPopupView(request: request) { state.presentedChart = nil }
+            }
+        }
+        // Owner-facing (2026-09-06): "pull up two transactions... side by
+        // side" (`VoiceUIAction.openFindings`) — resolves ids to real
+        // `Finding`s fresh from `state.findings` every render, so a
+        // finding resolved/dismissed elsewhere while the sheet is open
+        // never shows stale data.
+        .sheet(isPresented: Binding(get: { !state.comparedFindingIDs.isEmpty }, set: { if !$0 { state.comparedFindingIDs = [] } })) {
+            FindingComparisonView(
+                findings: state.comparedFindingIDs.compactMap { state.finding(id: $0) },
+                onSelectFinding: { finding in
+                    state.comparedFindingIDs = []
+                    state.screen = .detail(findingID: finding.id)
+                },
+                onClose: { finding in
+                    state.comparedFindingIDs.removeAll { $0 == finding.id }
+                }
+            )
+        }
     }
 
     /// Bridges `AppState.screen` (the real navigation state, including the
@@ -536,6 +562,22 @@ struct RootView: View {
                 )
                 .padding(.horizontal, VLSpacing.pageGutter)
                 .padding(.top, VLSpacing.md)
+
+                // Owner-facing (2026-09-06): "in case the mic system is
+                // down at some point, there should be a harness on the
+                // dashboard for me to ask questions and make commands
+                // just as powerful as by voice." Calls the exact same
+                // `VoiceEngine.handleTypedCommand` pipeline a spoken turn
+                // goes through (router match, tool-calling fallback,
+                // navigate/open/chart, spoken reply) — the only thing
+                // skipped is speech-to-text.
+                TypedCommandHarness(
+                    isProcessing: state.voiceEngine.isProcessing,
+                    lastMessage: state.voiceEngine.lastMessage,
+                    onSubmit: { text in Task { await state.voiceEngine.handleTypedCommand(text) } }
+                )
+                .padding(.horizontal, VLSpacing.pageGutter)
+                .padding(.top, VLSpacing.sm)
 
                 FindingsListView(
                     state: FindingsListView.ViewState(
@@ -1938,6 +1980,46 @@ struct RootView: View {
 
 /// The dashboard's own prominent voice entry point — see the `.list` case's
 /// doc comment for why this exists alongside `AppSidebar`'s footer button.
+/// Owner-facing (2026-09-06) — see this view's own call site's doc
+/// comment. Deliberately its own small component, not folded into
+/// `DashboardVoiceBanner`, since the two have genuinely different jobs:
+/// that one starts/stops listening, this one submits typed text through
+/// the exact same downstream pipeline.
+private struct TypedCommandHarness: View {
+    let isProcessing: Bool
+    let lastMessage: String?
+    let onSubmit: (String) -> Void
+
+    @State private var draft = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+            HStack(spacing: VLSpacing.sm) {
+                TextField("Type a command or question — \"pull up the Acme bill\", \"chart expenses this month\"…", text: $draft)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isProcessing)
+                    .onSubmit(submit)
+                Button(isProcessing ? "Thinking…" : "Ask") { submit() }
+                    .buttonStyle(.bordered)
+                    .disabled(isProcessing || draft.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if let lastMessage, !isProcessing {
+                Text(lastMessage)
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
+                    .lineLimit(3)
+            }
+        }
+    }
+
+    private func submit() {
+        let text = draft.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        draft = ""
+        onSubmit(text)
+    }
+}
+
 private struct DashboardVoiceBanner: View {
     let isListening: Bool
     let isProcessing: Bool

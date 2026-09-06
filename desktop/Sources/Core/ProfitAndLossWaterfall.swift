@@ -10,7 +10,7 @@ import Foundation
 /// COGS section, minus Net Income) so it's always internally consistent
 /// by construction, never a wrong number from a label that didn't match.
 public enum ProfitAndLossWaterfall {
-    public struct Segment: Identifiable, Sendable {
+    public struct Segment: Identifiable, Sendable, Equatable {
         public let id: String
         public let label: String
         public let start: Double

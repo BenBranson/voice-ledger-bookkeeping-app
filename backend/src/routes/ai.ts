@@ -299,12 +299,27 @@ export function aiRoutes(
 
       const history = sanitizeHistory(req.body?.history);
 
+      // Owner directive (2026-09-06): Voice Ledger's own in-app voice
+      // assistant moving off exact-phrase matching onto real tool-calling
+      // — see `VoiceToolLoop.swift`. Only the primary/Ollama tier ever
+      // receives `tools` (the secondary/OpenAI tier is opt-in, paid,
+      // per-question, and never part of this loop). Rejected outright
+      // when malformed rather than silently ignored, matching this
+      // route's existing "reject, don't silently default" posture for
+      // `tier`/`format`/`model` above.
+      const rawTools = req.body?.tools;
+      if (rawTools !== undefined && (!Array.isArray(rawTools) || useSecondary)) {
+        res.status(400).json({ error: useSecondary ? "tools is only supported on the primary tier." : "tools must be an array when present." });
+        return;
+      }
+      const tools = rawTools as unknown[] | undefined;
+
       logEvent("ask_ai_invoked", { realmId, tier: useSecondary ? "secondary" : "primary" });
       try {
         const userMessage = `Context (already computed by the app, not by you):\n${context}\n\nQuestion: ${question}`;
-        const result = await activeClient.complete(systemPrompt(format === "report" || format === "client_message" ? format : "concise"), userMessage, history);
+        const result = await activeClient.complete(systemPrompt(format === "report" || format === "client_message" ? format : "concise"), userMessage, history, tools);
         logEvent("ask_ai_succeeded", { realmId, tier: useSecondary ? "secondary" : "primary", latencyMs: result.latencyMs });
-        res.json({ answer: result.text, model: result.model });
+        res.json({ answer: result.text, model: result.model, toolCalls: result.toolCalls });
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "UnknownError";
         if (error instanceof OpenAIApiError || error instanceof OllamaApiError) {

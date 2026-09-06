@@ -48,10 +48,17 @@ public final class VoiceEngine: NSObject {
     /// `loadPersistedContext()`; appended to live as each turn happens.
     public private(set) var transcriptHistory: [VoiceTranscriptEntry] = []
 
-    private unowned let appState: AppState
+    /// `internal`, not `private` — widened 2026-09-06 so `VoiceToolLoop.swift`
+    /// (a same-target extension, kept in its own file for size) can dispatch
+    /// tool calls against the same `AppState` this engine already owns,
+    /// rather than threading it through every tool function as a parameter.
+    unowned let appState: AppState
     private let voiceService: VoiceServiceClient
     private let actorName: String
-    private var context: VoiceSessionContext = .empty
+    /// `internal`, not `private` — `VoiceToolLoop.swift` reads
+    /// `currentEntity` to keep an open-ended follow-up grounded in
+    /// whichever finding is currently on screen, same as `explainCurrentEntity` already did.
+    var context: VoiceSessionContext = .empty
 
     private let audioEngine = AVAudioEngine()
     private var recordingURL: URL?
@@ -459,6 +466,24 @@ public final class VoiceEngine: NSObject {
         }
     }
 
+    /// Owner-facing (2026-09-06): "there should be a harness on the
+    /// dashboard for me to ask questions and make commands just as
+    /// powerful as by voice" — a typed fallback for when the microphone
+    /// isn't available, reusing the EXACT same pipeline a spoken command
+    /// goes through (router match → tool-calling fallback → apply UI
+    /// action → speak the answer aloud too, same as a real voice turn)
+    /// rather than a separate, weaker text-only path. The only thing
+    /// skipped is speech-to-text itself — everything downstream of having
+    /// real text is identical.
+    public func handleTypedCommand(_ text: String) async {
+        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        transcript = text
+        isProcessing = true
+        await recordTranscript(speaker: .user, text: text)
+        await processCommand(text)
+        isProcessing = false
+    }
+
     private func processCommand(_ text: String) async {
         let intent = VoiceIntentRouter.match(text: text, context: context)
         let turn = await resolveTurn(for: intent, rawText: text)
@@ -508,21 +533,37 @@ public final class VoiceEngine: NSObject {
 
     // MARK: - UI actions
 
-    private func apply(_ action: VoiceUIAction) {
+    /// `internal`, not `private` — `VoiceToolLoop.swift` applies the same
+    /// UI actions a tool call resolves to, through this one chokepoint.
+    func apply(_ action: VoiceUIAction) {
         switch action {
         case .navigate(let destination):
             appState.screen = Self.screen(for: destination)
         case .openFinding(let id):
             appState.screen = .detail(findingID: id)
+        case .openFindings(let ids):
+            // A single id degrades to the normal full-page detail view —
+            // no reason to force a two-pane comparison sheet open for
+            // what "pull up X" already handles well.
+            if ids.count <= 1 {
+                if let id = ids.first { appState.screen = .detail(findingID: id) }
+            } else {
+                appState.comparedFindingIDs = ids
+            }
         case .goBack:
             // No navigation stack exists in AppState yet — the safest
             // universal "back" is the findings list, the same landing
             // screen every other "go back" affordance in this app uses.
             appState.screen = .list
+        case .presentChart(let request):
+            appState.presentedChart = request
         }
     }
 
-    private static func screen(for destination: VoiceDestination) -> AppState.Screen {
+    /// `internal`, not `private` — `VoiceToolLoop.swift`'s `navigate` tool
+    /// reuses this exact mapping so a tool-driven navigation can never
+    /// silently diverge from what `VoiceIntentRouter`'s own matches do.
+    static func screen(for destination: VoiceDestination) -> AppState.Screen {
         switch destination {
         case .findingsList: return .list
         case .cleanupAssessment: return .cleanupAssessment
@@ -674,7 +715,15 @@ public final class VoiceEngine: NSObject {
             return await resolvePendingAction(approved: false)
 
         case .unrecognized:
-            return await reasoningFallback(rawText: rawText)
+            // Owner directive (2026-09-06): "move away from phrase matching
+            // and move to understand me no matter how I say it." Anything
+            // `VoiceIntentRouter`'s exact-phrase matches didn't catch now
+            // gets real tool-calling capability (navigate, open/compare
+            // findings, financial lookups, charts, refresh, switch client)
+            // instead of narration only — see `VoiceToolLoop`'s own doc
+            // comment for why this is the same safety property through a
+            // different, still-real mechanism.
+            return await handleWithTools(rawText: rawText)
         }
     }
 
@@ -716,7 +765,10 @@ public final class VoiceEngine: NSObject {
     /// as history. Capped at 12 turns here too — belt-and-suspenders with
     /// the backend's own `sanitizeHistory`, which enforces the real budget
     /// regardless of what this sends.
-    private func recentHistory(maxTurns: Int = 12) -> [AskAIHistoryTurn] {
+    /// `internal`, not `private` — `VoiceToolLoop.swift` reuses this for
+    /// the same reason (conversation continuity across tool-calling turns,
+    /// not just the reasoning fallback).
+    func recentHistory(maxTurns: Int = 12) -> [AskAIHistoryTurn] {
         transcriptHistory.dropLast().suffix(maxTurns).map { entry in
             AskAIHistoryTurn(role: entry.speaker == .user ? "user" : "assistant", content: entry.text)
         }
@@ -755,38 +807,6 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: answer, uiAction: .openFinding(id: finding.id))
         }
         return VoiceTurn(speech: "I couldn't get an explanation right now. \(finding.narrative ?? finding.title)", uiAction: .openFinding(id: finding.id))
-    }
-
-    /// Open-ended questions the router didn't match — grounded in whatever
-    /// entity is currently active, same `AskAIContext` boundary as above,
-    /// never a general free-form chat with no real data behind it.
-    private func reasoningFallback(rawText: String) async -> VoiceTurn {
-        let contextText: String
-        var openFindingsCount = 0
-        if let entityRef = context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
-            contextText = AskAIContext.compose(finding: finding)
-        } else {
-            let openFindings = appState.findings.filter { $0.status == .open }
-            openFindingsCount = openFindings.count
-            contextText = AskAIContext.compose(pageTitle: "Voice Ledger", findings: openFindings)
-        }
-        await appState.askAI(contextKey: Self.reasoningContextKey, contextText: contextText, question: rawText, history: recentHistory(), model: Self.voiceModel)
-        if let answer = appState.askAIAnswers[Self.reasoningContextKey] {
-            // Deterministic (Swift-authored, not model-authored) nudge
-            // toward the review queue — real, live-tested gap (2026-08-29):
-            // a narrated list of open findings had no way back in, since
-            // nothing had actually been opened. Only appended when this
-            // answer was actually grounded in the general open-findings
-            // list (not a specific finding already being discussed).
-            if openFindingsCount > 0 {
-                return VoiceTurn(speech: "\(answer) Say \"start review\" and I'll walk you through them one at a time.")
-            }
-            return VoiceTurn(speech: answer)
-        }
-        if let aiStatus = appState.aiStatus, !aiStatus.configured {
-            return VoiceTurn(speech: "AI isn't configured on this backend yet, so I can't answer that kind of question — but I can navigate, open findings, and walk you through a review queue.")
-        }
-        return VoiceTurn(speech: "I didn't catch a command in that, and I couldn't get an answer either. Try asking again, or say a page name to navigate.")
     }
 
     /// Resolves `context.pendingAction` — the ONLY two kinds that can ever

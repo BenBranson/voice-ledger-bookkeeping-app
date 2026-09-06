@@ -7,7 +7,7 @@ import Foundation
 /// after — the same "flattened but ordered" shape `ReportLine`'s doc
 /// comment already documents for the Balance Sheet.
 public enum TopExpenseDrivers {
-    public struct Driver: Identifiable, Sendable {
+    public struct Driver: Identifiable, Sendable, Equatable {
         public let id: String
         public let label: String
         public let amount: Money

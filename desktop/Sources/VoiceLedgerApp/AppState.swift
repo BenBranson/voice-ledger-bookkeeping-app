@@ -97,6 +97,11 @@ public final class AppState {
     /// rule-specific subset. Empty until the first `syncAndEvaluate()`
     /// completes, same posture as `accounts`.
     public private(set) var transactions: [LedgerTransaction] = []
+    /// Added 2026-09-06 for `VoiceToolLoop`'s `get_sync_status` tool
+    /// ("when was this last synced") — `nil` until the first
+    /// `syncAndEvaluate()` in this session completes, set every time
+    /// after that at the same atomic-publish point as `transactions`.
+    public private(set) var lastSyncedAt: Date?
     /// docs/VOICE_LEDGER_SPEC.md Page 2 — Voice Ledger's own stricter period
     /// lock, independent of QBO's unread `BookCloseDate`. `nil` until the
     /// bookkeeper sets one for this realm.
@@ -115,6 +120,20 @@ public final class AppState {
     // manually via the sidebar). `.connection` is still one click away in
     // the sidebar's SETUP section, unchanged.
     public var screen: Screen = .clientDashboard
+    /// Owner-facing (2026-09-06): the voice assistant's chart-popup
+    /// capability (`VoiceUIAction.presentChart`) — `RootView` presents a
+    /// sheet bound to this being non-`nil`. A popup, not a page
+    /// navigation, matching the owner's own framing ("make a pop up with
+    /// chart for the graph"). Setting it to `nil` dismisses the sheet.
+    public var presentedChart: ChartRequest?
+    /// Owner-facing (2026-09-06): the voice assistant's side-by-side
+    /// finding comparison ("pull up these two transactions") —
+    /// `VoiceUIAction.openFindings`. `RootView` presents a sheet showing
+    /// one card per id, each independently closable; the whole sheet
+    /// dismisses once the list is empty. `nil`/empty both mean "not
+    /// shown," so a caller can freely `.removeAll` down to zero without a
+    /// separate dismiss step.
+    public var comparedFindingIDs: [String] = []
     public let environment: QBOEnvironment
     /// Gauntlet Loop, Gauntlet B round 21 (2026-08-24): `syncAndEvaluate()`'s
     /// own re-entrancy guard — deliberately NOT `loadState == .loading`,
@@ -909,6 +928,15 @@ public final class AppState {
         askingAIContextKeys.remove(contextKey)
     }
 
+    /// The tool-calling counterpart to `askAI`, for `VoiceToolLoop`
+    /// (2026-09-06) — thin `backend.askAIWithTools` wrapper, same as every
+    /// other `AppState` method that talks to the backend never does more
+    /// than compose the call and surface the result; the actual tool
+    /// definitions and dispatch logic live entirely in `VoiceToolLoop`.
+    public func askAIWithTools(question: String, context: String, history: [AskAIHistoryTurn], model: String, tools: [[String: JSONValue]]) async throws -> (answer: String, toolCalls: [AIToolCall]) {
+        try await backend.askAIWithTools(realmID: realmID, question: question, context: context, history: history, model: model, tools: tools)
+    }
+
     /// `FindingDetailView`'s call site — a thin wrapper over the general
     /// form above, keyed by finding ID, context composed from that
     /// finding's own already-computed fields.
@@ -1374,6 +1402,7 @@ public final class AppState {
             findings = newFindings
             activityLog = newActivityLog
             importedStatementLineCount = importedLines.count
+            lastSyncedAt = Date()
             loadState = .loaded
         } catch {
             loadState = .failed("\(error)")

@@ -272,6 +272,61 @@ public actor BackendClient {
         return try JSONDecoder().decode(AskAIResponse.self, from: data).answer
     }
 
+    /// The tool-calling counterpart to `askAI` (2026-09-06) — Voice
+    /// Ledger's own in-app voice assistant moving off exact-phrase
+    /// matching onto real function-calling (`VoiceToolLoop`). Always the
+    /// primary/Ollama tier (the backend's own route rejects `tools` on
+    /// the secondary tier outright) and always `model` — the tool-calling
+    /// loop needs a specific, verified-capable model, not whatever the
+    /// backend happens to default to.
+    ///
+    /// `tools` is `[[String: JSONValue]]`, not `[[String: Any]]` — this is
+    /// an `actor`, and a plain `Any`-typed dictionary can't cross that
+    /// boundary (the exact same fix a sibling project's own MCP work
+    /// needed for the identical reason). Returns the model's own answer
+    /// text (empty when it chose to call a tool instead of answering
+    /// directly — confirmed live this is the real Ollama shape, not an
+    /// error) plus any tool calls it made.
+    public func askAIWithTools(
+        realmID: RealmID,
+        question: String,
+        context: String,
+        history: [AskAIHistoryTurn] = [],
+        model: String,
+        tools: [[String: JSONValue]]
+    ) async throws -> (answer: String, toolCalls: [AIToolCall]) {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body = AskAIWithToolsRequest(
+            question: question,
+            context: context,
+            history: history,
+            tier: AskAITier.primary.rawValue,
+            model: model,
+            tools: tools.map { JSONValue.object($0) }
+        )
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let responseBody = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: responseBody)
+        }
+        let decoded = try JSONDecoder().decode(AskAIWithToolsResponse.self, from: data)
+        let toolCalls = (decoded.toolCalls ?? []).map { AIToolCall(id: $0.id, name: $0.name, arguments: $0.arguments) }
+        return (decoded.answer, toolCalls)
+    }
+
     /// The one generic call this client makes — `POST
     /// /realms/:realmId/operations/:operationName`, mirroring
     /// `backend/src/routes/operations.ts`'s "entire surface." `operation` is
@@ -381,6 +436,34 @@ struct AskAIRequest: Encodable, Sendable {
 
 struct AskAIResponse: Decodable, Sendable {
     let answer: String
+}
+
+struct AskAIWithToolsRequest: Encodable, Sendable {
+    let question: String
+    let context: String
+    let history: [AskAIHistoryTurn]
+    let tier: String
+    let model: String
+    let tools: [JSONValue]
+}
+
+struct AskAIWithToolsResponse: Decodable, Sendable {
+    struct ToolCallPayload: Decodable, Sendable {
+        let id: String?
+        let name: String
+        let arguments: [String: JSONValue]
+    }
+    let answer: String
+    let toolCalls: [ToolCallPayload]?
+}
+
+/// A single tool call the model chose to make — see `BackendClient
+/// .askAIWithTools`'s doc comment for why `arguments` is `JSONValue`-typed
+/// rather than `[String: Any]`.
+public struct AIToolCall: Sendable {
+    public let id: String?
+    public let name: String
+    public let arguments: [String: JSONValue]
 }
 
 
