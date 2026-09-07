@@ -77,8 +77,18 @@ public struct KPICardRow: View {
         self.cards = cards
     }
 
+    /// Owner directive (2026-09-06): flagged during testing — a plain
+    /// `HStack` doesn't reflow, so a row of 4-5 cards squeezes unreadably
+    /// (or overflows past the window edge with no way to scroll to it) on
+    /// a laptop-width window, even though it looked fine on the wide
+    /// external monitor this was built and tested against. A `LazyVGrid`
+    /// with an adaptive column gives every card a real minimum width and
+    /// wraps extra cards onto a new row instead, with no per-window-size
+    /// logic to maintain.
+    private static let minimumCardWidth: CGFloat = 160
+
     public var body: some View {
-        HStack(spacing: VLSpacing.sm) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.minimumCardWidth), spacing: VLSpacing.sm)], spacing: VLSpacing.sm) {
             ForEach(cards) { card in
                 if let onTap = card.onTap {
                     Button(action: onTap) {

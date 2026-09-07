@@ -448,7 +448,10 @@ public struct ClientDashboardView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(VLColor.textMuted)
                     }
-                    HStack(spacing: VLSpacing.sm) {
+                    // Same narrow-window reflow fix as `KPICardRow` — a
+                    // plain `HStack` doesn't wrap, so these 3 horizons
+                    // could squeeze or overflow on a laptop-width window.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: VLSpacing.sm)], spacing: VLSpacing.sm) {
                         ForEach(forecast.horizons) { horizon in
                             VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                                 Text("IN \(horizon.days) DAYS")
