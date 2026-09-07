@@ -88,7 +88,7 @@ public struct ClosePackageView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
-    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
+    private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
     /// Owner directive (2026-08-31): "a narrated summary in the Close
     /// Package PDF" — separate answer/error/in-flight state from the Q&A
     /// panel above, same reasoning as every other dedicated-purpose Ask AI
@@ -133,7 +133,7 @@ public struct ClosePackageView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil,
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
         executiveSummaryAnswer: String? = nil,
         isGeneratingExecutiveSummary: Bool = false,
         executiveSummaryError: String? = nil,
@@ -170,7 +170,7 @@ public struct ClosePackageView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
-        self.alternateModelTier = alternateModelTier
+        self.alternateModelTiers = alternateModelTiers
         self.executiveSummaryAnswer = executiveSummaryAnswer
         self.isGeneratingExecutiveSummary = isGeneratingExecutiveSummary
         self.executiveSummaryError = executiveSummaryError
@@ -247,7 +247,7 @@ public struct ClosePackageView: View {
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
                     onAskSecondOpinion: onAskSecondOpinion,
-                    alternateModelTier: alternateModelTier
+                    alternateModelTiers: alternateModelTiers
                 )
             }
             .padding(VLSpacing.pageGutter)

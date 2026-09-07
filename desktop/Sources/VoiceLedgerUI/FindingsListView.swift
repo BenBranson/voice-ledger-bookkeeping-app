@@ -44,6 +44,17 @@ public struct FindingsListView: View {
         public let valueSummarySecondOpinionAnswer: String?
         public let isGeneratingValueSummarySecondOpinion: Bool
         public let valueSummarySecondOpinionError: String?
+        /// Owner directive (2026-09-07): "generate report with claude
+        /// button" — a third report tier, gated separately from
+        /// `secondOpinionConfigured` (OpenAI) since the two are configured
+        /// independently (different API keys/providers).
+        public let claudeConfigured: Bool
+        public let healthReportClaudeAnswer: String?
+        public let isGeneratingHealthReportClaude: Bool
+        public let healthReportClaudeError: String?
+        public let valueSummaryClaudeAnswer: String?
+        public let isGeneratingValueSummaryClaude: Bool
+        public let valueSummaryClaudeError: String?
 
         public init(
             environment: VLEnvironmentTone,
@@ -64,7 +75,14 @@ public struct FindingsListView: View {
             valueSummaryError: String? = nil,
             valueSummarySecondOpinionAnswer: String? = nil,
             isGeneratingValueSummarySecondOpinion: Bool = false,
-            valueSummarySecondOpinionError: String? = nil
+            valueSummarySecondOpinionError: String? = nil,
+            claudeConfigured: Bool = false,
+            healthReportClaudeAnswer: String? = nil,
+            isGeneratingHealthReportClaude: Bool = false,
+            healthReportClaudeError: String? = nil,
+            valueSummaryClaudeAnswer: String? = nil,
+            isGeneratingValueSummaryClaude: Bool = false,
+            valueSummaryClaudeError: String? = nil
         ) {
             self.environment = environment
             self.coverageStatus = coverageStatus
@@ -85,6 +103,13 @@ public struct FindingsListView: View {
             self.valueSummarySecondOpinionAnswer = valueSummarySecondOpinionAnswer
             self.isGeneratingValueSummarySecondOpinion = isGeneratingValueSummarySecondOpinion
             self.valueSummarySecondOpinionError = valueSummarySecondOpinionError
+            self.claudeConfigured = claudeConfigured
+            self.healthReportClaudeAnswer = healthReportClaudeAnswer
+            self.isGeneratingHealthReportClaude = isGeneratingHealthReportClaude
+            self.healthReportClaudeError = healthReportClaudeError
+            self.valueSummaryClaudeAnswer = valueSummaryClaudeAnswer
+            self.isGeneratingValueSummaryClaude = isGeneratingValueSummaryClaude
+            self.valueSummaryClaudeError = valueSummaryClaudeError
         }
 
         // Gauntlet Loop, Gauntlet C round 2 (2026-08-24): a fresh critic
@@ -143,6 +168,12 @@ public struct FindingsListView: View {
     private let onAskHealthReportFollowUpSecondOpinion: (String) -> Void
     private let onAskValueSummaryFollowUp: (String) -> Void
     private let onAskValueSummaryFollowUpSecondOpinion: (String) -> Void
+    /// Owner directive (2026-09-07): a third report tier (Claude Haiku 4.5),
+    /// alongside Gemma (free) and OpenAI (second opinion) above.
+    private let onGenerateHealthReportClaude: () -> Void
+    private let onGenerateValueSummaryClaude: () -> Void
+    private let onAskHealthReportFollowUpClaude: (String) -> Void
+    private let onAskValueSummaryFollowUpClaude: (String) -> Void
     /// Owner directive (2026-09-06): checked findings, in the order they
     /// appear on screen (not `Set` iteration order, which is unspecified) —
     /// opens the (now unlimited) `FindingComparisonView` with exactly the
@@ -179,6 +210,10 @@ public struct FindingsListView: View {
         onAskHealthReportFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUp: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
+        onGenerateHealthReportClaude: @escaping () -> Void = {},
+        onGenerateValueSummaryClaude: @escaping () -> Void = {},
+        onAskHealthReportFollowUpClaude: @escaping (String) -> Void = { _ in },
+        onAskValueSummaryFollowUpClaude: @escaping (String) -> Void = { _ in },
         onCompareSelected: @escaping ([String]) -> Void = { _ in }
     ) {
         self.state = state
@@ -198,6 +233,10 @@ public struct FindingsListView: View {
         self.onAskHealthReportFollowUpSecondOpinion = onAskHealthReportFollowUpSecondOpinion
         self.onAskValueSummaryFollowUp = onAskValueSummaryFollowUp
         self.onAskValueSummaryFollowUpSecondOpinion = onAskValueSummaryFollowUpSecondOpinion
+        self.onGenerateHealthReportClaude = onGenerateHealthReportClaude
+        self.onGenerateValueSummaryClaude = onGenerateValueSummaryClaude
+        self.onAskHealthReportFollowUpClaude = onAskHealthReportFollowUpClaude
+        self.onAskValueSummaryFollowUpClaude = onAskValueSummaryFollowUpClaude
         self.onCompareSelected = onCompareSelected
     }
 
@@ -386,6 +425,19 @@ public struct FindingsListView: View {
                     exportPDFButton(action: onExportHealthReportSecondOpinionPDF)
                 }
             }
+            if state.claudeConfigured {
+                AskAIPanelView(
+                    title: "BOOK HEALTH REPORT (CLAUDE HAIKU 4.5)",
+                    disclaimer: "Same real numbers, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per report and only runs when you ask.",
+                    aiStatus: nil,
+                    answer: state.healthReportClaudeAnswer,
+                    isAsking: state.isGeneratingHealthReportClaude,
+                    error: state.healthReportClaudeError,
+                    onAsk: onAskHealthReportFollowUpClaude,
+                    quickAskLabel: "Generate Report (Claude)",
+                    onQuickAsk: onGenerateHealthReportClaude
+                )
+            }
         }
     }
 
@@ -443,6 +495,19 @@ public struct FindingsListView: View {
                         if state.valueSummarySecondOpinionAnswer != nil {
                             exportPDFButton(action: onExportValueSummarySecondOpinionPDF)
                         }
+                    }
+                    if state.claudeConfigured {
+                        AskAIPanelView(
+                            title: "CLIENT VALUE SUMMARY (CLAUDE HAIKU 4.5)",
+                            disclaimer: "Same real numbers, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per report and only runs when you ask.",
+                            aiStatus: nil,
+                            answer: state.valueSummaryClaudeAnswer,
+                            isAsking: state.isGeneratingValueSummaryClaude,
+                            error: state.valueSummaryClaudeError,
+                            onAsk: onAskValueSummaryFollowUpClaude,
+                            quickAskLabel: "Generate Client Value Report (Claude)",
+                            onQuickAsk: onGenerateValueSummaryClaude
+                        )
                     }
                 }
             }

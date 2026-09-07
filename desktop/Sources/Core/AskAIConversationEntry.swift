@@ -13,6 +13,11 @@ public struct AskAIConversationEntry: Identifiable, Codable, Sendable, Equatable
     public enum Tier: String, Codable, Sendable {
         case primary
         case secondary
+        /// Claude Haiku 4.5 — a THIRD tier (2026-09-07), distinct from
+        /// `.secondary` (OpenAI): both are paid/cloud, but they're
+        /// different providers and the report history log/conversation
+        /// history should say which one actually answered.
+        case claude
     }
 
     public let id: String

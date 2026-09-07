@@ -17,11 +17,12 @@
  */
 
 import { Router, type RequestHandler } from "express";
-import type { AIConfig } from "../config.js";
+import type { AIConfig, AnthropicAIConfig } from "../config.js";
 import type { AISettingsStore } from "../ai/aiSettingsStore.js";
 import type { AIChatTurn, AICompletionClient } from "../ai/aiClient.js";
 import { OpenAIClient, OpenAIApiError } from "../ai/openaiClient.js";
 import { OllamaClient, OllamaApiError } from "../ai/ollamaClient.js";
+import { AnthropicClient, AnthropicApiError } from "../ai/anthropicClient.js";
 import { logEvent } from "../logging/logger.js";
 
 /**
@@ -165,7 +166,11 @@ function buildClient(config: AIConfig | null): AICompletionClient | null {
  * of with a clear 400 here. Add a model to this list only after
  * confirming (`ollama list`) it's actually pulled on this machine.
  */
-const ALLOWED_MODEL_OVERRIDES = ["gemma4:e4b", "gemma4:12b", "qwen3:8b"];
+const ALLOWED_MODEL_OVERRIDES = ["gemma4:e4b", "gemma4:12b", "qwen3:8b", "claude-haiku-4-5"];
+/// The one entry in `ALLOWED_MODEL_OVERRIDES` above that is NOT an Ollama
+/// model — routed to a dedicated `AnthropicClient` instead of a
+/// re-pointed `OllamaClient`, see `overrideClient`'s construction below.
+const ANTHROPIC_MODEL_OVERRIDE = "claude-haiku-4-5";
 
 export function aiRoutes(
   aiConfig: AIConfig | null,
@@ -178,11 +183,17 @@ export function aiRoutes(
   /// when configured, entirely independent of `aiConfig`'s own provider —
   /// a request only ever reaches this client when it explicitly asks for
   /// `tier: "secondary"`.
-  secondaryAIConfig: AIConfig | null = null
+  secondaryAIConfig: AIConfig | null = null,
+  /// The `claude-haiku-4-5` primary-tier model override (2026-09-07) —
+  /// see `config.ts`'s `resolveAnthropicConfig` doc comment. Entirely
+  /// independent of `aiConfig`/`secondaryAIConfig`'s own providers; `null`
+  /// when `ANTHROPIC_API_KEY` isn't set.
+  anthropicConfig: AnthropicAIConfig | null = null
 ): Router {
   const router = Router();
   const client = buildClient(aiConfig);
   const secondaryClient = buildClient(secondaryAIConfig);
+  const anthropicClient = anthropicConfig ? new AnthropicClient(anthropicConfig.apiKey, anthropicConfig.model) : null;
 
   router.get("/ai/status", requireSession, (_req, res) => {
     res.json({
@@ -192,7 +203,9 @@ export function aiRoutes(
       model: aiConfig?.model ?? null,
       secondaryConfigured: secondaryClient !== null,
       secondaryProvider: secondaryAIConfig?.provider ?? null,
-      secondaryModel: secondaryAIConfig?.model ?? null
+      secondaryModel: secondaryAIConfig?.model ?? null,
+      anthropicConfigured: anthropicClient !== null,
+      anthropicModel: anthropicConfig?.model ?? null
     });
   });
 
@@ -211,7 +224,9 @@ export function aiRoutes(
       model: aiConfig?.model ?? null,
       secondaryConfigured: secondaryClient !== null,
       secondaryProvider: secondaryAIConfig?.provider ?? null,
-      secondaryModel: secondaryAIConfig?.model ?? null
+      secondaryModel: secondaryAIConfig?.model ?? null,
+      anthropicConfigured: anthropicClient !== null,
+      anthropicModel: anthropicConfig?.model ?? null
     });
   });
 
@@ -259,17 +274,24 @@ export function aiRoutes(
         return;
       }
       const overrideClient =
-        !useSecondary && requestedModel !== undefined && aiConfig?.provider === "ollama"
-          ? new OllamaClient(aiConfig.baseUrl, requestedModel)
-          : null;
+        useSecondary || requestedModel === undefined
+          ? null
+          : requestedModel === ANTHROPIC_MODEL_OVERRIDE
+            ? anthropicClient
+            : aiConfig?.provider === "ollama"
+              ? new OllamaClient(aiConfig.baseUrl, requestedModel)
+              : null;
       const activeClient = overrideClient ?? (useSecondary ? secondaryClient : client);
 
       if (!activeClient) {
         logEvent("ask_ai_not_configured", { realmId, tier: useSecondary ? "secondary" : "primary" });
         res.status(503).json({
-          error: useSecondary
-            ? "The second-opinion tier isn't configured on this backend — no OpenAI API key is set."
-            : "AI is not configured on this backend yet — no API key is set."
+          error:
+            requestedModel === ANTHROPIC_MODEL_OVERRIDE
+              ? "Claude isn't configured on this backend — no Anthropic API key is set."
+              : useSecondary
+                ? "The second-opinion tier isn't configured on this backend — no OpenAI API key is set."
+                : "AI is not configured on this backend yet — no API key is set."
         });
         return;
       }
@@ -322,7 +344,7 @@ export function aiRoutes(
         res.json({ answer: result.text, model: result.model, toolCalls: result.toolCalls });
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "UnknownError";
-        if (error instanceof OpenAIApiError || error instanceof OllamaApiError) {
+        if (error instanceof OpenAIApiError || error instanceof OllamaApiError || error instanceof AnthropicApiError) {
           logEvent("ask_ai_failed", { realmId, tier: useSecondary ? "secondary" : "primary", httpStatus: error.httpStatus, error: errorName });
         } else {
           logEvent("ask_ai_failed", { realmId, tier: useSecondary ? "secondary" : "primary", error: errorName });

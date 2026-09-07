@@ -10,6 +10,11 @@ struct RootView: View {
     @State private var actorName = NSFullUserName()
     @State private var isImportingStatement = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// Mirrors `VoiceToolLoopPreference.current` (a plain `UserDefaults`
+    /// value SwiftUI has no observation hook into) so the Connection
+    /// page's radio selection updates immediately on tap, rather than only
+    /// on the next unrelated re-render.
+    @State private var selectedVoiceToolLoopModel = VoiceToolLoopPreference.current
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -241,7 +246,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: dashboardAskAIKey, contextText: dashboardContext(), question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -249,7 +255,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(dashboardAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(dashboardAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(dashboardAskAIKey)-qwen", contextText: dashboardContext(), question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(dashboardAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(dashboardAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(dashboardAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(dashboardAskAIKey)-claude", contextText: dashboardContext(), question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -275,11 +291,24 @@ struct RootView: View {
                     aiStatus: state.aiStatus,
                     isCheckingAIStatus: state.isCheckingAIStatus,
                     isTogglingAIEnabled: state.isTogglingAIEnabled,
-                    aiStatusError: state.aiStatusError
+                    aiStatusError: state.aiStatusError,
+                    voiceAssistantModelOptions: VoiceToolLoopModel.allCases.map { model in
+                        ConnectionView.VoiceModelOption(
+                            id: model.rawValue,
+                            label: model.displayName,
+                            isAvailable: model == .gemma || state.aiStatus?.anthropicConfigured == true
+                        )
+                    },
+                    selectedVoiceAssistantModelID: selectedVoiceToolLoopModel.rawValue
                 ),
                 onCheckHealth: { Task { await state.checkHealth() } },
                 onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } },
-                onToggleAIEnabled: { enabled in Task { await state.setAIEnabled(enabled) } }
+                onToggleAIEnabled: { enabled in Task { await state.setAIEnabled(enabled) } },
+                onSelectVoiceAssistantModel: { modelID in
+                    guard let model = VoiceToolLoopModel(rawValue: modelID) else { return }
+                    VoiceToolLoopPreference.current = model
+                    selectedVoiceToolLoopModel = model
+                }
             )
 
         case .batchFixes:
@@ -318,7 +347,8 @@ struct RootView: View {
                     let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
                     Task { await state.askSecondOpinion(contextKey: batchFixesAskAIKey, contextText: context, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -329,7 +359,20 @@ struct RootView: View {
                         let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
                         Task { await state.askAI(contextKey: "\(batchFixesAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
                     }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(batchFixesAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(batchFixesAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(batchFixesAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Batch Fixes", summaryLines: batchFixItems.map { "\($0.findingTitle): \($0.currentAccountName) → \($0.suggestedAccountName), \($0.dollarExposure.description)" }) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open })
+                        Task { await state.askAI(contextKey: "\(batchFixesAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
+                    }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -371,7 +414,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: firmCockpitAskAIKey, contextText: firmCockpitContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -379,7 +423,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(firmCockpitAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(firmCockpitAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(firmCockpitAskAIKey)-qwen", contextText: firmCockpitContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(firmCockpitAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(firmCockpitAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(firmCockpitAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(firmCockpitAskAIKey)-claude", contextText: firmCockpitContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.firmCockpitSummaries.isEmpty { await state.loadFirmCockpit() }
@@ -433,7 +487,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: taxesAskAIKey, contextText: taxesContext(), question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -441,7 +496,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(taxesAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(taxesAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(taxesAskAIKey)-qwen", contextText: taxesContext(), question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(taxesAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(taxesAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(taxesAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(taxesAskAIKey)-claude", contextText: taxesContext(), question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -485,7 +550,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: salesTaxAskAIKey, contextText: salesTaxContext(), question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -493,7 +559,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(salesTaxAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(salesTaxAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(salesTaxAskAIKey)-qwen", contextText: salesTaxContext(), question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(salesTaxAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(salesTaxAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(salesTaxAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(salesTaxAskAIKey)-claude", contextText: salesTaxContext(), question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -533,7 +609,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: chartOfAccountsAskAIKey, contextText: chartOfAccountsContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -541,7 +618,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(chartOfAccountsAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(chartOfAccountsAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(chartOfAccountsAskAIKey)-qwen", contextText: chartOfAccountsContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(chartOfAccountsAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(chartOfAccountsAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(chartOfAccountsAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(chartOfAccountsAskAIKey)-claude", contextText: chartOfAccountsContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
 
         case .scopeAndPeriodLock:
@@ -655,7 +742,14 @@ struct RootView: View {
                         valueSummaryError: state.askAIError?.contextKey == AppState.valueSummaryContextKey ? state.askAIError?.message : nil,
                         valueSummarySecondOpinionAnswer: state.secondOpinionAnswers[AppState.valueSummaryContextKey],
                         isGeneratingValueSummarySecondOpinion: state.askingSecondOpinionContextKeys.contains(AppState.valueSummaryContextKey),
-                        valueSummarySecondOpinionError: state.secondOpinionError?.contextKey == AppState.valueSummaryContextKey ? state.secondOpinionError?.message : nil
+                        valueSummarySecondOpinionError: state.secondOpinionError?.contextKey == AppState.valueSummaryContextKey ? state.secondOpinionError?.message : nil,
+                        claudeConfigured: state.aiStatus?.anthropicConfigured ?? false,
+                        healthReportClaudeAnswer: state.askAIAnswers["\(AppState.healthReportContextKey)-claude"],
+                        isGeneratingHealthReportClaude: state.askingAIContextKeys.contains("\(AppState.healthReportContextKey)-claude"),
+                        healthReportClaudeError: state.askAIError?.contextKey == "\(AppState.healthReportContextKey)-claude" ? state.askAIError?.message : nil,
+                        valueSummaryClaudeAnswer: state.askAIAnswers["\(AppState.valueSummaryContextKey)-claude"],
+                        isGeneratingValueSummaryClaude: state.askingAIContextKeys.contains("\(AppState.valueSummaryContextKey)-claude"),
+                        valueSummaryClaudeError: state.askAIError?.contextKey == "\(AppState.valueSummaryContextKey)-claude" ? state.askAIError?.message : nil
                     ),
                     onSelect: { finding in state.screen = .detail(findingID: finding.id) },
                     onNavigateNextBestAction: { action in
@@ -692,6 +786,10 @@ struct RootView: View {
                     onAskHealthReportFollowUpSecondOpinion: { question in Task { await state.askHealthReportFollowUpSecondOpinion(question) } },
                     onAskValueSummaryFollowUp: { question in Task { await state.askValueSummaryFollowUp(question) } },
                     onAskValueSummaryFollowUpSecondOpinion: { question in Task { await state.askValueSummaryFollowUpSecondOpinion(question) } },
+                    onGenerateHealthReportClaude: { Task { await state.generateHealthReportClaude() } },
+                    onGenerateValueSummaryClaude: { Task { await state.generateValueSummaryClaude() } },
+                    onAskHealthReportFollowUpClaude: { question in Task { await state.askHealthReportFollowUpClaude(question) } },
+                    onAskValueSummaryFollowUpClaude: { question in Task { await state.askValueSummaryFollowUpClaude(question) } },
                     onCompareSelected: { ids in state.comparedFindingIDs = ids }
                 )
             }
@@ -826,7 +924,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: activityLogAskAIKey, contextText: activityLogContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -834,7 +933,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(activityLogAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(activityLogAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(activityLogAskAIKey)-qwen", contextText: activityLogContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(activityLogAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(activityLogAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(activityLogAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(activityLogAskAIKey)-claude", contextText: activityLogContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -869,7 +978,8 @@ struct RootView: View {
                     let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: cleanupAssessmentAskAIKey, contextText: context, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -880,7 +990,20 @@ struct RootView: View {
                         let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
                         Task { await state.askAI(contextKey: "\(cleanupAssessmentAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
                     }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(cleanupAssessmentAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(cleanupAssessmentAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(cleanupAssessmentAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: cleanupAssessmentSummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.cleanupAssessmentRuleIDs.contains($0.ruleID.rawValue) })
+                        Task { await state.askAI(contextKey: "\(cleanupAssessmentAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
+                    }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -914,7 +1037,8 @@ struct RootView: View {
                     let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
                     Task { await state.askSecondOpinion(contextKey: balanceSheetIntegrityAskAIKey, contextText: context, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -925,7 +1049,20 @@ struct RootView: View {
                         let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
                         Task { await state.askAI(contextKey: "\(balanceSheetIntegrityAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
                     }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(balanceSheetIntegrityAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(balanceSheetIntegrityAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(balanceSheetIntegrityAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Balance Sheet Integrity", findings: balanceSheetIntegritySummaries.flatMap(\.findings)) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { $0.status == .open && !AppState.balanceSheetIntegrityRuleIDs.contains($0.ruleID.rawValue) })
+                        Task { await state.askAI(contextKey: "\(balanceSheetIntegrityAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
+                    }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -967,7 +1104,8 @@ struct RootView: View {
                     let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
                     Task { await state.askSecondOpinion(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -978,7 +1116,20 @@ struct RootView: View {
                         let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
                         Task { await state.askAI(contextKey: "\(bankFeedCleanupAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
                     }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(bankFeedCleanupAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(bankFeedCleanupAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(bankFeedCleanupAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in
+                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                        Task { await state.askAI(contextKey: "\(bankFeedCleanupAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
+                    }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1074,7 +1225,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: monthEndCloseAskAIKey, contextText: monthEndCloseContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1082,7 +1234,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(monthEndCloseAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(monthEndCloseAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(monthEndCloseAskAIKey)-qwen", contextText: monthEndCloseContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(monthEndCloseAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(monthEndCloseAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(monthEndCloseAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(monthEndCloseAskAIKey)-claude", contextText: monthEndCloseContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1120,7 +1282,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: balanceSheetReportAskAIKey, contextText: balanceSheetReportContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1128,7 +1291,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(balanceSheetReportAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(balanceSheetReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(balanceSheetReportAskAIKey)-qwen", contextText: balanceSheetReportContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(balanceSheetReportAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(balanceSheetReportAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(balanceSheetReportAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(balanceSheetReportAskAIKey)-claude", contextText: balanceSheetReportContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 // Owner directive (2026-08-30): "why should i have to click
@@ -1177,7 +1350,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: profitAndLossReportAskAIKey, contextText: profitAndLossReportContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1185,7 +1359,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(profitAndLossReportAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(profitAndLossReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(profitAndLossReportAskAIKey)-qwen", contextText: profitAndLossReportContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(profitAndLossReportAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(profitAndLossReportAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(profitAndLossReportAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(profitAndLossReportAskAIKey)-claude", contextText: profitAndLossReportContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -1222,7 +1406,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: cashFlowReportAskAIKey, contextText: cashFlowReportContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1230,7 +1415,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(cashFlowReportAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(cashFlowReportAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowReportAskAIKey)-qwen", contextText: cashFlowReportContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(cashFlowReportAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(cashFlowReportAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(cashFlowReportAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowReportAskAIKey)-claude", contextText: cashFlowReportContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.cashFlowLines.isEmpty { await state.loadCashFlow() }
@@ -1280,7 +1475,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: trialBalanceAskAIKey, contextText: trialBalanceContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1288,7 +1484,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(trialBalanceAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(trialBalanceAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(trialBalanceAskAIKey)-qwen", contextText: trialBalanceContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(trialBalanceAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(trialBalanceAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(trialBalanceAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(trialBalanceAskAIKey)-claude", contextText: trialBalanceContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.trialBalanceLines.isEmpty { await state.loadTrialBalance() }
@@ -1331,7 +1537,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: agedReceivablesAskAIKey, contextText: agedReceivablesContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1339,7 +1546,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(agedReceivablesAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(agedReceivablesAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(agedReceivablesAskAIKey)-qwen", contextText: agedReceivablesContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(agedReceivablesAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(agedReceivablesAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(agedReceivablesAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(agedReceivablesAskAIKey)-claude", contextText: agedReceivablesContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
@@ -1382,7 +1599,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: agedPayablesAskAIKey, contextText: agedPayablesContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1390,7 +1608,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(agedPayablesAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(agedPayablesAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(agedPayablesAskAIKey)-qwen", contextText: agedPayablesContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(agedPayablesAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(agedPayablesAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(agedPayablesAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(agedPayablesAskAIKey)-claude", contextText: agedPayablesContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
@@ -1434,7 +1662,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: generalLedgerAskAIKey, contextText: generalLedgerContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1442,7 +1671,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(generalLedgerAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(generalLedgerAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(generalLedgerAskAIKey)-qwen", contextText: generalLedgerContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(generalLedgerAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(generalLedgerAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(generalLedgerAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(generalLedgerAskAIKey)-claude", contextText: generalLedgerContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.generalLedgerLines.isEmpty { await state.loadGeneralLedger() }
@@ -1468,6 +1707,31 @@ struct RootView: View {
             // client PDF.
             let closePackageSummaryAskAIKey = "close-package-summary"
             let closePackageSummaryPrompt = "Write a short executive summary (2-4 sentences) of this close package for the client, in plain non-technical language: overall health, anything open worth noting, and what's already been handled this period."
+            // Extracted to a local `let` (2026-09-07) — inlined directly in
+            // the `ClosePackageView(...)` call below, the type checker
+            // couldn't finish checking this expression in reasonable time
+            // once a second (Claude) alternate tier was added alongside
+            // Qwen3's.
+            let closePackageAlternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [
+                .init(
+                    label: "ASK QWEN3:8B",
+                    modelName: "qwen3:8b",
+                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
+                    answer: state.askAIAnswers["\(closePackageAskAIKey)-qwen"],
+                    isAsking: state.askingAIContextKeys.contains("\(closePackageAskAIKey)-qwen"),
+                    error: state.askAIError?.contextKey == "\(closePackageAskAIKey)-qwen" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(closePackageAskAIKey)-qwen", contextText: closePackageContext(), question: question, model: "qwen3:8b") } }
+                ),
+                state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(closePackageAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(closePackageAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(closePackageAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(closePackageAskAIKey)-claude", contextText: closePackageContext(), question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+            ].compactMap { $0 }
             ClosePackageView(
                 environment: state.environment == .production ? .production : .sandbox,
                 period: state.currentPeriod,
@@ -1550,15 +1814,7 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: closePackageAskAIKey, contextText: closePackageContext(), question: question) }
                 },
-                alternateModelTier: .init(
-                    label: "ASK QWEN3:8B",
-                    modelName: "qwen3:8b",
-                    disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
-                    answer: state.askAIAnswers["\(closePackageAskAIKey)-qwen"],
-                    isAsking: state.askingAIContextKeys.contains("\(closePackageAskAIKey)-qwen"),
-                    error: state.askAIError?.contextKey == "\(closePackageAskAIKey)-qwen" ? state.askAIError?.message : nil,
-                    onAsk: { question in Task { await state.askAI(contextKey: "\(closePackageAskAIKey)-qwen", contextText: closePackageContext(), question: question, model: "qwen3:8b") } }
-                ),
+                alternateModelTiers: closePackageAlternateModelTiers,
                 executiveSummaryAnswer: state.askAIAnswers[closePackageSummaryAskAIKey],
                 isGeneratingExecutiveSummary: state.askingAIContextKeys.contains(closePackageSummaryAskAIKey),
                 executiveSummaryError: state.askAIError?.contextKey == closePackageSummaryAskAIKey ? state.askAIError?.message : nil,
@@ -1612,7 +1868,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: clientMemoryAskAIKey, contextText: clientMemoryContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1620,7 +1877,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(clientMemoryAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(clientMemoryAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(clientMemoryAskAIKey)-qwen", contextText: clientMemoryContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(clientMemoryAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(clientMemoryAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(clientMemoryAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(clientMemoryAskAIKey)-claude", contextText: clientMemoryContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1710,7 +1977,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: cashFlowAskAIKey, contextText: cashFlowContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1718,7 +1986,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(cashFlowAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(cashFlowAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowAskAIKey)-qwen", contextText: cashFlowContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(cashFlowAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(cashFlowAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(cashFlowAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowAskAIKey)-claude", contextText: cashFlowContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -1761,7 +2039,8 @@ struct RootView: View {
                 onAskSecondOpinion: { question in
                     Task { await state.askSecondOpinion(contextKey: recurringVendorsAskAIKey, contextText: recurringVendorsContext, question: question) }
                 },
-                alternateModelTier: .init(
+                alternateModelTiers: [
+                    .init(
                     label: "ASK QWEN3:8B",
                     modelName: "qwen3:8b",
                     disclaimer: "Same context as above, answered by qwen3:8b instead of the default local model — for comparing response quality. Still local and free, still cannot state a figure not already given.",
@@ -1769,7 +2048,17 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(recurringVendorsAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(recurringVendorsAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(recurringVendorsAskAIKey)-qwen", contextText: recurringVendorsContext, question: question, model: "qwen3:8b") } }
-                )
+                ),
+                    state.aiStatus?.anthropicConfigured == true ? .init(
+                    label: "ASK CLAUDE HAIKU 4.5",
+                    modelName: "Claude Haiku 4.5",
+                    disclaimer: "Same context as above, answered by Claude Haiku 4.5 instead of the default local model — cloud, ~$0.005/call, only runs when you ask.",
+                    answer: state.askAIAnswers["\(recurringVendorsAskAIKey)-claude"],
+                    isAsking: state.askingAIContextKeys.contains("\(recurringVendorsAskAIKey)-claude"),
+                    error: state.askAIError?.contextKey == "\(recurringVendorsAskAIKey)-claude" ? state.askAIError?.message : nil,
+                    onAsk: { question in Task { await state.askAI(contextKey: "\(recurringVendorsAskAIKey)-claude", contextText: recurringVendorsContext, question: question, model: "claude-haiku-4-5") } }
+                ) : nil
+                ].compactMap { $0 }
             )
             .task {
                 if state.trailingPurchases.isEmpty { await state.loadTrailingPurchases() }
@@ -2141,11 +2430,23 @@ private struct TypedCommandHarness: View {
                     .buttonStyle(.bordered)
                     .disabled(isProcessing || draft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            // Owner-reported bug (2026-09-07): "the words get scrunched up
+            // at the top of the screen" — Claude's replies here run
+            // noticeably longer than Gemma's typically did, and with no
+            // line spacing or `fixedSize` this Text let SwiftUI compress
+            // several wrapped paragraphs into a cramped block instead of
+            // laying them out with real line height. `lineSpacing` +
+            // `fixedSize(vertical:)` fix the cramped rendering itself;
+            // `lineLimit(6)` (up from 3) still caps runaway length without
+            // cutting off a normal multi-sentence answer after one line.
             if let lastMessage, !isProcessing {
                 Text(lastMessage)
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
-                    .lineLimit(3)
+                    .lineSpacing(4)
+                    .lineLimit(6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, VLSpacing.xxs)
             }
         }
     }

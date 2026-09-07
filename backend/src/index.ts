@@ -11,7 +11,7 @@
 
 import "dotenv/config"; // local dev convenience only — loads .env if present; on Render, real env vars are set directly and this is a silent no-op
 import express from "express";
-import { resolveAppConfig, resolveQBOCredentials, resolveAIConfig, resolveSecondaryAIConfig, ConfigError } from "./config.js";
+import { resolveAppConfig, resolveQBOCredentials, resolveAIConfig, resolveSecondaryAIConfig, resolveAnthropicConfig, ConfigError } from "./config.js";
 import { openDatabase } from "./db/sqlite.js";
 import { TokenStore } from "./auth/tokenStore.js";
 import { SessionStore } from "./auth/session.js";
@@ -35,6 +35,7 @@ function main(): void {
   let qboCredentials;
   let aiConfig;
   let secondaryAIConfig;
+  let anthropicConfig;
   try {
     appConfig = resolveAppConfig();
     qboCredentials = resolveQBOCredentials();
@@ -46,6 +47,9 @@ function main(): void {
     // `aiConfig`'s own provider, always OpenAI when a key is present. Also
     // never throws for the same reason.
     secondaryAIConfig = resolveSecondaryAIConfig();
+    // The `claude-haiku-4-5` voice-tool-loop model override (2026-09-07) —
+    // independent of both configs above, never throws for the same reason.
+    anthropicConfig = resolveAnthropicConfig();
   } catch (error) {
     if (error instanceof ConfigError) {
       logEvent("config_error", { error: error.message });
@@ -72,7 +76,7 @@ function main(): void {
   app.use(oauthRoutes(qboCredentials, tokenStore, sessionStore));
   app.use(healthRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(operationsRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
-  app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware, secondaryAIConfig));
+  app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware, secondaryAIConfig, anthropicConfig));
   app.use(connectionsRoutes(tokenStore, sessionStore, sessionMiddleware));
 
   app.listen(appConfig.port, () => {

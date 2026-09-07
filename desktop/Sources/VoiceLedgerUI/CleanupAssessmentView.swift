@@ -53,7 +53,7 @@ public struct CleanupAssessmentView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
-    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
+    private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
 
     /// Owner directive (2026-08-31): "a quick-click filter component
     /// inside... Cleanup Assessment" — purely local, filtering the
@@ -79,7 +79,7 @@ public struct CleanupAssessmentView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
     ) {
         self.environment = environment
         self.coverageStatus = coverageStatus
@@ -99,7 +99,7 @@ public struct CleanupAssessmentView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
-        self.alternateModelTier = alternateModelTier
+        self.alternateModelTiers = alternateModelTiers
     }
 
     private var totalFindingCount: Int { summaries.reduce(0) { $0 + $1.findings.count } }
@@ -242,7 +242,7 @@ public struct CleanupAssessmentView: View {
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
                     onAskSecondOpinion: onAskSecondOpinion,
-                    alternateModelTier: alternateModelTier
+                    alternateModelTiers: alternateModelTiers
                 )
             }
             .padding(VLSpacing.pageGutter)

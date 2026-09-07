@@ -46,7 +46,7 @@ public struct BatchFixesView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
-    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
+    private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
 
     @State private var isConfirming = false
 
@@ -74,7 +74,7 @@ public struct BatchFixesView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
     ) {
         self.environment = environment
         self.writeAccessEnabled = writeAccessEnabled
@@ -99,7 +99,7 @@ public struct BatchFixesView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
-        self.alternateModelTier = alternateModelTier
+        self.alternateModelTiers = alternateModelTiers
     }
 
     private var selectedItems: [BatchFixItem] {
@@ -175,7 +175,7 @@ public struct BatchFixesView: View {
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
                     onAskSecondOpinion: onAskSecondOpinion,
-                    alternateModelTier: alternateModelTier
+                    alternateModelTiers: alternateModelTiers
                 )
             }
             .padding(VLSpacing.pageGutter)

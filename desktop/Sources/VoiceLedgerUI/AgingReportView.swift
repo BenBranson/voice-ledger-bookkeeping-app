@@ -29,7 +29,7 @@ public struct AgingReportView: View {
     private let isAskingSecondOpinion: Bool
     private let secondOpinionError: String?
     private let onAskSecondOpinion: (String) -> Void
-    private let alternateModelTier: TwoTierAskAIPanel.AlternateModelTier?
+    private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
 
     public init(
         title: String,
@@ -51,7 +51,7 @@ public struct AgingReportView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTier: TwoTierAskAIPanel.AlternateModelTier? = nil
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
     ) {
         self.title = title
         self.rowLabel = rowLabel
@@ -72,7 +72,7 @@ public struct AgingReportView: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
-        self.alternateModelTier = alternateModelTier
+        self.alternateModelTiers = alternateModelTiers
     }
 
     private static let columnWidth: CGFloat = 90
@@ -158,7 +158,7 @@ public struct AgingReportView: View {
                     isAskingSecondOpinion: isAskingSecondOpinion,
                     secondOpinionError: secondOpinionError,
                     onAskSecondOpinion: onAskSecondOpinion,
-                    alternateModelTier: alternateModelTier
+                    alternateModelTiers: alternateModelTiers
                 )
             }
             .padding(VLSpacing.pageGutter)

@@ -997,14 +997,22 @@ public final class AppState {
     /// two spoken reasoning-fallback call sites pass `"gemma4:e4b"`; every
     /// other caller (every on-screen Ask AI panel) leaves this `nil` and
     /// keeps using the app's configured default.
-    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = [], format: AskAIFormat = .concise, model: String? = nil) async {
+    /// `conversationTier` (2026-09-07): purely a label for
+    /// `recordConversation`'s history/report-log entry — decoupled from the
+    /// backend request itself (which is always the primary/Ollama route at
+    /// the HTTP level regardless of `model`; the Anthropic override only
+    /// ever activates on that same primary route, never `.secondary` — see
+    /// `backend/src/routes/ai.ts`). Lets a model-override caller (Qwen3,
+    /// Claude Haiku) record itself accurately instead of every override
+    /// showing up mislabeled as "Gemma."
+    public func askAI(contextKey: String, contextText: String, question: String, history: [AskAIHistoryTurn] = [], format: AskAIFormat = .concise, model: String? = nil, conversationTier: AskAIConversationEntry.Tier = .primary) async {
         guard !askingAIContextKeys.contains(contextKey) else { return }
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
             let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format, model: model)
             askAIAnswers[contextKey] = answer
-            await recordConversation(contextKey: contextKey, tier: .primary, question: question, answer: answer, format: format)
+            await recordConversation(contextKey: contextKey, tier: conversationTier, question: question, answer: answer, format: format)
         } catch {
             askAIError = (contextKey: contextKey, message: error.localizedDescription)
         }
@@ -1154,9 +1162,21 @@ public final class AppState {
     /// mapping happens, so `AskAIConversationEntry`/the on-disk report log
     /// never carry an internal key like a finding's raw UUID.
     private func conversationLabel(for contextKey: String) -> String {
-        if contextKey == Self.healthReportContextKey { return "Book Health Report" }
-        if contextKey == Self.valueSummaryContextKey { return "Client Value Summary" }
-        if let title = finding(id: contextKey)?.title { return title }
+        // Strip a model-override suffix (Qwen3, Claude) before matching —
+        // those reuse the same base context key as the Gemma tier
+        // (`"<key>-qwen"`/`"<key>-claude"`) so their state doesn't collide
+        // with it, but the label should read the same either way.
+        let base: String
+        if contextKey.hasSuffix("-claude") {
+            base = String(contextKey.dropLast("-claude".count))
+        } else if contextKey.hasSuffix("-qwen") {
+            base = String(contextKey.dropLast("-qwen".count))
+        } else {
+            base = contextKey
+        }
+        if base == Self.healthReportContextKey { return "Book Health Report" }
+        if base == Self.valueSummaryContextKey { return "Client Value Summary" }
+        if let title = finding(id: base)?.title { return title }
         return contextKey
     }
 
@@ -1182,12 +1202,18 @@ public final class AppState {
         try? await store.appendAskAIConversationEntry(entry)
 
         guard format == .report else { return }
+        let providerLabel: String
+        switch tier {
+        case .primary: providerLabel = "Gemma (local, free)"
+        case .secondary: providerLabel = "OpenAI"
+        case .claude: providerLabel = "Claude Haiku 4.5 (cloud)"
+        }
         ReportHistoryLogger.append(
             reportTitle: entry.contextLabel,
             companyName: companyInfo?.companyName,
             environment: environment == .production ? "production" : "sandbox",
             period: currentPeriod,
-            providerLabel: tier == .primary ? "Gemma (local, free)" : "OpenAI",
+            providerLabel: providerLabel,
             bodyText: answer
         )
     }
@@ -1217,6 +1243,29 @@ public final class AppState {
         if secondOpinionError?.contextKey != Self.valueSummaryContextKey { await recordReportGenerated() }
     }
 
+    /// Owner directive (2026-09-07): "generate report with claude button" —
+    /// a THIRD report tier alongside Gemma (free) and OpenAI (second
+    /// opinion). Reuses `askAI`'s own model-override plumbing (the same
+    /// mechanism `RootView`'s Qwen3 tier already uses) rather than a new
+    /// backend concept: same free/report context, same `askAIAnswers`
+    /// dictionary, just a "-claude" suffixed context key so its answer
+    /// renders in its own panel instead of overwriting Gemma's, and
+    /// `conversationTier: .claude` so the report history log/conversation
+    /// history say which model actually answered.
+    static let claudeModel = "claude-haiku-4-5"
+
+    public func generateHealthReportClaude() async {
+        let key = "\(Self.healthReportContextKey)-claude"
+        await askAI(contextKey: key, contextText: composedHealthReportContext(), question: Self.healthReportPrompt, format: .report, model: Self.claudeModel, conversationTier: .claude)
+        if askAIError?.contextKey != key { await recordReportGenerated() }
+    }
+
+    public func generateValueSummaryClaude() async {
+        let key = "\(Self.valueSummaryContextKey)-claude"
+        await askAI(contextKey: key, contextText: composedValueSummaryContext(), question: Self.valueSummaryPrompt, format: .report, model: Self.claudeModel, conversationTier: .claude)
+        if askAIError?.contextKey != key { await recordReportGenerated() }
+    }
+
     // Owner directive (2026-08-29): a real bug, found live — the "Ask a
     // question" box under each report panel was wired to just call
     // `generateHealthReport()`/etc again, silently discarding whatever the
@@ -1244,6 +1293,14 @@ public final class AppState {
 
     public func askValueSummaryFollowUpSecondOpinion(_ question: String) async {
         await askSecondOpinion(contextKey: Self.valueSummaryContextKey, contextText: composedValueSummaryContext(), question: question, format: .concise)
+    }
+
+    public func askHealthReportFollowUpClaude(_ question: String) async {
+        await askAI(contextKey: "\(Self.healthReportContextKey)-claude", contextText: composedHealthReportContext(), question: question, format: .concise, model: Self.claudeModel, conversationTier: .claude)
+    }
+
+    public func askValueSummaryFollowUpClaude(_ question: String) async {
+        await askAI(contextKey: "\(Self.valueSummaryContextKey)-claude", contextText: composedValueSummaryContext(), question: question, format: .concise, model: Self.claudeModel, conversationTier: .claude)
     }
 
     // MARK: - Finding comparison
@@ -1299,6 +1356,33 @@ public final class AppState {
         let ids = comparedFindingIDs
         guard ids.count >= 2 else { return }
         await askSecondOpinion(contextKey: comparisonContextKey(for: ids), contextText: AskAIContext.composeComparison(findings: ids.compactMap { finding(id: $0) }), question: question, format: .concise)
+    }
+
+    public func generateComparisonAnalysisClaude() async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        let comparedFindings = ids.compactMap { finding(id: $0) }
+        await askAI(
+            contextKey: "\(comparisonContextKey(for: ids))-claude",
+            contextText: AskAIContext.composeComparison(findings: comparedFindings),
+            question: Self.comparisonPrompt,
+            format: .concise,
+            model: Self.claudeModel,
+            conversationTier: .claude
+        )
+    }
+
+    public func askComparisonFollowUpClaude(_ question: String) async {
+        let ids = comparedFindingIDs
+        guard ids.count >= 2 else { return }
+        await askAI(
+            contextKey: "\(comparisonContextKey(for: ids))-claude",
+            contextText: AskAIContext.composeComparison(findings: ids.compactMap { finding(id: $0) }),
+            question: question,
+            format: .concise,
+            model: Self.claudeModel,
+            conversationTier: .claude
+        )
     }
 
     /// docs/phase-0/11_VERTICAL_SLICE.md §11.2 pipeline steps 2-6: sync,

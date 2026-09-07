@@ -70,7 +70,11 @@ public struct TwoTierAskAIPanel: View {
             self.onAsk = onAsk
         }
     }
-    private let alternateModelTier: AlternateModelTier?
+    /// Owner directive (2026-09-07): "add an ask claude at the bottom of
+    /// every section" — a second alternate tier alongside Qwen3:8b, not a
+    /// replacement. Plural (was a single optional) so both can render at
+    /// once; each element renders as its own `AskAIPanelView`, in order.
+    private let alternateModelTiers: [AlternateModelTier]
 
     public init(
         aiStatus: AIStatus?,
@@ -88,7 +92,7 @@ public struct TwoTierAskAIPanel: View {
         isAskingSecondOpinion: Bool,
         secondOpinionError: String?,
         onAskSecondOpinion: @escaping (String) -> Void,
-        alternateModelTier: AlternateModelTier? = nil
+        alternateModelTiers: [AlternateModelTier] = []
     ) {
         self.aiStatus = aiStatus
         self.placeholder = placeholder
@@ -105,7 +109,7 @@ public struct TwoTierAskAIPanel: View {
         self.isAskingSecondOpinion = isAskingSecondOpinion
         self.secondOpinionError = secondOpinionError
         self.onAskSecondOpinion = onAskSecondOpinion
-        self.alternateModelTier = alternateModelTier
+        self.alternateModelTiers = alternateModelTiers
     }
 
     public var body: some View {
@@ -122,16 +126,16 @@ public struct TwoTierAskAIPanel: View {
                 onQuickAsk: onQuickAsk
             )
 
-            if let alternateModelTier {
+            ForEach(Array(alternateModelTiers.enumerated()), id: \.offset) { _, tier in
                 AskAIPanelView(
-                    title: alternateModelTier.label,
-                    disclaimer: alternateModelTier.disclaimer,
-                    placeholder: "Ask \(alternateModelTier.modelName) a question",
+                    title: tier.label,
+                    disclaimer: tier.disclaimer,
+                    placeholder: "Ask \(tier.modelName) a question",
                     aiStatus: nil,
-                    answer: alternateModelTier.answer,
-                    isAsking: alternateModelTier.isAsking,
-                    error: alternateModelTier.error,
-                    onAsk: alternateModelTier.onAsk
+                    answer: tier.answer,
+                    isAsking: tier.isAsking,
+                    error: tier.error,
+                    onAsk: tier.onAsk
                 )
             }
 

@@ -29,6 +29,12 @@ public struct AIStatus: Codable, Sendable, Equatable {
     public let secondaryConfigured: Bool
     public let secondaryProvider: String?
     public let secondaryModel: String?
+    /// The `claude-haiku-4-5` voice-tool-loop model override (2026-09-07) —
+    /// same "additive, absent means not configured yet" posture as the
+    /// secondary tier above. Independent of `provider`/`model` (the app's
+    /// default tier) and of the secondary tier (always OpenAI).
+    public let anthropicConfigured: Bool
+    public let anthropicModel: String?
 
     public init(
         configured: Bool,
@@ -37,7 +43,9 @@ public struct AIStatus: Codable, Sendable, Equatable {
         model: String? = nil,
         secondaryConfigured: Bool = false,
         secondaryProvider: String? = nil,
-        secondaryModel: String? = nil
+        secondaryModel: String? = nil,
+        anthropicConfigured: Bool = false,
+        anthropicModel: String? = nil
     ) {
         self.configured = configured
         self.enabled = enabled
@@ -46,10 +54,12 @@ public struct AIStatus: Codable, Sendable, Equatable {
         self.secondaryConfigured = secondaryConfigured
         self.secondaryProvider = secondaryProvider
         self.secondaryModel = secondaryModel
+        self.anthropicConfigured = anthropicConfigured
+        self.anthropicModel = anthropicModel
     }
 
     private enum CodingKeys: String, CodingKey {
-        case configured, enabled, provider, model, secondaryConfigured, secondaryProvider, secondaryModel
+        case configured, enabled, provider, model, secondaryConfigured, secondaryProvider, secondaryModel, anthropicConfigured, anthropicModel
     }
 
     public init(from decoder: Decoder) throws {
@@ -61,5 +71,7 @@ public struct AIStatus: Codable, Sendable, Equatable {
         secondaryConfigured = try container.decodeIfPresent(Bool.self, forKey: .secondaryConfigured) ?? false
         secondaryProvider = try container.decodeIfPresent(String.self, forKey: .secondaryProvider)
         secondaryModel = try container.decodeIfPresent(String.self, forKey: .secondaryModel)
+        anthropicConfigured = try container.decodeIfPresent(Bool.self, forKey: .anthropicConfigured) ?? false
+        anthropicModel = try container.decodeIfPresent(String.self, forKey: .anthropicModel)
     }
 }

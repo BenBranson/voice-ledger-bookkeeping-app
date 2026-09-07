@@ -107,7 +107,13 @@ struct VoiceLedgerApp: App {
                     isGeneratingAnalysisSecondOpinion: appState.askingSecondOpinionContextKeys.contains(appState.comparisonContextKey(for: appState.comparedFindingIDs)),
                     analysisSecondOpinionError: appState.secondOpinionError?.contextKey == appState.comparisonContextKey(for: appState.comparedFindingIDs) ? appState.secondOpinionError?.message : nil,
                     onAnalyzeSecondOpinion: { Task { await appState.generateComparisonAnalysisSecondOpinion() } },
-                    onAskFollowUpSecondOpinion: { question in Task { await appState.askComparisonFollowUpSecondOpinion(question) } }
+                    onAskFollowUpSecondOpinion: { question in Task { await appState.askComparisonFollowUpSecondOpinion(question) } },
+                    claudeConfigured: appState.aiStatus?.anthropicConfigured ?? false,
+                    analysisClaudeAnswer: appState.askAIAnswers["\(appState.comparisonContextKey(for: appState.comparedFindingIDs))-claude"],
+                    isGeneratingAnalysisClaude: appState.askingAIContextKeys.contains("\(appState.comparisonContextKey(for: appState.comparedFindingIDs))-claude"),
+                    analysisClaudeError: appState.askAIError?.contextKey == "\(appState.comparisonContextKey(for: appState.comparedFindingIDs))-claude" ? appState.askAIError?.message : nil,
+                    onAnalyzeClaude: { Task { await appState.generateComparisonAnalysisClaude() } },
+                    onAskFollowUpClaude: { question in Task { await appState.askComparisonFollowUpClaude(question) } }
                 )
                 // A real window's own close control (red traffic light,
                 // Cmd-W) bypasses `RootView`'s `.onChange` entirely — this

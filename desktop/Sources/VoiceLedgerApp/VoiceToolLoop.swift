@@ -22,14 +22,18 @@ import IntegrationsQuickBooks
 /// `AppState` mutation. Free prose (`speech`) is narration, exactly as
 /// it always was.
 ///
-/// **Model choice**: `gemma4:12b`, not the faster `gemma4:e4b` this app
-/// uses for plain narration — owner directive 2026-09-06 ("pick whichever
-/// llm... if its gemma 12b which is slower but responds the best then
-/// pick that one"). Tool selection accuracy matters more here than
+/// **Model choice**: `gemma4:12b` by default, not the faster `gemma4:e4b`
+/// this app uses for plain narration — owner directive 2026-09-06 ("pick
+/// whichever llm... if its gemma 12b which is slower but responds the best
+/// then pick that one"). Tool selection accuracy matters more here than
 /// latency: a wrong tool call is a wrong ACTION, not just a slower
-/// sentence.
+/// sentence. Owner directive (2026-09-07): "connect Claude API... for the
+/// tool loop" — `claude-haiku-4-5` is now a selectable alternative
+/// (`VoiceToolLoopPreference`, set from the Connection page's AI
+/// Connection card), for exactly the same reason: real, live-observed
+/// tool-selection misses on Gemma this session.
 extension VoiceEngine {
-    static let toolLoopModel = "gemma4:12b"
+    static var toolLoopModel: String { VoiceToolLoopPreference.current.rawValue }
     private static let toolLoopContextKey = "voice-tool-loop"
 
     /// Called from `.unrecognized` instead of `reasoningFallback` — see

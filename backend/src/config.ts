@@ -163,6 +163,30 @@ export function resolveSecondaryAIConfig(env: NodeJS.ProcessEnv = process.env): 
   };
 }
 
+export interface AnthropicAIConfig {
+  readonly apiKey: string;
+  readonly model: string;
+}
+
+/**
+ * Owner directive (2026-09-07): a selectable Claude-backed option for
+ * Voice Ledger's own in-app voice assistant tool loop, alongside the
+ * existing free/local `gemma4:12b` default (`ALLOWED_MODEL_OVERRIDES` in
+ * `routes/ai.ts`). A completely separate resolver/credential from both
+ * `resolveAIConfig` (the app's default tier) and `resolveSecondaryAIConfig`
+ * (the OpenAI "second opinion" tier) — same "independent resolver, never a
+ * silent fallback" posture those two already established. `null` when
+ * `ANTHROPIC_API_KEY` isn't set, same as the other optional-AI resolvers.
+ */
+export function resolveAnthropicConfig(env: NodeJS.ProcessEnv = process.env): AnthropicAIConfig | null {
+  const apiKey = env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey.trim() === "") return null;
+  return {
+    apiKey,
+    model: env.ANTHROPIC_MODEL ?? "claude-haiku-4-5"
+  };
+}
+
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const keyHex = requireEnv(env, "TOKEN_ENCRYPTION_KEY");
   const key = Buffer.from(keyHex, "hex");

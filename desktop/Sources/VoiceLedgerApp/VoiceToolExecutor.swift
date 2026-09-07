@@ -143,12 +143,47 @@ extension VoiceEngine {
     /// transaction, a worse failure than asking the person to be more
     /// specific. Ties broken by highest dollar exposure, since that's the
     /// one most likely to be "the" thing someone's asking about.
+    /// Owner-reported bug (2026-09-07), found live testing Claude Haiku
+    /// 4.5 as a tool-loop option: "pull up the Notes Payable finding and
+    /// the Checking finding" failed to match either, even though both
+    /// were plainly visible in the open findings list. Root cause: the
+    /// query has to be a substring of the finding's TITLE — Gemma
+    /// happened to pass bare keywords ("Notes Payable"), which matched;
+    /// Claude phrased the same request more naturally ("the Notes Payable
+    /// finding," "the Checking finding"), and the extra filler words broke
+    /// a strict one-directional substring check that never needed to be
+    /// that strict — confirmed root cause (2026-09-07, via a temporary
+    /// debug log of the model's actual `queries` arguments): a paraphrasing
+    /// model (Claude Haiku 4.5) sends queries like "Notes Payable negative
+    /// liability balance" for a finding titled "Notes Payable has a
+    /// negative liability balance" — the words aren't contiguous in the
+    /// title (it has "has a" and "asset" inserted), so no substring check
+    /// can ever match it, filler-word stripping included. Scoring by
+    /// fraction of query words found anywhere in the title handles
+    /// reordering and inserted words from any model's phrasing, not just
+    /// exact substrings.
+    private static let queryFillerWords: Set<String> = ["the", "a", "an", "finding", "findings", "transaction", "account", "entry"]
+
     private static func bestMatch(for query: String, in findings: [Finding]) -> Finding? {
-        let normalized = query.lowercased()
-        let candidates = findings.filter {
-            $0.title.lowercased().contains(normalized) || ($0.vendorName?.lowercased().contains(normalized) ?? false)
+        let queryWords = query.lowercased()
+            .split(separator: " ")
+            .map(String.init)
+            .filter { !queryFillerWords.contains($0) }
+        guard !queryWords.isEmpty else { return nil }
+
+        func score(_ text: String?) -> Double {
+            guard let text, !text.isEmpty else { return 0 }
+            let textWords = Set(text.lowercased().split(separator: " ").map(String.init))
+            let matched = queryWords.filter { textWords.contains($0) }.count
+            return Double(matched) / Double(queryWords.count)
         }
-        return candidates.max { abs($0.dollarExposure.minorUnits) < abs($1.dollarExposure.minorUnits) }
+
+        let scored = findings.map { finding -> (Finding, Double) in
+            (finding, max(score(finding.title), score(finding.vendorName)))
+        }
+        guard let best = scored.max(by: { $0.1 == $1.1 ? abs($0.0.dollarExposure.minorUnits) < abs($1.0.dollarExposure.minorUnits) : $0.1 < $1.1 }),
+              best.1 >= 0.5 else { return nil }
+        return best.0
     }
 
     private static func intArgument(_ value: JSONValue?, default defaultValue: Int) -> Int {

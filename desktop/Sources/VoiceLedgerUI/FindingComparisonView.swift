@@ -41,6 +41,17 @@ public struct FindingComparisonView: View {
     private let onAnalyzeSecondOpinion: () -> Void
     private let onAskFollowUpSecondOpinion: (String) -> Void
 
+    /// Owner directive (2026-09-07): "add a analyze button with claude
+    /// button and a ask a question field on the compare findings screen" —
+    /// a third tier alongside Gemma (free) and OpenAI (second opinion),
+    /// same shape as both.
+    private let claudeConfigured: Bool
+    private let analysisClaudeAnswer: String?
+    private let isGeneratingAnalysisClaude: Bool
+    private let analysisClaudeError: String?
+    private let onAnalyzeClaude: () -> Void
+    private let onAskFollowUpClaude: (String) -> Void
+
     public init(
         findings: [Finding],
         onSelectFinding: @escaping (Finding) -> Void,
@@ -56,7 +67,13 @@ public struct FindingComparisonView: View {
         isGeneratingAnalysisSecondOpinion: Bool = false,
         analysisSecondOpinionError: String? = nil,
         onAnalyzeSecondOpinion: @escaping () -> Void = {},
-        onAskFollowUpSecondOpinion: @escaping (String) -> Void = { _ in }
+        onAskFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
+        claudeConfigured: Bool = false,
+        analysisClaudeAnswer: String? = nil,
+        isGeneratingAnalysisClaude: Bool = false,
+        analysisClaudeError: String? = nil,
+        onAnalyzeClaude: @escaping () -> Void = {},
+        onAskFollowUpClaude: @escaping (String) -> Void = { _ in }
     ) {
         self.findings = findings
         self.onSelectFinding = onSelectFinding
@@ -73,6 +90,12 @@ public struct FindingComparisonView: View {
         self.analysisSecondOpinionError = analysisSecondOpinionError
         self.onAnalyzeSecondOpinion = onAnalyzeSecondOpinion
         self.onAskFollowUpSecondOpinion = onAskFollowUpSecondOpinion
+        self.claudeConfigured = claudeConfigured
+        self.analysisClaudeAnswer = analysisClaudeAnswer
+        self.isGeneratingAnalysisClaude = isGeneratingAnalysisClaude
+        self.analysisClaudeError = analysisClaudeError
+        self.onAnalyzeClaude = onAnalyzeClaude
+        self.onAskFollowUpClaude = onAskFollowUpClaude
     }
 
     /// Card width * 2 + inter-card spacing + page gutters — owner-reported
@@ -166,6 +189,19 @@ public struct FindingComparisonView: View {
                     onAsk: onAskFollowUpSecondOpinion,
                     quickAskLabel: "Analyze (OpenAI)",
                     onQuickAsk: onAnalyzeSecondOpinion
+                )
+            }
+            if claudeConfigured {
+                AskAIPanelView(
+                    title: "SIMILARITY & DUPLICATE ANALYSIS (CLAUDE HAIKU 4.5)",
+                    disclaimer: "Same real data, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per analysis and only runs when you ask.",
+                    aiStatus: nil,
+                    answer: analysisClaudeAnswer,
+                    isAsking: isGeneratingAnalysisClaude,
+                    error: analysisClaudeError,
+                    onAsk: onAskFollowUpClaude,
+                    quickAskLabel: "Analyze (Claude)",
+                    onQuickAsk: onAnalyzeClaude
                 )
             }
         }

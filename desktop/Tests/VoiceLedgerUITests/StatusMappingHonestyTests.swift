@@ -126,7 +126,16 @@ struct StatusMappingHonestyTests {
             "healthReportSecondOpinionAnswer", "isGeneratingHealthReportSecondOpinion", "healthReportSecondOpinionError",
             "secondOpinionConfigured",
             "valueSummaryAnswer", "isGeneratingValueSummary", "valueSummaryError",
-            "valueSummarySecondOpinionAnswer", "isGeneratingValueSummarySecondOpinion", "valueSummarySecondOpinionError"
+            "valueSummarySecondOpinionAnswer", "isGeneratingValueSummarySecondOpinion", "valueSummarySecondOpinionError",
+            // Claude Haiku 4.5 (2026-09-07 owner directive): a THIRD report
+            // tier alongside Gemma/OpenAI above — same reasoning as the
+            // OpenAI fields' own note: answer/error/in-flight state for a
+            // third AI tier, gated by its own `claudeConfigured` (separate
+            // from `secondOpinionConfigured` since the two providers are
+            // configured independently), not an alternate coverage status.
+            "claudeConfigured",
+            "healthReportClaudeAnswer", "isGeneratingHealthReportClaude", "healthReportClaudeError",
+            "valueSummaryClaudeAnswer", "isGeneratingValueSummaryClaude", "valueSummaryClaudeError"
         ], "ViewState must expose a single coverageStatus source of truth — an added second status property would need the same currency gating exceptionsStatus now has")
     }
 }

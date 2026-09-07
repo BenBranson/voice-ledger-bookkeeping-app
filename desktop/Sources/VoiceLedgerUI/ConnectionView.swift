@@ -17,6 +17,29 @@ import DesignSystem
 /// is functional, tested, and safe to exercise, the same way a circuit
 /// breaker is installed before the second floor is wired.
 public struct ConnectionView: View {
+    /// Owner directive (2026-09-07): "connect Claude API... for the tool
+    /// loop" — a selectable backend for Voice Ledger's own in-app voice
+    /// assistant. Primitive params only, same "no Core/app-layer
+    /// dependency" boundary this module already holds everywhere else —
+    /// the actual model enum/persistence (`VoiceToolLoopModel`,
+    /// `VoiceToolLoopPreference`) lives in `VoiceLedgerApp`, which
+    /// translates to/from this plain `id`/`label` shape.
+    public struct VoiceModelOption: Identifiable {
+        public let id: String
+        public let label: String
+        /// `false` when this option needs a backend API key that isn't
+        /// set — shown, but not selectable, rather than hidden entirely,
+        /// so picking it tells the bookkeeper what's missing instead of
+        /// the option just not existing.
+        public let isAvailable: Bool
+
+        public init(id: String, label: String, isAvailable: Bool) {
+            self.id = id
+            self.label = label
+            self.isAvailable = isAvailable
+        }
+    }
+
     public struct ViewState {
         public let environment: VLEnvironmentTone
         public let companyName: String?
@@ -33,6 +56,8 @@ public struct ConnectionView: View {
         public let isCheckingAIStatus: Bool
         public let isTogglingAIEnabled: Bool
         public let aiStatusError: String?
+        public let voiceAssistantModelOptions: [VoiceModelOption]
+        public let selectedVoiceAssistantModelID: String
 
         public init(
             environment: VLEnvironmentTone,
@@ -47,7 +72,9 @@ public struct ConnectionView: View {
             aiStatus: AIStatus? = nil,
             isCheckingAIStatus: Bool = false,
             isTogglingAIEnabled: Bool = false,
-            aiStatusError: String? = nil
+            aiStatusError: String? = nil,
+            voiceAssistantModelOptions: [VoiceModelOption] = [],
+            selectedVoiceAssistantModelID: String = ""
         ) {
             self.environment = environment
             self.companyName = companyName
@@ -62,6 +89,8 @@ public struct ConnectionView: View {
             self.isCheckingAIStatus = isCheckingAIStatus
             self.isTogglingAIEnabled = isTogglingAIEnabled
             self.aiStatusError = aiStatusError
+            self.voiceAssistantModelOptions = voiceAssistantModelOptions
+            self.selectedVoiceAssistantModelID = selectedVoiceAssistantModelID
         }
     }
 
@@ -69,17 +98,20 @@ public struct ConnectionView: View {
     private let onCheckHealth: () -> Void
     private let onToggleWriteAccess: (Bool) -> Void
     private let onToggleAIEnabled: (Bool) -> Void
+    private let onSelectVoiceAssistantModel: (String) -> Void
 
     public init(
         state: ViewState,
         onCheckHealth: @escaping () -> Void,
         onToggleWriteAccess: @escaping (Bool) -> Void,
-        onToggleAIEnabled: @escaping (Bool) -> Void = { _ in }
+        onToggleAIEnabled: @escaping (Bool) -> Void = { _ in },
+        onSelectVoiceAssistantModel: @escaping (String) -> Void = { _ in }
     ) {
         self.state = state
         self.onCheckHealth = onCheckHealth
         self.onToggleWriteAccess = onToggleWriteAccess
         self.onToggleAIEnabled = onToggleAIEnabled
+        self.onSelectVoiceAssistantModel = onSelectVoiceAssistantModel
     }
 
     public var body: some View {
@@ -173,6 +205,10 @@ public struct ConnectionView: View {
                 }
 
                 aiConnectionSection
+
+                if !state.voiceAssistantModelOptions.isEmpty {
+                    voiceAssistantModelSection
+                }
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -213,6 +249,48 @@ public struct ConnectionView: View {
                         .foregroundStyle(.red)
                 }
                 Text("\(aiProviderDescription) Turning this off disables every AI feature app-wide; every deterministic rule, finding, calculation, and report keeps working exactly the same either way.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+            }
+        }
+    }
+
+    /// Owner directive (2026-09-07): "connect Claude API... for the tool
+    /// loop" — which model answers Voice Ledger's own in-app voice
+    /// assistant (navigation, chart generation, comparisons), independent
+    /// of the Ask AI panel's own provider above.
+    private var voiceAssistantModelSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("VOICE ASSISTANT MODEL")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                    ForEach(state.voiceAssistantModelOptions) { option in
+                        Button {
+                            onSelectVoiceAssistantModel(option.id)
+                        } label: {
+                            HStack {
+                                Image(systemName: state.selectedVoiceAssistantModelID == option.id ? "largecircle.fill.circle" : "circle")
+                                    .foregroundStyle(option.isAvailable ? VLColor.cyan : VLColor.textMuted)
+                                Text(option.label)
+                                    .font(VLTypography.body())
+                                    .foregroundStyle(option.isAvailable ? VLColor.textPrimary : VLColor.textMuted)
+                                Spacer()
+                                if !option.isAvailable {
+                                    Text("Needs backend API key")
+                                        .font(VLTypography.caption())
+                                        .foregroundStyle(VLColor.textMuted)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!option.isAvailable)
+                    }
+                }
+                Text("Chooses which model decides what the voice assistant does (navigate, pull up a chart, compare findings) when you speak or type a command — not the Ask AI panels above, which are separate. Tool-selection accuracy matters more here than for a plain question: a wrong tool call is a wrong action, not just a slower sentence.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }
