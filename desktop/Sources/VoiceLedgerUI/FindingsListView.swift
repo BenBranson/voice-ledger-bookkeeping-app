@@ -160,6 +160,11 @@ public struct FindingsListView: View {
     private let onExportHealthReportSecondOpinionPDF: () -> Void
     private let onExportValueSummaryPDF: () -> Void
     private let onExportValueSummarySecondOpinionPDF: () -> Void
+    /// Owner directive (2026-09-07): PDF export parity for the Claude tier
+    /// added alongside Gemma/OpenAI above — same "only once there's an
+    /// answer to export" gating as the other two tiers.
+    private let onExportHealthReportClaudePDF: () -> Void
+    private let onExportValueSummaryClaudePDF: () -> Void
     /// Owner directive (2026-08-29): real bug fix — the "Ask a question"
     /// box under each report used to silently discard whatever was typed
     /// and just re-trigger report generation again. These actually carry
@@ -206,6 +211,8 @@ public struct FindingsListView: View {
         onExportHealthReportSecondOpinionPDF: @escaping () -> Void = {},
         onExportValueSummaryPDF: @escaping () -> Void = {},
         onExportValueSummarySecondOpinionPDF: @escaping () -> Void = {},
+        onExportHealthReportClaudePDF: @escaping () -> Void = {},
+        onExportValueSummaryClaudePDF: @escaping () -> Void = {},
         onAskHealthReportFollowUp: @escaping (String) -> Void = { _ in },
         onAskHealthReportFollowUpSecondOpinion: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUp: @escaping (String) -> Void = { _ in },
@@ -229,6 +236,8 @@ public struct FindingsListView: View {
         self.onExportHealthReportSecondOpinionPDF = onExportHealthReportSecondOpinionPDF
         self.onExportValueSummaryPDF = onExportValueSummaryPDF
         self.onExportValueSummarySecondOpinionPDF = onExportValueSummarySecondOpinionPDF
+        self.onExportHealthReportClaudePDF = onExportHealthReportClaudePDF
+        self.onExportValueSummaryClaudePDF = onExportValueSummaryClaudePDF
         self.onAskHealthReportFollowUp = onAskHealthReportFollowUp
         self.onAskHealthReportFollowUpSecondOpinion = onAskHealthReportFollowUpSecondOpinion
         self.onAskValueSummaryFollowUp = onAskValueSummaryFollowUp
@@ -437,6 +446,9 @@ public struct FindingsListView: View {
                     quickAskLabel: "Generate Report (Claude)",
                     onQuickAsk: onGenerateHealthReportClaude
                 )
+                if state.healthReportClaudeAnswer != nil {
+                    exportPDFButton(action: onExportHealthReportClaudePDF)
+                }
             }
         }
     }
@@ -508,6 +520,9 @@ public struct FindingsListView: View {
                             quickAskLabel: "Generate Client Value Report (Claude)",
                             onQuickAsk: onGenerateValueSummaryClaude
                         )
+                        if state.valueSummaryClaudeAnswer != nil {
+                            exportPDFButton(action: onExportValueSummaryClaudePDF)
+                        }
                     }
                 }
             }
