@@ -58,7 +58,7 @@ export class QboRawClient {
     }
     const result = await refreshAccessToken(this.credentials, refreshToken, this.realmId);
     this.tokenStore.cacheAccessToken(this.realmId, result.accessToken, result.expiresInSeconds);
-    this.tokenStore.saveRefreshToken(this.realmId, this.credentials.environment, null, result.refreshToken);
+    this.tokenStore.saveRefreshToken(this.realmId, this.credentials.environment, null, result.refreshToken, result.refreshTokenExpiresInSeconds);
     return result.accessToken;
   }
 

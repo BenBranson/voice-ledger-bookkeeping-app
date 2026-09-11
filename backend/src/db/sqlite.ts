@@ -43,7 +43,8 @@ function migrate(db: Database.Database): void {
       updated_at TEXT NOT NULL,
       last_health_check_at TEXT,
       last_health_check_status TEXT,
-      write_enabled INTEGER NOT NULL DEFAULT 0
+      write_enabled INTEGER NOT NULL DEFAULT 0,
+      refresh_token_expires_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -79,5 +80,14 @@ function migrate(db: Database.Database): void {
     // fresh table and this explicit backfill for existing rows both say
     // the same thing the same way.
     db.exec("ALTER TABLE connections ADD COLUMN write_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // 2026-09-11: QBO's own token response already returns
+  // `x_refresh_token_expires_in` on every exchange/refresh — real data
+  // this app was computing and then discarding. `NULL` for any realm
+  // connected before this column existed (a genuinely unknown expiry, not
+  // a guessed one) until its next token refresh backfills it.
+  if (!existingColumns.some((col) => col.name === "refresh_token_expires_at")) {
+    db.exec("ALTER TABLE connections ADD COLUMN refresh_token_expires_at TEXT");
   }
 }

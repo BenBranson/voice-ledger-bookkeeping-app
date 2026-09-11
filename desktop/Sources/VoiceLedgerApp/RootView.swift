@@ -285,6 +285,7 @@ struct RootView: View {
                     healthStatus: state.healthResult.map { Self.vlStatus(for: $0.status) },
                     healthDetail: state.healthCheckError ?? state.healthResult.map { "\($0.status.rawValue) — \($0.latencyMs)ms" },
                     lastCheckedAt: state.healthResult?.checkedAt,
+                    refreshTokenExpiresAt: state.healthResult?.refreshTokenExpiresAt,
                     isChecking: state.isCheckingHealth,
                     writeEnabled: state.writeAccessEnabled,
                     isTogglingWriteAccess: state.isTogglingWriteAccess,

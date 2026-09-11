@@ -32,10 +32,15 @@ export function healthRoutes(
 
     const result = await dispatch(client, realmId, "readCompanyInfo", {});
     const latencyMs = Date.now() - startedAt;
+    // 2026-09-11: real data QBO already hands back on every token
+    // exchange/refresh (`x_refresh_token_expires_in`) — the Connection
+    // page reads this off the SAME call it already makes to check health,
+    // no new request needed.
+    const refreshTokenExpiresAt = tokenStore.getConnection(realmId)?.refreshTokenExpiresAt ?? null;
 
     if (result.kind === "success") {
       tokenStore.recordHealthCheck(realmId, "green", checkedAt);
-      res.json({ realmId, status: "green", checkedAt, latencyMs, detail: null });
+      res.json({ realmId, status: "green", checkedAt, latencyMs, detail: null, refreshTokenExpiresAt });
       return;
     }
 
@@ -45,13 +50,13 @@ export function healthRoutes(
       // looks structurally valid but was revoked on Intuit's side is
       // exactly the failure this page exists to catch.")
       tokenStore.recordHealthCheck(realmId, "red", checkedAt);
-      res.json({ realmId, status: "red", checkedAt, latencyMs, detail: "Authorization failed — reconnect required." });
+      res.json({ realmId, status: "red", checkedAt, latencyMs, detail: "Authorization failed — reconnect required.", refreshTokenExpiresAt });
       return;
     }
 
     tokenStore.recordHealthCheck(realmId, "red", checkedAt);
     const detail = result.kind === "operationError" ? result.message : "Health check could not complete.";
-    res.json({ realmId, status: "red", checkedAt, latencyMs, detail });
+    res.json({ realmId, status: "red", checkedAt, latencyMs, detail, refreshTokenExpiresAt });
   });
 
   return router;

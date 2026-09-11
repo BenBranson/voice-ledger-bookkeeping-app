@@ -19,7 +19,7 @@ describe("SessionStore", () => {
   // callback calls tokenStore.saveRefreshToken before sessionStore.create,
   // see src/routes/oauth.ts) — these tests do the same.
   function seedConnection(realmId: string): void {
-    tokenStore.saveRefreshToken(realmId, "sandbox", null, `refresh-token-for-${realmId}`);
+    tokenStore.saveRefreshToken(realmId, "sandbox", null, `refresh-token-for-${realmId}`, 8_640_000);
   }
 
   beforeEach(() => {

@@ -6,6 +6,9 @@ import { TokenStore } from "../src/auth/tokenStore.js";
 import type Database from "better-sqlite3";
 
 const TEST_DB_PATH = "./test/.tmp/tokenstore-test.sqlite";
+// An arbitrary, real-shaped value for tests — not asserted anywhere as
+// "the real QBO number," just a stand-in for the 5th saveRefreshToken arg.
+const REFRESH_TOKEN_TTL_SECONDS = 8_640_000;
 
 describe("TokenStore", () => {
   let db: Database.Database;
@@ -26,12 +29,12 @@ describe("TokenStore", () => {
   });
 
   it("round-trips a refresh token through encryption", () => {
-    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value", REFRESH_TOKEN_TTL_SECONDS);
     expect(store.getRefreshToken("123456")).toBe("the-refresh-token-value");
   });
 
   it("never stores the refresh token in plaintext — §3.9", () => {
-    store.saveRefreshToken("123456", "sandbox", null, "super-secret-refresh-token");
+    store.saveRefreshToken("123456", "sandbox", null, "super-secret-refresh-token", REFRESH_TOKEN_TTL_SECONDS);
     const row = db
       .prepare<unknown[], { refresh_token_ciphertext: string }>(
         "SELECT refresh_token_ciphertext FROM connections WHERE realm_id = '123456'"
@@ -42,8 +45,8 @@ describe("TokenStore", () => {
   });
 
   it("updates the refresh token on reconnect without creating a duplicate row", () => {
-    store.saveRefreshToken("123456", "sandbox", null, "first-token");
-    store.saveRefreshToken("123456", "sandbox", null, "second-token");
+    store.saveRefreshToken("123456", "sandbox", null, "first-token", REFRESH_TOKEN_TTL_SECONDS);
+    store.saveRefreshToken("123456", "sandbox", null, "second-token", REFRESH_TOKEN_TTL_SECONDS);
     expect(store.getRefreshToken("123456")).toBe("second-token");
     const count = db.prepare("SELECT COUNT(*) as c FROM connections").get() as { c: number };
     expect(count.c).toBe(1);
@@ -86,13 +89,13 @@ describe("TokenStore", () => {
   });
 
   it("a fresh connection defaults to write-disabled — CLAUDE.md rule 4: every new connection starts Read-Only", () => {
-    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value", REFRESH_TOKEN_TTL_SECONDS);
     expect(store.isWriteEnabled("123456")).toBe(false);
     expect(store.getConnection("123456")?.writeEnabled).toBe(false);
   });
 
   it("setWriteEnabled(true) then isWriteEnabled reflects it, and it round-trips back off", () => {
-    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value", REFRESH_TOKEN_TTL_SECONDS);
     store.setWriteEnabled("123456", true);
     expect(store.isWriteEnabled("123456")).toBe(true);
     store.setWriteEnabled("123456", false);
@@ -104,8 +107,8 @@ describe("TokenStore", () => {
   });
 
   it("listConnections returns every connected realm", () => {
-    store.saveRefreshToken("111111", "sandbox", "First Co", "token-a");
-    store.saveRefreshToken("222222", "sandbox", "Second Co", "token-b");
+    store.saveRefreshToken("111111", "sandbox", "First Co", "token-a", REFRESH_TOKEN_TTL_SECONDS);
+    store.saveRefreshToken("222222", "sandbox", "Second Co", "token-b", REFRESH_TOKEN_TTL_SECONDS);
     const all = store.listConnections();
     expect(all.map((c) => c.realmId).sort()).toEqual(["111111", "222222"]);
     expect(all.find((c) => c.realmId === "222222")?.companyName).toBe("Second Co");
@@ -116,7 +119,7 @@ describe("TokenStore", () => {
   });
 
   it("getConnection and listConnections carry the last health check fields, defaulting to null before any check", () => {
-    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value");
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value", REFRESH_TOKEN_TTL_SECONDS);
     expect(store.getConnection("123456")?.lastHealthCheckAt).toBeNull();
     expect(store.getConnection("123456")?.lastHealthCheckStatus).toBeNull();
     store.recordHealthCheck("123456", "green", "2026-08-28T12:00:00.000Z");
@@ -124,5 +127,25 @@ describe("TokenStore", () => {
     expect(updated?.lastHealthCheckStatus).toBe("green");
     expect(updated?.lastHealthCheckAt).toBe("2026-08-28T12:00:00.000Z");
     expect(store.listConnections()[0]?.lastHealthCheckStatus).toBe("green");
+  });
+
+  it("saveRefreshToken converts refreshTokenExpiresInSeconds into an absolute timestamp roughly that far in the future", () => {
+    const before = Date.now();
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "the-refresh-token-value", REFRESH_TOKEN_TTL_SECONDS);
+    const after = Date.now();
+    const expiresAt = store.getConnection("123456")?.refreshTokenExpiresAt;
+    expect(expiresAt).not.toBeNull();
+    const expiresAtMs = new Date(expiresAt!).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + REFRESH_TOKEN_TTL_SECONDS * 1000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + REFRESH_TOKEN_TTL_SECONDS * 1000);
+  });
+
+  it("a fresh reconnect with a different TTL overwrites the prior expiry, not just the token value", () => {
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "first-token", 1000);
+    const first = store.getConnection("123456")?.refreshTokenExpiresAt;
+    store.saveRefreshToken("123456", "sandbox", "Test Co", "second-token", 999_999);
+    const second = store.getConnection("123456")?.refreshTokenExpiresAt;
+    expect(second).not.toBe(first);
+    expect(new Date(second!).getTime()).toBeGreaterThan(new Date(first!).getTime());
   });
 });

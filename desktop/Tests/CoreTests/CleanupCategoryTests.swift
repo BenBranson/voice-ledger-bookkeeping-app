@@ -37,4 +37,33 @@ struct CleanupCategoryTests {
         let orders = CleanupCategory.allCases.map(\.sortOrder)
         #expect(Set(orders).count == orders.count)
     }
+
+    /// Added 2026-09-11 alongside `ruleIDs(in:)`, built so
+    /// `AppState.balanceSheetIntegrityRuleIDs` (Page 8's rule set) derives
+    /// from this table instead of its own hand-typed literal — the literal
+    /// had drifted (two rules filed here under `.balanceSheetIntegrity`
+    /// were missing from it, so neither ever rendered on the actual page).
+    /// This test pins the exact set so a similar drift is caught here
+    /// again if it ever recurs.
+    @Test("ruleIDs(in:) returns exactly the rules filed under that category")
+    func ruleIDsInCategoryMatchesKnownSet() {
+        let balanceSheetIntegrity = CleanupCategory.ruleIDs(in: .balanceSheetIntegrity)
+        #expect(balanceSheetIntegrity == [
+            "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-BS-UNDEP-001",
+            "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-CLOSED-PERIOD-DRIFT-001",
+            "VL-BS-DRCR-001"
+        ])
+    }
+
+    @Test("ruleIDs(in:) partitions ruleIDs exactly — every rule in exactly one category's set")
+    func ruleIDsInCategoryPartitionsAllRuleIDs() {
+        let union = CleanupCategory.allCases.reduce(into: Set<String>()) { result, category in
+            result.formUnion(CleanupCategory.ruleIDs(in: category))
+        }
+        #expect(union == CleanupCategory.ruleIDs)
+        for ruleID in CleanupCategory.ruleIDs {
+            let containingCategories = CleanupCategory.allCases.filter { CleanupCategory.ruleIDs(in: $0).contains(ruleID) }
+            #expect(containingCategories.count == 1, "\(ruleID) should belong to exactly one category, found in \(containingCategories)")
+        }
+    }
 }

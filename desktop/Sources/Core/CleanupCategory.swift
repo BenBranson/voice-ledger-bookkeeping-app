@@ -87,4 +87,19 @@ public enum CleanupCategory: String, CaseIterable, Sendable {
     /// anyway makes divergence structurally impossible instead of merely
     /// unlikely.
     public static let ruleIDs: Set<String> = Set(ruleCategories.keys)
+
+    /// The rule IDs filed under one category — used by `AppState
+    /// .balanceSheetIntegrityRuleIDs` (2026-09-11 fix) the same way
+    /// `ruleIDs` above is used for the full Cleanup Assessment set: that
+    /// property used to be its own hand-typed literal of 5 IDs, which had
+    /// silently drifted out of sync with this table — `VL-CLOSED-PERIOD-
+    /// DRIFT-001` and `VL-BS-DRCR-001` were both filed here under
+    /// `.balanceSheetIntegrity` but never added to the literal, so neither
+    /// ever appeared on the actual Balance Sheet Integrity page despite
+    /// being categorized as belonging to it. Deriving from this table
+    /// instead makes that class of drift structurally impossible, same
+    /// reasoning as `ruleIDs`'s own doc comment.
+    public static func ruleIDs(in category: CleanupCategory) -> Set<String> {
+        Set(ruleCategories.filter { $0.value == category }.keys)
+    }
 }

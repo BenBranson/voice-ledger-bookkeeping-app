@@ -47,6 +47,12 @@ public struct ConnectionView: View {
         public let healthStatus: VLStatus?
         public let healthDetail: String?
         public let lastCheckedAt: Date?
+        /// QBO's own refresh-token expiry (2026-09-11), read off the same
+        /// health-check response — `nil` until the first check, or for a
+        /// realm connected before this field existed and not yet refreshed
+        /// since. Never estimated client-side; see `HealthCheckResult`'s
+        /// own doc comment.
+        public let refreshTokenExpiresAt: Date?
         public let isChecking: Bool
         public let writeEnabled: Bool?
         public let isTogglingWriteAccess: Bool
@@ -66,6 +72,7 @@ public struct ConnectionView: View {
             healthStatus: VLStatus?,
             healthDetail: String?,
             lastCheckedAt: Date?,
+            refreshTokenExpiresAt: Date? = nil,
             isChecking: Bool,
             writeEnabled: Bool?,
             isTogglingWriteAccess: Bool,
@@ -82,6 +89,7 @@ public struct ConnectionView: View {
             self.healthStatus = healthStatus
             self.healthDetail = healthDetail
             self.lastCheckedAt = lastCheckedAt
+            self.refreshTokenExpiresAt = refreshTokenExpiresAt
             self.isChecking = isChecking
             self.writeEnabled = writeEnabled
             self.isTogglingWriteAccess = isTogglingWriteAccess
@@ -173,6 +181,10 @@ public struct ConnectionView: View {
                         Text("A live, timestamped call to QuickBooks Online — never a cached assumption. Green here means the connection actually answered just now, not that it answered at some point in the past.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
+
+                        Divider().overlay(VLColor.border)
+
+                        refreshTokenExpirySection
                     }
                 }
 
@@ -213,6 +225,48 @@ public struct ConnectionView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    /// docs/VOICE_LEDGER_SPEC.md's Connection Pages section: "a 30-day/
+    /// 14-day refresh-token expiry warning." Built 2026-09-11 from real
+    /// data QBO already returns on every token exchange/refresh
+    /// (`x_refresh_token_expires_in`) and this backend was previously
+    /// discarding — never an estimate. In practice this window keeps
+    /// rolling forward by ~100 days every time the app actually uses the
+    /// connection, so a real warning here means the connection has
+    /// genuinely gone unused (or was revoked) for a long stretch, not that
+    /// anything is imminently wrong on a normally-used connection.
+    private var refreshTokenExpirySection: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+            Text("REFRESH TOKEN")
+                .font(VLTypography.eyebrow())
+                .tracking(VLTypography.eyebrowTracking)
+                .foregroundStyle(VLColor.textMuted)
+            if let expiresAt = state.refreshTokenExpiresAt {
+                let daysRemaining = Calendar.current.dateComponents([.day], from: Date(), to: expiresAt).day ?? 0
+                HStack(spacing: VLSpacing.xs) {
+                    VLStatusPill(refreshTokenStatus(daysRemaining: daysRemaining), label: refreshTokenLabel(daysRemaining: daysRemaining))
+                    Text("Valid until \(expiresAt.formatted(date: .abbreviated, time: .omitted))")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                }
+            } else {
+                VLStatusPill(.notChecked, label: "Unknown until next health check")
+            }
+        }
+    }
+
+    private func refreshTokenStatus(daysRemaining: Int) -> VLStatus {
+        if daysRemaining <= 3 { return .urgent }
+        if daysRemaining <= 14 { return .reviewNeeded }
+        return .verified
+    }
+
+    private func refreshTokenLabel(daysRemaining: Int) -> String {
+        if daysRemaining < 0 { return "Expired — reconnect required" }
+        if daysRemaining <= 3 { return "Expires in \(daysRemaining) day\(daysRemaining == 1 ? "" : "s") — reconnect now" }
+        if daysRemaining <= 14 { return "Expires in \(daysRemaining) days — reconnect soon" }
+        return "\(daysRemaining) days remaining"
     }
 
     /// docs/VOICE_LEDGER_SPEC.md's "Claude API Connection" section

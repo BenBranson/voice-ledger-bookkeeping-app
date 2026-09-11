@@ -473,10 +473,16 @@ public struct HealthCheckResult: Codable, Sendable {
     public let checkedAt: Date
     public let latencyMs: Int
     public let detail: String?
+    /// QBO's own `x_refresh_token_expires_in` from whichever token
+    /// exchange/refresh last wrote this realm's connection row (2026-09-11)
+    /// — `nil` for a realm connected before this field existed and not yet
+    /// refreshed since, or (in principle) one this backend has genuinely
+    /// never recorded a connection for. Never estimated client-side.
+    public let refreshTokenExpiresAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case realmID = "realmId"
-        case status, checkedAt, latencyMs, detail
+        case status, checkedAt, latencyMs, detail, refreshTokenExpiresAt
     }
 }
 

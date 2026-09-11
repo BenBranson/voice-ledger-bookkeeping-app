@@ -22,6 +22,10 @@ export interface StoredConnection {
   readonly writeEnabled: boolean;
   readonly lastHealthCheckAt: string | null;
   readonly lastHealthCheckStatus: string | null;
+  /** ISO 8601, or `null` for a realm connected before this field existed
+   * and not yet refreshed since. From QBO's own `x_refresh_token_expires_in`
+   * on the token response that last wrote this row — never estimated. */
+  readonly refreshTokenExpiresAt: string | null;
 }
 
 interface CachedAccessToken {
@@ -41,6 +45,7 @@ interface ConnectionRow {
   write_enabled: number;
   last_health_check_at: string | null;
   last_health_check_status: string | null;
+  refresh_token_expires_at: string | null;
 }
 
 export class TokenStore {
@@ -55,18 +60,28 @@ export class TokenStore {
     private readonly encryptionKey: Buffer
   ) {}
 
-  saveRefreshToken(realmId: string, environment: Environment, companyName: string | null, refreshToken: string): void {
+  /**
+   * `refreshTokenExpiresInSeconds` — QBO's own `x_refresh_token_expires_in`
+   * from the token response that produced this `refreshToken` (2026-09-11:
+   * previously computed by `oauth.ts` and then discarded here). Converted
+   * to an absolute ISO 8601 timestamp at write time rather than stored as
+   * a raw seconds-count, so `getConnection`/`listConnections` never need
+   * the original write time to make sense of it.
+   */
+  saveRefreshToken(realmId: string, environment: Environment, companyName: string | null, refreshToken: string, refreshTokenExpiresInSeconds: number): void {
     const encrypted = encrypt(refreshToken, this.encryptionKey);
     const now = new Date().toISOString();
+    const refreshTokenExpiresAt = new Date(Date.now() + refreshTokenExpiresInSeconds * 1000).toISOString();
     this.db
       .prepare(
-        `INSERT INTO connections (realm_id, environment, company_name, refresh_token_iv, refresh_token_auth_tag, refresh_token_ciphertext, created_at, updated_at)
-         VALUES (@realmId, @environment, @companyName, @iv, @authTag, @ciphertext, @now, @now)
+        `INSERT INTO connections (realm_id, environment, company_name, refresh_token_iv, refresh_token_auth_tag, refresh_token_ciphertext, created_at, updated_at, refresh_token_expires_at)
+         VALUES (@realmId, @environment, @companyName, @iv, @authTag, @ciphertext, @now, @now, @refreshTokenExpiresAt)
          ON CONFLICT(realm_id) DO UPDATE SET
            refresh_token_iv = @iv,
            refresh_token_auth_tag = @authTag,
            refresh_token_ciphertext = @ciphertext,
-           updated_at = @now`
+           updated_at = @now,
+           refresh_token_expires_at = @refreshTokenExpiresAt`
       )
       .run({
         realmId,
@@ -75,7 +90,8 @@ export class TokenStore {
         iv: encrypted.iv,
         authTag: encrypted.authTag,
         ciphertext: encrypted.ciphertext,
-        now
+        now,
+        refreshTokenExpiresAt
       });
   }
 
@@ -126,7 +142,8 @@ export class TokenStore {
       updatedAt: row.updated_at,
       writeEnabled: row.write_enabled === 1,
       lastHealthCheckAt: row.last_health_check_at,
-      lastHealthCheckStatus: row.last_health_check_status
+      lastHealthCheckStatus: row.last_health_check_status,
+      refreshTokenExpiresAt: row.refresh_token_expires_at
     };
   }
 

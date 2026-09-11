@@ -5,13 +5,23 @@ import DesignSystem
 /// docs/VOICE_LEDGER_SPEC.md Page 8: "Strongest API coverage" — Balance
 /// Sheet, Trial Balance, General Ledger, Account List, Transaction List,
 /// journal entries, bills/payments/deposits/purchases/transfers,
-/// attachments. **This is the minimal read-only slice**: only the two
-/// account-balance rules built so far (`VL-BS-NEGBAL-001`,
-/// `VL-OBE-BALANCE-001`), sourced from Account List + Purchase/Bill reads.
-/// The full page (Balance Sheet/Trial Balance/GL report reads, suspense
-/// activity, stale clearing accounts, undeposited-funds aging, loan
-/// inconsistencies) needs report-reading catalog operations that don't
-/// exist yet — not shown rather than faked, per `CLAUDE.md` rule 5.
+/// attachments. **Read-only**, and grown well past the original two-rule
+/// slice: `VL-BS-NEGBAL-001` (negative balances), `VL-OBE-BALANCE-001`
+/// (Opening Balance Equity), `VL-BS-UNDEP-001` (undeposited-funds aging),
+/// `VL-FORCED-RECON-001` (forced reconciliation), `VL-REPORT-TIE-001`
+/// (report tie-out), `VL-CLOSED-PERIOD-DRIFT-001` (a locked period's
+/// numbers moving after close), and `VL-BS-DRCR-001` (Income/Expense
+/// accounts on the wrong side of the Trial Balance) — corrected 2026-09-11:
+/// the last two were already filed under `CleanupCategory
+/// .balanceSheetIntegrity` but a stale hand-typed literal in `AppState`
+/// (`balanceSheetIntegrityRuleIDs`) had never been updated to include them,
+/// so neither ever rendered here despite being fully built and tested.
+/// **Still genuinely not built**: suspense-activity and stale-clearing-
+/// account rules (no such rule exists yet — would need this sandbox to
+/// have a real suspense/clearing account to verify against first, per
+/// `CLAUDE.md` rule 6), and Balance Sheet/Trial Balance/General Ledger
+/// report DATA is not rendered on this page itself — each has its own
+/// dedicated report page instead.
 public struct BalanceSheetIntegrityView: View {
     public struct RuleSummary: Identifiable {
         public let ruleID: String
@@ -103,7 +113,7 @@ public struct BalanceSheetIntegrityView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("Read-only. Checks account balances against expected structural signals (account subtype, sign convention). Full report-level checks — suspense activity, stale clearing accounts, undeposited-funds aging, loan inconsistencies — are not yet built; they need Balance Sheet/Trial Balance/General Ledger report reads this app doesn't have yet.")
+                Text("Read-only. Checks account balances and Trial Balance structure against expected signals (sign convention, account subtype, a locked period's numbers staying put). Suspense-activity and stale-clearing-account checks aren't built yet — this sandbox has no such account to verify a rule against.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 

@@ -82,7 +82,13 @@ public final class AppState {
     /// the cross-cutting Cleanup Assessment tool. The two sets overlapping
     /// is intentional (docs/backlog/CLEANUP_MODE.md's assessment is meant to
     /// span multiple pages' rules), not a bug.
-    public static let balanceSheetIntegrityRuleIDs: Set<String> = ["VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-UNDEP-001", "VL-FORCED-RECON-001", "VL-REPORT-TIE-001"]
+    /// Derived from `CleanupCategory` (2026-09-11 fix, same "one dictionary,
+    /// not a hand-typed literal" reasoning as `cleanupAssessmentRuleIDs`
+    /// above): this used to be its own 5-ID literal that had drifted out of
+    /// sync with `CleanupCategory`'s own `.balanceSheetIntegrity` grouping —
+    /// `VL-CLOSED-PERIOD-DRIFT-001` and `VL-BS-DRCR-001` were both filed
+    /// there but missing here, so neither ever rendered on this page.
+    public static let balanceSheetIntegrityRuleIDs: Set<String> = CleanupCategory.ruleIDs(in: .balanceSheetIntegrity)
 
     public enum LoadState: Equatable {
         case idle

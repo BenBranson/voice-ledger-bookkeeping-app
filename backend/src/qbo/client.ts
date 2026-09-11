@@ -55,7 +55,7 @@ export class QBOClient {
       // Intuit rotates the refresh token on every use — persist the new one
       // immediately. §3.9: "the new token is persisted before the old is
       // discarded."
-      this.tokenStore.saveRefreshToken(realmId, this.credentials.environment, null, result.refreshToken);
+      this.tokenStore.saveRefreshToken(realmId, this.credentials.environment, null, result.refreshToken, result.refreshTokenExpiresInSeconds);
       return result.accessToken;
     });
   }

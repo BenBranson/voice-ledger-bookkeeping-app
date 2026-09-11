@@ -65,7 +65,7 @@ export function oauthRoutes(
 
     try {
       const tokenResponse = await exchangeAuthorizationCode(credentials, code);
-      tokenStore.saveRefreshToken(realmId, credentials.environment, null, tokenResponse.refreshToken);
+      tokenStore.saveRefreshToken(realmId, credentials.environment, null, tokenResponse.refreshToken, tokenResponse.refreshTokenExpiresInSeconds);
       tokenStore.cacheAccessToken(realmId, tokenResponse.accessToken, tokenResponse.expiresInSeconds);
 
       const sessionToken = sessionStore.create(realmId);
