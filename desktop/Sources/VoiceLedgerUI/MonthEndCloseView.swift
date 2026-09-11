@@ -45,6 +45,15 @@ public struct MonthEndCloseView: View {
     /// link — only the caller (`RootView`) knows how to actually navigate
     /// to another screen, so this stays a plain pass-through.
     private let onReviewFindings: ((ChecklistItemID) -> Void)?
+    /// docs/VOICE_LEDGER_SPEC.md Page 11: "carry-forward items" — items a
+    /// human explicitly deferred to next period (`CarryForwardMark`, marked
+    /// from `FindingDetailView`). Was persisted and displayed on the Close
+    /// Package page only; this page never showed it despite being the one
+    /// the spec names for it (2026-09-11 fix). Never affects `isUnlocked`/
+    /// completion — purely informational, so a bookkeeper closing the
+    /// period sees what was knowingly pushed to next month without having
+    /// to separately open Close Package to find out.
+    private let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
     /// Owner directive (2026-08-30): "a lot of the sections say unsynced
     /// yet there is no refresh button for them to sync" — see `SyncButton`.
     private let isSyncing: Bool
@@ -71,6 +80,7 @@ public struct MonthEndCloseView: View {
         onComplete: @escaping (ChecklistItemID, _ note: String?) -> Void,
         onUncomplete: @escaping (ChecklistItemID) -> Void,
         onReviewFindings: ((ChecklistItemID) -> Void)? = nil,
+        carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
         isSyncing: Bool = false,
         onSync: @escaping () -> Void = {},
         aiStatus: AIStatus? = nil,
@@ -90,6 +100,7 @@ public struct MonthEndCloseView: View {
         self.onComplete = onComplete
         self.onUncomplete = onUncomplete
         self.onReviewFindings = onReviewFindings
+        self.carryForwardItems = carryForwardItems
         self.isSyncing = isSyncing
         self.onSync = onSync
         self.aiStatus = aiStatus
@@ -168,6 +179,10 @@ public struct MonthEndCloseView: View {
                     }
                 }
 
+                if !carryForwardItems.isEmpty {
+                    carryForwardSection
+                }
+
                 TwoTierAskAIPanel(
                     aiStatus: aiStatus,
                     placeholder: "Ask a question about this page",
@@ -209,6 +224,36 @@ public struct MonthEndCloseView: View {
                     }
                 }
                 .frame(height: 6)
+            }
+        }
+    }
+
+    private var carryForwardSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                Text("CARRY-FORWARD ITEMS")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text("Findings explicitly deferred to next period rather than resolved or dismissed now — still open, still on their normal pages, listed here only so closing this period doesn't lose track of what was knowingly pushed forward.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+                ForEach(carryForwardItems, id: \.mark.id) { item in
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        HStack {
+                            Text(item.findingTitle)
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textPrimary)
+                            Spacer()
+                            Text(item.dollarExposure.description)
+                                .font(VLTypography.tabularNumeric())
+                                .foregroundStyle(VLColor.textPrimary)
+                        }
+                        Text("Marked by \(item.mark.markedBy)\(item.mark.reason.map { " — \($0)" } ?? "")")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                }
             }
         }
     }

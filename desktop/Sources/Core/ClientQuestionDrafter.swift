@@ -68,4 +68,58 @@ public enum ClientQuestionDrafter {
 
         return lines.joined(separator: "\n")
     }
+
+    /// One drafted-question/answer pair for a single finding — the Close
+    /// Package's "Client Q&A" section (docs/VOICE_LEDGER_SPEC.md), built
+    /// 2026-09-11. The data (`.clientQuestionDrafted`/`.clientQuestionAnswered`
+    /// `ActivityLogEntry`s) already existed per-finding via
+    /// `AppState.recordClientQuestionSent`/`recordClientQuestionAnswer` —
+    /// this just aggregates it across every finding for one page, the same
+    /// "compute in Core, display in UI" split as everything else here.
+    public struct Thread: Identifiable, Equatable {
+        public let findingID: String
+        public let findingTitle: String
+        public let question: String
+        public let askedAt: Date
+        public let answer: String?
+        public let answeredAt: Date?
+        public var id: String { findingID }
+    }
+
+    /// Pairs each finding's MOST RECENT drafted question with its MOST
+    /// RECENT answer, if any. A finding with more than one question/answer
+    /// round (rare — no UI currently re-drafts after an answer is recorded)
+    /// only shows its latest round; this is a deliberate simplification,
+    /// not a data loss, since every entry stays in the full Activity Log
+    /// regardless. Entries with no `findingID` (shouldn't happen for these
+    /// two kinds, but the field is optional on `ActivityLogEntry`) are
+    /// skipped rather than crashing or grouping under a fake key.
+    public static func threads(from activityLog: [ActivityLogEntry]) -> [Thread] {
+        var latestQuestion: [String: ActivityLogEntry] = [:]
+        var latestAnswer: [String: ActivityLogEntry] = [:]
+        for entry in activityLog {
+            guard let findingID = entry.findingID else { continue }
+            switch entry.kind {
+            case .clientQuestionDrafted:
+                if let existing = latestQuestion[findingID], existing.recordedAt > entry.recordedAt { continue }
+                latestQuestion[findingID] = entry
+            case .clientQuestionAnswered:
+                if let existing = latestAnswer[findingID], existing.recordedAt > entry.recordedAt { continue }
+                latestAnswer[findingID] = entry
+            default:
+                continue
+            }
+        }
+        return latestQuestion.values.map { question in
+            let answer = latestAnswer[question.findingID ?? ""]
+            return Thread(
+                findingID: question.findingID ?? "",
+                findingTitle: question.findingSummary ?? "(finding no longer available)",
+                question: question.note ?? "",
+                askedAt: question.recordedAt,
+                answer: answer?.note,
+                answeredAt: answer?.recordedAt
+            )
+        }.sorted { $0.askedAt > $1.askedAt }
+    }
 }

@@ -36,6 +36,14 @@ public enum ClosePackagePDFExporter {
         public let agedPayablesLines: [AgingLine]
         public let corrections: [ActivityLogEntry]
         public let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
+        /// Built 2026-09-11, alongside the on-screen Close Package section
+        /// of the same name — see `ClientQuestionDrafter.Thread`'s doc
+        /// comment for how these are computed.
+        public let clientQuestionThreads: [ClientQuestionDrafter.Thread]
+        /// Built 2026-09-11 — `AppState.conversationHistory`, passed
+        /// through unchanged (already sorted most-recent-first by the
+        /// caller, same convention as `recentActivity`).
+        public let conversationHistory: [AskAIConversationEntry]
         public let recentActivity: [ActivityLogEntry]
         /// Owner directive (2026-08-31): an AI-narrated executive summary
         /// paragraph, generated on the Close Package page (edited by the
@@ -64,6 +72,8 @@ public enum ClosePackagePDFExporter {
             agedPayablesLines: [AgingLine],
             corrections: [ActivityLogEntry],
             carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)],
+            clientQuestionThreads: [ClientQuestionDrafter.Thread] = [],
+            conversationHistory: [AskAIConversationEntry] = [],
             recentActivity: [ActivityLogEntry],
             executiveSummary: String? = nil
         ) {
@@ -83,6 +93,8 @@ public enum ClosePackagePDFExporter {
             self.agedPayablesLines = agedPayablesLines
             self.corrections = corrections
             self.carryForwardItems = carryForwardItems
+            self.clientQuestionThreads = clientQuestionThreads
+            self.conversationHistory = conversationHistory
             self.recentActivity = recentActivity
             self.executiveSummary = executiveSummary
         }
@@ -263,6 +275,25 @@ public enum ClosePackagePDFExporter {
         } else {
             for item in input.carryForwardItems {
                 bodyLine("\(item.findingTitle) — \(item.dollarExposure.description)\(item.mark.reason.map { ": \($0)" } ?? "")")
+            }
+        }
+
+        sectionHeader("Client Q&A")
+        if input.clientQuestionThreads.isEmpty {
+            bodyLine("None this period.", muted: true)
+        } else {
+            for thread in input.clientQuestionThreads {
+                bodyLine("\(thread.findingTitle) — Q: \(thread.question)")
+                bodyLine(thread.answer.map { "A: \($0)" } ?? "Awaiting reply.", muted: thread.answer == nil)
+            }
+        }
+
+        sectionHeader("Ask AI Conversation History")
+        if input.conversationHistory.isEmpty {
+            bodyLine("No questions asked this period.", muted: true)
+        } else {
+            for entry in input.conversationHistory.prefix(30) {
+                bodyLine("\(dateFormatter.string(from: entry.askedAt)) — \(entry.contextLabel) (\(entry.tier.rawValue)): \(entry.question)")
             }
         }
 

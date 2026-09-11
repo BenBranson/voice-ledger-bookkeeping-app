@@ -26,9 +26,16 @@ import DesignSystem
 /// of the Activity Log (`ActivityKind.isCorrection`), not a separately
 /// tracked ledger with its own storage; the Activity Log is already the
 /// append-only record of everything, so this is a view distinction, not a
-/// new data model. **Still not built**: client Q&A and Ask Claude history
-/// (no Claude integration exists yet at all — this app uses OpenAI, see
-/// `AskAIContext`'s doc comment). Exportable two ways: the Export menu's
+/// new data model. **Client Q&A and Ask AI conversation history built
+/// 2026-09-11** — both render only when at least one entry exists, same
+/// posture as carry-forward. Client Q&A pairs each finding's
+/// `.clientQuestionDrafted`/`.clientQuestionAnswered` Activity Log entries
+/// via `ClientQuestionDrafter.threads(from:)` (Core, pure, tested). The
+/// conversation history section shows the app's full persisted Ask AI
+/// history (`AppState.conversationHistory`) — every tier (Gemma, OpenAI,
+/// Claude Haiku 4.5, Qwen3), not literally "Claude" only; the spec's name
+/// for this section predates the Claude tier existing at all. Exportable
+/// two ways: the Export menu's
 /// plain CSV/XLSX/PDF (a flat table of this same data), and "Export
 /// Branded PDF" (`ClosePackagePDFExporter`, added 2026-08-28) — a real
 /// designed document with a cover page and titled sections, the "branded
@@ -60,6 +67,15 @@ public struct ClosePackageView: View {
     /// each mark's finding before passing it down, same as every other
     /// summary on this page being pre-computed by the caller.
     private let carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)]
+    /// Client Q&A (2026-09-11) — computed by `ClientQuestionDrafter.threads(from:)`
+    /// from the same Activity Log every other section on this page already
+    /// reads; the app layer passes the already-computed result, same as
+    /// `carryForwardItems`.
+    private let clientQuestionThreads: [ClientQuestionDrafter.Thread]
+    /// Ask AI conversation history (2026-09-11) — `AppState.conversationHistory`,
+    /// passed through as-is (already sorted most-recent-first by the app
+    /// layer, same convention as `recentActivity`).
+    private let conversationHistory: [AskAIConversationEntry]
     private let onExport: (ReportExportFormat) -> Void
     /// The designed, multi-section cover-page-plus-sections PDF
     /// (`ClosePackagePDFExporter`) — distinct from `onExport`'s generic
@@ -119,6 +135,8 @@ public struct ClosePackageView: View {
         agedPayablesLines: [AgingLine] = [],
         recentActivity: [ActivityLogEntry],
         carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
+        clientQuestionThreads: [ClientQuestionDrafter.Thread] = [],
+        conversationHistory: [AskAIConversationEntry] = [],
         onExport: @escaping (ReportExportFormat) -> Void = { _ in },
         onExportBrandedPDF: @escaping (String?) -> Void = { _ in },
         isSyncing: Bool = false,
@@ -156,6 +174,8 @@ public struct ClosePackageView: View {
         self.agedPayablesLines = agedPayablesLines
         self.recentActivity = recentActivity
         self.carryForwardItems = carryForwardItems
+        self.clientQuestionThreads = clientQuestionThreads
+        self.conversationHistory = conversationHistory
         self.onExport = onExport
         self.onExportBrandedPDF = onExportBrandedPDF
         self.isSyncing = isSyncing
@@ -199,7 +219,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table. Not the full spec'd Close Package (no client Q&A or Ask Claude history yet).")
+                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -229,6 +249,12 @@ public struct ClosePackageView: View {
                 correctionsSection
                 if !carryForwardItems.isEmpty {
                     carryForwardSection
+                }
+                if !clientQuestionThreads.isEmpty {
+                    clientQuestionSection
+                }
+                if !conversationHistory.isEmpty {
+                    conversationHistorySection
                 }
 
                 activitySection
@@ -489,6 +515,84 @@ public struct ClosePackageView: View {
                         Text("Marked by \(item.mark.markedBy)\(item.mark.reason.map { " — \($0)" } ?? "")")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
+                    }
+                }
+            }
+        }
+    }
+
+    private var clientQuestionSection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("CLIENT Q&A")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text("Questions drafted for the client about a specific finding, and their recorded reply — Voice Ledger has no real two-way channel, so a reply here is the bookkeeper typing in what the client said, not something verified independently.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+                ForEach(clientQuestionThreads) { thread in
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        Text(thread.findingTitle)
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Q: \(thread.question)")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                        if let answer = thread.answer {
+                            Text("A: \(answer)")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textSecondary)
+                        } else {
+                            VLStatusPill(.awaitingClient, label: "Awaiting reply")
+                        }
+                        if thread.id != clientQuestionThreads.last?.id {
+                            Divider().overlay(VLColor.border)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static func conversationTierLabel(_ tier: AskAIConversationEntry.Tier) -> String {
+        switch tier {
+        case .primary: return "Gemma"
+        case .secondary: return "OpenAI"
+        case .claude: return "Claude Haiku 4.5"
+        }
+    }
+
+    private var conversationHistorySection: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Text("ASK AI CONVERSATION HISTORY")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                Text("Every question asked of Voice Ledger's Ask AI panels, across every page and every tier — the same persisted history as the sidebar's \"AI Conversations\" page, included here for a complete close-period record.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+                ForEach(conversationHistory) { entry in
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        HStack {
+                            Text(entry.contextLabel)
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textPrimary)
+                            Spacer()
+                            Text(Self.conversationTierLabel(entry.tier))
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        }
+                        Text("Q: \(entry.question)")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                        Text("A: \(entry.answer)")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textSecondary)
+                        if entry.id != conversationHistory.last?.id {
+                            Divider().overlay(VLColor.border)
+                        }
                     }
                 }
             }

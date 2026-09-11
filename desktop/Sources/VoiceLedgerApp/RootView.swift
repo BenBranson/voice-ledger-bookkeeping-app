@@ -1081,13 +1081,43 @@ struct RootView: View {
         case .bankFeedCleanup:
             let missingPostingFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-MISSING-001" }
             let ambiguousMatchFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-AMBIGUOUS-001" }
+            // VL-RECON-DIFF-001 (2026-09-11 bug fix): this rule's own
+            // findings were computed and stored like every other rule, but
+            // this page never filtered for them or rendered a section — a
+            // real balance-drift finding existed and was silently invisible
+            // here, the exact false-negative CLAUDE.md rule 5 exists to
+            // prevent.
+            let driftFindings = state.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-RECON-DIFF-001" }
+            // Owner-visible bug, same date: `coverageStatus` collapsed
+            // "zero findings" to `.notChecked` unconditionally, and the
+            // detail text was a hardcoded "nothing imported yet" literal —
+            // both false the moment a real statement WAS imported and came
+            // back clean. Honest three-way split: nothing imported yet
+            // (gray/notChecked), imported and clean (green/verified),
+            // imported with findings (yellow/reviewNeeded) — CLAUDE.md rule
+            // 5's "a rule returning zero findings is not sufficient, unless
+            // the data was actually there" applied correctly instead of
+            // being read backwards.
+            let missingPostingCoverageStatus: VLStatus = state.importedStatementLineCount == 0
+                ? .notChecked
+                : (missingPostingFindings.isEmpty ? .verified : .reviewNeeded)
+            let missingPostingDetail: String = {
+                if state.importedStatementLineCount == 0 {
+                    return "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4)."
+                }
+                if missingPostingFindings.isEmpty {
+                    return "No missing postings found against \(state.importedStatementLineCount) imported statement line(s)."
+                }
+                return "\(missingPostingFindings.count) of \(state.importedStatementLineCount) imported statement line(s) don't match anything posted in QuickBooks."
+            }()
             let bankFeedCleanupAskAIKey = "page:bank-feed-cleanup"
             BankFeedCleanupView(
                 environment: state.environment == .production ? .production : .sandbox,
-                coverageStatus: missingPostingFindings.isEmpty ? .notChecked : .reviewNeeded,
-                missingPostingOutcomeDetail: "No statement imported for this period. Import a bank/card statement to run this check (docs/VOICE_LEDGER_SPEC.md Page 4).",
+                coverageStatus: missingPostingCoverageStatus,
+                missingPostingOutcomeDetail: missingPostingDetail,
                 findings: missingPostingFindings,
                 ambiguousFindings: ambiguousMatchFindings,
+                driftFindings: driftFindings,
                 reconciliationSummary: state.importedStatementLineCount > 0
                     ? ReconciliationSummary.compute(totalStatementLines: state.importedStatementLineCount, unmatchedFindings: missingPostingFindings, ambiguousFindings: ambiguousMatchFindings)
                     : nil,
@@ -1101,7 +1131,7 @@ struct RootView: View {
                 isAskingAI: state.askingAIContextKeys.contains(bankFeedCleanupAskAIKey),
                 askAIError: state.askAIError?.contextKey == bankFeedCleanupAskAIKey ? state.askAIError?.message : nil,
                 onAskAI: { question in
-                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings + driftFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings + driftFindings).contains(finding) })
                     Task { await state.askAI(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
                 },
                 secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
@@ -1109,7 +1139,7 @@ struct RootView: View {
                 isAskingSecondOpinion: state.askingSecondOpinionContextKeys.contains(bankFeedCleanupAskAIKey),
                 secondOpinionError: state.secondOpinionError?.contextKey == bankFeedCleanupAskAIKey ? state.secondOpinionError?.message : nil,
                 onAskSecondOpinion: { question in
-                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                    let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings + driftFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings + driftFindings).contains(finding) })
                     Task { await state.askSecondOpinion(contextKey: bankFeedCleanupAskAIKey, contextText: context, question: question) }
                 },
                 alternateModelTiers: [
@@ -1121,7 +1151,7 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(bankFeedCleanupAskAIKey)-qwen"),
                     error: state.askAIError?.contextKey == "\(bankFeedCleanupAskAIKey)-qwen" ? state.askAIError?.message : nil,
                     onAsk: { question in
-                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings + driftFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings + driftFindings).contains(finding) })
                         Task { await state.askAI(contextKey: "\(bankFeedCleanupAskAIKey)-qwen", contextText: context, question: question, model: "qwen3:8b") }
                     }
                 ),
@@ -1133,7 +1163,7 @@ struct RootView: View {
                     isAsking: state.askingAIContextKeys.contains("\(bankFeedCleanupAskAIKey)-claude"),
                     error: state.askAIError?.contextKey == "\(bankFeedCleanupAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in
-                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings).contains(finding) })
+                        let context = AskAIContext.compose(pageTitle: "Bank Feed Cleanup", findings: missingPostingFindings + ambiguousMatchFindings + driftFindings) + AskAIContext.crossPageFindingsAddendum(state.findings.filter { finding in finding.status == .open && !(missingPostingFindings + ambiguousMatchFindings + driftFindings).contains(finding) })
                         Task { await state.askAI(contextKey: "\(bankFeedCleanupAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
                     }
                 ) : nil
@@ -1216,6 +1246,10 @@ struct RootView: View {
                     case "review-bank-feed": state.screen = .bankFeedCleanup
                     default: break
                     }
+                },
+                carryForwardItems: state.carryForwardMarks.compactMap { mark in
+                    guard let finding = state.finding(id: mark.findingID) else { return nil }
+                    return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
                 },
                 isSyncing: state.loadState == .loading,
                 onSync: { Task { await state.syncAndEvaluate() } },
@@ -1760,6 +1794,8 @@ struct RootView: View {
                     guard let finding = state.finding(id: mark.findingID) else { return nil }
                     return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
                 },
+                clientQuestionThreads: ClientQuestionDrafter.threads(from: state.activityLog),
+                conversationHistory: state.conversationHistory.sorted { $0.askedAt > $1.askedAt },
                 onExport: { format in
                     let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
                     state.exportTable(
@@ -1801,6 +1837,8 @@ struct RootView: View {
                             guard let finding = state.finding(id: mark.findingID) else { return nil }
                             return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
                         },
+                        clientQuestionThreads: ClientQuestionDrafter.threads(from: state.activityLog),
+                        conversationHistory: state.conversationHistory.sorted { $0.askedAt > $1.askedAt },
                         recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
                         executiveSummary: executiveSummary
                     )

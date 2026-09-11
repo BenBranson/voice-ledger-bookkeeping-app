@@ -104,3 +104,75 @@ struct ClientQuestionDrafterTests {
         #expect(text.contains("Credit card payment coded to Office Supplies — $750.00 — USD 750.00"))
     }
 }
+
+@Suite("ClientQuestionDrafter.Thread — Close Package Client Q&A aggregation")
+struct ClientQuestionThreadTests {
+    func entry(kind: ActivityKind, findingID: String?, findingSummary: String? = nil, note: String? = nil, recordedAt: Date) -> ActivityLogEntry {
+        ActivityLogEntry(
+            realmID: RealmID(rawValue: "realm-a"),
+            recordedAt: recordedAt,
+            actor: .user("Ben"),
+            kind: kind,
+            findingID: findingID,
+            findingSummary: findingSummary,
+            note: note
+        )
+    }
+
+    @Test("A question with a matching answer pairs them into one thread")
+    func questionAndAnswerPair() {
+        let asked = Date(timeIntervalSince1970: 1000)
+        let answered = Date(timeIntervalSince1970: 2000)
+        let log = [
+            entry(kind: .clientQuestionDrafted, findingID: "f1", findingSummary: "Duplicate expense", note: "Was this a duplicate?", recordedAt: asked),
+            entry(kind: .clientQuestionAnswered, findingID: "f1", note: "No, two separate jobs.", recordedAt: answered)
+        ]
+        let threads = ClientQuestionDrafter.threads(from: log)
+        #expect(threads.count == 1)
+        #expect(threads[0].findingID == "f1")
+        #expect(threads[0].question == "Was this a duplicate?")
+        #expect(threads[0].answer == "No, two separate jobs.")
+    }
+
+    @Test("A question with no recorded answer yet still appears, with a nil answer")
+    func questionAwaitingAnswer() {
+        let log = [
+            entry(kind: .clientQuestionDrafted, findingID: "f1", findingSummary: "Duplicate expense", note: "Was this a duplicate?", recordedAt: Date())
+        ]
+        let threads = ClientQuestionDrafter.threads(from: log)
+        #expect(threads.count == 1)
+        #expect(threads[0].answer == nil)
+    }
+
+    @Test("Only the most recent question and most recent answer per finding survive, not every historical round")
+    func onlyLatestRoundPerFindingSurvives() {
+        let log = [
+            entry(kind: .clientQuestionDrafted, findingID: "f1", findingSummary: "Duplicate expense", note: "First question?", recordedAt: Date(timeIntervalSince1970: 100)),
+            entry(kind: .clientQuestionAnswered, findingID: "f1", note: "First answer.", recordedAt: Date(timeIntervalSince1970: 200)),
+            entry(kind: .clientQuestionDrafted, findingID: "f1", findingSummary: "Duplicate expense", note: "Second question?", recordedAt: Date(timeIntervalSince1970: 300)),
+            entry(kind: .clientQuestionAnswered, findingID: "f1", note: "Second answer.", recordedAt: Date(timeIntervalSince1970: 400))
+        ]
+        let threads = ClientQuestionDrafter.threads(from: log)
+        #expect(threads.count == 1)
+        #expect(threads[0].question == "Second question?")
+        #expect(threads[0].answer == "Second answer.")
+    }
+
+    @Test("Entries from two different findings produce two separate threads")
+    func twoFindingsProduceTwoThreads() {
+        let log = [
+            entry(kind: .clientQuestionDrafted, findingID: "f1", findingSummary: "Finding One", note: "Q1?", recordedAt: Date(timeIntervalSince1970: 100)),
+            entry(kind: .clientQuestionDrafted, findingID: "f2", findingSummary: "Finding Two", note: "Q2?", recordedAt: Date(timeIntervalSince1970: 200))
+        ]
+        let threads = ClientQuestionDrafter.threads(from: log)
+        #expect(threads.count == 2)
+    }
+
+    @Test("Non-client-question activity log entries (e.g. findingResolved) are ignored entirely")
+    func nonClientQuestionEntriesIgnored() {
+        let log = [
+            entry(kind: .findingResolved, findingID: "f1", findingSummary: "Finding One", recordedAt: Date())
+        ]
+        #expect(ClientQuestionDrafter.threads(from: log).isEmpty)
+    }
+}

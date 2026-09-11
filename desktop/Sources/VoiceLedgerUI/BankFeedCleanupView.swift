@@ -21,6 +21,13 @@ public struct BankFeedCleanupView: View {
     private let missingPostingOutcomeDetail: String
     private let findings: [Finding]
     private let ambiguousFindings: [Finding]
+    /// `VL-RECON-DIFF-001` (2026-09-11) — a statement's stated ending
+    /// balance that doesn't match QBO's current balance for that account.
+    /// Distinct from `findings` (a single unmatched line) and
+    /// `ambiguousFindings` (a line matching more than one posting): this is
+    /// an aggregate whole-account balance check, only possible once an
+    /// OFX/QFX import has a stated ending balance to compare against.
+    private let driftFindings: [Finding]
     private let reconciliationSummary: ReconciliationSummary?
     private let importError: String?
     private let onSelectFinding: (Finding) -> Void
@@ -49,6 +56,7 @@ public struct BankFeedCleanupView: View {
         missingPostingOutcomeDetail: String,
         findings: [Finding],
         ambiguousFindings: [Finding] = [],
+        driftFindings: [Finding] = [],
         reconciliationSummary: ReconciliationSummary? = nil,
         importError: String?,
         onSelectFinding: @escaping (Finding) -> Void,
@@ -72,6 +80,7 @@ public struct BankFeedCleanupView: View {
         self.missingPostingOutcomeDetail = missingPostingOutcomeDetail
         self.findings = findings
         self.ambiguousFindings = ambiguousFindings
+        self.driftFindings = driftFindings
         self.reconciliationSummary = reconciliationSummary
         self.importError = importError
         self.onSelectFinding = onSelectFinding
@@ -171,6 +180,41 @@ public struct BankFeedCleanupView: View {
                                 .foregroundStyle(VLColor.textSecondary)
                             Divider().overlay(VLColor.border)
                             ForEach(ambiguousFindings) { finding in
+                                Button {
+                                    onSelectFinding(finding)
+                                } label: {
+                                    HStack {
+                                        Text(finding.title)
+                                            .font(VLTypography.body())
+                                            .foregroundStyle(VLColor.textSecondary)
+                                        Spacer()
+                                        Text(finding.dollarExposure.description)
+                                            .font(VLTypography.tabularNumeric())
+                                            .foregroundStyle(VLColor.textPrimary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
+                if !driftFindings.isEmpty {
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                            HStack {
+                                Text("BALANCE DOESN'T MATCH STATEMENT (VL-RECON-DIFF-001)")
+                                    .font(VLTypography.eyebrow())
+                                    .tracking(VLTypography.eyebrowTracking)
+                                    .foregroundStyle(VLColor.textMuted)
+                                Spacer()
+                                VLStatusPill(.reviewNeeded)
+                            }
+                            Text("QBO's current balance for an account doesn't match the ending balance stated on its imported bank statement, by more than a few days of ordinary activity would explain.")
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textSecondary)
+                            Divider().overlay(VLColor.border)
+                            ForEach(driftFindings) { finding in
                                 Button {
                                     onSelectFinding(finding)
                                 } label: {
