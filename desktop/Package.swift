@@ -127,7 +127,7 @@ let package = Package(
         // no domain knowledge).
         .target(
             name: "VoiceLedgerUI",
-            dependencies: ["Core", "DesignSystem"],
+            dependencies: ["Core", "DesignSystem", "Voice"],
             path: "Sources/VoiceLedgerUI"
         ),
 

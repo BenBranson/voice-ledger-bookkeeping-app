@@ -51,7 +51,7 @@ public struct GuidedProcedureView: View {
                             .foregroundStyle(VLColor.textMuted)
                         ForEach(Array(procedure.steps.enumerated()), id: \.offset) { index, step in
                             HStack(alignment: .top, spacing: VLSpacing.xs) {
-                                Text("\(index + 1).")
+                                Text(verbatim: "\(index + 1).")
                                     .foregroundStyle(VLColor.textMuted)
                                 Text(step)
                                     .foregroundStyle(VLColor.textPrimary)

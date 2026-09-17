@@ -313,7 +313,7 @@ public struct FindingsListView: View {
                             if parsedAmountFilter == nil {
                                 Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
                             } else {
-                                Text("\(filteredFindings.count) matching finding\(filteredFindings.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                Text(verbatim: "\(filteredFindings.count) matching finding\(filteredFindings.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                             }
                             Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
                         }
@@ -373,7 +373,7 @@ public struct FindingsListView: View {
     private var compareBar: some View {
         if !checkedFindingIDs.isEmpty {
             HStack(spacing: VLSpacing.sm) {
-                Text("\(checkedFindingIDs.count) selected")
+                Text(verbatim: "\(checkedFindingIDs.count) selected")
                     .font(VLTypography.label())
                     .foregroundStyle(VLColor.textSecondary)
                 Button("Compare & Analyze") {

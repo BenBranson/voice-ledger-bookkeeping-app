@@ -269,7 +269,7 @@ public struct BankFeedCleanupView: View {
                     .foregroundStyle(VLColor.textMuted)
                 HStack(spacing: VLSpacing.md) {
                     VStack(alignment: .leading) {
-                        Text("\(summary.totalStatementLines)")
+                        Text(verbatim: "\(summary.totalStatementLines)")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text("Statement lines")
@@ -277,7 +277,7 @@ public struct BankFeedCleanupView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     VStack(alignment: .leading) {
-                        Text("\(summary.matchedCount)")
+                        Text(verbatim: "\(summary.matchedCount)")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text("Matched")
@@ -285,7 +285,7 @@ public struct BankFeedCleanupView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     VStack(alignment: .leading) {
-                        Text("\(summary.unmatchedCount)")
+                        Text(verbatim: "\(summary.unmatchedCount)")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text("Unmatched")
@@ -301,7 +301,7 @@ public struct BankFeedCleanupView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     VStack(alignment: .leading) {
-                        Text("\(summary.ambiguousCount)")
+                        Text(verbatim: "\(summary.ambiguousCount)")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(summary.ambiguousCount > 0 ? .red : VLColor.textPrimary)
                         Text("Ambiguous")

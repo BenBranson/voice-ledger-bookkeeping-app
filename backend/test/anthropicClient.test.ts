@@ -7,7 +7,7 @@ vi.mock("@anthropic-ai/sdk", () => {
     messages = { create: createMock };
   }
   class APIError extends Error {
-    status?: number;
+    status?: number | undefined;
     constructor(status: number | undefined, message: string) {
       super(message);
       this.status = status;

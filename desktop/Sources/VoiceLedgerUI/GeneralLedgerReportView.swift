@@ -133,7 +133,7 @@ public struct GeneralLedgerReportView: View {
                             if parsedAmountFilter == nil {
                                 Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
                             } else {
-                                Text("\(filteredLines.count) matching line\(filteredLines.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                Text(verbatim: "\(filteredLines.count) matching line\(filteredLines.count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                             }
                             Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
                         }

@@ -117,7 +117,7 @@ public struct ChartOfAccountsCleanupView: View {
                     HStack {
                         VLStatusPill(state.groups.isEmpty ? .verified : .reviewNeeded, label: state.groups.isEmpty ? "No candidates found" : "\(state.groups.count) candidate group(s)")
                         Spacer()
-                        Text("\(state.accountsWithFullyQualifiedNameCount) of \(state.totalAccountsCount) accounts checked")
+                        Text(verbatim: "\(state.accountsWithFullyQualifiedNameCount) of \(state.totalAccountsCount) accounts checked")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }

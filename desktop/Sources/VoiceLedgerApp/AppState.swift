@@ -625,6 +625,25 @@ public final class AppState {
         }
     }
 
+    /// Real bug, found live 2026-09-17: every one of this file's `catch { X
+    /// = error.localizedDescription }` blocks displayed whatever Foundation
+    /// happened to produce for a cancelled request verbatim — on this app's
+    /// bare SPM-built bundle (no Xcode-generated Foundation/CFNetwork
+    /// localization resources), `URLError(.cancelled)`'s
+    /// `localizedDescription` collapses to the single word "cancelled"
+    /// instead of a full sentence, and that word rendered directly in a
+    /// report page's error banner — live-reproduced by switching pages
+    /// fast enough to cancel an in-flight report fetch (SwiftUI cancels a
+    /// `.task {}`'s work when its view disappears). A cancelled request
+    /// isn't a real failure worth telling the bookkeeper about — either
+    /// they navigated away, or a fresh load superseded it — so every load
+    /// call below now swallows it instead of surfacing raw error text.
+    private static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
+        return false
+    }
+
     /// docs/VOICE_LEDGER_SPEC.md Page 12 — a separate, on-demand fetch, not
     /// part of `syncAndEvaluate()`: a report read is comparatively
     /// expensive and no rule currently consumes it.
@@ -634,7 +653,9 @@ public final class AppState {
         do {
             balanceSheetLines = try await syncClient.fetchBalanceSheet(realmID: realmID, period: period)
         } catch {
-            balanceSheetError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                balanceSheetError = error.localizedDescription
+            }
         }
         isLoadingBalanceSheet = false
     }
@@ -645,7 +666,9 @@ public final class AppState {
         do {
             profitAndLossLines = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
         } catch {
-            profitAndLossError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                profitAndLossError = error.localizedDescription
+            }
         }
         isLoadingProfitAndLoss = false
     }
@@ -656,7 +679,9 @@ public final class AppState {
         do {
             cashFlowLines = try await syncClient.fetchCashFlow(realmID: realmID, period: period)
         } catch {
-            cashFlowError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                cashFlowError = error.localizedDescription
+            }
         }
         isLoadingCashFlow = false
     }
@@ -667,7 +692,9 @@ public final class AppState {
         do {
             trialBalanceLines = try await syncClient.fetchTrialBalance(realmID: realmID, period: period)
         } catch {
-            trialBalanceError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                trialBalanceError = error.localizedDescription
+            }
         }
         isLoadingTrialBalance = false
     }
@@ -678,7 +705,9 @@ public final class AppState {
         do {
             agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
         } catch {
-            agedReceivablesError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                agedReceivablesError = error.localizedDescription
+            }
         }
         isLoadingAgedReceivables = false
     }
@@ -689,7 +718,9 @@ public final class AppState {
         do {
             agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
         } catch {
-            agedPayablesError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                agedPayablesError = error.localizedDescription
+            }
         }
         isLoadingAgedPayables = false
     }
@@ -756,7 +787,9 @@ public final class AppState {
         do {
             generalLedgerLines = try await syncClient.fetchGeneralLedger(realmID: realmID, period: period)
         } catch {
-            generalLedgerError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                generalLedgerError = error.localizedDescription
+            }
         }
         isLoadingGeneralLedger = false
     }
@@ -901,7 +934,9 @@ public final class AppState {
             }
             firmCockpitSummaries = summaries
         } catch {
-            firmCockpitError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                firmCockpitError = error.localizedDescription
+            }
         }
         isLoadingFirmCockpit = false
     }
@@ -946,7 +981,9 @@ public final class AppState {
             companyInfo = infoValue
             writeAccessEnabled = writeAccessValue
         } catch {
-            healthCheckError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                healthCheckError = error.localizedDescription
+            }
         }
         isCheckingHealth = false
     }
@@ -960,7 +997,9 @@ public final class AppState {
         do {
             writeAccessEnabled = try await backend.setWriteAccess(realmID: realmID, enabled: enabled)
         } catch {
-            healthCheckError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                healthCheckError = error.localizedDescription
+            }
         }
         isTogglingWriteAccess = false
     }
@@ -973,7 +1012,9 @@ public final class AppState {
         do {
             aiStatus = try await backend.getAIStatus()
         } catch {
-            aiStatusError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                aiStatusError = error.localizedDescription
+            }
         }
         isCheckingAIStatus = false
     }
@@ -986,7 +1027,9 @@ public final class AppState {
         do {
             aiStatus = try await backend.setAIEnabled(enabled)
         } catch {
-            aiStatusError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                aiStatusError = error.localizedDescription
+            }
         }
         isTogglingAIEnabled = false
     }
@@ -1823,7 +1866,9 @@ public final class AppState {
             pendingImport = nil
             await syncAndEvaluate()
         } catch {
-            importError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                importError = error.localizedDescription
+            }
         }
     }
 
@@ -1861,7 +1906,9 @@ public final class AppState {
             pendingImport = nil
             await syncAndEvaluate()
         } catch {
-            importError = error.localizedDescription
+            if !Self.isCancellation(error) {
+                importError = error.localizedDescription
+            }
         }
     }
 

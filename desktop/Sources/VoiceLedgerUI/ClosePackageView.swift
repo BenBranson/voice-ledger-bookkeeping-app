@@ -219,7 +219,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table.")
+                Text(verbatim: "\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -346,7 +346,7 @@ public struct ClosePackageView: View {
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)
                 HStack {
-                    Text("\(checklistStatus.completed) of \(checklistStatus.total) items complete")
+                    Text(verbatim: "\(checklistStatus.completed) of \(checklistStatus.total) items complete")
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
@@ -367,12 +367,12 @@ public struct ClosePackageView: View {
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)
                 HStack {
-                    Text("\(openCleanupFindingsCount) open")
+                    Text(verbatim: "\(openCleanupFindingsCount) open")
                         .font(VLTypography.body())
                         .foregroundStyle(openCleanupFindingsCount == 0 ? VLColor.textPrimary : VLColor.textPrimary)
                     Text("·")
                         .foregroundStyle(VLColor.textMuted)
-                    Text("\(resolvedCleanupFindingsCount) resolved")
+                    Text(verbatim: "\(resolvedCleanupFindingsCount) resolved")
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textSecondary)
                     Spacer()

@@ -209,7 +209,7 @@ public struct MonthEndCloseView: View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.xs) {
                 HStack {
-                    Text("\(completedCount) of \(items.count) steps complete")
+                    Text(verbatim: "\(completedCount) of \(items.count) steps complete")
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()

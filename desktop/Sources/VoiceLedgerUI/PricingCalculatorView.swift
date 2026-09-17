@@ -431,7 +431,7 @@ public struct PricingCalculatorView: View {
                         Text(cleanupQuote.high.description).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                     }
                 }
-                Text("\(cleanupQuote.issueCount) hygiene issue\(cleanupQuote.issueCount == 1 ? "" : "s") flagged · rounded to the nearest $50, floored at $400.")
+                Text(verbatim: "\(cleanupQuote.issueCount) hygiene issue\(cleanupQuote.issueCount == 1 ? "" : "s") flagged · rounded to the nearest $50, floored at $400.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }

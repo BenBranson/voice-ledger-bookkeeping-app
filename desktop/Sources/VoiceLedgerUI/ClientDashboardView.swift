@@ -323,7 +323,7 @@ public struct ClientDashboardView: View {
                                     .foregroundStyle(VLColor.textPrimary)
                                     .lineLimit(1)
                                 Spacer()
-                                Text("\(finding.priorityScore)%")
+                                Text(verbatim: "\(finding.priorityScore)%")
                                     .font(VLTypography.caption())
                                     .foregroundStyle(StatusMapping.priorityStatus(finding.priorityScore).color)
                                 Text(finding.dollarExposure.description)
@@ -501,7 +501,7 @@ public struct ClientDashboardView: View {
                 HStack(spacing: VLSpacing.sm) {
                     ProgressView(value: progress.total > 0 ? Double(progress.completed) / Double(progress.total) : 0)
                         .tint(VLColor.cyan)
-                    Text("\(progress.completed) of \(progress.total)")
+                    Text(verbatim: "\(progress.completed) of \(progress.total)")
                         .font(VLTypography.label())
                         .foregroundStyle(VLColor.textSecondary)
                 }

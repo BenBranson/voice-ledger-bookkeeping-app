@@ -167,7 +167,7 @@ public struct ScopeAndPeriodLockView: View {
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
                     } else {
-                        Text("\(state.transactionsInLockedPeriod.count) transaction(s) from the last sync fall in the locked period — this is a local warning only, since Voice Ledger has no write path that this would block.")
+                        Text(verbatim: "\(state.transactionsInLockedPeriod.count) transaction(s) from the last sync fall in the locked period — this is a local warning only, since Voice Ledger has no write path that this would block.")
                             .font(VLTypography.caption())
                             .foregroundStyle(.red)
                         VStack(alignment: .leading, spacing: VLSpacing.xxs) {

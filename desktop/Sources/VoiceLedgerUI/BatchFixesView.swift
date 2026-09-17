@@ -140,7 +140,7 @@ public struct BatchFixesView: View {
                         Button("Select All") { onSelectAll() }
                         Button("Deselect All") { onDeselectAll() }
                         Spacer()
-                        Text("\(selectedIDs.count) of \(items.count) selected")
+                        Text(verbatim: "\(selectedIDs.count) of \(items.count) selected")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }
@@ -232,7 +232,7 @@ public struct BatchFixesView: View {
                     .foregroundStyle(VLColor.textMuted)
 
                 HStack {
-                    Text("\(selectedItems.count) transaction(s) affected")
+                    Text(verbatim: "\(selectedItems.count) transaction(s) affected")
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()

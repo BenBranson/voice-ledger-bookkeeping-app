@@ -63,7 +63,7 @@ public struct AmountSearchView: View {
                     VLCard {
                         VStack(alignment: .leading, spacing: VLSpacing.sm) {
                             HStack {
-                                Text("\(matches.count) MATCH\(matches.count == 1 ? "" : "ES") FOR \(parsedAmount.description)")
+                                Text(verbatim: "\(matches.count) MATCH\(matches.count == 1 ? "" : "ES") FOR \(parsedAmount.description)")
                                     .font(VLTypography.eyebrow())
                                     .tracking(VLTypography.eyebrowTracking)
                                     .foregroundStyle(VLColor.textMuted)

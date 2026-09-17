@@ -51,7 +51,7 @@ public struct ImportOFXStatementView: View {
                     .font(VLTypography.body())
                     .foregroundStyle(VLColor.textSecondary)
 
-                Text("\(transactionCount) transaction\(transactionCount == 1 ? "" : "s") found — OFX/QFX is self-describing, so no column mapping is needed.")
+                Text(verbatim: "\(transactionCount) transaction\(transactionCount == 1 ? "" : "s") found — OFX/QFX is self-describing, so no column mapping is needed.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 

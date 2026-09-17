@@ -198,7 +198,7 @@ public struct CleanupAssessmentView: View {
                             if parsedAmountFilter == nil {
                                 Text("Not a recognizable amount").font(VLTypography.caption()).foregroundStyle(.red)
                             } else {
-                                Text("\(filteredSummaries.flatMap(\.findings).count) matching finding\(filteredSummaries.flatMap(\.findings).count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                Text(verbatim: "\(filteredSummaries.flatMap(\.findings).count) matching finding\(filteredSummaries.flatMap(\.findings).count == 1 ? "" : "s")").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                             }
                             Button("Clear") { amountFilter = "" }.buttonStyle(.plain).font(VLTypography.caption()).foregroundStyle(VLColor.cyan)
                         }
