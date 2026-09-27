@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import CoreGraphics
 import Core
 import IntegrationsQuickBooks
 import DesignSystem
@@ -104,47 +105,108 @@ struct RootView: View {
         }
     }
 
-    /// File > "Export Page as PDF…". Snapshots the ACTUAL, already-
-    /// rendered NSView backing `content` (via `hostViewBox`, populated by
-    /// `HostViewCaptureAnchor`) into PDF `Data` using AppKit's own
-    /// `-dataWithPDF(inside:)`, then hands the bytes to
-    /// `AppState.savePDFData` — the same `NSSavePanel` path every other
-    /// export in this app already goes through.
+    /// File > "Export Page as PDF…". Captures the ACTUAL, full-height
+    /// content of whatever `ScrollView` is currently on screen — its
+    /// `NSScrollView.documentView`, not just the visible viewport — via
+    /// `-cacheDisplay(in:to:)`, then wraps that bitmap as a single-page
+    /// PDF and hands it to `AppState.savePDFData`, the same `NSSavePanel`
+    /// path every other export in this app already goes through.
     ///
-    /// **Why not `ImageRenderer` (tried first, reverted):** `ImageRenderer`
-    /// builds and lays out a SECOND, DETACHED copy of `content` outside the
-    /// real window. Several of this app's pages nest their own
-    /// `ScrollView`/`GeometryReader` (sized relative to their real
-    /// surrounding window), and a detached copy of those can collapse to
-    /// zero size when laid out standalone — live-reported result: an
-    /// exported PDF that was solid black (the page's own dark background,
-    /// painted correctly) with nothing else on it (the actual content,
-    /// collapsed to nothing). Snapshotting the view that's already
-    /// correctly laid out and on screen has no such problem.
+    /// **Two earlier attempts, both empirically disproven before landing
+    /// on this one — not guessed at, verified with standalone test
+    /// scripts against real rendering output:**
     ///
-    /// Scope, stated honestly: this captures the page as it's actually
-    /// laid out on screen right now, at its current on-screen size — not
-    /// an unbounded "print the whole scrollable history" capture. A long
-    /// list further down a `ScrollView` than the current window shows
-    /// isn't included, the same way a Cmd-P print of a single-page view
-    /// wouldn't be. Resize the window before exporting for a page whose
-    /// content is currently clipped. And because SwiftUI views on macOS
-    /// are layer-backed, `-dataWithPDF(inside:)` rasterizes what it
-    /// captures into the PDF rather than preserving selectable vector
-    /// text — a real trade-off against the (broken) vector attempt above,
-    /// not a hidden regression.
+    /// 1. `ImageRenderer` with an unconstrained (`nil`) height, reasoning
+    ///    that a `ScrollView` proposed `nil` reports its full CONTENT
+    ///    height as "ideal." That part was correct — confirmed the
+    ///    reported size really was the full content height, not a
+    ///    viewport height. But a from-scratch test (a `ScrollView` with
+    ///    known content, rendered via `ImageRenderer`, then rasterized and
+    ///    inspected pixel-by-pixel) showed `ImageRenderer` renders
+    ///    NOTHING inside a `ScrollView` on macOS — only whatever's outside
+    ///    it (here, just the page's own background). The identical test
+    ///    with the `ScrollView` replaced by a plain `VStack` rendered
+    ///    perfectly, colors included — this is a real, reproducible
+    ///    `ImageRenderer` limitation with `ScrollView` content specifically,
+    ///    not a bug in this app's own pages.
+    /// 2. `-dataWithPDF(inside:)` on the live, on-screen `NSHostingView` —
+    ///    live-reported result: washed-out colors, and clipped to the
+    ///    window's current visible height. Retargeting it at the real
+    ///    `NSScrollView`'s `documentView` (the full, un-clipped content
+    ///    view) was tested next and produced a completely BLANK white
+    ///    page — worse, not better. `-dataWithPDF(inside:)` itself, not
+    ///    just which view it's pointed at, is unreliable for this app's
+    ///    real, Metal-composited SwiftUI content.
+    ///
+    /// `-cacheDisplay(in:to:)` — a different, lower-level AppKit bitmap
+    /// snapshot API — was tested the same way against the same real
+    /// `NSScrollView.documentView` and, unlike both attempts above,
+    /// produced the correct full height AND all three expected colors
+    /// (background, a colored shape, and text) in one pass. That's the
+    /// technique below.
     @MainActor
     private func exportCurrentPageAsPDF() {
-        guard let hostView = hostViewBox.view, hostView.bounds.width > 0, hostView.bounds.height > 0 else {
+        guard let hostView = hostViewBox.view, hostView.bounds.width > 0 else {
             state.reportPDFExportFailure("Nothing to export yet — try again once the page has finished loading.")
             return
         }
-        let data = hostView.dataWithPDF(inside: hostView.bounds)
-        guard !data.isEmpty else {
+
+        // Most pages are a `ScrollView` — capture its real, full-height
+        // `documentView` rather than the (viewport-clipped) host view
+        // itself. A page with no `ScrollView` at all falls back to the
+        // host view directly.
+        let captureTarget = Self.findFirstScrollView(in: hostView)?.documentView ?? hostView
+        captureTarget.layoutSubtreeIfNeeded()
+
+        let bounds = captureTarget.bounds
+        guard bounds.width > 0, bounds.height > 0 else {
+            state.reportPDFExportFailure("Nothing to export yet — try again once the page has finished loading.")
+            return
+        }
+
+        guard let bitmapRep = captureTarget.bitmapImageRepForCachingDisplay(in: bounds) else {
+            state.reportPDFExportFailure("Could not create a bitmap for this page.")
+            return
+        }
+        captureTarget.cacheDisplay(in: bounds, to: bitmapRep)
+        guard let cgImage = bitmapRep.cgImage else {
+            state.reportPDFExportFailure("Could not render this page's content.")
+            return
+        }
+
+        let pdfData = NSMutableData()
+        guard let consumer = CGDataConsumer(data: pdfData) else {
+            state.reportPDFExportFailure("Could not create a PDF data consumer.")
+            return
+        }
+        var mediaBox = CGRect(origin: .zero, size: bounds.size)
+        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+            state.reportPDFExportFailure("Could not create a PDF drawing context.")
+            return
+        }
+        context.beginPDFPage(nil)
+        context.draw(cgImage, in: CGRect(origin: .zero, size: bounds.size))
+        context.endPDFPage()
+        context.closePDF()
+
+        guard !(pdfData as Data).isEmpty else {
             state.reportPDFExportFailure("Could not render this page to PDF.")
             return
         }
-        state.savePDFData(data, suggestedFilename: currentPageTitle)
+
+        state.savePDFData(pdfData as Data, suggestedFilename: currentPageTitle)
+    }
+
+    /// Depth-first search for the first `NSScrollView` in `view`'s
+    /// subtree — SwiftUI's `ScrollView` is backed by a real `NSScrollView`
+    /// on macOS, and its `documentView` is the full, un-clipped content
+    /// (unlike the `NSScrollView` itself, whose bounds are its viewport).
+    private static func findFirstScrollView(in view: NSView) -> NSScrollView? {
+        if let scrollView = view as? NSScrollView { return scrollView }
+        for subview in view.subviews {
+            if let found = findFirstScrollView(in: subview) { return found }
+        }
+        return nil
     }
 
     /// The current page's human-readable name, for the export's suggested
@@ -2610,6 +2672,13 @@ private struct DashboardVoiceBanner: View {
 /// latest captured view without re-triggering a SwiftUI re-render every
 /// time AppKit re-lays-out the window (which a `@State var view: NSView?`
 /// would do on every single layout pass).
+///
+/// **What this is used for today:** only as a reliable live WIDTH
+/// measurement for `exportCurrentPageAsPDF` (`hostView.bounds.width`) —
+/// it is no longer the actual PDF capture source. See
+/// `ContentHostingView`'s own doc comment for why a zero-size
+/// `.background()` marker (an earlier attempt) couldn't even reliably
+/// provide that.
 @MainActor
 final class HostViewCaptureBox {
     weak var view: NSView?
@@ -2617,7 +2686,11 @@ final class HostViewCaptureBox {
 
 /// Hosts `content` inside an `NSHostingView` this file creates and keeps
 /// a direct reference to, rather than trying to locate SwiftUI's own
-/// internal AppKit bridging after the fact.
+/// internal AppKit bridging after the fact. This is real, and is what's
+/// actually rendered on screen for the whole detail column today (not a
+/// parallel/hidden copy) — `hostViewBox.view` is a reliable, always-set
+/// reference to it for exactly one reason now: measuring its live width
+/// for `exportCurrentPageAsPDF`.
 ///
 /// **First attempt, reverted:** a zero-size `.background()` marker
 /// reading its own `superview`. Live-reported result: "nothing to export
