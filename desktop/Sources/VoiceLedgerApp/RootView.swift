@@ -41,8 +41,7 @@ struct RootView: View {
             .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
         } detail: {
             NavigationStack {
-                content
-                    .background(HostViewCaptureAnchor(box: hostViewBox))
+                ContentHostingView(box: hostViewBox, content: content)
             }
         }
         .overlay(alignment: .bottom) {
@@ -2605,7 +2604,7 @@ private struct DashboardVoiceBanner: View {
     }
 }
 
-/// A plain reference box `HostViewCaptureAnchor` writes into — `@State`
+/// A plain reference box `ContentHostingView` writes into — `@State`
 /// needs a stable identity across view updates, and a class reference
 /// (rather than a struct/`CGSize`) is what lets `RootView` read the
 /// latest captured view without re-triggering a SwiftUI re-render every
@@ -2616,29 +2615,32 @@ final class HostViewCaptureBox {
     weak var view: NSView?
 }
 
-/// A zero-size, invisible `NSViewRepresentable` marker whose only job is
-/// to hand `RootView.exportCurrentPageAsPDF` a live reference to the real,
-/// already-laid-out NSView enclosing whatever it's attached to via
-/// `.background(...)` — SwiftUI composes a `.background` view at the same
-/// frame as its host content, so this marker's own `superview` is exactly
-/// the container sized to `content`'s current on-screen bounds.
-private struct HostViewCaptureAnchor: NSViewRepresentable {
+/// Hosts `content` inside an `NSHostingView` this file creates and keeps
+/// a direct reference to, rather than trying to locate SwiftUI's own
+/// internal AppKit bridging after the fact.
+///
+/// **First attempt, reverted:** a zero-size `.background()` marker
+/// reading its own `superview`. Live-reported result: "nothing to export
+/// yet, try again" on every screen, not just some — the marker's
+/// superview was either `nil` or zero-sized at export time (SwiftUI's
+/// exact internal view structure around `.background()` isn't part of
+/// its public contract, so that guess was never reliable to begin with,
+/// only convenient). This wrapper removes the guessing entirely: the
+/// `NSHostingView` returned by `makeNSView` below IS the one and only
+/// view SwiftUI displays for the whole detail column — not a sibling of
+/// it — so `box.view` is set synchronously, immediately, every time,
+/// with no race to lose.
+private struct ContentHostingView<Content: View>: NSViewRepresentable {
     let box: HostViewCaptureBox
+    let content: Content
 
-    func makeNSView(context: Context) -> NSView {
-        let marker = NSView(frame: .zero)
-        DispatchQueue.main.async { [weak marker] in
-            box.view = marker?.superview
-        }
-        return marker
+    func makeNSView(context: Context) -> NSHostingView<Content> {
+        let hostingView = NSHostingView(rootView: content)
+        box.view = hostingView
+        return hostingView
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        // Re-captured on every SwiftUI update (e.g. a screen switch) since
-        // `superview` can change identity across layout passes, not just
-        // once at creation.
-        DispatchQueue.main.async { [weak nsView] in
-            box.view = nsView?.superview
-        }
+    func updateNSView(_ nsView: NSHostingView<Content>, context: Context) {
+        nsView.rootView = content
     }
 }
