@@ -7,6 +7,15 @@ import DB
 import DesignSystem
 import VoiceLedgerUI
 
+/// File > "Export Page as PDF…" (see the `.commands` block in
+/// `VoiceLedgerApp.body` and `RootView.exportCurrentPageAsPDF`) — a plain
+/// `NotificationCenter` post is the bridge from the menu command (which has
+/// no reference to the live `RootView`/`AppState` instance) to the one view
+/// that actually knows what's on screen right now.
+extension Notification.Name {
+    static let exportCurrentPageAsPDF = Notification.Name("VoiceLedgerExportCurrentPageAsPDF")
+}
+
 /// The real running app for Phase 1 step 1.6's slice. **Not visually
 /// verified in this session** — no screenshot tool for a native macOS
 /// window was available in this environment; see the final report for what
@@ -72,6 +81,21 @@ struct VoiceLedgerApp: App {
                 // reopen behavior wasn't enough on its own, confirmed via
                 // an actual Dock-icon click leaving the app at zero windows.
                 appDelegate.onReopenWithNoWindows = { openWindow(id: Self.mainWindowID) }
+            }
+        }
+        .commands {
+            // File > "Export Page as PDF…" — a `Commands` scene builder has
+            // no reference to the specific `RootView` instance currently on
+            // screen (there's no view-model handle to call through), so
+            // this posts a notification and `RootView` itself does the
+            // actual rendering — it's the one place that knows both `state
+            // .screen` (which page) and the page's real current on-screen
+            // size (see `RootView.exportCurrentPageAsPDF`).
+            CommandGroup(after: .saveItem) {
+                Button("Export Page as PDF…") {
+                    NotificationCenter.default.post(name: .exportCurrentPageAsPDF, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
             }
         }
 

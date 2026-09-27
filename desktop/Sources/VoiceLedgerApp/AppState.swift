@@ -2277,6 +2277,35 @@ public final class AppState {
         }
     }
 
+    /// File > "Export Page as PDF…" — `RootView` renders whichever page is
+    /// currently on screen into PDF `Data` itself (SwiftUI rendering isn't
+    /// something `AppState` has access to, the same reason `RootView` also
+    /// owns the ImageRenderer call) and hands the finished bytes here to
+    /// save. Same `NSSavePanel` posture as `exportTable`/
+    /// `exportClosePackagePDF`/`exportAIReportPDF` above — a normal local
+    /// save the user drives themselves, never sent anywhere on its own.
+    public func savePDFData(_ data: Data, suggestedFilename: String) {
+        exportError = nil
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(suggestedFilename).pdf"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            exportError = "Could not save \(url.lastPathComponent): \(error)"
+        }
+    }
+
+    /// `RootView.exportCurrentPageAsPDF`'s failure path before there's any
+    /// `Data` to hand to `savePDFData` at all (e.g. the page hasn't laid
+    /// out yet) — reuses the same `exportError` the alert in `RootView
+    /// .body` already displays, rather than introducing a second error
+    /// channel for one more export path.
+    public func reportPDFExportFailure(_ message: String) {
+        exportError = message
+    }
+
     public func clearExportError() {
         exportError = nil
     }
