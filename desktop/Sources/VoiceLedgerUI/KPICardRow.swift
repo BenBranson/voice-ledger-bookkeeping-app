@@ -81,24 +81,29 @@ public struct KPICardRow: View {
     /// `HStack` doesn't reflow, so a row of 4-5 cards squeezes unreadably
     /// (or overflows past the window edge with no way to scroll to it) on
     /// a laptop-width window, even though it looked fine on the wide
-    /// external monitor this was built and tested against. A `LazyVGrid`
-    /// with an adaptive column gives every card a real minimum width and
-    /// wraps extra cards onto a new row instead, with no per-window-size
-    /// logic to maintain.
-    private static let minimumCardWidth: CGFloat = 160
-
+    /// external monitor this was built and tested against. Originally a
+    /// `LazyVGrid` with an adaptive column, which gave every card a real
+    /// minimum width and wrapped extra cards onto a new row with no
+    /// per-window-size logic to maintain — switched to
+    /// `AdaptiveCardFlowRow` (2026-09-27) once `LazyVGrid` was confirmed
+    /// to render blank in a PDF export whenever this row wasn't already
+    /// scrolled into view; see that type's own doc comment (it also
+    /// explains why a custom `Layout`-protocol replacement was tried
+    /// first and reverted after it crashed in isolated testing). Same
+    /// visual wrap behavior, just not lazy — this row is always a small,
+    /// fixed handful of cards, so there was never a real performance
+    /// reason for laziness here.
     public var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: Self.minimumCardWidth), spacing: VLSpacing.sm)], spacing: VLSpacing.sm) {
-            ForEach(cards) { card in
-                if let onTap = card.onTap {
-                    Button(action: onTap) {
-                        cardBody(card, isClickable: true)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Open the report this was calculated from")
-                } else {
-                    cardBody(card, isClickable: false)
+        AdaptiveCardFlowRow(itemCount: cards.count, spacing: VLSpacing.sm) { index in
+            let card = cards[index]
+            if let onTap = card.onTap {
+                Button(action: onTap) {
+                    cardBody(card, isClickable: true)
                 }
+                .buttonStyle(.plain)
+                .help("Open the report this was calculated from")
+            } else {
+                cardBody(card, isClickable: false)
             }
         }
     }

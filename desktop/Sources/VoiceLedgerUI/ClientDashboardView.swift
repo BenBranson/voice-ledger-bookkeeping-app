@@ -451,18 +451,21 @@ public struct ClientDashboardView: View {
                     // Same narrow-window reflow fix as `KPICardRow` — a
                     // plain `HStack` doesn't wrap, so these 3 horizons
                     // could squeeze or overflow on a laptop-width window.
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: VLSpacing.sm)], spacing: VLSpacing.sm) {
-                        ForEach(forecast.horizons) { horizon in
-                            VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                                Text("IN \(horizon.days) DAYS")
-                                    .font(VLTypography.caption())
-                                    .foregroundStyle(VLColor.textMuted)
-                                Text(horizon.projectedEndingCash?.description ?? "Not available")
-                                    .font(VLTypography.metricMedium())
-                                    .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // `AdaptiveCardFlowRow`, not `LazyVGrid` — see that
+                    // type's own doc comment: this exact card was
+                    // confirmed live to render blank in a PDF export
+                    // whenever it wasn't already scrolled into view.
+                    AdaptiveCardFlowRow(itemCount: forecast.horizons.count, spacing: VLSpacing.sm) { index in
+                        let horizon = forecast.horizons[index]
+                        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                            Text("IN \(horizon.days) DAYS")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                            Text(horizon.projectedEndingCash?.description ?? "Not available")
+                                .font(VLTypography.metricMedium())
+                                .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
