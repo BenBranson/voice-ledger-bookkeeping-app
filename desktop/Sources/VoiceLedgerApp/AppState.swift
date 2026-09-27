@@ -64,6 +64,13 @@ public final class AppState {
         /// Owner directive (2026-09-06): "build... recurring-vendor
         /// detection."
         case recurringVendors
+        /// Owner directive (2026-09-27): a discovery-call script — the same
+        /// `PricingCalculator` inputs as `.pricingCalculator`, but scattered
+        /// next to the intake question each one corresponds to, with a
+        /// live-fillable answer field under every question, rather than
+        /// grouped separately at the top. Also how a new prospect gets
+        /// saved into the roster (`IntakeRosterStore`).
+        case intakeQuestions
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -134,6 +141,23 @@ public final class AppState {
     // manually via the sidebar). `.connection` is still one click away in
     // the sidebar's SETUP section, unchanged.
     public var screen: Screen = .clientDashboard
+    /// Owner directive (2026-09-27): the Intake Questions page's live
+    /// draft — bound directly into every text field/toggle on that page,
+    /// the same way `PricingCalculatorView` owns its inputs as private
+    /// view state, except this one needs to survive a save/reload/edit
+    /// cycle against the roster file, so it lives here instead.
+    public var currentIntake = ClientIntake()
+    /// The full saved roster, loaded from `IntakeRosterStore` — every
+    /// prospect/client intake ever saved, across realms (this is
+    /// deliberately NOT per-`realmId` scoped; see that store's own doc
+    /// comment for why).
+    public private(set) var intakeRoster: [ClientIntake] = []
+    /// Set by `saveCurrentIntake()`/`loadIntakeRoster()` — surfaced by
+    /// `RootView` as a lightweight confirmation/error, same spirit as
+    /// `exportError` but deliberately separate (a save here isn't a file
+    /// export the user picked a location for; it's this file, always).
+    public private(set) var intakeStatusMessage: String?
+    private let intakeRosterStore = IntakeRosterStore()
     /// Owner-facing (2026-09-06): the voice assistant's chart-popup
     /// capability (`VoiceUIAction.presentChart`) — `RootView` presents a
     /// sheet bound to this being non-`nil`. A popup, not a page
@@ -2308,6 +2332,56 @@ public final class AppState {
 
     public func clearExportError() {
         exportError = nil
+    }
+
+    // MARK: Client Intake
+
+    /// Loads the roster from `IntakeRosterStore` — called on launch
+    /// (`RootView`'s `.task`) and available as an explicit "Reload from
+    /// File" action for picking up edits made directly in Google Sheets
+    /// or Excel, never automatically/silently (see that store's own doc
+    /// comment on why this is never a background watcher).
+    public func loadIntakeRoster() {
+        intakeRoster = intakeRosterStore.loadAll()
+        intakeStatusMessage = nil
+    }
+
+    /// Clears the draft for a brand-new prospect — does NOT touch the
+    /// saved roster.
+    public func startNewIntake() {
+        currentIntake = ClientIntake()
+        intakeStatusMessage = nil
+    }
+
+    /// Loads an existing roster entry back into the live draft for
+    /// editing — e.g. a follow-up call with the same prospect, or
+    /// correcting something after the fact.
+    public func loadIntakeForEditing(_ intake: ClientIntake) {
+        currentIntake = intake
+        intakeStatusMessage = nil
+    }
+
+    /// Upserts `currentIntake` into the roster by `id` and rewrites the
+    /// whole CSV file — this is also, per the owner's own framing, "how a
+    /// new client gets set up in the app": the roster is the firm's list
+    /// of prospects/clients independent of which ones have gone on to
+    /// authorize a real QBO connection.
+    public func saveCurrentIntake() {
+        if let index = intakeRoster.firstIndex(where: { $0.id == currentIntake.id }) {
+            intakeRoster[index] = currentIntake
+        } else {
+            intakeRoster.append(currentIntake)
+        }
+        do {
+            try intakeRosterStore.saveAll(intakeRoster)
+            intakeStatusMessage = "Saved \(currentIntake.displayName) to \(intakeRosterStore.fileURL.path)"
+        } catch {
+            intakeStatusMessage = "Could not save: \(error)"
+        }
+    }
+
+    public func clearIntakeStatusMessage() {
+        intakeStatusMessage = nil
     }
 
     /// CLAUDE.md-adjacent honesty fix: every "Dismiss" button in the app

@@ -19,7 +19,7 @@ import Foundation
 /// fact this app is asserting about any real client — the bookkeeper is
 /// the one deciding which flags apply and what their own rate is.
 public enum PricingCalculator {
-    public enum VolumeTier: Int, CaseIterable, Identifiable, Sendable {
+    public enum VolumeTier: Int, CaseIterable, Identifiable, Sendable, Codable {
         case light, growth, high
         public var id: Int { rawValue }
 
@@ -53,7 +53,7 @@ public enum PricingCalculator {
         }
     }
 
-    public struct MonthlyComplexityFlags: Sendable, Equatable {
+    public struct MonthlyComplexityFlags: Sendable, Equatable, Codable {
         public var payrollProcessing: Bool
         public var salesTaxManagement: Bool
         public var multipleBankAccounts: Bool
@@ -95,7 +95,7 @@ public enum PricingCalculator {
         return MonthlyQuote(volumeTier: tier, baseHours: base, addOnHours: addOns, totalHours: total, hourlyRate: hourlyRate, monthlyInvestment: investment)
     }
 
-    public enum MonthsBehindTier: Int, CaseIterable, Identifiable, Sendable {
+    public enum MonthsBehindTier: Int, CaseIterable, Identifiable, Sendable, Codable {
         case oneToThree, threeToSix, sixToTwelve, twelvePlus
         public var id: Int { rawValue }
 
@@ -118,7 +118,7 @@ public enum PricingCalculator {
         }
     }
 
-    public struct CleanupIssueFlags: Sendable, Equatable {
+    public struct CleanupIssueFlags: Sendable, Equatable, Codable {
         public var multipleUncategorized: Bool
         public var personalBusinessMixed: Bool
         public var payrollNotReconciled: Bool

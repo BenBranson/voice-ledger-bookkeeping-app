@@ -36,6 +36,12 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     /// bookkeeping as two separate line items" — a pricing tool for
     /// discovery calls, usable before a prospect ever connects QBO.
     case pricingCalculator
+    /// Owner directive (2026-09-27): a discovery-call script under Pricing
+    /// Calculator — the same pricing inputs, scattered next to the intake
+    /// question each corresponds to, with a live answer field under every
+    /// question, plus the qualitative intake fields (business context,
+    /// scope, contacts, goals) the pricing tool alone never captured.
+    case intakeQuestions
     case firmCockpit
     /// Owner directive (2026-09-06): "build cash flow forecasting."
     case cashFlowForecast
@@ -75,6 +81,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .findings: return "Findings"
         case .amountSearch: return "Search by Amount"
         case .pricingCalculator: return "Pricing Calculator"
+        case .intakeQuestions: return "Intake Questions"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
         case .cleanupAssessment: return "Cleanup Assessment"
@@ -109,6 +116,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .findings: return "list.bullet.rectangle.portrait"
         case .amountSearch: return "magnifyingglass.circle"
         case .pricingCalculator: return "dollarsign.circle"
+        case .intakeQuestions: return "checklist"
         case .firmCockpit: return "square.grid.2x2"
         case .cashFlowForecast: return "chart.line.uptrend.xyaxis.circle"
         case .cleanupAssessment: return "checkmark.seal"
@@ -145,7 +153,7 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .cashFlowForecast, .amountSearch, .pricingCalculator]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .cashFlowForecast, .amountSearch, .pricingCalculator, .intakeQuestions]),
     SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview, .recurringVendors]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),

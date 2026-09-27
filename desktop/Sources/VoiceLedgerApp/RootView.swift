@@ -69,6 +69,7 @@ struct RootView: View {
             await state.checkHealth()
             await state.checkAIStatus()
             await state.voiceEngine.loadPersistedContext()
+            state.loadIntakeRoster()
         }
         .alert("Export Failed", isPresented: Binding(get: { state.exportError != nil }, set: { if !$0 { state.clearExportError() } })) {
             Button("OK") { state.clearExportError() }
@@ -259,6 +260,7 @@ struct RootView: View {
                 case .audioSettings: return .audioSettings
                 case .cashFlowForecast: return .cashFlowForecast
                 case .recurringVendors: return .recurringVendors
+                case .intakeQuestions: return .intakeQuestions
                 }
             },
             set: { newValue in
@@ -293,6 +295,7 @@ struct RootView: View {
                 case .audioSettings: state.screen = .audioSettings
                 case .cashFlowForecast: state.screen = .cashFlowForecast
                 case .recurringVendors: state.screen = .recurringVendors
+                case .intakeQuestions: state.screen = .intakeQuestions
                 }
             }
         )
@@ -2105,6 +2108,41 @@ struct RootView: View {
                 quoteDraftSecondOpinionError: state.secondOpinionError?.contextKey == pricingCalculatorAskAIKey ? state.secondOpinionError?.message : nil,
                 onDraftQuoteSecondOpinion: { context in
                     Task { await state.askSecondOpinion(contextKey: pricingCalculatorAskAIKey, contextText: context, question: pricingCalculatorPrompt, format: .clientMessage) }
+                }
+            )
+
+        case .intakeQuestions:
+            // Same wiring shape as `.pricingCalculator` just above — this
+            // page also owns its numbers as bound state (`state
+            // .currentIntake`, not private view state, since it needs to
+            // survive save/reload), and hands back the full composed
+            // context (qualitative answers + numbers) itself.
+            let intakeAskAIKey = "page:intake-questions"
+            let intakePrompt = "Draft a short, professional client-facing proposal using the business context and exactly the numbers given above, and follow any additional instruction given."
+            let intakeOpenFindings = state.findings.filter { $0.status == .open }
+            IntakeQuestionsView(
+                intake: $state.currentIntake,
+                roster: state.intakeRoster,
+                environment: state.environment == .production ? .production : .sandbox,
+                aiStatus: state.aiStatus,
+                openFindings: intakeOpenFindings,
+                onStartNew: { state.startNewIntake() },
+                onLoadForEditing: { state.loadIntakeForEditing($0) },
+                onSave: { state.saveCurrentIntake() },
+                statusMessage: state.intakeStatusMessage,
+                onDismissStatusMessage: { state.clearIntakeStatusMessage() },
+                quoteDraftAnswer: state.askAIAnswers[intakeAskAIKey],
+                isDraftingQuote: state.askingAIContextKeys.contains(intakeAskAIKey),
+                quoteDraftError: state.askAIError?.contextKey == intakeAskAIKey ? state.askAIError?.message : nil,
+                onDraftQuote: { context in
+                    Task { await state.askAI(contextKey: intakeAskAIKey, contextText: context, question: intakePrompt, format: .clientMessage) }
+                },
+                secondOpinionConfigured: state.aiStatus?.secondaryConfigured == true,
+                quoteDraftSecondOpinionAnswer: state.secondOpinionAnswers[intakeAskAIKey],
+                isDraftingQuoteSecondOpinion: state.askingSecondOpinionContextKeys.contains(intakeAskAIKey),
+                quoteDraftSecondOpinionError: state.secondOpinionError?.contextKey == intakeAskAIKey ? state.secondOpinionError?.message : nil,
+                onDraftQuoteSecondOpinion: { context in
+                    Task { await state.askSecondOpinion(contextKey: intakeAskAIKey, contextText: context, question: intakePrompt, format: .clientMessage) }
                 }
             )
 
