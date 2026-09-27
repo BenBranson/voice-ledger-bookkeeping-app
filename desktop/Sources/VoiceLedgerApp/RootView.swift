@@ -1,5 +1,5 @@
 import SwiftUI
-import CoreGraphics
+import AppKit
 import Core
 import IntegrationsQuickBooks
 import DesignSystem
@@ -11,11 +11,11 @@ struct RootView: View {
     @State private var actorName = NSFullUserName()
     @State private var isImportingStatement = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    /// The detail column's real on-screen size, captured live via the
-    /// `GeometryReader` background below — `exportCurrentPageAsPDF` renders
-    /// `content` at exactly this size, so the PDF matches what's actually
-    /// visible right now rather than some other guessed/ideal size.
-    @State private var contentSize: CGSize = .zero
+    /// A live handle onto the actual, already-rendered NSView backing the
+    /// detail column — see `HostViewCaptureAnchor`'s doc comment for why
+    /// `exportCurrentPageAsPDF` snapshots THIS rather than re-rendering a
+    /// detached second copy of `content`.
+    @State private var hostViewBox = HostViewCaptureBox()
     /// Mirrors `VoiceToolLoopPreference.current` (a plain `UserDefaults`
     /// value SwiftUI has no observation hook into) so the Connection
     /// page's radio selection updates immediately on tap, rather than only
@@ -42,13 +42,7 @@ struct RootView: View {
         } detail: {
             NavigationStack {
                 content
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear
-                                .onAppear { contentSize = proxy.size }
-                                .onChange(of: proxy.size) { _, newSize in contentSize = newSize }
-                        }
-                    )
+                    .background(HostViewCaptureAnchor(box: hostViewBox))
             }
         }
         .overlay(alignment: .bottom) {
@@ -111,13 +105,23 @@ struct RootView: View {
         }
     }
 
-    /// File > "Export Page as PDF…". Renders `content` — the exact same
-    /// `@ViewBuilder` switch that decides what's on screen for the current
-    /// `state.screen` — into a real PDF via `ImageRenderer`, at the detail
-    /// column's actual current size (`contentSize`, captured live by the
-    /// `GeometryReader` in `body`), then hands the finished bytes to
+    /// File > "Export Page as PDF…". Snapshots the ACTUAL, already-
+    /// rendered NSView backing `content` (via `hostViewBox`, populated by
+    /// `HostViewCaptureAnchor`) into PDF `Data` using AppKit's own
+    /// `-dataWithPDF(inside:)`, then hands the bytes to
     /// `AppState.savePDFData` — the same `NSSavePanel` path every other
     /// export in this app already goes through.
+    ///
+    /// **Why not `ImageRenderer` (tried first, reverted):** `ImageRenderer`
+    /// builds and lays out a SECOND, DETACHED copy of `content` outside the
+    /// real window. Several of this app's pages nest their own
+    /// `ScrollView`/`GeometryReader` (sized relative to their real
+    /// surrounding window), and a detached copy of those can collapse to
+    /// zero size when laid out standalone — live-reported result: an
+    /// exported PDF that was solid black (the page's own dark background,
+    /// painted correctly) with nothing else on it (the actual content,
+    /// collapsed to nothing). Snapshotting the view that's already
+    /// correctly laid out and on screen has no such problem.
     ///
     /// Scope, stated honestly: this captures the page as it's actually
     /// laid out on screen right now, at its current on-screen size — not
@@ -125,35 +129,23 @@ struct RootView: View {
     /// list further down a `ScrollView` than the current window shows
     /// isn't included, the same way a Cmd-P print of a single-page view
     /// wouldn't be. Resize the window before exporting for a page whose
-    /// content is currently clipped.
+    /// content is currently clipped. And because SwiftUI views on macOS
+    /// are layer-backed, `-dataWithPDF(inside:)` rasterizes what it
+    /// captures into the PDF rather than preserving selectable vector
+    /// text — a real trade-off against the (broken) vector attempt above,
+    /// not a hidden regression.
     @MainActor
     private func exportCurrentPageAsPDF() {
-        let size = contentSize
-        guard size.width > 0, size.height > 0 else {
+        guard let hostView = hostViewBox.view, hostView.bounds.width > 0, hostView.bounds.height > 0 else {
             state.reportPDFExportFailure("Nothing to export yet — try again once the page has finished loading.")
             return
         }
-
-        let renderer = ImageRenderer(content: content.frame(width: size.width, height: size.height))
-        let pdfData = NSMutableData()
-        guard let consumer = CGDataConsumer(data: pdfData) else {
-            state.reportPDFExportFailure("Could not create a PDF data consumer.")
+        let data = hostView.dataWithPDF(inside: hostView.bounds)
+        guard !data.isEmpty else {
+            state.reportPDFExportFailure("Could not render this page to PDF.")
             return
         }
-        var mediaBox = CGRect(origin: .zero, size: size)
-        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            state.reportPDFExportFailure("Could not create a PDF drawing context.")
-            return
-        }
-
-        renderer.render { _, renderSwiftUIContent in
-            context.beginPDFPage(nil)
-            renderSwiftUIContent(context)
-            context.endPDFPage()
-        }
-        context.closePDF()
-
-        state.savePDFData(pdfData as Data, suggestedFilename: currentPageTitle)
+        state.savePDFData(data, suggestedFilename: currentPageTitle)
     }
 
     /// The current page's human-readable name, for the export's suggested
@@ -2610,5 +2602,43 @@ private struct DashboardVoiceBanner: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// A plain reference box `HostViewCaptureAnchor` writes into — `@State`
+/// needs a stable identity across view updates, and a class reference
+/// (rather than a struct/`CGSize`) is what lets `RootView` read the
+/// latest captured view without re-triggering a SwiftUI re-render every
+/// time AppKit re-lays-out the window (which a `@State var view: NSView?`
+/// would do on every single layout pass).
+@MainActor
+final class HostViewCaptureBox {
+    weak var view: NSView?
+}
+
+/// A zero-size, invisible `NSViewRepresentable` marker whose only job is
+/// to hand `RootView.exportCurrentPageAsPDF` a live reference to the real,
+/// already-laid-out NSView enclosing whatever it's attached to via
+/// `.background(...)` — SwiftUI composes a `.background` view at the same
+/// frame as its host content, so this marker's own `superview` is exactly
+/// the container sized to `content`'s current on-screen bounds.
+private struct HostViewCaptureAnchor: NSViewRepresentable {
+    let box: HostViewCaptureBox
+
+    func makeNSView(context: Context) -> NSView {
+        let marker = NSView(frame: .zero)
+        DispatchQueue.main.async { [weak marker] in
+            box.view = marker?.superview
+        }
+        return marker
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Re-captured on every SwiftUI update (e.g. a screen switch) since
+        // `superview` can change identity across layout passes, not just
+        // once at creation.
+        DispatchQueue.main.async { [weak nsView] in
+            box.view = nsView?.superview
+        }
     }
 }
