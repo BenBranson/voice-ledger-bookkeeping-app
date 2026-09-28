@@ -2846,13 +2846,15 @@ public final class AppState {
 
         case .list:
             let openFindings = findings.filter { $0.status == .open }
-            var lines = ["Page: All Findings (complete list of all findings for this client)."]
-            lines.append("Total findings: \(findings.count)")
-            lines.append("Open findings: \(openFindings.count)")
-            lines.append("Closed findings: \(findings.count - openFindings.count)")
-            if !openFindings.isEmpty {
-                let topByExposure = openFindings.sorted { $0.dollarExposure > $1.dollarExposure }.prefix(3)
-                lines.append("Highest dollar exposure: \(topByExposure.map { "\($0.title) (\($0.dollarExposure.description))" }.joined(separator: ", "))")
+            var lines = ["Page: All Findings (complete list visible on screen)."]
+            lines.append("Total findings: \(findings.count), Open: \(openFindings.count), Closed: \(findings.count - openFindings.count)")
+            lines.append("")
+            lines.append("FINDINGS CURRENTLY LISTED ON THIS PAGE:")
+            for finding in openFindings.prefix(20) {
+                lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description)) [ID: \(finding.id)]")
+            }
+            if openFindings.count > 20 {
+                lines.append("...and \(openFindings.count - 20) more findings below (scroll to see)")
             }
             return lines.joined(separator: "\n")
 
