@@ -175,6 +175,14 @@ public struct QBOSyncClient: Sendable {
     /// that way.
     public func fetchPurchases(realmID: RealmID, period: AccountingPeriod) async throws -> [LedgerTransaction] {
         let (startDate, endDate) = Self.dateRange(for: period)
+        return try await fetchPurchases(realmID: realmID, startDate: startDate, endDate: endDate)
+    }
+
+    /// Same call, explicit raw date range — for a caller that wants a
+    /// rolling window (e.g. "the last 30 days") rather than one whole
+    /// calendar month. Added for `voiceledger-mcp`'s `get_recent_transactions`
+    /// tool, whose whole point is "recent," not "this billing period."
+    public func fetchPurchases(realmID: RealmID, startDate: String, endDate: String) async throws -> [LedgerTransaction] {
         let purchasesData = try await backend.call(
             .readPurchases,
             realmID: realmID,
@@ -182,6 +190,17 @@ public struct QBOSyncClient: Sendable {
         )
         let purchasesResponse = try JSONDecoder().decode(QBOPurchaseQueryResponse.self, from: purchasesData)
         return (purchasesResponse.queryResponse.purchase ?? []).map { Self.normalize($0) }
+    }
+
+    /// A standalone accounts-only read — every other caller of `readAccounts`
+    /// goes through the heavier `sync(realmID:period:)`, which also reads
+    /// five other entity types in the same call. Added for
+    /// `voiceledger-mcp`'s `get_chart_of_accounts` tool, which only ever
+    /// needs the account list, not a full period sync.
+    public func fetchAccounts(realmID: RealmID) async throws -> [LedgerAccount] {
+        let data = try await backend.call(.readAccounts, realmID: realmID, params: ReadAccountsParams())
+        let decoded = try JSONDecoder().decode(QBOAccountQueryResponse.self, from: data)
+        return (decoded.queryResponse.account ?? []).compactMap { Self.normalize($0) }
     }
 
     /// Aged Receivables — verified live 2026-08-18. See `AgingLine`'s doc

@@ -94,6 +94,48 @@ struct VoiceLedgerTools {
                     ],
                     "required": ["hourlyRate", "volumeTier"]
                 ]
+            ],
+            // The following three tools (2026-09-28) match a fixed contract
+            // given by the consuming side (Talking Buddy's ToolLoop.swift,
+            // driving a physical CrowPanel display) — exact field names,
+            // exact optional-field-omission behavior. Do not rename or
+            // reshape these without updating that consumer too.
+            [
+                "name": "get_chart_of_accounts",
+                "description": "Returns this client's chart of accounts — name, type (Asset/Liability/Equity/Income/Expense), and current balance for every active account. A live QuickBooks Online read, not cached/synced data — requires VOICE_LEDGER_BACKEND_URL to be configured for this process.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [String: Any](),
+                    "required": [String]()
+                ]
+            ],
+            [
+                "name": "get_recent_transactions",
+                "description": "Returns the last 30 days of posted transactions for one named account (matched against the chart of accounts by name, case-insensitive). A live QuickBooks Online read — requires VOICE_LEDGER_BACKEND_URL to be configured for this process.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [
+                        "accountName": [
+                            "type": "string",
+                            "description": "The account's name as it appears on the chart of accounts, e.g. \"Checking\"."
+                        ]
+                    ],
+                    "required": ["accountName"]
+                ]
+            ],
+            [
+                "name": "get_finding_details",
+                "description": "Returns one specific open finding's title and evidence, by the id returned in get_open_findings' own output. Every field is real, already-computed data — this tool never generates or recalculates anything.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [
+                        "findingId": [
+                            "type": "string",
+                            "description": "The id field from a row previously returned by get_open_findings."
+                        ]
+                    ],
+                    "required": ["findingId"]
+                ]
             ]
         ]
     }
@@ -115,6 +157,12 @@ struct VoiceLedgerTools {
                 text = try await getCleanupAssessmentSummary()
             case "get_pricing_quote":
                 text = try getPricingQuote(arguments: arguments)
+            case "get_chart_of_accounts":
+                text = try await getChartOfAccounts()
+            case "get_recent_transactions":
+                text = try await getRecentTransactions(arguments: arguments)
+            case "get_finding_details":
+                text = try await getFindingDetails(arguments: arguments)
             default:
                 return toolError("Unknown tool: \(name)")
             }
@@ -147,6 +195,10 @@ struct VoiceLedgerTools {
 
         let rows: [[String: Any]] = filtered.map { finding in
             [
+                // Additive (2026-09-28) — the id `get_finding_details` needs
+                // to look this exact finding back up. Every other field here
+                // predates it and is unchanged.
+                "id": finding.id,
                 "title": finding.title,
                 "ruleId": finding.ruleID.rawValue,
                 "severity": finding.severity.rawValue,
@@ -309,6 +361,148 @@ struct VoiceLedgerTools {
         return try jsonText(result)
     }
 
+    /// All three of `get_chart_of_accounts`/`get_recent_transactions`/
+    /// `get_finding_details` below need a real QBO connection except the
+    /// last, which only needs the local `ClientStore` — but the first two
+    /// have no local cache to fall back to at all (unlike `get_client_status`,
+    /// which degrades gracefully). Thrown as a real tool error rather than
+    /// an empty/fabricated result, matching CLAUDE.md rule 5's "missing
+    /// data renders as missing, never a false green" posture applied to
+    /// this MCP surface.
+    private func requireBackendClient() throws -> BackendClient {
+        guard let backendConfiguration else {
+            throw ToolArgumentError.backendNotConfigured
+        }
+        return BackendClient(configuration: backendConfiguration)
+    }
+
+    /// QBO's own five broad account classifications — `LedgerAccountType`
+    /// models QBO's more granular `AccountType` (Bank, Credit Card, Other
+    /// Current Asset, ...); this collapses it to the coarser
+    /// classification the physical panel's fixed contract expects (its
+    /// worked example: "Checking" -> "Asset").
+    private static func accountClassification(_ type: LedgerAccountType) -> String {
+        switch type {
+        case .bank, .otherCurrentAsset, .fixedAsset, .otherAsset, .accountsReceivable:
+            return "Asset"
+        case .accountsPayable, .creditCard, .otherCurrentLiability, .longTermLiability:
+            return "Liability"
+        case .equity:
+            return "Equity"
+        case .income, .otherIncome:
+            return "Income"
+        case .expense, .otherExpense, .costOfGoodsSold:
+            return "Expense"
+        }
+    }
+
+    private func getChartOfAccounts() async throws -> String {
+        let backend = try requireBackendClient()
+        let syncClient = QBOSyncClient(backend: backend)
+        let accounts = try await syncClient.fetchAccounts(realmID: realmID)
+        let rows: [[String: Any]] = accounts.map { account in
+            [
+                "name": account.name,
+                "type": Self.accountClassification(account.accountType),
+                "balance": account.currentBalance.majorUnitsDouble
+            ]
+        }
+        return try jsonText(["accounts": rows])
+    }
+
+    /// "Recent" = the last 30 days, a real rolling window, not "this
+    /// calendar month" — a query on the 2nd of the month should still see
+    /// activity from three weeks ago. Scoped to `Purchase`-entity
+    /// transactions matched by `paymentAccountID`, the same "which bank/
+    /// card account did this move through" concept every reconciliation-
+    /// adjacent rule in `Core` already keys off.
+    private func getRecentTransactions(arguments: [String: Any]) async throws -> String {
+        guard let accountName = arguments["accountName"] as? String, !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw ToolArgumentError.missingArgument("accountName")
+        }
+        let backend = try requireBackendClient()
+        let syncClient = QBOSyncClient(backend: backend)
+
+        let accounts = try await syncClient.fetchAccounts(realmID: realmID)
+        guard let account = accounts.first(where: { $0.name.caseInsensitiveCompare(accountName) == .orderedSame }) else {
+            throw ToolArgumentError.accountNotFound(accountName)
+        }
+
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+
+        let purchases = try await syncClient.fetchPurchases(realmID: realmID, startDate: formatter.string(from: thirtyDaysAgo), endDate: formatter.string(from: now))
+        let matching = purchases
+            .filter { !$0.isVoided && $0.paymentAccountID == account.id }
+            .sorted { $0.txnDate > $1.txnDate }
+
+        let rows: [[String: Any]] = matching.map { txn in
+            var row: [String: Any] = [
+                "date": String(format: "%04d-%02d-%02d", txn.txnDate.year, txn.txnDate.month, txn.txnDate.day),
+                "type": txn.entityKind.rawValue,
+                "amount": txn.totalAmount.majorUnitsDouble
+            ]
+            if let vendorName = txn.vendorName, !vendorName.isEmpty {
+                row["counterparty"] = vendorName
+            }
+            return row
+        }
+        return try jsonText(["account_name": account.name, "transactions": rows])
+    }
+
+    /// `description`/`account`/`amount` per evidence item are built from
+    /// whatever that item's rule actually captured
+    /// (`EvidenceItem.fieldValues` — see e.g. `DuplicatePostedExpenseRule`)
+    /// rather than invented: `description` joins whichever of
+    /// vendor/amount/date/account/docNumber that item has, in that order;
+    /// `account` reads the first of a few field-name variants different
+    /// rules use for "which account"; `amount` is the finding's own
+    /// `dollarExposure` (every evidence item in a finding shares the same
+    /// exposure figure in every rule that produces more than one — e.g. a
+    /// duplicate pair's two transactions are, by definition of the match,
+    /// the same amount).
+    private func getFindingDetails(arguments: [String: Any]) async throws -> String {
+        guard let findingId = arguments["findingId"] as? String, !findingId.isEmpty else {
+            throw ToolArgumentError.missingArgument("findingId")
+        }
+        let findings = try await store.loadFindings()
+        guard let finding = findings.first(where: { $0.id == findingId }) else {
+            throw ToolArgumentError.findingNotFound(findingId)
+        }
+
+        let evidenceRows: [[String: Any]] = finding.evidence.map { item in
+            var row: [String: Any] = ["description": Self.evidenceDescription(item)]
+            if let account = Self.evidenceAccount(item) {
+                row["account"] = account
+            }
+            row["amount"] = finding.dollarExposure.majorUnitsDouble
+            return row
+        }
+        return try jsonText(["title": finding.title, "evidence": evidenceRows])
+    }
+
+    private static func evidenceDescription(_ item: EvidenceItem) -> String {
+        let orderedKeys = ["vendor", "amount", "date", "paymentAccount", "lineAccount", "docNumber"]
+        let parts = orderedKeys.compactMap { item.fieldValues[$0] }
+        guard !parts.isEmpty else {
+            return item.highlightedFields.isEmpty
+                ? "Transaction \(item.transactionID)"
+                : "Transaction \(item.transactionID): \(item.highlightedFields.joined(separator: ", "))"
+        }
+        return parts.joined(separator: " — ")
+    }
+
+    private static func evidenceAccount(_ item: EvidenceItem) -> String? {
+        for key in ["paymentAccount", "lineAccount", "account"] {
+            if let value = item.fieldValues[key] { return value }
+        }
+        return nil
+    }
+
     private static func volumeTier(from raw: String) -> PricingCalculator.VolumeTier? {
         switch raw {
         case "light": return .light
@@ -339,6 +533,9 @@ enum ToolArgumentError: Error, CustomStringConvertible {
     case missingArgument(String)
     case missingOrInvalidNumber(String)
     case invalidEnum(String, String)
+    case backendNotConfigured
+    case accountNotFound(String)
+    case findingNotFound(String)
 
     var description: String {
         switch self {
@@ -348,6 +545,12 @@ enum ToolArgumentError: Error, CustomStringConvertible {
             return "Missing required argument: \(name)."
         case .missingOrInvalidNumber(let name):
             return "\(name) is required and must be a number."
+        case .backendNotConfigured:
+            return "This tool requires a live QuickBooks Online connection — VOICE_LEDGER_BACKEND_URL and VOICE_LEDGER_SESSION_TOKEN are not configured for this process."
+        case .accountNotFound(let name):
+            return "No account named \"\(name)\" was found on this client's chart of accounts."
+        case .findingNotFound(let id):
+            return "No open finding with id \"\(id)\" was found. Call get_open_findings first to get a current id."
         case .invalidEnum(let name, let value):
             return "\"\(value)\" is not a valid value for \(name)."
         }
