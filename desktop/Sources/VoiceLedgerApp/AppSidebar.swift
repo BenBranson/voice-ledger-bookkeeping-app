@@ -225,6 +225,9 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
+                Text("v1.1")
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundStyle(VLColor.textMuted)
                 voiceMicButton
                 Button(action: onSync) {
                     Image(systemName: "arrow.triangle.2.circlepath")
