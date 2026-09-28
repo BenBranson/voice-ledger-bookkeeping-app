@@ -47,6 +47,12 @@ extension VoiceEngine {
         // prompt — same `AskAIContext.compose(finding:)` boundary every
         // other per-finding surface in this app already uses.
         var context = Self.toolLoopSystemContext
+
+        // CRITICAL: Always state the current page first, before any other context,
+        // to override any stale page knowledge from previous turns
+        let currentPageContext = appState.currentPageAskAIContext()
+        context += "\n\n" + currentPageContext
+
         if let activeCompanyName = appState.companyInfo?.companyName {
             context += "\n\nThe ACTIVE client right now is \"\(activeCompanyName)\" — every tool already operates on this client. Mentioning this same name in a question (e.g. \"what's \(activeCompanyName)'s revenue\") is just identifying which client the question is about, NOT a request to switch — do not call switch_client unless the person is clearly asking to change to a DIFFERENT client (e.g. \"switch to X,\" \"the other client,\" \"pull up Y instead\")."
         }
