@@ -322,24 +322,45 @@ extension VoiceEngine {
     private static let queryFillerWords: Set<String> = ["the", "a", "an", "finding", "findings", "transaction", "account", "entry"]
 
     private static func bestMatch(for query: String, in findings: [Finding]) -> Finding? {
-        let queryWords = query.lowercased()
+        let queryLower = query.lowercased()
+        let queryWords = queryLower
             .split(separator: " ")
             .map(String.init)
             .filter { !queryFillerWords.contains($0) }
-        guard !queryWords.isEmpty else { return nil }
 
-        func score(_ text: String?) -> Double {
+        func scoreWords(_ text: String?) -> Double {
             guard let text, !text.isEmpty else { return 0 }
+            if queryWords.isEmpty { return 0 }
             let textWords = Set(text.lowercased().split(separator: " ").map(String.init))
             let matched = queryWords.filter { textWords.contains($0) }.count
             return Double(matched) / Double(queryWords.count)
         }
 
-        let scored = findings.map { finding -> (Finding, Double) in
-            (finding, max(score(finding.title), score(finding.vendorName)))
+        func scoreSubstring(_ text: String?) -> Double {
+            guard let text, !text.isEmpty else { return 0 }
+            return text.lowercased().contains(queryLower) ? 1.0 : 0
         }
+
+        func scoreDollarAmount(_ exposure: Money) -> Double {
+            // If query looks like a dollar amount, try matching against dollar exposure
+            // e.g., "500" should match "USD 500.00"
+            let amountStr = exposure.description
+            return amountStr.contains(queryLower) ? 1.0 : 0
+        }
+
+        let scored = findings.map { finding -> (Finding, Double) in
+            // Scoring: dollar amount match > substring match > word match
+            let wordScore = scoreWords(finding.title)
+            let substringScore = scoreSubstring(finding.title)
+            let dollarScore = scoreDollarAmount(finding.dollarExposure)
+            let vendorScore = scoreWords(finding.vendorName)
+
+            let bestScore = max(dollarScore, substringScore, wordScore, vendorScore)
+            return (finding, bestScore)
+        }
+
         guard let best = scored.max(by: { $0.1 == $1.1 ? abs($0.0.dollarExposure.minorUnits) < abs($1.0.dollarExposure.minorUnits) : $0.1 < $1.1 }),
-              best.1 >= 0.5 else { return nil }
+              best.1 > 0 else { return nil }
         return best.0
     }
 
