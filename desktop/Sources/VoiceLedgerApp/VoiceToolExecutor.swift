@@ -253,6 +253,42 @@ extension VoiceEngine {
                 return ("Report type '\(reportType)' not yet fully implemented. Try 'balance_sheet' or 'income_statement'.", nil)
             }
 
+        case "get_finding_recommendation":
+            guard let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) else {
+                return ("This tool only works when a finding detail page is open. Please click on a specific finding first.", nil)
+            }
+            var recommendation = "Recommendation for: \(finding.title)\n\n"
+            recommendation += "WHY THIS MATTERS:\n"
+            recommendation += "- Severity: \(finding.severity.rawValue) severity\n"
+            recommendation += "- Dollar exposure: \(finding.dollarExposure.description)\n"
+            recommendation += "- Status: \(finding.status.rawValue)\n\n"
+
+            recommendation += "RECOMMENDED NEXT STEP:\n"
+            switch finding.ruleID.rawValue {
+            case _ where finding.ruleID.rawValue.contains("DUP"):
+                recommendation += "Investigate and consolidate duplicates. Because: duplicate transactions inflate your accounting records and create confusion about true spend and balances. Consolidating ensures accurate financial reporting.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to compare and merge the duplicate transactions in QuickBooks."
+            case _ where finding.ruleID.rawValue.contains("UNCAT"):
+                recommendation += "Categorize uncategorized transactions. Because: uncategorized transactions hide expense patterns and make your P&L report incomplete. Proper categorization is required for accurate profit reporting and tax planning.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to assign the correct expense or income account."
+            case _ where finding.ruleID.rawValue.contains("PERSONAL"):
+                recommendation += "Remove personal expenses from business accounts. Because: personal expenses reduce reported business profit and inflate tax liability. Keeping them separate ensures clean business records.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to move this to a personal account or delete it from the business books."
+            case _ where finding.ruleID.rawValue.contains("NEGBAL"):
+                recommendation += "Resolve negative account balance. Because: negative balances in asset accounts (like bank accounts) indicate data entry errors or categorization mistakes. They make your balance sheet inaccurate.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to investigate which transaction caused the negative balance and correct it."
+            case _ where finding.ruleID.rawValue.contains("UNDEPOSITED"):
+                recommendation += "Record missing bank deposit. Because: payments sitting in Undeposited Funds for too long indicate they may have been forgotten or lost in the bank. Recording the deposit ensures cash is reconciled.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to either record the deposit in the bank account or investigate if it was actually deposited."
+            case _ where finding.ruleID.rawValue.contains("PRICE"):
+                recommendation += "Investigate vendor price increases. Because: unexpected price hikes from key vendors impact profitability. Understanding these changes helps you budget accurately and negotiate if needed.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to verify the new price is correct, or contact the vendor if it seems wrong."
+            default:
+                recommendation += "Review the evidence and take action in QuickBooks. Because: this finding was flagged by Voice Ledger's rules engine as needing attention for accurate financial records.\n\n"
+                recommendation += "ACTION: Click 'Manual QBO' to make the necessary correction in QuickBooks Online."
+            }
+            return (recommendation, nil)
+
         default:
             return ("Unknown tool: \(call.name).", nil)
         }

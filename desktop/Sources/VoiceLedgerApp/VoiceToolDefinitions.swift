@@ -194,6 +194,12 @@ extension VoiceEngine {
                 ])
             ],
             required: ["report_type"]
+        ),
+        tool(
+            name: "get_finding_recommendation",
+            description: "Get a smart, reasoned recommendation for how to fix the currently-open finding. Only works when a finding detail page is displayed. Returns actionable recommendations based on the finding's rule, severity, dollar exposure, and real evidence — each recommendation explains WHY it's recommended (because x, y, z) and WHAT to do next.",
+            properties: [:],
+            required: []
         )
     ]
 

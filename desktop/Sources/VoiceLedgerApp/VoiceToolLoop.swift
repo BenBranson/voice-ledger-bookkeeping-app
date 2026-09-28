@@ -50,35 +50,28 @@ extension VoiceEngine {
         if let activeCompanyName = appState.companyInfo?.companyName {
             context += "\n\nThe ACTIVE client right now is \"\(activeCompanyName)\" — every tool already operates on this client. Mentioning this same name in a question (e.g. \"what's \(activeCompanyName)'s revenue\") is just identifying which client the question is about, NOT a request to switch — do not call switch_client unless the person is clearly asking to change to a DIFFERENT client (e.g. \"switch to X,\" \"the other client,\" \"pull up Y instead\")."
         }
+        var currentFindingIsOpen = false
         if let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
-            context += "\n\nThe person currently has this finding open on screen:\n" + AskAIContext.compose(finding: finding)
+            context += "\n\n🔴 THE PERSON CURRENTLY HAS THIS FINDING OPEN ON SCREEN — ANSWER ALL QUESTIONS ABOUT THIS FINDING ONLY:\n" + AskAIContext.compose(finding: finding)
+            currentFindingIsOpen = true
         }
-        // Owner-reported problem (2026-09-28), reproduced live: asked
-        // which open finding was LEAST important and got "I'm not seeing
-        // that anywhere in the current context" — this branch only ever
-        // fired when ONE specific finding was open; on every other
-        // screen (a list page, a report, nothing in particular), the
-        // model had zero findings data up front and had to correctly
-        // guess to call `find_findings` before it could answer anything
-        // about the client's open issues at all. Always including the
-        // full open-findings picture — pre-sorted highest-priority-first
-        // via `FindingTriage` so "least important" is simply the END of
-        // this list, not something the model has to compute itself —
-        // fixes this directly, independent of whether a tool call
-        // happens. Capped at 50 for the same reason `AskAIContext`'s own
-        // caps were just raised there: real finding counts (13-23 this
-        // session) fit comfortably; this is a short line per finding, not
-        // a report dump.
-        let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
-        if !allOpenFindings.isEmpty {
-            var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS, MOST IMPORTANT FIRST (the last one listed is the LEAST important/urgent):"]
-            for finding in allOpenFindings.prefix(50) {
-                lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description))")
+        // Owner-reported problem (2026-09-28), continued feedback (2026-09-28):
+        // when a specific finding is open, Moneypenny was still mentioning OTHER
+        // findings and getting confused. When on a finding detail page, ONLY talk
+        // about that finding. When on a list or other page, include all findings
+        // so she can disambiguate by dollar amount/title.
+        if !currentFindingIsOpen {
+            let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
+            if !allOpenFindings.isEmpty {
+                var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS (reference for questions about specific issues):"]
+                for finding in allOpenFindings.prefix(50) {
+                    lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description))")
+                }
+                if allOpenFindings.count > 50 {
+                    lines.append("...and \(allOpenFindings.count - 50) more not listed here")
+                }
+                context += "\n" + lines.joined(separator: "\n")
             }
-            if allOpenFindings.count > 50 {
-                lines.append("...and \(allOpenFindings.count - 50) more not listed here")
-            }
-            context += "\n" + lines.joined(separator: "\n")
         }
 
         // Owner directive (2026-09-28 continuation): "she should be able to
