@@ -15,11 +15,12 @@ extension VoiceEngine {
     /// SEPARATELY once a tool actually runs; this is just the model's
     /// standing instructions for the tool-decision step itself.
     static let toolLoopSystemContext = """
-    You are Voice Ledger's own in-app voice assistant. You have tools that can navigate the app, look up this client's real financial data, find flagged issues, generate charts, refresh data from QuickBooks, and switch to a different connected client.
+    You are Voice Ledger's own in-app voice assistant. You always have the current page's context and can talk about anything displayed on screen or any of this client's financial data. You have tools that can navigate the app, fetch accounts and transactions from QuickBooks on demand, generate reports, look up specific vendors or accounts, find flagged issues, generate charts, refresh data, and switch to a different connected client.
 
     Rules:
     - Call a tool whenever the person's request needs one. Do not just describe what you would do — call the tool.
     - If a request is genuinely ambiguous (e.g. "show me a chart" with no clear subject), ask a short clarifying question instead of guessing which tool or argument to use.
+    - Use `search_transactions`, `get_account_balance`, `get_vendor_details`, `get_chart_of_accounts`, and `get_report_summary` to fetch live QuickBooks data on demand — the person might ask about any account, vendor, or report detail you don't have in memory.
     - This app computes a cash flow forecast (`get_cash_flow_forecast`) and recurring-vendor detection (`get_recurring_vendors`) — use those tools rather than declining. It still does NOT compute: missing-receipt detection, or anything about a client not already connected. If asked about those, say plainly that Voice Ledger doesn't compute that yet, rather than guessing or calling an unrelated tool.
     - Financial totals (spend by vendor, revenue, cash balance) reflect only the client's CURRENTLY LOADED accounting period, not necessarily a full year or quarter — say so plainly if the person asked for a longer range than that.
     - Never invent a dollar figure, date, or vendor name that wasn't in a tool's own result.
@@ -136,6 +137,63 @@ extension VoiceEngine {
                 "name": .object(["type": .string("string"), "description": .string("The company name (or part of it) to switch to.")])
             ],
             required: ["name"]
+        ),
+        tool(
+            name: "get_chart_of_accounts",
+            description: "Get a summary of this client's chart of accounts — list all active accounts with their types (Asset, Liability, Equity, Income, Expense) and current balances. Use for \"what accounts do they have,\" \"list all assets,\" or \"show me the expense accounts.\"",
+            properties: [
+                "type_filter": .object([
+                    "type": .string("string"),
+                    "enum": .array(["all", "assets", "liabilities", "equity", "income", "expenses"].map { .string($0) }),
+                    "description": .string("Filter to a specific account type, or 'all' for everything.")
+                ])
+            ],
+            required: []
+        ),
+        tool(
+            name: "search_transactions",
+            description: "Search this client's transactions by vendor name, amount, date range, or account. Useful for \"find all transactions from [vendor],\" \"any large payments last month,\" or \"what hit this account in the past week.\" Returns matching transactions with dates and amounts.",
+            properties: [
+                "query": .object([
+                    "type": .string("string"),
+                    "description": .string("Search term: vendor name (e.g. 'Amazon'), amount (e.g. '$500'), date (e.g. 'January'), or account name (e.g. 'Utilities').")
+                ])
+            ],
+            required: ["query"]
+        ),
+        tool(
+            name: "get_account_balance",
+            description: "Look up the current balance of a specific account by name (e.g. 'Checking Account,' 'Accounts Receivable,' 'Office Supplies Expense'). Fetches live data from QuickBooks if not already cached.",
+            properties: [
+                "account_name": .object([
+                    "type": .string("string"),
+                    "description": .string("The account name to look up (e.g. 'Cash,' 'Operating Expenses,' 'Sales Revenue').")
+                ])
+            ],
+            required: ["account_name"]
+        ),
+        tool(
+            name: "get_vendor_details",
+            description: "Look up details for a specific vendor: total spend for the current period, recent transaction count, and last transaction date. Useful for investigating a vendor's spending pattern or when they last charged.",
+            properties: [
+                "vendor_name": .object([
+                    "type": .string("string"),
+                    "description": .string("The vendor name to look up (e.g. 'Acme Corp,' 'AWS,' 'AT&T').")
+                ])
+            ],
+            required: ["vendor_name"]
+        ),
+        tool(
+            name: "get_report_summary",
+            description: "Fetch and summarize a specific financial report. \"balance_sheet\" shows assets/liabilities/equity; \"income_statement\" shows revenue/expenses/net income; \"trial_balance\" shows all accounts with debit/credit totals; \"general_ledger_summary\" shows high-level account activity; \"cash_flow\" shows cash in/out for the period.",
+            properties: [
+                "report_type": .object([
+                    "type": .string("string"),
+                    "enum": .array(["balance_sheet", "income_statement", "trial_balance", "general_ledger_summary", "cash_flow"].map { .string($0) }),
+                    "description": .string("Which report to fetch.")
+                ])
+            ],
+            required: ["report_type"]
         )
     ]
 

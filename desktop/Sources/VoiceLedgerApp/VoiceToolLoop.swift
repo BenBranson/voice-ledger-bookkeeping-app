@@ -81,6 +81,15 @@ extension VoiceEngine {
             context += "\n" + lines.joined(separator: "\n")
         }
 
+        // Owner directive (2026-09-28 continuation): "she should be able to
+        // talk about anything pertaining to pages or from the data in the
+        // app." Inject the current page's context so she knows what's on
+        // screen and can answer questions about the displayed data.
+        let pageContext = appState.currentPageAskAIContext()
+        if !pageContext.isEmpty {
+            context += "\n\n" + pageContext
+        }
+
         let decision: (answer: String, toolCalls: [AIToolCall])
         do {
             decision = try await appState.askAIWithTools(

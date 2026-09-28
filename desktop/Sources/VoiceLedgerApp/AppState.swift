@@ -2824,4 +2824,118 @@ public final class AppState {
         }
         isApplyingBatchFix = false
     }
+
+    /// Builds Ask AI context for the currently displayed page.
+    /// Used by VoiceToolLoop to ground questions in the active screen's data.
+    public func currentPageAskAIContext() -> String {
+        switch screen {
+        case .clientDashboard:
+            var lines = ["Page: Client Dashboard (KPI dashboard with top findings, financial summary, working capital, and recurring vendor issues)."]
+            let openFindings = findings.filter { $0.status == .open }
+            if let workingCapital = FinancialKPIs.workingCapital(from: balanceSheetLines) {
+                lines.append("Working capital: \(workingCapital.description)")
+            }
+            if let netIncome = TaxEstimate.netIncome(from: profitAndLossLines) {
+                lines.append("Net income: \(netIncome.description)")
+            }
+            lines.append("Total open findings: \(openFindings.count)")
+            if !cashFlowForecast.horizons.isEmpty {
+                lines.append("Cash flow forecast available for the next 12 months")
+            }
+            return lines.joined(separator: "\n")
+
+        case .list:
+            let openFindings = findings.filter { $0.status == .open }
+            var lines = ["Page: All Findings (complete list of all findings for this client)."]
+            lines.append("Total findings: \(findings.count)")
+            lines.append("Open findings: \(openFindings.count)")
+            lines.append("Closed findings: \(findings.count - openFindings.count)")
+            if !openFindings.isEmpty {
+                let topByExposure = openFindings.sorted { $0.dollarExposure > $1.dollarExposure }.prefix(3)
+                lines.append("Highest dollar exposure: \(topByExposure.map { "\($0.title) (\($0.dollarExposure.description))" }.joined(separator: ", "))")
+            }
+            return lines.joined(separator: "\n")
+
+        case .detail(let findingID):
+            if let finding = self.finding(id: findingID) {
+                return "Page: Finding Detail (detailed view of a single finding).\n" + AskAIContext.compose(finding: finding)
+            }
+            return "Page: Finding Detail"
+
+        case .balanceSheetReport:
+            var lines = ["Page: Balance Sheet Report (assets, liabilities, and equity as of \(currentPeriod.year)-\(String(format: "%02d", currentPeriod.month)))."]
+            if !balanceSheetLines.isEmpty {
+                lines.append("Report contains \(balanceSheetLines.count) line items")
+                if let totalAssets = balanceSheetLines.first(where: { $0.label.contains("TOTAL ASSETS") }), let amount = totalAssets.amount {
+                    lines.append("Total Assets: \(amount.description)")
+                }
+            }
+            return lines.joined(separator: "\n")
+
+        case .profitAndLossReport:
+            var lines = ["Page: Profit & Loss Report (income and expenses for period \(currentPeriod.year)-\(String(format: "%02d", currentPeriod.month)))."]
+            if !profitAndLossLines.isEmpty {
+                lines.append("Report contains \(profitAndLossLines.count) line items")
+                if let totalIncome = TaxEstimate.netIncome(from: profitAndLossLines) {
+                    lines.append("Net Income: \(totalIncome.description)")
+                }
+            }
+            return lines.joined(separator: "\n")
+
+        case .agedReceivablesReport:
+            var lines = ["Page: Aged Receivables Report (amounts owed by customers)."]
+            if !agedReceivablesLines.isEmpty {
+                lines.append("Report contains \(agedReceivablesLines.count) customer entries")
+            }
+            return lines.joined(separator: "\n")
+
+        case .agedPayablesReport:
+            var lines = ["Page: Aged Payables Report (amounts owed to vendors)."]
+            if !agedPayablesLines.isEmpty {
+                lines.append("Report contains \(agedPayablesLines.count) vendor entries")
+            }
+            return lines.joined(separator: "\n")
+
+        case .generalLedgerReport:
+            var lines = ["Page: General Ledger Report (detailed transaction-level account history)."]
+            lines.append("Transactions synced: \(transactions.count)")
+            return lines.joined(separator: "\n")
+
+        case .chartOfAccountsCleanup:
+            var lines = ["Page: Chart of Accounts Cleanup (account structure and organization)."]
+            lines.append("Total accounts: \(accounts.count)")
+            return lines.joined(separator: "\n")
+
+        case .cashFlowForecast:
+            var lines = ["Page: Cash Flow Forecast (12-month projection of cash position)."]
+            if !cashFlowForecast.horizons.isEmpty {
+                lines.append("Forecast horizons: \(cashFlowForecast.horizons.count)")
+            }
+            return lines.joined(separator: "\n")
+
+        case .recurringVendors:
+            var lines = ["Page: Recurring Vendors (detected recurring transactions and patterns)."]
+            lines.append("Missing recurring vendor configurations: \(missingRecurringVendors.count)")
+            if !transactions.isEmpty {
+                let topVendors = VendorSpendSummary.top(10, from: transactions)
+                lines.append("Top vendors by spend: \(topVendors.map { $0.vendorName }.joined(separator: ", "))")
+            }
+            return lines.joined(separator: "\n")
+
+        case .amountSearch:
+            var lines = ["Page: Amount Search (find transactions matching a specific dollar amount)."]
+            lines.append("Total transactions available: \(transactions.count)")
+            return lines.joined(separator: "\n")
+
+        case .pricingCalculator:
+            return "Page: Pricing Calculator (estimate service fees and project scope for a prospect — not connected to any client)."
+
+        case .intakeQuestions:
+            return "Page: Intake Questions (discovery call script for prospect qualification and client onboarding)."
+
+        default:
+            let pageName = String(describing: screen)
+            return "Page: \(pageName)"
+        }
+    }
 }

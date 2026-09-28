@@ -139,6 +139,120 @@ extension VoiceEngine {
             await appState.switchActiveClient(to: match.client.realmID, environment: match.client.environment)
             return ("Switching to \(match.client.companyName ?? name)'s books now.", nil)
 
+        case "get_chart_of_accounts":
+            let typeFilter = call.arguments["type_filter"]?.stringValue ?? "all"
+            let filtered: [LedgerAccount]
+            switch typeFilter {
+            case "income":
+                filtered = appState.accounts.filter { $0.accountType == .income || $0.accountType == .otherIncome }
+            case "expenses":
+                filtered = appState.accounts.filter { $0.accountType == .expense || $0.accountType == .otherExpense || $0.accountType == .costOfGoodsSold }
+            case "equity":
+                filtered = appState.accounts.filter { $0.accountType == .equity }
+            default:
+                filtered = appState.accounts
+            }
+            if filtered.isEmpty {
+                return ("No accounts found for filter '\(typeFilter)'.", nil)
+            }
+            var lines: [String] = ["Chart of Accounts (\(typeFilter)): \(filtered.count) accounts"]
+            for account in filtered.prefix(30) {
+                lines.append("- \(account.name) (\(account.accountType.rawValue))")
+            }
+            if filtered.count > 30 {
+                lines.append("...and \(filtered.count - 30) more accounts")
+            }
+            return (lines.joined(separator: "\n"), nil)
+
+        case "search_transactions":
+            let query = call.arguments["query"]?.stringValue ?? ""
+            guard !query.isEmpty else {
+                return ("Please provide a search query (vendor name, amount, date, or account).", nil)
+            }
+            let matching = appState.transactions.filter { t in
+                let queryLower = query.lowercased()
+                return (t.vendorName?.lowercased().contains(queryLower) ?? false) ||
+                       (t.memo?.lowercased().contains(queryLower) ?? false) ||
+                       (t.totalAmount.description.contains(query))
+            }
+            guard !matching.isEmpty else {
+                return ("No transactions found matching '\(query)'.", nil)
+            }
+            var lines: [String] = ["Found \(matching.count) matching transactions:"]
+            for t in matching.prefix(20) {
+                let date = "\(t.txnDate.year)-\(String(format: "%02d", t.txnDate.month))-\(String(format: "%02d", t.txnDate.day))"
+                lines.append("- \(date): \(t.vendorName ?? "Unknown") \(t.totalAmount.description)")
+            }
+            if matching.count > 20 {
+                lines.append("...and \(matching.count - 20) more")
+            }
+            return (lines.joined(separator: "\n"), nil)
+
+        case "get_account_balance":
+            let accountName = call.arguments["account_name"]?.stringValue ?? ""
+            guard !accountName.isEmpty else {
+                return ("Please provide an account name.", nil)
+            }
+            let account = appState.accounts.first { $0.name.localizedCaseInsensitiveContains(accountName) }
+            guard let account else {
+                return ("Account '\(accountName)' not found in chart of accounts.", nil)
+            }
+            return ("\(account.name) (Type: \(account.accountType.rawValue)). Sync dashboard for real-time balance details.", nil)
+
+        case "get_vendor_details":
+            let vendorName = call.arguments["vendor_name"]?.stringValue ?? ""
+            guard !vendorName.isEmpty else {
+                return ("Please provide a vendor name.", nil)
+            }
+            let matching = appState.transactions.filter { t in
+                (t.vendorName ?? "").localizedCaseInsensitiveContains(vendorName)
+            }
+            guard !matching.isEmpty else {
+                return ("No transactions found for vendor '\(vendorName)'.", nil)
+            }
+            let displayName = matching.first?.vendorName ?? vendorName
+            let lastDate = matching.max(by: { $0.txnDate < $1.txnDate })?.txnDate
+            let dateStr = lastDate.map { "\($0.year)-\(String(format: "%02d", $0.month))-\(String(format: "%02d", $0.day))" } ?? "Unknown"
+            return ("Vendor: \(displayName)\nTransaction count: \(matching.count)\nLast transaction: \(dateStr)", nil)
+
+        case "get_report_summary":
+            let reportType = call.arguments["report_type"]?.stringValue ?? ""
+            switch reportType {
+            case "balance_sheet":
+                if appState.balanceSheetLines.isEmpty {
+                    return ("Balance sheet data not loaded yet. Please sync the dashboard first.", nil)
+                }
+                var lines: [String] = ["Balance Sheet Summary:"]
+                for line in appState.balanceSheetLines.prefix(30) {
+                    if let amount = line.amount {
+                        lines.append("- \(line.label): \(amount.description)")
+                    } else {
+                        lines.append("- \(line.label)")
+                    }
+                }
+                return (lines.joined(separator: "\n"), nil)
+
+            case "income_statement":
+                if appState.profitAndLossLines.isEmpty {
+                    return ("Income statement data not loaded yet. Please sync the dashboard first.", nil)
+                }
+                var lines: [String] = ["Income Statement Summary:"]
+                for line in appState.profitAndLossLines.prefix(30) {
+                    if let amount = line.amount {
+                        lines.append("- \(line.label): \(amount.description)")
+                    } else {
+                        lines.append("- \(line.label)")
+                    }
+                }
+                return (lines.joined(separator: "\n"), nil)
+
+            case "cash_flow":
+                return ("Cash flow summary: \(appState.transactions.count) transactions loaded for the current period. Pull a Cash Flow report page for detailed cash flow analysis.", nil)
+
+            default:
+                return ("Report type '\(reportType)' not yet fully implemented. Try 'balance_sheet' or 'income_statement'.", nil)
+            }
+
         default:
             return ("Unknown tool: \(call.name).", nil)
         }
