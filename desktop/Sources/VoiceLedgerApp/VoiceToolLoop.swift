@@ -53,6 +53,33 @@ extension VoiceEngine {
         if let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
             context += "\n\nThe person currently has this finding open on screen:\n" + AskAIContext.compose(finding: finding)
         }
+        // Owner-reported problem (2026-09-28), reproduced live: asked
+        // which open finding was LEAST important and got "I'm not seeing
+        // that anywhere in the current context" — this branch only ever
+        // fired when ONE specific finding was open; on every other
+        // screen (a list page, a report, nothing in particular), the
+        // model had zero findings data up front and had to correctly
+        // guess to call `find_findings` before it could answer anything
+        // about the client's open issues at all. Always including the
+        // full open-findings picture — pre-sorted highest-priority-first
+        // via `FindingTriage` so "least important" is simply the END of
+        // this list, not something the model has to compute itself —
+        // fixes this directly, independent of whether a tool call
+        // happens. Capped at 50 for the same reason `AskAIContext`'s own
+        // caps were just raised there: real finding counts (13-23 this
+        // session) fit comfortably; this is a short line per finding, not
+        // a report dump.
+        let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
+        if !allOpenFindings.isEmpty {
+            var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS, MOST IMPORTANT FIRST (the last one listed is the LEAST important/urgent):"]
+            for finding in allOpenFindings.prefix(50) {
+                lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description))")
+            }
+            if allOpenFindings.count > 50 {
+                lines.append("...and \(allOpenFindings.count - 50) more not listed here")
+            }
+            context += "\n" + lines.joined(separator: "\n")
+        }
 
         let decision: (answer: String, toolCalls: [AIToolCall])
         do {

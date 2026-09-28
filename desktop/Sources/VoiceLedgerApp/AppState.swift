@@ -2399,6 +2399,18 @@ public final class AppState {
         intakeStatusMessage = nil
     }
 
+    // MARK: AI Conversation History
+
+    /// Owner directive (2026-09-28): an explicit, human-initiated wipe —
+    /// see `AIConversationHistoryView`'s own doc comment on why this
+    /// matters for data hygiene between clients. Only this realm's AI
+    /// conversation log is touched; findings, activity log, and every
+    /// other persisted record are untouched.
+    public func clearConversationHistory() {
+        conversationHistory = []
+        Task { try? await store.clearAskAIConversationHistory() }
+    }
+
     /// CLAUDE.md-adjacent honesty fix: every "Dismiss" button in the app
     /// previously just navigated back to the list without persisting
     /// anything — `Finding.status` never actually became `.dismissed`

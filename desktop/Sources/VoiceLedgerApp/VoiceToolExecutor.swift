@@ -49,9 +49,16 @@ extension VoiceEngine {
                 finding.status == .open && (ruleIDs == nil || ruleIDs!.contains(finding.ruleID.rawValue))
             }
             guard !matches.isEmpty else { return ("No open findings matched category \"\(category)\".", nil) }
-            let lines = matches.prefix(8).map { "\($0.title) (\($0.severity.rawValue), \($0.dollarExposure.description))" }
+            // Owner-reported problem (2026-09-28): asked which finding was
+            // LEAST important and got no answer — reproduced: at a cap of
+            // 8, a real client with more than 8 open findings had its
+            // tail (exactly where the smallest/lowest-severity ones tend
+            // to sort) silently cut off before the model ever saw them.
+            // Raised to 50 — real finding counts seen this session (13-23)
+            // fit comfortably, and each line is short.
+            let lines = matches.prefix(50).map { "\($0.title) (\($0.severity.rawValue), \($0.dollarExposure.description))" }
             var text = "\(matches.count) matching finding(s): " + lines.joined(separator: "; ")
-            if matches.count > 8 { text += "; and \(matches.count - 8) more" }
+            if matches.count > 50 { text += "; and \(matches.count - 50) more" }
             return (text, nil)
 
         case "get_financial_summary":

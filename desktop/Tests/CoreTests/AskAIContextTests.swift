@@ -64,9 +64,9 @@ struct AskAIContextTests {
         #expect(context.contains("Open findings: 2"))
     }
 
-    @Test("compose(pageTitle:findings:) caps the listed findings at 20 and notes the rest")
+    @Test("compose(pageTitle:findings:) caps the listed findings at 50 and notes the rest")
     func pageLevelComposeCapsAtTwenty() {
-        let findings = (1...25).map { _ in finding() }
+        let findings = (1...55).map { _ in finding() }
         let context = AskAIContext.compose(pageTitle: "Cleanup Assessment", findings: findings)
         #expect(context.contains("...and 5 more not listed here"))
     }
@@ -95,9 +95,9 @@ struct AskAIContextTests {
         #expect(addendum.contains("2026-07"))
     }
 
-    @Test("crossPageFindingsAddendum caps at 20 and notes the rest, same as compose(pageTitle:findings:)")
+    @Test("crossPageFindingsAddendum caps at 50 and notes the rest, same as compose(pageTitle:findings:)")
     func crossPageAddendumCapsAtTwenty() {
-        let findings = (1...25).map { finding(id: "f\($0)") }
+        let findings = (1...55).map { finding(id: "f\($0)") }
         let addendum = AskAIContext.crossPageFindingsAddendum(findings)
         #expect(addendum.contains("...and 5 more not listed here"))
     }

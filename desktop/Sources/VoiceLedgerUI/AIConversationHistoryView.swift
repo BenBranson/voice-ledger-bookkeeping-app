@@ -34,21 +34,44 @@ public struct AIConversationHistoryView: View {
     }
 
     private let rows: [Row]
+    private let onExport: (ReportExportFormat) -> Void
+    /// Owner directive (2026-09-28): "she needs a working memory... make
+    /// it where I can delete it, especially between clients" — this
+    /// history is what the AI's follow-up questions draw continuity from
+    /// (`recentHistory()`), so clearing it between engagements is real
+    /// data hygiene, not just tidiness: nothing from a prior client's
+    /// conversation should be able to bleed into a new one's context.
+    private let onClearHistory: () -> Void
+    @State private var showingClearConfirmation = false
 
-    public init(rows: [Row]) {
+    public init(rows: [Row], onExport: @escaping (ReportExportFormat) -> Void = { _ in }, onClearHistory: @escaping () -> Void = {}) {
         self.rows = rows
+        self.onExport = onExport
+        self.onClearHistory = onClearHistory
     }
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
-                Text("AI Conversations")
-                    .font(VLTypography.pageTitle())
-                    .foregroundStyle(VLColor.textPrimary)
-
-                Text("Every question you've asked Gemma or OpenAI, and its answer — including the two Generate Report buttons. Most recent first.")
-                    .font(VLTypography.caption())
-                    .foregroundStyle(VLColor.textMuted)
+                HStack {
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        Text("AI Conversations")
+                            .font(VLTypography.pageTitle())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("Every question you've asked Gemma or OpenAI, and its answer — including the two Generate Report buttons. Most recent first.")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    Spacer()
+                    if !rows.isEmpty {
+                        ExportMenuButton(onExport: onExport)
+                        Button(role: .destructive) {
+                            showingClearConfirmation = true
+                        } label: {
+                            Label("Clear History", systemImage: "trash")
+                        }
+                    }
+                }
 
                 if rows.isEmpty {
                     Text("No conversations yet. Ask a question on any finding, or generate a report on Findings, to start one.")
@@ -63,6 +86,12 @@ public struct AIConversationHistoryView: View {
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+        .alert("Clear AI Conversation History?", isPresented: $showingClearConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear", role: .destructive) { onClearHistory() }
+        } message: {
+            Text("Removes every question and answer in this client's AI conversation history. This can't be undone — export it first if you want to keep a copy. Nothing else (findings, activity log) is affected.")
+        }
     }
 
     private func rowView(_ row: Row) -> some View {

@@ -2068,7 +2068,11 @@ struct RootView: View {
             }
 
         case .voiceHistory:
-            AIConversationHistoryView(rows: Self.conversationHistoryRows(state.conversationHistory))
+            AIConversationHistoryView(
+                rows: Self.conversationHistoryRows(state.conversationHistory),
+                onExport: { format in state.exportTable(Self.exportTable(conversationHistory: state.conversationHistory), format: format, suggestedFilename: "AI Conversations") },
+                onClearHistory: { state.clearConversationHistory() }
+            )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Back") { state.screen = .list }
@@ -2569,6 +2573,31 @@ struct RootView: View {
             ]
         }
         return ExportTable(title: "Activity Log", columns: ["Date", "Kind", "Actor", "Finding", "Note"], rows: rows)
+    }
+
+    /// Owner directive (2026-09-28): "use a txt file or csv file or xsxl
+    /// file to store info so she has a working memory" — this client's
+    /// full AI conversation log, exportable the same way every other
+    /// page's data already is (`CSVReportExporter`/`XLSXReportExporter`
+    /// via `ExportMenuButton`), opens directly in Excel/Google Sheets/a
+    /// text editor.
+    private static func exportTable(conversationHistory entries: [AskAIConversationEntry]) -> ExportTable {
+        let dateFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter
+        }()
+        let rows = entries.sorted { $0.askedAt > $1.askedAt }.map { entry -> [ExportCell] in
+            [
+                ExportCell(text: dateFormatter.string(from: entry.askedAt)),
+                ExportCell(text: entry.contextLabel),
+                ExportCell(text: entry.tier.rawValue),
+                ExportCell(text: entry.question),
+                ExportCell(text: entry.answer)
+            ]
+        }
+        return ExportTable(title: "AI Conversations", columns: ["Date", "Context", "Model", "Question", "Answer"], rows: rows)
     }
 
     private static func exportTable(

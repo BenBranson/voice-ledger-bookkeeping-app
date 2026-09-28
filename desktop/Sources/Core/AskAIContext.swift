@@ -221,17 +221,26 @@ public enum AskAIContext {
         let highCount = openFindings.filter { $0.severity == .high }.count
         let lowCount = openFindings.count - highCount
         lines.append("\(openFindings.count) open finding(s) — \(highCount) high severity, \(lowCount) low severity.")
-        for finding in openFindings.prefix(15) {
+        // Owner-reported problem (2026-09-28): "she can mention the worst
+        // finding but I ask her about the least and she can't tell me" — a
+        // real, reproduced bug: at 15, any client with more than 15 open
+        // findings silently drops the tail of the list, which is exactly
+        // where a "least important" or "smallest" finding tends to sort.
+        // Raised to 50 — comfortably above any real finding count this
+        // app has seen in this session (13-23), and findings are short
+        // one-liners, so 50 is still a small, cheap prompt addition, not
+        // a real cost tradeoff like the GL/Trial Balance line caps are.
+        for finding in openFindings.prefix(50) {
             lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description))")
         }
-        if openFindings.count > 15 {
-            lines.append("...and \(openFindings.count - 15) more not listed here.")
+        if openFindings.count > 50 {
+            lines.append("...and \(openFindings.count - 50) more not listed here.")
         }
 
         lines.append("")
         lines.append("WHAT'S GOING WELL (positive):")
         lines.append("\(resolvedFindings.count) finding(s) resolved and confirmed fixed, \(dismissedFindings.count) reviewed and dismissed as not a real issue, this period.")
-        for finding in resolvedFindings.prefix(15) {
+        for finding in resolvedFindings.prefix(50) {
             lines.append("- Fixed: \(finding.title)")
         }
 
@@ -351,7 +360,7 @@ public enum AskAIContext {
         if !resolvedFindings.isEmpty {
             lines.append("")
             lines.append("WHAT WAS FIXED:")
-            for finding in resolvedFindings.prefix(20) {
+            for finding in resolvedFindings.prefix(50) {
                 lines.append("- \(finding.title) (\(finding.dollarExposure.description))")
             }
         }
@@ -359,7 +368,7 @@ public enum AskAIContext {
         if !corrections.isEmpty {
             lines.append("")
             lines.append("ACTIONS TAKEN:")
-            for entry in corrections.prefix(20) {
+            for entry in corrections.prefix(50) {
                 let summary = entry.findingSummary ?? entry.kind.rawValue
                 lines.append("- \(summary)" + (entry.note.map { " — \($0)" } ?? ""))
             }
@@ -372,16 +381,20 @@ public enum AskAIContext {
     /// Ask AI panel expanded beyond `FindingDetailView` to other pages
     /// (docs/VOICE_LEDGER_SPEC.md: "Every page ends with an Ask [AI]
     /// panel."). Same boundary: only serializes fields these findings
-    /// already carry, capped at 20 so the context stays a summary rather
-    /// than dumping the entire page's data into the prompt.
+    /// already carry — capped at 50 (raised from 20, 2026-09-28: see this
+    /// file's `composeHealthReport` comment on the same cap for why 15/20
+    /// was cutting off real findings, reproduced live) so the context
+    /// stays a summary rather than dumping unboundedly, without silently
+    /// hiding a real client's tail-end findings the way 20 did in
+    /// practice.
     public static func compose(pageTitle: String, findings: [Finding]) -> String {
         var lines: [String] = ["Page: \(pageTitle)", "Open findings: \(findings.count)"]
-        for finding in findings.prefix(20) {
+        for finding in findings.prefix(50) {
             let periodLabel = "\(finding.period.year)-\(String(format: "%02d", finding.period.month))"
             lines.append("- \(finding.title) — severity \(finding.severity.rawValue), exposure \(finding.dollarExposure.description), period \(periodLabel)")
         }
-        if findings.count > 20 {
-            lines.append("...and \(findings.count - 20) more not listed here")
+        if findings.count > 50 {
+            lines.append("...and \(findings.count - 50) more not listed here")
         }
         return lines.joined(separator: "\n")
     }
@@ -406,12 +419,12 @@ public enum AskAIContext {
     public static func crossPageFindingsAddendum(_ allOpenFindings: [Finding]) -> String {
         guard !allOpenFindings.isEmpty else { return "" }
         var lines = ["", "OTHER OPEN FINDINGS ELSEWHERE IN THE APP (for questions not about this page specifically):"]
-        for finding in allOpenFindings.prefix(20) {
+        for finding in allOpenFindings.prefix(50) {
             let periodLabel = "\(finding.period.year)-\(String(format: "%02d", finding.period.month))"
             lines.append("- \(finding.title) — severity \(finding.severity.rawValue), exposure \(finding.dollarExposure.description), period \(periodLabel)")
         }
-        if allOpenFindings.count > 20 {
-            lines.append("...and \(allOpenFindings.count - 20) more not listed here")
+        if allOpenFindings.count > 50 {
+            lines.append("...and \(allOpenFindings.count - 50) more not listed here")
         }
         return lines.joined(separator: "\n")
     }

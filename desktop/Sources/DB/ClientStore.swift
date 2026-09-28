@@ -508,6 +508,17 @@ public actor ClientStore {
         try load([AskAIConversationEntry].self, key: askAIConversationHistoryKey, default: [])
     }
 
+    /// Owner-reported need (2026-09-28): "she needs a working memory...
+    /// make it where I can delete it, especially between clients" — an
+    /// explicit, human-initiated wipe of this realm's AI conversation
+    /// history, same "never automatic, always a deliberate action"
+    /// posture the rest of this store's destructive-ish operations
+    /// already follow (this doesn't touch findings/activity log/anything
+    /// else — only the AI conversation log).
+    public func clearAskAIConversationHistory() throws {
+        try save([AskAIConversationEntry](), key: askAIConversationHistoryKey)
+    }
+
     // MARK: - Activity log
 
     /// Append-only per §10.8 — no update, no delete method exists on this
