@@ -95,14 +95,18 @@ struct VoiceLedgerTools {
                     "required": ["hourlyRate", "volumeTier"]
                 ]
             ],
-            // The following three tools (2026-09-28) match a fixed contract
-            // given by the consuming side (Talking Buddy's ToolLoop.swift,
-            // driving a physical CrowPanel display) — exact field names,
-            // exact optional-field-omission behavior. Do not rename or
-            // reshape these without updating that consumer too.
+            // get_chart_of_accounts/get_recent_transactions (2026-09-28)
+            // match a fixed contract given by the consuming side (Talking
+            // Buddy's ToolLoop.swift, driving a physical CrowPanel
+            // display) — exact field names, exact optional-field-omission
+            // behavior. Do not rename or reshape those two fields without
+            // updating that consumer too. A `synced_at` field is an
+            // ADDITIVE extra on top of that fixed contract (see below) —
+            // Talking Buddy's own parsing only reads the fields it
+            // expects and ignores the rest, so this is safe to add.
             [
                 "name": "get_chart_of_accounts",
-                "description": "Returns this client's chart of accounts — name, type (Asset/Liability/Equity/Income/Expense), and current balance for every active account. A live QuickBooks Online read, not cached/synced data — requires VOICE_LEDGER_BACKEND_URL to be configured for this process.",
+                "description": "Returns this client's chart of accounts — name, type (Asset/Liability/Equity/Income/Expense), and current balance for every active account, as of the last time the desktop app's Dashboard was synced (synced_at). Reads a local snapshot, not a live QuickBooks Online call — if the desktop app has never been synced for this client, this returns an error rather than an empty list.",
                 "inputSchema": [
                     "type": "object",
                     "properties": [String: Any](),
@@ -111,7 +115,7 @@ struct VoiceLedgerTools {
             ],
             [
                 "name": "get_recent_transactions",
-                "description": "Returns the last 30 days of posted transactions for one named account (matched against the chart of accounts by name, case-insensitive). A live QuickBooks Online read — requires VOICE_LEDGER_BACKEND_URL to be configured for this process.",
+                "description": "Returns the last 30 days of posted transactions for one named account (matched against the chart of accounts by name, case-insensitive), as of the last time the desktop app's Dashboard was synced (synced_at) — NOT a live read, so a transaction posted after that sync won't appear yet.",
                 "inputSchema": [
                     "type": "object",
                     "properties": [
@@ -121,6 +125,15 @@ struct VoiceLedgerTools {
                         ]
                     ],
                     "required": ["accountName"]
+                ]
+            ],
+            [
+                "name": "get_financial_summary",
+                "description": "Returns the same KPIs the Dashboard's own cards show — gross margin, net margin, net income, cash balance, working capital, current ratio, quick ratio — as of the last Dashboard sync (synced_at). Any KPI that couldn't be computed (a required report line wasn't found) is omitted rather than shown as zero. Reads a local snapshot, not a live QuickBooks Online call.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [String: Any](),
+                    "required": [String]()
                 ]
             ],
             [
@@ -161,6 +174,8 @@ struct VoiceLedgerTools {
                 text = try await getChartOfAccounts()
             case "get_recent_transactions":
                 text = try await getRecentTransactions(arguments: arguments)
+            case "get_financial_summary":
+                text = try await getFinancialSummary()
             case "get_finding_details":
                 text = try await getFindingDetails(arguments: arguments)
             default:
@@ -361,20 +376,24 @@ struct VoiceLedgerTools {
         return try jsonText(result)
     }
 
-    /// All three of `get_chart_of_accounts`/`get_recent_transactions`/
-    /// `get_finding_details` below need a real QBO connection except the
-    /// last, which only needs the local `ClientStore` — but the first two
-    /// have no local cache to fall back to at all (unlike `get_client_status`,
-    /// which degrades gracefully). Thrown as a real tool error rather than
-    /// an empty/fabricated result, matching CLAUDE.md rule 5's "missing
-    /// data renders as missing, never a false green" posture applied to
-    /// this MCP surface.
-    private func requireBackendClient() throws -> BackendClient {
-        guard let backendConfiguration else {
-            throw ToolArgumentError.backendNotConfigured
+    /// `get_chart_of_accounts`/`get_recent_transactions`/
+    /// `get_financial_summary` all read this same local snapshot — see
+    /// `FinancialSnapshot`'s own doc comment for why this is a local
+    /// `ClientStore` read, not a live QBO call. Thrown as a real tool
+    /// error, not an empty/fabricated result, when the desktop app has
+    /// never synced its Dashboard for this realm — matching CLAUDE.md
+    /// rule 5's "missing data renders as missing, never a false green"
+    /// posture applied to this MCP surface.
+    private func requireFinancialSnapshot() async throws -> FinancialSnapshot {
+        guard let snapshot = try await store.loadFinancialSnapshot() else {
+            throw ToolArgumentError.notSyncedYet
         }
-        return BackendClient(configuration: backendConfiguration)
+        return snapshot
     }
+
+    /// A fresh formatter per call, not a shared `static let` — see
+    /// `ClientIntakeCSV.isoFormatter`'s identical doc comment for why.
+    private static var syncedAtFormatter: ISO8601DateFormatter { ISO8601DateFormatter() }
 
     /// QBO's own five broad account classifications — `LedgerAccountType`
     /// models QBO's more granular `AccountType` (Bank, Credit Card, Other
@@ -397,47 +416,36 @@ struct VoiceLedgerTools {
     }
 
     private func getChartOfAccounts() async throws -> String {
-        let backend = try requireBackendClient()
-        let syncClient = QBOSyncClient(backend: backend)
-        let accounts = try await syncClient.fetchAccounts(realmID: realmID)
-        let rows: [[String: Any]] = accounts.map { account in
+        let snapshot = try await requireFinancialSnapshot()
+        let rows: [[String: Any]] = snapshot.accounts.map { account in
             [
                 "name": account.name,
                 "type": Self.accountClassification(account.accountType),
                 "balance": account.currentBalance.majorUnitsDouble
             ]
         }
-        return try jsonText(["accounts": rows])
+        return try jsonText(["accounts": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)])
     }
 
-    /// "Recent" = the last 30 days, a real rolling window, not "this
-    /// calendar month" — a query on the 2nd of the month should still see
-    /// activity from three weeks ago. Scoped to `Purchase`-entity
-    /// transactions matched by `paymentAccountID`, the same "which bank/
-    /// card account did this move through" concept every reconciliation-
-    /// adjacent rule in `Core` already keys off.
+    /// "Recent" = the last 30 days as of NOW (when this tool is called),
+    /// not relative to `synced_at` — if the snapshot is stale, that's an
+    /// honest reason to return fewer or zero results, not a reason to
+    /// shift the window. Scoped to `Purchase`-entity transactions matched
+    /// by `paymentAccountID`, the same "which bank/card account did this
+    /// move through" concept every reconciliation-adjacent rule in `Core`
+    /// already keys off.
     private func getRecentTransactions(arguments: [String: Any]) async throws -> String {
         guard let accountName = arguments["accountName"] as? String, !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw ToolArgumentError.missingArgument("accountName")
         }
-        let backend = try requireBackendClient()
-        let syncClient = QBOSyncClient(backend: backend)
-
-        let accounts = try await syncClient.fetchAccounts(realmID: realmID)
-        guard let account = accounts.first(where: { $0.name.caseInsensitiveCompare(accountName) == .orderedSame }) else {
+        let snapshot = try await requireFinancialSnapshot()
+        guard let account = snapshot.accounts.first(where: { $0.name.caseInsensitiveCompare(accountName) == .orderedSame }) else {
             throw ToolArgumentError.accountNotFound(accountName)
         }
 
-        let calendar = Calendar(identifier: .gregorian)
-        let now = Date()
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-
-        let purchases = try await syncClient.fetchPurchases(realmID: realmID, startDate: formatter.string(from: thirtyDaysAgo), endDate: formatter.string(from: now))
-        let matching = purchases
-            .filter { !$0.isVoided && $0.paymentAccountID == account.id }
+        let cutoff = AccountingDate(date: Calendar(identifier: .gregorian).date(byAdding: .day, value: -30, to: Date()) ?? Date())
+        let matching = snapshot.transactions
+            .filter { $0.entityKind == .purchase && !$0.isVoided && $0.paymentAccountID == account.id && $0.txnDate >= cutoff }
             .sorted { $0.txnDate > $1.txnDate }
 
         let rows: [[String: Any]] = matching.map { txn in
@@ -451,7 +459,39 @@ struct VoiceLedgerTools {
             }
             return row
         }
-        return try jsonText(["account_name": account.name, "transactions": rows])
+        return try jsonText(["account_name": account.name, "transactions": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)])
+    }
+
+    /// The exact same `FinancialKPIs` pure functions the Dashboard's own
+    /// KPI cards call — never re-derived math, so this can't drift from
+    /// what's on screen. Each KPI is omitted (never `0`/`null`) when its
+    /// required report line wasn't found, matching every KPI card's own
+    /// "not available" (never a fabricated zero) rule.
+    private func getFinancialSummary() async throws -> String {
+        let snapshot = try await requireFinancialSnapshot()
+        var result: [String: Any] = ["synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)]
+        if let grossMargin = FinancialKPIs.grossMarginPercent(from: snapshot.profitAndLossLines) {
+            result["grossMarginPercent"] = grossMargin
+        }
+        if let netMargin = FinancialKPIs.netMarginPercent(from: snapshot.profitAndLossLines) {
+            result["netMarginPercent"] = netMargin
+        }
+        if let netIncome = TaxEstimate.netIncome(from: snapshot.profitAndLossLines) {
+            result["netIncome"] = netIncome.description
+        }
+        if let cashBalance = FinancialKPIs.cashBalance(from: snapshot.balanceSheetLines) {
+            result["cashBalance"] = cashBalance.description
+        }
+        if let workingCapital = FinancialKPIs.workingCapital(from: snapshot.balanceSheetLines) {
+            result["workingCapital"] = workingCapital.description
+        }
+        if let currentRatio = FinancialKPIs.currentRatio(from: snapshot.balanceSheetLines) {
+            result["currentRatio"] = currentRatio
+        }
+        if let quickRatio = FinancialKPIs.quickRatio(from: snapshot.balanceSheetLines) {
+            result["quickRatio"] = quickRatio
+        }
+        return try jsonText(result)
     }
 
     /// `description`/`account`/`amount` per evidence item are built from
@@ -533,7 +573,7 @@ enum ToolArgumentError: Error, CustomStringConvertible {
     case missingArgument(String)
     case missingOrInvalidNumber(String)
     case invalidEnum(String, String)
-    case backendNotConfigured
+    case notSyncedYet
     case accountNotFound(String)
     case findingNotFound(String)
 
@@ -545,8 +585,8 @@ enum ToolArgumentError: Error, CustomStringConvertible {
             return "Missing required argument: \(name)."
         case .missingOrInvalidNumber(let name):
             return "\(name) is required and must be a number."
-        case .backendNotConfigured:
-            return "This tool requires a live QuickBooks Online connection — VOICE_LEDGER_BACKEND_URL and VOICE_LEDGER_SESSION_TOKEN are not configured for this process."
+        case .notSyncedYet:
+            return "This client hasn't been synced yet — open Voice Ledger and sync the Dashboard at least once, then try again."
         case .accountNotFound(let name):
             return "No account named \"\(name)\" was found on this client's chart of accounts."
         case .findingNotFound(let id):

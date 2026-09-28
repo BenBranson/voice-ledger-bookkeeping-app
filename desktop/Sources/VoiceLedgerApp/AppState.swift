@@ -1739,6 +1739,21 @@ public final class AppState {
         async let balanceSheetTask: Void = loadBalanceSheet()
         async let profitAndLossTask: Void = loadProfitAndLoss()
         _ = await (syncTask, balanceSheetTask, profitAndLossTask)
+
+        // Owner directive (2026-09-28): `voiceledger-mcp`'s
+        // get_chart_of_accounts/get_recent_transactions/get_financial_summary
+        // tools read this local snapshot instead of requiring a live
+        // backend connection — see `FinancialSnapshot`'s own doc comment.
+        // `accounts`/`transactions`/`balanceSheetLines`/`profitAndLossLines`
+        // each already preserve their own last-known-good value on a
+        // transient fetch failure (see `loadBalanceSheet`/`loadProfitAndLoss`'s
+        // own doc comments), so persisting them here is always safe —
+        // this never overwrites a good snapshot with an empty one just
+        // because one of the three concurrent fetches above had a bad
+        // network moment. `try?`: a persistence hiccup must not fail the
+        // dashboard sync the bookkeeper is actually watching.
+        let snapshot = FinancialSnapshot(syncedAt: Date(), accounts: accounts, transactions: transactions, balanceSheetLines: balanceSheetLines, profitAndLossLines: profitAndLossLines)
+        try? await store.saveFinancialSnapshot(snapshot)
     }
 
     /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file

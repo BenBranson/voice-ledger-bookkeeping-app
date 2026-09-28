@@ -94,6 +94,11 @@ public actor ClientStore {
     /// generated for this client yet.
     private let lastReportGeneratedAtKey = "last-report-generated-at"
     private let askAIConversationHistoryKey = "ask-ai-conversation-history"
+    /// `FinancialSnapshot`'s own doc comment: a local, per-realm copy of
+    /// accounts/transactions/reports, re-saved on every Dashboard sync, so
+    /// `voiceledger-mcp` can answer chart-of-accounts/recent-transactions/
+    /// financial-summary questions without a live backend connection.
+    private let financialSnapshotKey = "financial-snapshot"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
     /// trims to this length so an unattended conversation-mode session left
@@ -345,6 +350,23 @@ public actor ClientStore {
 
     public func savePeriodLockSnapshot(_ snapshot: PeriodLockSnapshot) throws {
         try save(snapshot, key: periodLockSnapshotKey)
+    }
+
+    // MARK: - Financial snapshot (voiceledger-mcp's local-read tools)
+
+    /// `nil` before the first Dashboard sync ever completes for this
+    /// realm — `voiceledger-mcp`'s tools treat that as "not synced yet,"
+    /// the same wording the Dashboard's own "Data Available" badge uses,
+    /// never an empty-but-successful result.
+    public func loadFinancialSnapshot() throws -> FinancialSnapshot? {
+        try load(FinancialSnapshot?.self, key: financialSnapshotKey, default: nil)
+    }
+
+    /// Overwrites the prior snapshot outright — there is only ever ONE,
+    /// the most recent, not a history. `AppState.syncDashboard` calls this
+    /// after every sync.
+    public func saveFinancialSnapshot(_ snapshot: FinancialSnapshot) throws {
+        try save(snapshot, key: financialSnapshotKey)
     }
 
     // MARK: - AI report generation timestamp (2026-08-29)

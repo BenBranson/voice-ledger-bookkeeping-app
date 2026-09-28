@@ -8,7 +8,7 @@ import Foundation
 /// deliberately simpler than a fully faithful nested UI — real value
 /// without over-building a general report-tree renderer this pass doesn't
 /// need yet.
-public struct ReportLine: Identifiable, Hashable, Sendable {
+public struct ReportLine: Identifiable, Hashable, Sendable, Codable {
     public let id: String
     public let label: String
     public let amount: Money?
