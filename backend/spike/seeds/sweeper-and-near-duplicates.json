@@ -1,0 +1,99 @@
+{
+  "description": "Owner decision 2026-09-29 (docs/VOICE_LEDGER_HANDOFF.md): sandbox-only proof data for the suspense/uncategorized sweeper (Ask My Accountant, suspense, stale clearing account) and VL-DUP-NEAR-001 (payee name variant; same payee 5 days apart). Uses its own checking/expense accounts because the original baseline accounts were deactivated by an earlier teardown.",
+  "requiresBaseline": true,
+  "accounts": [
+    {
+      "name": "VL Spike Sweeper Checking",
+      "accountType": "Bank"
+    },
+    {
+      "name": "VL Spike Sweeper Supplies",
+      "accountType": "Expense"
+    },
+    {
+      "name": "Ask My Accountant",
+      "accountType": "Expense"
+    },
+    {
+      "name": "VL Spike Suspense",
+      "accountType": "Other Current Asset"
+    },
+    {
+      "name": "VL Spike Payroll Clearing",
+      "accountType": "Other Current Asset"
+    }
+  ],
+  "vendors": [
+    {
+      "displayName": "VL Spike Gulf Coast Hardware"
+    },
+    {
+      "displayName": "VL SPIKE GULF COAST HARDWARE, LLC"
+    }
+  ],
+  "purchases": [
+    {
+      "case": "sweeper \u2014 a charge parked in Ask My Accountant",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "Ask My Accountant",
+      "amountMinorUnits": 31250,
+      "date": "2026-07-09",
+      "note": "VL-SPIKE-AMA"
+    },
+    {
+      "case": "sweeper \u2014 an unexplained amount parked in Suspense",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Suspense",
+      "amountMinorUnits": 87500,
+      "date": "2026-07-18",
+      "note": "VL-SPIKE-SUSPENSE"
+    },
+    {
+      "case": "sweeper \u2014 a clearing account balance that never cleared (months old)",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Payroll Clearing",
+      "amountMinorUnits": 142000,
+      "date": "2026-03-15",
+      "note": "VL-SPIKE-STALE-CLEARING"
+    },
+    {
+      "case": "VL-DUP-NEAR-001 \u2014 payee name variant, 2 days apart (exact rules can't pair it)",
+      "vendor": "VL Spike Gulf Coast Hardware",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Sweeper Supplies",
+      "amountMinorUnits": 26499,
+      "date": "2026-07-20",
+      "note": "VL-SPIKE-NEAR-NAME-A"
+    },
+    {
+      "case": "VL-DUP-NEAR-001 \u2014 the variant-spelled copy",
+      "vendor": "VL SPIKE GULF COAST HARDWARE, LLC",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Sweeper Supplies",
+      "amountMinorUnits": 26499,
+      "date": "2026-07-22",
+      "note": "VL-SPIKE-NEAR-NAME-B"
+    },
+    {
+      "case": "VL-DUP-NEAR-001 \u2014 same payee, 5 days apart (outside the exact rules' 3-day window)",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Sweeper Supplies",
+      "amountMinorUnits": 7777,
+      "date": "2026-07-03",
+      "note": "VL-SPIKE-NEAR-DATE-A"
+    },
+    {
+      "case": "VL-DUP-NEAR-001 \u2014 the copy 5 days later",
+      "vendor": "VL Spike Permian Supply",
+      "account": "VL Spike Sweeper Checking",
+      "expenseAccount": "VL Spike Sweeper Supplies",
+      "amountMinorUnits": 7777,
+      "date": "2026-07-08",
+      "note": "VL-SPIKE-NEAR-DATE-B"
+    }
+  ]
+}

@@ -21,7 +21,10 @@ public enum UncategorizedTransactionRule: Rule {
     static let uncategorizedAccountNames: Set<String> = [
         "Uncategorized Expense",
         "Uncategorized Income",
-        "Uncategorized Asset"
+        "Uncategorized Asset",
+        // QBO's other default catch-all; sandbox-proven 2026-09-29 via
+        // spike/seeds/sweeper-and-near-duplicates.json.
+        "Ask My Accountant"
     ]
 
     public static let identity = RuleIdentity(

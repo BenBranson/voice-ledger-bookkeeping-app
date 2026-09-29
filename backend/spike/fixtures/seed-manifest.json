@@ -5,14 +5,21 @@
     "VL Spike Utilities": "1150040002",
     "VL Spike Amex": "1150040013",
     "VL Spike Wages": "1150040014",
-    "Uncategorized Expense": "31"
+    "Uncategorized Expense": "31",
+    "Ask My Accountant": "1150040016",
+    "VL Spike Suspense": "1150040017",
+    "VL Spike Payroll Clearing": "1150040018",
+    "VL Spike Sweeper Checking": "1150040019",
+    "VL Spike Sweeper Supplies": "1150040020"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
     "VL Spike Odessa Water": "59",
     "VL Spike Amex": "60",
     "VL Spike ADP": "61",
-    "VL Spike Permian Supply, Inc.": "62"
+    "VL Spike Permian Supply, Inc.": "62",
+    "VL Spike Gulf Coast Hardware": "200000001",
+    "VL SPIKE GULF COAST HARDWARE, LLC": "200000011"
   },
   "purchases": {
     "VL-SPIKE-ZERO": {
@@ -73,6 +80,34 @@
     },
     "VL-SPIKE-UNCATEGORIZED": {
       "id": "219",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-AMA": {
+      "id": "232",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-SUSPENSE": {
+      "id": "233",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-STALE-CLEARING": {
+      "id": "234",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEAR-NAME-A": {
+      "id": "235",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEAR-NAME-B": {
+      "id": "236",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEAR-DATE-A": {
+      "id": "237",
+      "syncToken": "0"
+    },
+    "VL-SPIKE-NEAR-DATE-B": {
+      "id": "238",
       "syncToken": "0"
     }
   },

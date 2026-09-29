@@ -21,7 +21,7 @@ struct CleanupCategoryTests {
 
     @Test("ruleIDs has the expected count and contains no surprises")
     func ruleIDsMatchesKnownSet() {
-        #expect(CleanupCategory.ruleIDs.count == 25)
+        #expect(CleanupCategory.ruleIDs.count == 26)
         #expect(CleanupCategory.ruleIDs.contains("VL-DUP-NEAR-001"))
         #expect(CleanupCategory.ruleIDs.contains("VL-CC-PAYMENT-001"))
         #expect(CleanupCategory.ruleIDs.contains("VL-TRANSPOSITION-001"))
@@ -52,7 +52,7 @@ struct CleanupCategoryTests {
         #expect(balanceSheetIntegrity == [
             "VL-OBE-BALANCE-001", "VL-BS-NEGBAL-001", "VL-BS-UNDEP-001",
             "VL-FORCED-RECON-001", "VL-REPORT-TIE-001", "VL-CLOSED-PERIOD-DRIFT-001",
-            "VL-BS-DRCR-001", "VL-BS-EQUITY-DR-001"
+            "VL-BS-DRCR-001", "VL-BS-EQUITY-DR-001", "VL-BS-SUSPENSE-001"
         ])
     }
 

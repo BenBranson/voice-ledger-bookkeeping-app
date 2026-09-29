@@ -170,7 +170,8 @@ public enum RuleRegistry {
         MissingPayeeRule.self,
         TransactionAmountTranspositionRule.self,
         NearDuplicateTransactionRule.self,
-        EquityDebitBalanceRule.self
+        EquityDebitBalanceRule.self,
+        SuspenseClearingBalanceRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {
