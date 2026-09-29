@@ -33,7 +33,7 @@ public struct ExpenseDriverBarChart: View {
                         .foregroundStyle(VLChartPalette.gradient(at: index))
                         .cornerRadius(6)
                         .annotation(position: .trailing) {
-                            Text(driver.amount.description)
+                            Text(driver.amount.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .fontWeight(.medium)
                                 .foregroundStyle(VLColor.textPrimary)

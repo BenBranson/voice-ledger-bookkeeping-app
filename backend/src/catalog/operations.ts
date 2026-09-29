@@ -275,7 +275,9 @@ const reportKindSchema = z.enum([
 const readReportParams = z.object({
   reportKind: reportKindSchema,
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // Numeric QBO Account Id only — narrows GeneralLedger to one account.
+  accountId: z.string().regex(/^\d+$/).optional()
 });
 
 const readReport = op({
@@ -287,6 +289,7 @@ const readReport = op({
     const searchParams: Record<string, string> = {};
     if (params.startDate) searchParams.start_date = params.startDate;
     if (params.endDate) searchParams.end_date = params.endDate;
+    if (params.accountId) searchParams.account = params.accountId;
     return client.get(realmId, `reports/${params.reportKind}`, searchParams);
   }
 });

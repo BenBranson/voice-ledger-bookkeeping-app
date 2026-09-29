@@ -62,7 +62,7 @@ public struct ImportOFXStatementView: View {
                                 .font(VLTypography.eyebrow())
                                 .tracking(VLTypography.eyebrowTracking)
                                 .foregroundStyle(VLColor.textMuted)
-                            Text(statedAsOfDate.map { "\(statedEndingBalance.description) as of \($0.year)-\($0.month)-\($0.day)" } ?? statedEndingBalance.description)
+                            Text(statedAsOfDate.map { "\(statedEndingBalance.accountingDescription) as of \($0.year)-\($0.month)-\($0.day)" } ?? statedEndingBalance.accountingDescription)
                                 .font(VLTypography.tabularNumericEmphasis())
                                 .foregroundStyle(VLColor.textPrimary)
                             Text("This is the file's own stated balance — compare it against your bank's statement yourself before confirming. Voice Ledger does not verify it against the imported transactions.")

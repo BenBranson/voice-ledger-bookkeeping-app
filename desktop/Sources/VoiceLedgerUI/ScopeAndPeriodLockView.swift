@@ -180,7 +180,7 @@ public struct ScopeAndPeriodLockView: View {
                                     Text(txn.txnDate.formatted)
                                         .font(VLTypography.tabularNumeric())
                                         .foregroundStyle(VLColor.textMuted)
-                                    Text(txn.totalAmount.description)
+                                    Text(txn.totalAmount.accountingDescription)
                                         .font(VLTypography.tabularNumeric())
                                         .foregroundStyle(VLColor.textMuted)
                                 }

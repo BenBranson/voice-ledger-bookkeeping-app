@@ -166,7 +166,7 @@ public struct ChartOfAccountsCleanupView: View {
                                 .font(VLTypography.caption())
                                 .foregroundStyle(VLColor.textMuted)
                             Spacer()
-                            Text(account.currentBalance.description)
+                            Text(account.currentBalance.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .foregroundStyle(VLColor.textMuted)
                         }

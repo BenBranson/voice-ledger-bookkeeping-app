@@ -139,6 +139,7 @@ public struct FindingsListView: View {
         }
     }
 
+    private let qboURL: (Finding) -> URL?
     private let state: ViewState
     private let onSelect: (Finding) -> Void
     private let onNavigateNextBestAction: (NextBestAction) -> Void
@@ -221,8 +222,10 @@ public struct FindingsListView: View {
         onGenerateValueSummaryClaude: @escaping () -> Void = {},
         onAskHealthReportFollowUpClaude: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUpClaude: @escaping (String) -> Void = { _ in },
-        onCompareSelected: @escaping ([String]) -> Void = { _ in }
+        onCompareSelected: @escaping ([String]) -> Void = { _ in },
+        qboURL: @escaping (Finding) -> URL? = { _ in nil }
     ) {
+        self.qboURL = qboURL
         self.state = state
         self.onSelect = onSelect
         self.onNavigateNextBestAction = onNavigateNextBestAction
@@ -355,6 +358,12 @@ public struct FindingsListView: View {
                                     FindingRow(finding: finding)
                                 }
                                 .buttonStyle(.plain)
+                                if let url = qboURL(finding), finding.proposedActions.first?.resolution == .manualQBO {
+                                    Link(destination: url) {
+                                        Image(systemName: "arrow.up.right.square")
+                                    }
+                                    .help("Open in QBO — \(url.absoluteString)")
+                                }
                             }
                         }
                     }
@@ -403,7 +412,8 @@ public struct FindingsListView: View {
     /// two-tier panels — same component, page-level context instead of one
     /// finding's.
     private var healthReportSection: some View {
-        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+        ModelTabs(labels: ["Gemma (free)"] + (state.secondOpinionConfigured ? ["OpenAI"] : []) + (state.claudeConfigured ? ["Claude Haiku 4.5"] : [])) { tab in
+            if tab == "Gemma (free)" {
             AskAIPanelView(
                 title: "BOOK HEALTH REPORT (GEMMA — FREE)",
                 disclaimer: "Covers open issues, what's been fixed, key metrics, and change since the last report — all numbers already computed by this app.",
@@ -418,7 +428,8 @@ public struct FindingsListView: View {
             if state.healthReportAnswer != nil {
                 exportPDFButton(action: onExportHealthReportPDF)
             }
-            if state.secondOpinionConfigured {
+            }
+            if tab == "OpenAI" {
                 AskAIPanelView(
                     title: "BOOK HEALTH REPORT (OPENAI — MORE THOROUGH)",
                     disclaimer: "Same real numbers, sent to OpenAI for a more thorough read. Costs money per report and only runs when you ask.",
@@ -434,7 +445,7 @@ public struct FindingsListView: View {
                     exportPDFButton(action: onExportHealthReportSecondOpinionPDF)
                 }
             }
-            if state.claudeConfigured {
+            if tab == "Claude Haiku 4.5" {
                 AskAIPanelView(
                     title: "BOOK HEALTH REPORT (CLAUDE HAIKU 4.5)",
                     disclaimer: "Same real numbers, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per report and only runs when you ask.",
@@ -477,7 +488,8 @@ public struct FindingsListView: View {
             // rule 5 — never invite a value claim built on a stale or
             // never-synced "empty" list).
             if state.coverageStatus == .verified {
-                VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                ModelTabs(labels: ["Gemma (free)"] + (state.secondOpinionConfigured ? ["OpenAI"] : []) + (state.claudeConfigured ? ["Claude Haiku 4.5"] : [])) { tab in
+                    if tab == "Gemma (free)" {
                     AskAIPanelView(
                         title: "CLIENT VALUE SUMMARY (GEMMA — FREE)",
                         disclaimer: "Summarizes what was found and corrected since the last report, and the real dollar exposure addressed — never a claim of literal cash saved.",
@@ -492,7 +504,8 @@ public struct FindingsListView: View {
                     if state.valueSummaryAnswer != nil {
                         exportPDFButton(action: onExportValueSummaryPDF)
                     }
-                    if state.secondOpinionConfigured {
+                    }
+                    if tab == "OpenAI" {
                         AskAIPanelView(
                             title: "CLIENT VALUE SUMMARY (OPENAI — MORE THOROUGH)",
                             disclaimer: "Same real numbers, sent to OpenAI for a more thorough read. Costs money per report and only runs when you ask.",
@@ -508,7 +521,7 @@ public struct FindingsListView: View {
                             exportPDFButton(action: onExportValueSummarySecondOpinionPDF)
                         }
                     }
-                    if state.claudeConfigured {
+                    if tab == "Claude Haiku 4.5" {
                         AskAIPanelView(
                             title: "CLIENT VALUE SUMMARY (CLAUDE HAIKU 4.5)",
                             disclaimer: "Same real numbers, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per report and only runs when you ask.",
@@ -532,6 +545,7 @@ public struct FindingsListView: View {
 
 private struct FindingRow: View {
     let finding: Finding
+    var qboURL: URL? = nil
 
     var body: some View {
         // Owner directive (2026-08-29): triage queue — the accent rail and
@@ -546,7 +560,7 @@ private struct FindingRow: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(finding.dollarExposure.description)
+                    Text(finding.dollarExposure.accountingDescription)
                         .font(VLTypography.tabularNumericEmphasis())
                         .foregroundStyle(VLColor.textPrimary)
                 }
@@ -557,7 +571,7 @@ private struct FindingRow: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
                     if let action = finding.proposedActions.first {
-                        VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                        ResolutionBadge(action: action, qboURL: qboURL)
                     }
                 }
             }

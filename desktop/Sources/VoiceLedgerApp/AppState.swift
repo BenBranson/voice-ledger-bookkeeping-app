@@ -124,6 +124,10 @@ public final class AppState {
     /// `syncAndEvaluate()` in this session completes, set every time
     /// after that at the same atomic-publish point as `transactions`.
     public private(set) var lastSyncedAt: Date?
+    /// When this realm's cached data was last synced, from disk — shown so
+    /// cached data never reads "not synced yet". Status stays gray until a
+    /// sync in this session (CLAUDE.md rule 5: cached is not current).
+    public private(set) var cachedSyncedAt: Date?
     /// Multi-month history (owner decision 2026-09-29) behind the
     /// Diagnostics page. Persisted per realm; `nil` until first loaded.
     public private(set) var historySnapshot: HistorySnapshot?
@@ -143,6 +147,35 @@ public final class AppState {
 
     public var fluxAlerts: [FluxAlert] {
         historySnapshot.map { ClientDiagnostics.fluxAlerts(history: $0, asOf: diagnosticsAsOf) } ?? []
+    }
+
+    /// Posting-level evidence for account-balance findings, keyed by
+    /// account ID; fetched on demand when such a finding is opened.
+    public private(set) var accountLedgerRows: [String: [GeneralLedgerLine]] = [:]
+    public private(set) var loadingAccountLedgerIDs: Set<String> = []
+
+    public func evidenceAccountID(for finding: Finding) -> String? {
+        let known = accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts
+        return finding.evidence.lazy.map(\.transactionID).first { id in known.contains { $0.id == id } }
+    }
+
+    public func loadAccountLedgerRows(for finding: Finding) async {
+        guard let accountID = evidenceAccountID(for: finding),
+              accountLedgerRows[accountID] == nil, !loadingAccountLedgerIDs.contains(accountID) else { return }
+        loadingAccountLedgerIDs.insert(accountID)
+        defer { loadingAccountLedgerIDs.remove(accountID) }
+        if let rows = try? await syncClient.fetchAccountLedger(realmID: realmID, accountID: accountID, through: AccountingDate(date: Date())) {
+            accountLedgerRows[accountID] = rows
+        }
+    }
+
+    public func qboWebURL(for finding: Finding) -> URL? {
+        QBOWebLink.url(
+            for: finding,
+            transactions: transactions + (historySnapshot?.transactions ?? []),
+            accounts: accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts,
+            isSandbox: environment != .production
+        )
     }
 
     public var kpiSummary: KPISummary? {
@@ -495,7 +528,7 @@ public final class AppState {
     public private(set) var switchClientError: String?
 
     public let realmID: RealmID
-    private let period: AccountingPeriod
+    public let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
     /// (e.g. `checklistCompletions`) without duplicating the period value.
     public var currentPeriod: AccountingPeriod { period }
@@ -572,6 +605,7 @@ public final class AppState {
             let newLastReportGeneratedAt = try await store.loadLastReportGeneratedAt()
             let newConversationHistory = try await store.loadAskAIConversationHistory()
             let newHistorySnapshot = try? await store.loadHistorySnapshot()
+            let newCachedSyncedAt = (try? await store.loadFinancialSnapshot())??.syncedAt
             let newUnreconciledMonths = (try? await store.loadUnreconciledMonths()) ?? 0
             findings = newFindings
             activityLog = newActivityLog
@@ -587,6 +621,7 @@ public final class AppState {
             lastReportGeneratedAt = newLastReportGeneratedAt
             conversationHistory = newConversationHistory
             historySnapshot = newHistorySnapshot ?? nil
+            cachedSyncedAt = newCachedSyncedAt
             unreconciledMonths = newUnreconciledMonths
             loadState = .loaded
         } catch {

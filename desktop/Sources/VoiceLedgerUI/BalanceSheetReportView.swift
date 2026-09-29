@@ -173,7 +173,7 @@ public struct BalanceSheetReportView: View {
 
     private func kpiCard(label: String, money: Money?) -> KPICardRow.CardData {
         guard let money else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: money.description)
+        return KPICardRow.CardData(label: label, value: money.accountingDescription)
     }
 
     private func kpiCard(label: String, ratio: Double?) -> KPICardRow.CardData {

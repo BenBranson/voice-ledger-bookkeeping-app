@@ -7,6 +7,8 @@ import DesignSystem
 /// scoped-down slice this is (codes/rates/agencies only, no liability
 /// balances or transaction-level detail).
 public struct SalesTaxReviewView: View {
+    private let reviewPeriod: AccountingPeriod?
+    private let salesTaxCenterURL: URL?
     private let environment: VLEnvironmentTone
     private let taxCodes: [TaxCode]
     private let taxRates: [TaxRate]
@@ -53,8 +55,12 @@ public struct SalesTaxReviewView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        reviewPeriod: AccountingPeriod? = nil,
+        salesTaxCenterURL: URL? = nil
     ) {
+        self.reviewPeriod = reviewPeriod
+        self.salesTaxCenterURL = salesTaxCenterURL
         self.environment = environment
         self.taxCodes = taxCodes
         self.taxRates = taxRates
@@ -230,10 +236,19 @@ public struct SalesTaxReviewView: View {
     private var attestationSection: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
-                Text("FILING STATUS")
-                    .font(VLTypography.eyebrow())
-                    .tracking(VLTypography.eyebrowTracking)
-                    .foregroundStyle(VLColor.textMuted)
+                HStack {
+                    Text("FILING STATUS")
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    if let salesTaxCenterURL {
+                        Link(destination: salesTaxCenterURL) {
+                            Label("Open Sales Tax Center in QBO", systemImage: "arrow.up.right.square")
+                                .font(VLTypography.caption())
+                        }
+                    }
+                }
                 Text("Confirm filing jurisdiction, frequency, whether the return and payment were submitted, and any Tax Center adjustments or outstanding notices — none of this is API-confirmable, so it's your own attestation.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
@@ -242,7 +257,7 @@ public struct SalesTaxReviewView: View {
                     HStack {
                         VLStatusPill(.verified, label: "Confirmed")
                         if let attestedBy = attestation.attestedBy, let attestedAt = attestation.attestedAt {
-                            Text("by \(attestedBy) on \(attestedAt.formatted(date: .abbreviated, time: .shortened))")
+                            Text("Reviewed & confirmed by \(attestedBy) on \(attestedAt.formatted(date: .abbreviated, time: .shortened))\(attestation.period.map { " for \($0.year)-\(String(format: "%02d", $0.month))" } ?? "")")
                                 .font(VLTypography.caption())
                                 .foregroundStyle(VLColor.textMuted)
                         }
@@ -265,7 +280,7 @@ public struct SalesTaxReviewView: View {
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: 220)
                         Button("Confirm Filing Status Reviewed") {
-                            onSaveAttestation(SalesTaxAttestation(filingStatusConfirmed: true, attestedBy: actorNameDraft, attestedAt: Date(), note: noteDraft.isEmpty ? nil : noteDraft))
+                            onSaveAttestation(SalesTaxAttestation(filingStatusConfirmed: true, attestedBy: actorNameDraft, attestedAt: Date(), note: noteDraft.isEmpty ? nil : noteDraft, period: reviewPeriod))
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(actorNameDraft.trimmingCharacters(in: .whitespaces).isEmpty)

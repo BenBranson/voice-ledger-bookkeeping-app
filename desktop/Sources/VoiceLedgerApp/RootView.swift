@@ -503,7 +503,8 @@ struct RootView: View {
                         Task { await state.askAI(contextKey: "\(batchFixesAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
                     }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                onEnableWriteAccess: { Task { await state.setWriteAccess(true) } }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -700,7 +701,9 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(salesTaxAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(salesTaxAskAIKey)-claude", contextText: salesTaxContext(), question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                reviewPeriod: state.period,
+                salesTaxCenterURL: QBOWebLink.salesTaxCenter(isSandbox: state.environment != .production)
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -929,7 +932,8 @@ struct RootView: View {
                     onGenerateValueSummaryClaude: { Task { await state.generateValueSummaryClaude() } },
                     onAskHealthReportFollowUpClaude: { question in Task { await state.askHealthReportFollowUpClaude(question) } },
                     onAskValueSummaryFollowUpClaude: { question in Task { await state.askValueSummaryFollowUpClaude(question) } },
-                    onCompareSelected: { ids in state.comparedFindingIDs = ids }
+                    onCompareSelected: { ids in state.comparedFindingIDs = ids },
+                qboURL: { state.qboWebURL(for: $0) }
                 )
             }
 
@@ -1013,7 +1017,11 @@ struct RootView: View {
                     isDraftingClientMessage: isDraftingClientMessage,
                     clientMessageError: clientMessageError,
                     onDraftClientMessage: { question in Task { await state.draftClientMessage(findingID: findingID, question: question) } },
-                    onBack: { state.screen = .list }
+                    onBack: { state.screen = .list },
+                qboURL: state.qboWebURL(for: finding),
+                ledgerRows: state.evidenceAccountID(for: finding).flatMap { state.accountLedgerRows[$0] },
+                isLoadingLedgerRows: state.evidenceAccountID(for: finding).map { state.loadingAccountLedgerIDs.contains($0) } ?? false,
+                onLoadLedgerRows: { Task { await state.loadAccountLedgerRows(for: finding) } }
                 )
             } else {
                 Text("Finding not found — it may already be resolved.")
@@ -1144,7 +1152,8 @@ struct RootView: View {
                 ) : nil
                 ].compactMap { $0 },
                 scopeQuoteSummary: state.cleanupScopeScore.map { "Recommended cleanup scope: \($0.cleanupQuote.accountingDescription) (\($0.estimatedHoursLow)–\($0.estimatedHoursHigh) est. hours) · scope score \($0.score)/100 \($0.band)" },
-                onOpenDiagnostics: { state.screen = .diagnostics }
+                onOpenDiagnostics: { state.screen = .diagnostics },
+                qboURL: { state.qboWebURL(for: $0) }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1203,7 +1212,8 @@ struct RootView: View {
                         Task { await state.askAI(contextKey: "\(balanceSheetIntegrityAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
                     }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                qboURL: { state.qboWebURL(for: $0) }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2409,9 +2419,16 @@ struct RootView: View {
     }
 
     private var coverageDetail: String {
+        let periodLabel = "\(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][state.period.month - 1]) \(state.period.year)"
         switch state.coverage {
-        case .complete: return "Synced"
-        case .partial(let reason): return reason
+        case .complete:
+            let when = state.lastSyncedAt.map { " \($0.formatted(.relative(presentation: .named)))" } ?? ""
+            return "Synced\(when) · \(periodLabel)"
+        case .partial(let reason):
+            if state.lastSyncedAt == nil, let cached = state.cachedSyncedAt {
+                return "Cached from last sync \(cached.formatted(.relative(presentation: .named))) · \(periodLabel) — sync to refresh"
+            }
+            return reason
         }
     }
 

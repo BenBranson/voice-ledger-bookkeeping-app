@@ -34,11 +34,17 @@ private struct DonutCard: View {
     let title: String
     let slices: [BalanceSheetBreakdown.Slice]
 
+    /// A donut can't draw a negative wedge honestly, so negative balances
+    /// (an overdrawn checking account) are pulled out and shown as an
+    /// alert instead of being coerced to absolute values.
+    private var chartSlices: [BalanceSheetBreakdown.Slice] { slices.filter { $0.amount.minorUnits > 0 } }
+    private var negativeSlices: [BalanceSheetBreakdown.Slice] { slices.filter { $0.amount.minorUnits < 0 } }
+
     @State private var selectedAmount: Double?
 
     private var selectedSlice: BalanceSheetBreakdown.Slice? {
         guard let selectedAmount else { return nil }
-        return slices.min { lhs, rhs in
+        return chartSlices.min { lhs, rhs in
             abs(lhs.amount.majorUnitsDouble - selectedAmount) < abs(rhs.amount.majorUnitsDouble - selectedAmount)
         }
     }
@@ -68,6 +74,23 @@ private struct DonutCard: View {
                         .foregroundStyle(VLColor.textMuted)
                         .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
+                    if !negativeSlices.isEmpty {
+                        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                            Label("Overdraft / credit balance — not shown in the chart", systemImage: "exclamationmark.triangle.fill")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(.red)
+                            ForEach(negativeSlices) { slice in
+                                HStack {
+                                    Text(slice.label).foregroundStyle(VLColor.textPrimary)
+                                    Spacer()
+                                    Text(slice.amount.accountingDescription).foregroundStyle(.red).monospacedDigit()
+                                }
+                                .font(VLTypography.caption())
+                            }
+                        }
+                        .padding(VLSpacing.xs)
+                        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                    }
                     HStack(spacing: VLSpacing.md) {
                         // Owner directive (2026-09-06): "the graphs in this
                         // app look primitive... like in Excel, Power BI,
@@ -76,7 +99,7 @@ private struct DonutCard: View {
                         // a center total (the number the whole donut adds
                         // up to, which Power BI/Tableau donuts always show)
                         // instead of a plain colored ring.
-                        Chart(Array(slices.enumerated()), id: \.element.id) { index, slice in
+                        Chart(Array(chartSlices.enumerated()), id: \.element.id) { index, slice in
                             SectorMark(angle: .value("Amount", slice.amount.majorUnitsDouble), innerRadius: .ratio(0.62), angularInset: 2)
                                 .foregroundStyle(VLChartPalette.radialGradient(at: index))
                                 .cornerRadius(4)
@@ -91,11 +114,11 @@ private struct DonutCard: View {
                                 if let plotFrame = proxy.plotFrame {
                                     let frame = geometry[plotFrame]
                                     VStack(spacing: 2) {
-                                        Text("TOTAL")
+                                        Text(negativeSlices.isEmpty ? "TOTAL" : "NET")
                                             .font(VLTypography.eyebrow())
                                             .tracking(VLTypography.eyebrowTracking)
                                             .foregroundStyle(VLColor.textMuted)
-                                        Text(totalAmount.description)
+                                        Text(totalAmount.accountingDescription)
                                             .font(VLTypography.tabularNumeric())
                                             .fontWeight(.semibold)
                                             .foregroundStyle(VLColor.textPrimary)
@@ -115,7 +138,7 @@ private struct DonutCard: View {
                                     .font(VLTypography.cardTitle())
                                     .foregroundStyle(VLColor.textPrimary)
                                     .lineLimit(2)
-                                Text(selectedSlice.amount.description)
+                                Text(selectedSlice.amount.accountingDescription)
                                     .font(VLTypography.tabularNumeric())
                                     .foregroundStyle(VLColor.cyan)
                             }
@@ -136,7 +159,7 @@ private struct DonutCard: View {
                         .foregroundStyle(VLColor.textMuted)
 
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                        ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
+                        ForEach(Array(chartSlices.enumerated()), id: \.element.id) { index, slice in
                             HStack(spacing: VLSpacing.xs) {
                                 Circle()
                                     .fill(VLChartPalette.color(at: index))
@@ -146,7 +169,7 @@ private struct DonutCard: View {
                                     .foregroundStyle(VLColor.textSecondary)
                                     .lineLimit(1)
                                 Spacer()
-                                Text(slice.amount.description)
+                                Text(slice.amount.accountingDescription)
                                     .font(VLTypography.tabularNumeric())
                                     .foregroundStyle(VLColor.textPrimary)
                             }

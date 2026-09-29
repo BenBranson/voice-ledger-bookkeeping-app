@@ -57,7 +57,7 @@ public struct RankedMoneyBarChart: View {
                         .foregroundStyle(VLChartPalette.gradient(at: index))
                         .cornerRadius(6)
                         .annotation(position: .trailing) {
-                            Text(entry.cumulativePercent.map { "\(entry.amount.description) — \(String(format: "%.0f%%", $0)) cumulative" } ?? entry.amount.description)
+                            Text(entry.cumulativePercent.map { "\(entry.amount.accountingDescription) — \(String(format: "%.0f%%", $0)) cumulative" } ?? entry.amount.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .fontWeight(.medium)
                                 .foregroundStyle(VLColor.textPrimary)

@@ -97,7 +97,7 @@ public struct CashFlowForecastView: View {
                                     .font(VLTypography.eyebrow())
                                     .tracking(VLTypography.eyebrowTracking)
                                     .foregroundStyle(VLColor.textMuted)
-                                Text(state.forecast.startingCash?.description ?? "Not available")
+                                Text(state.forecast.startingCash?.accountingDescription ?? "Not available")
                                     .font(VLTypography.metricMedium())
                                     .foregroundStyle(VLColor.cyan)
                             }
@@ -110,7 +110,7 @@ public struct CashFlowForecastView: View {
                                         .font(VLTypography.eyebrow())
                                         .tracking(VLTypography.eyebrowTracking)
                                         .foregroundStyle(VLColor.textMuted)
-                                    Text(horizon.projectedEndingCash?.description ?? "Not available")
+                                    Text(horizon.projectedEndingCash?.accountingDescription ?? "Not available")
                                         .font(VLTypography.metricMedium())
                                         .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
                                 }
@@ -129,7 +129,7 @@ public struct CashFlowForecastView: View {
                                 HStack {
                                     VLStatusPill(.reviewNeeded, label: "At-risk receivables")
                                     Spacer()
-                                    Text(atRisk.description)
+                                    Text(atRisk.accountingDescription)
                                         .font(VLTypography.tabularNumericEmphasis())
                                         .foregroundStyle(VLColor.textPrimary)
                                 }
@@ -175,7 +175,7 @@ public struct CashFlowForecastView: View {
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textSecondary)
                     Spacer()
-                    Text(horizon.expectedInflow?.description ?? "Not available")
+                    Text(horizon.expectedInflow?.accountingDescription ?? "Not available")
                         .font(VLTypography.tabularNumeric())
                         .foregroundStyle(VLColor.textPrimary)
                 }
@@ -184,7 +184,7 @@ public struct CashFlowForecastView: View {
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textSecondary)
                     Spacer()
-                    Text(horizon.expectedOutflow?.description ?? "Not available")
+                    Text(horizon.expectedOutflow?.accountingDescription ?? "Not available")
                         .font(VLTypography.tabularNumeric())
                         .foregroundStyle(VLColor.textPrimary)
                 }

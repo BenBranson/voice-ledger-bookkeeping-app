@@ -36,6 +36,7 @@ public struct BalanceSheetIntegrityView: View {
         }
     }
 
+    private let qboURL: (Finding) -> URL?
     private let environment: VLEnvironmentTone
     private let coverageStatus: VLStatus
     private let coverageDetail: String
@@ -77,8 +78,10 @@ public struct BalanceSheetIntegrityView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        qboURL: @escaping (Finding) -> URL? = { _ in nil }
     ) {
+        self.qboURL = qboURL
         self.environment = environment
         self.coverageStatus = coverageStatus
         self.coverageDetail = coverageDetail
@@ -175,23 +178,26 @@ public struct BalanceSheetIntegrityView: View {
                         .foregroundStyle(VLColor.textMuted)
                 } else {
                     ForEach(summary.findings) { finding in
-                        Button {
-                            onSelectFinding(finding)
-                        } label: {
-                            HStack {
-                                Text(finding.title)
-                                    .font(VLTypography.body())
-                                    .foregroundStyle(VLColor.textSecondary)
-                                Spacer()
-                                if let action = finding.proposedActions.first {
-                                    VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                        HStack {
+                            Button {
+                                onSelectFinding(finding)
+                            } label: {
+                                HStack {
+                                    Text(finding.title)
+                                        .font(VLTypography.body())
+                                        .foregroundStyle(VLColor.textSecondary)
+                                    Spacer()
+                                    Text(finding.dollarExposure.accountingDescription)
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(VLColor.textPrimary)
                                 }
-                                Text(finding.dollarExposure.description)
-                                    .font(VLTypography.tabularNumeric())
-                                    .foregroundStyle(VLColor.textPrimary)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            if let action = finding.proposedActions.first {
+                                ResolutionBadge(action: action, qboURL: qboURL(finding))
                             }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }

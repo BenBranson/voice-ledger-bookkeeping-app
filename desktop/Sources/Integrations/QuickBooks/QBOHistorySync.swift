@@ -123,3 +123,26 @@ extension QBOSyncClient {
         String(format: "%04d-%02d-%02d", date.year, date.month, date.day)
     }
 }
+
+extension QBOSyncClient {
+    struct ReadAccountLedgerParams: Encodable, Sendable {
+        let reportKind = "GeneralLedger"
+        let startDate: String
+        let endDate: String
+        let accountId: String
+    }
+
+    /// Every posting to one account, all dates through `through` —
+    /// evidence rows for an account-balance finding (owner request
+    /// 2026-09-29). Live-verified against the sandbox's Opening Balance
+    /// Equity and seeded Suspense accounts.
+    public func fetchAccountLedger(realmID: RealmID, accountID: String, through: AccountingDate) async throws -> [GeneralLedgerLine] {
+        let data = try await backend.call(
+            .readReport,
+            realmID: realmID,
+            params: ReadAccountLedgerParams(startDate: "2000-01-01", endDate: Self.format(through), accountId: accountID)
+        )
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return Self.flattenGeneralLedger(decoded.rows, depth: 0).filter { !$0.isSummary && !$0.isAccountHeader && $0.transactionType != nil }
+    }
+}

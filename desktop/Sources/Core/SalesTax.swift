@@ -64,11 +64,15 @@ public struct SalesTaxAttestation: Codable, Sendable, Equatable {
     public var attestedBy: String?
     public var attestedAt: Date?
     public var note: String?
+    /// The period the reviewer confirmed; `nil` on records saved before
+    /// this field existed.
+    public var period: AccountingPeriod?
 
-    public init(filingStatusConfirmed: Bool = false, attestedBy: String? = nil, attestedAt: Date? = nil, note: String? = nil) {
+    public init(filingStatusConfirmed: Bool = false, attestedBy: String? = nil, attestedAt: Date? = nil, note: String? = nil, period: AccountingPeriod? = nil) {
         self.filingStatusConfirmed = filingStatusConfirmed
         self.attestedBy = attestedBy
         self.attestedAt = attestedAt
         self.note = note
+        self.period = period
     }
 }

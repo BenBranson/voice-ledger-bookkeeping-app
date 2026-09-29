@@ -12,6 +12,8 @@ import DesignSystem
 /// consequences and before/after report impact are covered by each
 /// finding's own `Consequence` list, not a separate computed projection.
 public struct BatchFixesView: View {
+    private let onEnableWriteAccess: (() -> Void)?
+    @State private var isConfirmingWriteAccess = false
     private let environment: VLEnvironmentTone
     private let writeAccessEnabled: Bool
     private let items: [BatchFixItem]
@@ -74,8 +76,10 @@ public struct BatchFixesView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        onEnableWriteAccess: (() -> Void)? = nil
     ) {
+        self.onEnableWriteAccess = onEnableWriteAccess
         self.environment = environment
         self.writeAccessEnabled = writeAccessEnabled
         self.items = items
@@ -124,9 +128,26 @@ public struct BatchFixesView: View {
 
                 if !writeAccessEnabled {
                     VLCard(accentRail: VLColor.violet) {
-                        Text("Write access is off for this connection — enable it on the Connection page before applying any fix here.")
-                            .font(VLTypography.caption())
-                            .foregroundStyle(VLColor.textSecondary)
+                        HStack {
+                            Text("Write access is off for this connection, so no fix here can be applied.")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textSecondary)
+                            Spacer()
+                            if onEnableWriteAccess != nil {
+                                Button("Turn On Write Access…") { isConfirmingWriteAccess = true }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .confirmationDialog(
+                        "Turn on write access for this \(environment == .production ? "PRODUCTION" : "sandbox") client?",
+                        isPresented: $isConfirmingWriteAccess,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Turn On Write Access") { onEnableWriteAccess?() }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This lets Voice Ledger apply the fixes you approve on this page to QuickBooks for this client only. Each fix still needs your click and is verified after it's written. You can turn it off again on the Connection page.")
                     }
                 }
 
@@ -197,7 +218,7 @@ public struct BatchFixesView: View {
                 .toggleStyle(.checkbox)
                 .disabled(isApplyingBatch)
                 Spacer()
-                Text(item.dollarExposure.description)
+                Text(item.dollarExposure.accountingDescription)
                     .font(VLTypography.tabularNumeric())
                     .foregroundStyle(VLColor.textPrimary)
             }

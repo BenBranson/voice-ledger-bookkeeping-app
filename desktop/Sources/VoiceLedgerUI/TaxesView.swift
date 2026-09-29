@@ -167,7 +167,7 @@ public struct TaxesView: View {
                     .foregroundStyle(VLColor.textMuted)
                 HStack(spacing: VLSpacing.lg) {
                     VStack(alignment: .leading) {
-                        Text(currentNetIncome?.description ?? "—")
+                        Text(currentNetIncome?.accountingDescription ?? "—")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text(currentPeriodLabel)
@@ -175,7 +175,7 @@ public struct TaxesView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     VStack(alignment: .leading) {
-                        Text(priorNetIncome?.description ?? "—")
+                        Text(priorNetIncome?.accountingDescription ?? "—")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textSecondary)
                         Text(priorPeriodLabel)
@@ -210,7 +210,7 @@ public struct TaxesView: View {
                     Text("%")
                         .foregroundStyle(VLColor.textMuted)
                     Spacer()
-                    Text(estimatedSetAside?.description ?? "—")
+                    Text(estimatedSetAside?.accountingDescription ?? "—")
                         .font(VLTypography.tabularNumericEmphasis())
                         .foregroundStyle(VLColor.textPrimary)
                 }

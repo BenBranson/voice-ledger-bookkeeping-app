@@ -245,7 +245,7 @@ public struct MonthEndCloseView: View {
                                 .font(VLTypography.body())
                                 .foregroundStyle(VLColor.textPrimary)
                             Spacer()
-                            Text(item.dollarExposure.description)
+                            Text(item.dollarExposure.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .foregroundStyle(VLColor.textPrimary)
                         }

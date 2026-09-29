@@ -153,7 +153,7 @@ public struct BankFeedCleanupView: View {
                                             .font(VLTypography.body())
                                             .foregroundStyle(VLColor.textSecondary)
                                         Spacer()
-                                        Text(finding.dollarExposure.description)
+                                        Text(finding.dollarExposure.accountingDescription)
                                             .font(VLTypography.tabularNumeric())
                                             .foregroundStyle(VLColor.textPrimary)
                                     }
@@ -188,7 +188,7 @@ public struct BankFeedCleanupView: View {
                                             .font(VLTypography.body())
                                             .foregroundStyle(VLColor.textSecondary)
                                         Spacer()
-                                        Text(finding.dollarExposure.description)
+                                        Text(finding.dollarExposure.accountingDescription)
                                             .font(VLTypography.tabularNumeric())
                                             .foregroundStyle(VLColor.textPrimary)
                                     }
@@ -223,7 +223,7 @@ public struct BankFeedCleanupView: View {
                                             .font(VLTypography.body())
                                             .foregroundStyle(VLColor.textSecondary)
                                         Spacer()
-                                        Text(finding.dollarExposure.description)
+                                        Text(finding.dollarExposure.accountingDescription)
                                             .font(VLTypography.tabularNumeric())
                                             .foregroundStyle(VLColor.textPrimary)
                                     }
@@ -293,7 +293,7 @@ public struct BankFeedCleanupView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     VStack(alignment: .leading) {
-                        Text(summary.unmatchedTotal?.description ?? "$0.00")
+                        Text(summary.unmatchedTotal?.accountingDescription ?? "$0.00")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
                         Text("Difference")

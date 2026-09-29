@@ -394,7 +394,7 @@ public struct ClosePackageView: View {
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
                         Spacer()
-                        Text(line.amount?.description ?? "-")
+                        Text(line.amount?.accountingDescription ?? "-")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
                     }
@@ -416,7 +416,7 @@ public struct ClosePackageView: View {
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
                         Spacer()
-                        Text("Debit \(summaryLine.debit?.description ?? "-")  ·  Credit \(summaryLine.credit?.description ?? "-")")
+                        Text("Debit \(summaryLine.debit?.accountingDescription ?? "-")  ·  Credit \(summaryLine.credit?.accountingDescription ?? "-")")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
                     }
@@ -441,7 +441,7 @@ public struct ClosePackageView: View {
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
                         Spacer()
-                        Text(summaryLine.total?.description ?? "-")
+                        Text(summaryLine.total?.accountingDescription ?? "-")
                             .font(VLTypography.tabularNumericEmphasis())
                             .foregroundStyle(VLColor.textPrimary)
                     }
@@ -508,7 +508,7 @@ public struct ClosePackageView: View {
                                 .font(VLTypography.body())
                                 .foregroundStyle(VLColor.textPrimary)
                             Spacer()
-                            Text(item.dollarExposure.description)
+                            Text(item.dollarExposure.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .foregroundStyle(VLColor.textPrimary)
                         }

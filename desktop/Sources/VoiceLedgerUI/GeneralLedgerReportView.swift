@@ -161,8 +161,8 @@ public struct GeneralLedgerReportView: View {
                                             Text(line.name ?? "").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).frame(width: 110, alignment: .leading)
                                             Text(line.memo ?? "").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).frame(width: 110, alignment: .leading)
                                             Text(line.split ?? "").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).frame(width: 110, alignment: .leading)
-                                            Text(line.amount?.description ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
-                                            Text(line.balance?.description ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
+                                            Text(line.amount?.accountingDescription ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
+                                            Text(line.balance?.accountingDescription ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
                                         }
                                     }
                                 }

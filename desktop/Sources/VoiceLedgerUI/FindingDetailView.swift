@@ -46,6 +46,12 @@ public struct FindingDetailView: View {
     /// silently looking unchanged (which is indistinguishable from nothing
     /// having happened at all).
     private let justAttestedStillOpen: Bool
+    @State private var aiTier = 0
+    private let ledgerRows: [GeneralLedgerLine]?
+    private let isLoadingLedgerRows: Bool
+    private let onLoadLedgerRows: () -> Void
+    @State private var showAllLedgerRows = false
+    private let qboURL: URL?
     private let onStartProcedure: (ProposedAction) -> Void
     private let onApplyFix: () -> Void
     private let onSendClientQuestion: (String) -> Void
@@ -168,8 +174,16 @@ public struct FindingDetailView: View {
         isDraftingClientMessage: Bool = false,
         clientMessageError: String? = nil,
         onDraftClientMessage: @escaping (String) -> Void = { _ in },
-        onBack: @escaping () -> Void = {}
+        onBack: @escaping () -> Void = {},
+        qboURL: URL? = nil,
+        ledgerRows: [GeneralLedgerLine]? = nil,
+        isLoadingLedgerRows: Bool = false,
+        onLoadLedgerRows: @escaping () -> Void = {}
     ) {
+        self.ledgerRows = ledgerRows
+        self.isLoadingLedgerRows = isLoadingLedgerRows
+        self.onLoadLedgerRows = onLoadLedgerRows
+        self.qboURL = qboURL
         self.finding = finding
         self.writeAccessEnabled = writeAccessEnabled
         self.isApplyingFix = isApplyingFix
@@ -240,6 +254,7 @@ public struct FindingDetailView: View {
                         .foregroundStyle(.red)
                 }
                 evidenceSection
+                    .task(id: finding.id) { onLoadLedgerRows() }
                 if let principle = accountingPrinciple {
                     whyThisMattersSection(principle)
                 }
@@ -252,9 +267,19 @@ public struct FindingDetailView: View {
                     clientMemorySection(vendorName)
                 }
                 carryForwardSection
-                askAISection
                 if secondOpinionConfigured {
+                    Picker("Model", selection: $aiTier) {
+                        Text("Ask AI").tag(0)
+                        Text("OpenAI 2nd Opinion").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                if secondOpinionConfigured && aiTier == 1 {
                     secondOpinionSection
+                } else {
+                    askAISection
                 }
             }
             .padding(VLSpacing.pageGutter)
@@ -609,6 +634,62 @@ public struct FindingDetailView: View {
         }
     }
 
+    /// Posting-level evidence for an account-balance finding: the 5
+    /// largest postings (where an Opening Balance Equity or negative-
+    /// balance culprit almost always is), expandable to all.
+    @ViewBuilder
+    private var ledgerRowsTable: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+            Divider().overlay(VLColor.border)
+            if isLoadingLedgerRows && ledgerRows == nil {
+                Text("Loading this account's postings from QBO…")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+            } else if let rows = ledgerRows {
+                let ranked = rows.sorted { abs($0.amount?.minorUnits ?? 0) > abs($1.amount?.minorUnits ?? 0) }
+                let shown = showAllLedgerRows ? rows : Array(ranked.prefix(5))
+                HStack {
+                    Text(showAllLedgerRows ? "ALL \(rows.count) POSTINGS TO THIS ACCOUNT" : "LARGEST \(shown.count) OF \(rows.count) POSTINGS TO THIS ACCOUNT")
+                        .font(VLTypography.eyebrow())
+                        .tracking(VLTypography.eyebrowTracking)
+                        .foregroundStyle(VLColor.textMuted)
+                    Spacer()
+                    if rows.count > 5 {
+                        Button(showAllLedgerRows ? "Show Largest 5" : "Show All") { showAllLedgerRows.toggle() }
+                            .buttonStyle(.link)
+                            .font(VLTypography.caption())
+                    }
+                }
+                if rows.isEmpty {
+                    Text("No postings found for this account.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                }
+                Grid(alignment: .leading, horizontalSpacing: VLSpacing.sm, verticalSpacing: 2) {
+                    GridRow {
+                        ForEach(["Date", "Type", "Num", "Name", "Memo", "Amount"], id: \.self) { header in
+                            Text(header).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                        }
+                    }
+                    ForEach(shown) { row in
+                        GridRow {
+                            Text(row.label)
+                            Text(row.transactionType ?? "")
+                            Text(row.docNumber ?? "")
+                            Text(row.name ?? "").lineLimit(1)
+                            Text(row.memo ?? "").lineLimit(1)
+                            Text(row.amount?.accountingDescription ?? "").gridColumnAlignment(.trailing)
+                        }
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                        .monospacedDigit()
+                    }
+                }
+                .textSelection(.enabled)
+            }
+        }
+    }
+
     private var evidenceSection: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
@@ -653,11 +734,14 @@ public struct FindingDetailView: View {
                     }
                     .padding(.vertical, VLSpacing.xxs)
                 }
+                if ledgerRows != nil || isLoadingLedgerRows {
+                    ledgerRowsTable
+                }
                 HStack {
                     Text("Dollar exposure")
                         .foregroundStyle(VLColor.textMuted)
                     Spacer()
-                    Text(finding.dollarExposure.description)
+                    Text(finding.dollarExposure.accountingDescription)
                         .font(VLTypography.tabularNumericEmphasis())
                         .foregroundStyle(VLColor.textPrimary)
                 }
@@ -693,11 +777,11 @@ public struct FindingDetailView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                    ResolutionBadge(action: action, qboURL: qboURL)
                 }
 
                 if action.resolution == .manualQBO {
-                    Text("Voice Ledger cannot complete this write — it requires action in QBO directly.")
+                    Text(qboURL == nil ? "Voice Ledger cannot complete this write — it requires action in QBO directly." : "Voice Ledger cannot complete this write — use Open in QBO to go straight to the record.")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
                 }
@@ -773,7 +857,7 @@ public struct FindingDetailView: View {
                                 .foregroundStyle(.orange)
                         }
                         HStack(spacing: VLSpacing.sm) {
-                            Button("Approve") { onStartProcedure(action) }
+                            Button("Walk Me Through the Fix") { onStartProcedure(action) }
                                 .buttonStyle(.borderedProminent)
                             // Owner directive (2026-08-29): a fast "I already
                             // did this in QBO" path that doesn't require
@@ -788,10 +872,10 @@ public struct FindingDetailView: View {
                             // mark what I did to resolve it," so the client
                             // value report has something real to report
                             // beyond "N findings resolved."
-                            Button("Mark as Done") { isLoggingResolution = true }
+                            Button("Verify Fixed in QBO ⟳") { isLoggingResolution = true }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
-                            Button("Dismiss") { onDismiss() }
+                            Button("Dismiss (Accept as Valid)") { onDismiss() }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
                         }
@@ -806,7 +890,7 @@ public struct FindingDetailView: View {
                         // `RuleContext.dismissedFindingIDs`, which every
                         // rule checks on every future sync) — not a snooze,
                         // not FYI-only.
-                        Text("Mark as Done re-checks this against QBO right now — it only clears if the underlying issue is actually gone. Dismiss suppresses this exact finding permanently — it will not reappear on future syncs unless something about these two transactions changes.")
+                        Text("Walk Me Through the Fix opens step-by-step instructions (nothing is posted). Verify Fixed in QBO re-checks this against QBO right now — it only clears if the underlying issue is actually gone. Dismiss (Accept as Valid) suppresses this exact finding permanently — it will not reappear on future syncs unless something about these two transactions changes.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textMuted)
                     }
@@ -940,7 +1024,7 @@ public struct FindingDetailView: View {
                     Button("Apply Fix") { isConfirmingApplyFix = true }
                         .buttonStyle(.borderedProminent)
                         .disabled(!writeAccessEnabled || pendingWriteJournalEntry != nil)
-                    Button("Dismiss") { onDismiss() }
+                    Button("Dismiss (Accept as Valid)") { onDismiss() }
                         .buttonStyle(.bordered)
                         .disabled(isFindingActionInFlight)
                 }

@@ -268,25 +268,25 @@ extension VoiceEngine {
             switch finding.ruleID.rawValue {
             case _ where finding.ruleID.rawValue.contains("DUP"):
                 recommendation += "Investigate and consolidate duplicates. Because: duplicate transactions inflate your accounting records and create confusion about true spend and balances. Consolidating ensures accurate financial reporting.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to compare and merge the duplicate transactions in QuickBooks."
+                recommendation += "ACTION: Click 'Open in QBO' to compare and merge the duplicate transactions in QuickBooks."
             case _ where finding.ruleID.rawValue.contains("UNCAT"):
                 recommendation += "Categorize uncategorized transactions. Because: uncategorized transactions hide expense patterns and make your P&L report incomplete. Proper categorization is required for accurate profit reporting and tax planning.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to assign the correct expense or income account."
+                recommendation += "ACTION: Click 'Open in QBO' to assign the correct expense or income account."
             case _ where finding.ruleID.rawValue.contains("PERSONAL"):
                 recommendation += "Remove personal expenses from business accounts. Because: personal expenses reduce reported business profit and inflate tax liability. Keeping them separate ensures clean business records.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to move this to a personal account or delete it from the business books."
+                recommendation += "ACTION: Click 'Open in QBO' to move this to a personal account or delete it from the business books."
             case _ where finding.ruleID.rawValue.contains("NEGBAL"):
                 recommendation += "Resolve negative account balance. Because: negative balances in asset accounts (like bank accounts) indicate data entry errors or categorization mistakes. They make your balance sheet inaccurate.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to investigate which transaction caused the negative balance and correct it."
+                recommendation += "ACTION: Click 'Open in QBO' to investigate which transaction caused the negative balance and correct it."
             case _ where finding.ruleID.rawValue.contains("UNDEPOSITED"):
                 recommendation += "Record missing bank deposit. Because: payments sitting in Undeposited Funds for too long indicate they may have been forgotten or lost in the bank. Recording the deposit ensures cash is reconciled.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to either record the deposit in the bank account or investigate if it was actually deposited."
+                recommendation += "ACTION: Click 'Open in QBO' to either record the deposit in the bank account or investigate if it was actually deposited."
             case _ where finding.ruleID.rawValue.contains("PRICE"):
                 recommendation += "Investigate vendor price increases. Because: unexpected price hikes from key vendors impact profitability. Understanding these changes helps you budget accurately and negotiate if needed.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to verify the new price is correct, or contact the vendor if it seems wrong."
+                recommendation += "ACTION: Click 'Open in QBO' to verify the new price is correct, or contact the vendor if it seems wrong."
             default:
                 recommendation += "Review the evidence and take action in QuickBooks. Because: this finding was flagged by Voice Ledger's rules engine as needing attention for accurate financial records.\n\n"
-                recommendation += "ACTION: Click 'Manual QBO' to make the necessary correction in QuickBooks Online."
+                recommendation += "ACTION: Click 'Open in QBO' to make the necessary correction in QuickBooks Online."
             }
             return (recommendation, nil)
 

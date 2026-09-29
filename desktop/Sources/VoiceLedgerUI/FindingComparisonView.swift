@@ -166,7 +166,8 @@ public struct FindingComparisonView: View {
     }
 
     private var analysisSection: some View {
-        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+        ModelTabs(labels: ["Gemma (free)"] + (secondOpinionConfigured ? ["OpenAI"] : []) + (claudeConfigured ? ["Claude Haiku 4.5"] : [])) { tab in
+            if tab == "Gemma (free)" {
             AskAIPanelView(
                 title: "SIMILARITY & DUPLICATE ANALYSIS (GEMMA — FREE)",
                 disclaimer: "Grounded in the finding details and computed comparison signals above (same vendor, same amount, same period, same category) — never asserts a similarity the numbers don't support.",
@@ -178,7 +179,8 @@ public struct FindingComparisonView: View {
                 quickAskLabel: "Compare & Analyze",
                 onQuickAsk: onAnalyze
             )
-            if secondOpinionConfigured {
+            }
+            if tab == "OpenAI" {
                 AskAIPanelView(
                     title: "SIMILARITY & DUPLICATE ANALYSIS (OPENAI — MORE THOROUGH)",
                     disclaimer: "Same real data, sent to OpenAI for a more thorough read. Costs money per analysis and only runs when you ask.",
@@ -191,7 +193,7 @@ public struct FindingComparisonView: View {
                     onQuickAsk: onAnalyzeSecondOpinion
                 )
             }
-            if claudeConfigured {
+            if tab == "Claude Haiku 4.5" {
                 AskAIPanelView(
                     title: "SIMILARITY & DUPLICATE ANALYSIS (CLAUDE HAIKU 4.5)",
                     disclaimer: "Same real data, sent to Claude Haiku 4.5 for a fast cloud read. Costs a fraction of a cent per analysis and only runs when you ask.",
@@ -238,7 +240,7 @@ public struct FindingComparisonView: View {
                         .foregroundStyle(VLColor.textMuted)
                 }
 
-                Text(finding.dollarExposure.description)
+                Text(finding.dollarExposure.accountingDescription)
                     .font(VLTypography.metricLarge())
                     .foregroundStyle(VLColor.textPrimary)
 

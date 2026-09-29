@@ -25,7 +25,7 @@ public struct ReportLinesTable: View {
                             .padding(.leading, CGFloat(line.depth) * 16)
                         Spacer()
                         if let amount = line.amount {
-                            Text(amount.description)
+                            Text(amount.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
                         }

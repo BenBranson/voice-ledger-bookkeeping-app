@@ -326,7 +326,7 @@ public struct ClientDashboardView: View {
                                 Text(verbatim: "\(finding.priorityScore)%")
                                     .font(VLTypography.caption())
                                     .foregroundStyle(StatusMapping.priorityStatus(finding.priorityScore).color)
-                                Text(finding.dollarExposure.description)
+                                Text(finding.dollarExposure.accountingDescription)
                                     .font(VLTypography.tabularNumericEmphasis())
                                     .foregroundStyle(VLColor.textSecondary)
                             }
@@ -406,7 +406,7 @@ public struct ClientDashboardView: View {
         if let receivables {
             cards.append(KPICardRow.CardData(
                 label: "Accounts Receivable",
-                value: receivables.totalAmount?.description ?? "Not available",
+                value: receivables.totalAmount?.accountingDescription ?? "Not available",
                 isAvailable: receivables.totalAmount != nil,
                 detail: receivables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedReceivables) }
@@ -420,7 +420,7 @@ public struct ClientDashboardView: View {
         if let payables {
             cards.append(KPICardRow.CardData(
                 label: "Accounts Payable",
-                value: payables.totalAmount?.description ?? "Not available",
+                value: payables.totalAmount?.accountingDescription ?? "Not available",
                 isAvailable: payables.totalAmount != nil,
                 detail: payables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedPayables) }
@@ -461,7 +461,7 @@ public struct ClientDashboardView: View {
                             Text("IN \(horizon.days) DAYS")
                                 .font(VLTypography.caption())
                                 .foregroundStyle(VLColor.textMuted)
-                            Text(horizon.projectedEndingCash?.description ?? "Not available")
+                            Text(horizon.projectedEndingCash?.accountingDescription ?? "Not available")
                                 .font(VLTypography.metricMedium())
                                 .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
                         }
@@ -514,7 +514,7 @@ public struct ClientDashboardView: View {
 
     private func kpiCard(label: String, money: Money?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
         guard let money else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: money.description, trend: trend, onTap: onTap)
+        return KPICardRow.CardData(label: label, value: money.accountingDescription, trend: trend, onTap: onTap)
     }
 
     private func kpiCard(label: String, ratio: Double?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {

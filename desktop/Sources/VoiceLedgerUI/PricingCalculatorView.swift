@@ -149,10 +149,10 @@ public struct PricingCalculatorView: View {
         let totalHoursText = String(format: "%.1f", monthlyQuote.totalHours)
         let baseHoursText = String(format: "%.1f", monthlyQuote.baseHours)
         let addOnHoursText = String(format: "%.1f", monthlyQuote.addOnHours)
-        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(hourlyRate.description)/hr = \(monthlyQuote.monthlyInvestment.description)/mo."]
+        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(hourlyRate.accountingDescription)/hr = \(monthlyQuote.monthlyInvestment.accountingDescription)/mo."]
         if needsCleanup {
-            lines.append("One-time cleanup project: \(monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.description)–\(cleanupQuote.high.description) (midpoint \(cleanupQuote.midpoint.description)).")
-            lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.description). Then \(monthlyQuote.monthlyInvestment.description)/mo ongoing.")
+            lines.append("One-time cleanup project: \(monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.accountingDescription)–\(cleanupQuote.high.accountingDescription) (midpoint \(cleanupQuote.midpoint.accountingDescription)).")
+            lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.accountingDescription). Then \(monthlyQuote.monthlyInvestment.accountingDescription)/mo ongoing.")
         }
         return lines.joined(separator: "\n")
     }
@@ -178,11 +178,11 @@ public struct PricingCalculatorView: View {
         guard !openFindings.isEmpty else { return [] }
         var lines = ["\(openFindings.count) open finding(s) — \(highSeverityFindingsCount) high severity."]
         if let totalFindingsExposure {
-            lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.description).")
+            lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.accountingDescription).")
         }
         let highlighted = openFindings.filter { $0.severity == .high }.prefix(5)
         for finding in highlighted {
-            lines.append("- \(finding.title) (\(finding.dollarExposure.description))")
+            lines.append("- \(finding.title) (\(finding.dollarExposure.accountingDescription))")
         }
         return lines
     }
@@ -394,7 +394,7 @@ public struct PricingCalculatorView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(monthlyQuote.monthlyInvestment.description)
+                    Text(monthlyQuote.monthlyInvestment.accountingDescription)
                         .font(VLTypography.metricLarge())
                         .foregroundStyle(VLColor.cyan)
                 }
@@ -417,18 +417,18 @@ public struct PricingCalculatorView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(cleanupQuote.midpoint.description)
+                    Text(cleanupQuote.midpoint.accountingDescription)
                         .font(VLTypography.metricLarge())
                         .foregroundStyle(VLColor.cyan)
                 }
                 HStack(spacing: VLSpacing.lg) {
                     VStack(alignment: .leading) {
                         Text("LOW").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
-                        Text(cleanupQuote.low.description).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
+                        Text(cleanupQuote.low.accountingDescription).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                     }
                     VStack(alignment: .leading) {
                         Text("HIGH").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
-                        Text(cleanupQuote.high.description).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
+                        Text(cleanupQuote.high.accountingDescription).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                     }
                 }
                 Text(verbatim: "\(cleanupQuote.issueCount) hygiene issue\(cleanupQuote.issueCount == 1 ? "" : "s") flagged · rounded to the nearest $50, floored at $400.")
@@ -453,11 +453,11 @@ public struct PricingCalculatorView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(combinedProposal.dayOneTotal.description)
+                    Text(combinedProposal.dayOneTotal.accountingDescription)
                         .font(VLTypography.metricLarge())
                         .foregroundStyle(VLColor.cyan)
                 }
-                Text("Then \(monthlyQuote.monthlyInvestment.description)/mo ongoing.")
+                Text("Then \(monthlyQuote.monthlyInvestment.accountingDescription)/mo ongoing.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }

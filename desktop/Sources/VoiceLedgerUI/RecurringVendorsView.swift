@@ -101,7 +101,7 @@ public struct RecurringVendorsView: View {
                             VStack(alignment: .leading, spacing: VLSpacing.xs) {
                                 VLStatusPill(.reviewNeeded, label: "\(state.missingVendors.count) recurring vendor(s) overdue for their expected charge")
                                 ForEach(state.missingVendors) { vendor in
-                                    Text("\(vendor.vendorName) — expected \(vendor.expectedNextChargeDate.formatted), last charged \(vendor.lastAmount.description) on \(vendor.lastChargeDate.formatted)")
+                                    Text("\(vendor.vendorName) — expected \(vendor.expectedNextChargeDate.formatted), last charged \(vendor.lastAmount.accountingDescription) on \(vendor.lastChargeDate.formatted)")
                                         .font(VLTypography.caption())
                                         .foregroundStyle(VLColor.textSecondary)
                                 }
@@ -147,7 +147,7 @@ public struct RecurringVendorsView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(vendor.averageAmount.description)
+                    Text(vendor.averageAmount.accountingDescription)
                         .font(VLTypography.tabularNumericEmphasis())
                         .foregroundStyle(VLColor.textPrimary)
                 }
@@ -157,7 +157,7 @@ public struct RecurringVendorsView: View {
                 if vendor.lastAmountChanged {
                     HStack(spacing: VLSpacing.xxs) {
                         VLStatusPill(.reviewNeeded, label: "Amount changed")
-                        Text("Last charge was \(vendor.lastAmount.description) on \(vendor.lastChargeDate.formatted) — outside this vendor's usual pattern.")
+                        Text("Last charge was \(vendor.lastAmount.accountingDescription) on \(vendor.lastChargeDate.formatted) — outside this vendor's usual pattern.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
                     }

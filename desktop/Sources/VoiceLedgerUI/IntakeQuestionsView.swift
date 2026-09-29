@@ -105,10 +105,10 @@ public struct IntakeQuestionsView: View {
         guard !openFindings.isEmpty else { return [] }
         var lines = ["\(openFindings.count) open finding(s) — \(highSeverityFindingsCount) high severity."]
         if let totalFindingsExposure {
-            lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.description).")
+            lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.accountingDescription).")
         }
         for finding in openFindings.filter({ $0.severity == .high }).prefix(5) {
-            lines.append("- \(finding.title) (\(finding.dollarExposure.description))")
+            lines.append("- \(finding.title) (\(finding.dollarExposure.accountingDescription))")
         }
         return lines
     }
@@ -145,10 +145,10 @@ public struct IntakeQuestionsView: View {
         let totalHoursText = String(format: "%.1f", monthlyQuote.totalHours)
         let baseHoursText = String(format: "%.1f", monthlyQuote.baseHours)
         let addOnHoursText = String(format: "%.1f", monthlyQuote.addOnHours)
-        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(intake.hourlyRate.description)/hr = \(monthlyQuote.monthlyInvestment.description)/mo."]
+        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(intake.hourlyRate.accountingDescription)/hr = \(monthlyQuote.monthlyInvestment.accountingDescription)/mo."]
         if intake.needsCleanup {
-            lines.append("One-time cleanup project: \(intake.monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.description)–\(cleanupQuote.high.description) (midpoint \(cleanupQuote.midpoint.description)).")
-            lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.description). Then \(monthlyQuote.monthlyInvestment.description)/mo ongoing.")
+            lines.append("One-time cleanup project: \(intake.monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.accountingDescription)–\(cleanupQuote.high.accountingDescription) (midpoint \(cleanupQuote.midpoint.accountingDescription)).")
+            lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.accountingDescription). Then \(monthlyQuote.monthlyInvestment.accountingDescription)/mo ongoing.")
         }
         return lines.joined(separator: "\n")
     }
@@ -475,20 +475,20 @@ public struct IntakeQuestionsView: View {
                     HStack {
                         Text("One-Time Cleanup").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                         Spacer()
-                        Text(cleanupQuote.midpoint.description).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
+                        Text(cleanupQuote.midpoint.accountingDescription).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
                     }
                 }
                 HStack {
                     Text("Monthly Retainer").font(VLTypography.cardTitle()).foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(monthlyQuote.monthlyInvestment.description).font(VLTypography.metricLarge()).foregroundStyle(VLColor.cyan)
+                    Text(monthlyQuote.monthlyInvestment.accountingDescription).font(VLTypography.metricLarge()).foregroundStyle(VLColor.cyan)
                 }
                 if intake.needsCleanup {
                     Divider().overlay(VLColor.border)
                     HStack {
                         Text("Day-One Total").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                         Spacer()
-                        Text(combinedProposal.dayOneTotal.description).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
+                        Text(combinedProposal.dayOneTotal.accountingDescription).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
                     }
                 }
                 Text("Rounded to the nearest $50.").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)

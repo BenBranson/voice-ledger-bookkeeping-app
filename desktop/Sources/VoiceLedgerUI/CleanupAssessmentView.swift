@@ -29,6 +29,7 @@ public struct CleanupAssessmentView: View {
         }
     }
 
+    private let qboURL: (Finding) -> URL?
     private let environment: VLEnvironmentTone
     private let coverageStatus: VLStatus
     private let coverageDetail: String
@@ -85,8 +86,10 @@ public struct CleanupAssessmentView: View {
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
         alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
         scopeQuoteSummary: String? = nil,
-        onOpenDiagnostics: @escaping () -> Void = {}
+        onOpenDiagnostics: @escaping () -> Void = {},
+        qboURL: @escaping (Finding) -> URL? = { _ in nil }
     ) {
+        self.qboURL = qboURL
         self.scopeQuoteSummary = scopeQuoteSummary
         self.onOpenDiagnostics = onOpenDiagnostics
         self.environment = environment
@@ -277,24 +280,27 @@ public struct CleanupAssessmentView: View {
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
                 ForEach(quickWins) { finding in
-                    Button {
-                        onSelectFinding(finding)
-                    } label: {
-                        HStack {
-                            Text(finding.title)
-                                .font(VLTypography.body())
-                                .foregroundStyle(VLColor.textPrimary)
-                                .lineLimit(1)
-                            Spacer()
-                            if let action = finding.proposedActions.first {
-                                VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                    HStack {
+                        Button {
+                            onSelectFinding(finding)
+                        } label: {
+                            HStack {
+                                Text(finding.title)
+                                    .font(VLTypography.body())
+                                    .foregroundStyle(VLColor.textPrimary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(finding.dollarExposure.accountingDescription)
+                                    .font(VLTypography.tabularNumeric())
+                                    .foregroundStyle(VLColor.textPrimary)
                             }
-                            Text(finding.dollarExposure.description)
-                                .font(VLTypography.tabularNumeric())
-                                .foregroundStyle(VLColor.textPrimary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if let action = finding.proposedActions.first {
+                            ResolutionBadge(action: action, qboURL: qboURL(finding))
                         }
                     }
-                    .buttonStyle(.plain)
                     if finding.id != quickWins.last?.id {
                         Divider().overlay(VLColor.border)
                     }
@@ -319,28 +325,26 @@ public struct CleanupAssessmentView: View {
                         .foregroundStyle(VLColor.textMuted)
                 } else {
                     ForEach(summary.findings) { finding in
-                        Button {
-                            onSelectFinding(finding)
-                        } label: {
-                            HStack {
-                                Text(finding.title)
-                                    .font(VLTypography.body())
-                                    .foregroundStyle(VLColor.textSecondary)
-                                Spacer()
-                                // Same "Staged"/"Manual QBO" pill FindingsListView's
-                                // row already shows — this page was the one gap
-                                // where a finding with an Apply Fix available
-                                // looked identical to one that needs the full
-                                // guided procedure.
-                                if let action = finding.proposedActions.first {
-                                    VLStatusPill(StatusMapping.resolutionStatus(action.resolution), label: action.resolution == .manualQBO ? "Manual QBO" : "Staged")
+                        HStack {
+                            Button {
+                                onSelectFinding(finding)
+                            } label: {
+                                HStack {
+                                    Text(finding.title)
+                                        .font(VLTypography.body())
+                                        .foregroundStyle(VLColor.textSecondary)
+                                    Spacer()
+                                    Text(finding.dollarExposure.accountingDescription)
+                                        .font(VLTypography.tabularNumeric())
+                                        .foregroundStyle(VLColor.textPrimary)
                                 }
-                                Text(finding.dollarExposure.description)
-                                    .font(VLTypography.tabularNumeric())
-                                    .foregroundStyle(VLColor.textPrimary)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            if let action = finding.proposedActions.first {
+                                ResolutionBadge(action: action, qboURL: qboURL(finding))
                             }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }

@@ -112,45 +112,78 @@ public struct TwoTierAskAIPanel: View {
         self.alternateModelTiers = alternateModelTiers
     }
 
+    /// One prompt box with a model picker instead of a stacked box per
+    /// model (owner request 2026-09-29: the stack cost ~450px per page).
+    /// Each model keeps its own answer; switching shows that model's.
+    private struct Tier {
+        let label: String
+        let panel: AskAIPanelView
+    }
+
+    @State private var selectedTier = 0
+
+    private var tiers: [Tier] {
+        var result = [Tier(label: "Ask AI", panel: AskAIPanelView(
+            title: "",
+            disclaimer: primaryDisclaimer,
+            placeholder: placeholder,
+            aiStatus: aiStatus,
+            answer: primaryAnswer,
+            isAsking: isAskingPrimary,
+            error: primaryError,
+            onAsk: onAskPrimary,
+            quickAskLabel: quickAskLabel,
+            onQuickAsk: onQuickAsk
+        ))]
+        for tier in alternateModelTiers {
+            result.append(Tier(label: tier.modelName, panel: AskAIPanelView(
+                title: "",
+                disclaimer: tier.disclaimer,
+                placeholder: "Ask \(tier.modelName) a question",
+                aiStatus: nil,
+                answer: tier.answer,
+                isAsking: tier.isAsking,
+                error: tier.error,
+                onAsk: tier.onAsk
+            )))
+        }
+        if secondOpinionConfigured {
+            result.append(Tier(label: "OpenAI 2nd Opinion", panel: AskAIPanelView(
+                title: "",
+                disclaimer: secondOpinionDisclaimer,
+                placeholder: "Ask OpenAI for a second opinion",
+                aiStatus: nil,
+                answer: secondOpinionAnswer,
+                isAsking: isAskingSecondOpinion,
+                error: secondOpinionError,
+                onAsk: onAskSecondOpinion
+            )))
+        }
+        return result
+    }
+
     public var body: some View {
-        VStack(alignment: .leading, spacing: VLSpacing.sm) {
-            AskAIPanelView(
-                disclaimer: primaryDisclaimer,
-                placeholder: placeholder,
-                aiStatus: aiStatus,
-                answer: primaryAnswer,
-                isAsking: isAskingPrimary,
-                error: primaryError,
-                onAsk: onAskPrimary,
-                quickAskLabel: quickAskLabel,
-                onQuickAsk: onQuickAsk
-            )
-
-            ForEach(Array(alternateModelTiers.enumerated()), id: \.offset) { _, tier in
-                AskAIPanelView(
-                    title: tier.label,
-                    disclaimer: tier.disclaimer,
-                    placeholder: "Ask \(tier.modelName) a question",
-                    aiStatus: nil,
-                    answer: tier.answer,
-                    isAsking: tier.isAsking,
-                    error: tier.error,
-                    onAsk: tier.onAsk
-                )
+        let tiers = tiers
+        let index = min(selectedTier, tiers.count - 1)
+        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+            HStack {
+                Text("ASK AI")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(VLColor.textMuted)
+                if tiers.count > 1 {
+                    Picker("Model", selection: $selectedTier) {
+                        ForEach(Array(tiers.enumerated()), id: \.offset) { offset, tier in
+                            Text(tier.label).tag(offset)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                Spacer()
             }
-
-            if secondOpinionConfigured {
-                AskAIPanelView(
-                    title: "SECOND OPINION (OPENAI)",
-                    disclaimer: secondOpinionDisclaimer,
-                    placeholder: "Ask OpenAI for a second opinion",
-                    aiStatus: nil,
-                    answer: secondOpinionAnswer,
-                    isAsking: isAskingSecondOpinion,
-                    error: secondOpinionError,
-                    onAsk: onAskSecondOpinion
-                )
-            }
+            tiers[index].panel
         }
     }
 }
