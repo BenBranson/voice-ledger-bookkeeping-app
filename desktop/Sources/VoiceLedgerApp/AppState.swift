@@ -250,6 +250,24 @@ public final class AppState {
 
     public func leaveFinding() { screen = findingReturnScreen }
 
+    /// Search by Amount's pool: this session's sync plus the 24-month
+    /// history when loaded, de-duplicated by record ID (owner bug report
+    /// 2026-09-29 — a March transaction wasn't findable from July's sync).
+    public var searchableTransactions: [LedgerTransaction] {
+        var seen = Set<String>()
+        return (transactions + (historySnapshot?.transactions ?? [])).filter { seen.insert("\($0.entityKind.rawValue):\($0.id)").inserted }
+    }
+
+    public var searchScopeDescription: String {
+        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        var parts: [String] = []
+        if lastSyncedAt != nil { parts.append("the last sync (\(months[period.month - 1]) \(period.year))") }
+        if let history = historySnapshot {
+            parts.append("the 24-month history (\(months[history.from.month - 1]) \(history.from.year) – \(months[history.through.month - 1]) \(history.through.year), loaded \(history.fetchedAt.formatted(date: .abbreviated, time: .omitted)))")
+        }
+        return parts.isEmpty ? "nothing yet" : parts.joined(separator: " and ")
+    }
+
     public var findingReturnLabel: String {
         switch findingReturnScreen {
         case .clientDashboard: return "Back to Dashboard"

@@ -12,10 +12,25 @@ public struct AmountSearchView: View {
     private let environment: VLEnvironmentTone
     private let transactions: [LedgerTransaction]
     private let accounts: [LedgerAccount]
+    /// What was searched, e.g. "the last sync (Jul 2026) and 24-month history".
+    private let scopeDescription: String
+    private let hasHistory: Bool
+    private let isSynced: Bool
+    private let onSync: (() -> Void)?
+    private let onLoadHistory: (() -> Void)?
+    private let qboURL: ((LedgerTransaction) -> URL?)?
 
     @State private var query = ""
 
-    public init(environment: VLEnvironmentTone, transactions: [LedgerTransaction], accounts: [LedgerAccount]) {
+    public init(environment: VLEnvironmentTone, transactions: [LedgerTransaction], accounts: [LedgerAccount],
+                scopeDescription: String = "the last sync", hasHistory: Bool = false, isSynced: Bool = true,
+                onSync: (() -> Void)? = nil, onLoadHistory: (() -> Void)? = nil, qboURL: ((LedgerTransaction) -> URL?)? = nil) {
+        self.scopeDescription = scopeDescription
+        self.hasHistory = hasHistory
+        self.isSynced = isSynced
+        self.onSync = onSync
+        self.onLoadHistory = onLoadHistory
+        self.qboURL = qboURL
         self.environment = environment
         self.transactions = transactions
         self.accounts = accounts
@@ -47,13 +62,26 @@ public struct AmountSearchView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text("Searches every transaction from the last sync for an exact dollar amount — useful for spotting a duplicate posting, a split payment across accounts, or comparing two transactions you suspect share a typo. Matches a positive and negative amount of the same size together (e.g. a charge and its refund), since either direction can be the one worth a second look.")
+                Text("Searches every loaded transaction for an exact dollar amount — useful for spotting a duplicate posting, a split payment across accounts, or comparing two transactions you suspect share a typo. Matches a positive and negative amount of the same size together (e.g. a charge and its refund), since either direction can be the one worth a second look.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
                 TextField("Amount (e.g. 142.50)", text: $query)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 260)
+
+                HStack(spacing: VLSpacing.sm) {
+                    Text(transactions.isEmpty ? "Nothing loaded to search yet." : "Searching \(transactions.count.formatted()) transactions from \(scopeDescription).")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(transactions.isEmpty ? .orange : VLColor.textMuted)
+                    if !isSynced, let onSync { Button("Sync now", action: onSync).controlSize(.small) }
+                    if !hasHistory, let onLoadHistory { Button("Load 24-month history", action: onLoadHistory).controlSize(.small) }
+                }
+                if !hasHistory {
+                    Text("Only the current month is searched until the 24-month history is loaded — an older transaction (like one from March) won't be found.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                }
 
                 if !query.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount == nil {
                     Text("Not a recognizable dollar amount — try something like 142.50 or 142.")
@@ -70,7 +98,7 @@ public struct AmountSearchView: View {
                                 Spacer()
                             }
                             if matches.isEmpty {
-                                Text("No transactions from the last sync match this amount.")
+                                Text(transactions.isEmpty ? "Nothing to search yet — sync first." : "No transaction for this exact amount in \(scopeDescription). Account balances (like a clearing account's total) aren't transactions, so they won't match unless a single transaction had that amount.")
                                     .font(VLTypography.caption())
                                     .foregroundStyle(VLColor.textMuted)
                             } else {
@@ -90,6 +118,20 @@ public struct AmountSearchView: View {
         .background(VLColor.background)
     }
 
+    static func kindLabel(_ kind: QBOEntityKind) -> String {
+        switch kind {
+        case .purchase: return "Expense"
+        case .billPayment: return "Bill payment"
+        case .journalEntry: return "Journal entry"
+        case .vendorCredit: return "Vendor credit"
+        case .payment: return "Customer payment"
+        case .importedBankStatementLine: return "Imported statement line"
+        default:
+            let spaced = kind.rawValue.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression)
+            return spaced.prefix(1).uppercased() + spaced.dropFirst().lowercased()
+        }
+    }
+
     private func row(_ transaction: LedgerTransaction) -> some View {
         VStack(alignment: .leading, spacing: VLSpacing.xxs) {
             HStack {
@@ -100,11 +142,15 @@ public struct AmountSearchView: View {
                 Text(transaction.totalAmount.accountingDescription)
                     .font(VLTypography.tabularNumeric())
                     .foregroundStyle(VLColor.textPrimary)
+                if let url = qboURL?(transaction) {
+                    Link(destination: url) { Label("Open in QBO", systemImage: "arrow.up.right.square") }
+                        .font(VLTypography.caption())
+                }
             }
             HStack(spacing: VLSpacing.sm) {
-                Text(transaction.txnDate.formatted)
+                Text(ClientText.polish(transaction.txnDate.formatted))
                 Text("·")
-                Text(transaction.entityKind.rawValue)
+                Text(Self.kindLabel(transaction.entityKind))
                 Text("·")
                 Text(accountName(transaction.paymentAccountID))
                 if transaction.isVoided {

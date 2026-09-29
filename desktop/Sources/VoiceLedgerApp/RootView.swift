@@ -2154,8 +2154,14 @@ struct RootView: View {
         case .amountSearch:
             AmountSearchView(
                 environment: state.environment == .production ? .production : .sandbox,
-                transactions: state.transactions,
-                accounts: state.accounts
+                transactions: state.searchableTransactions,
+                accounts: state.accounts.isEmpty ? (state.historySnapshot?.accounts ?? []) : state.accounts,
+                scopeDescription: state.searchScopeDescription,
+                hasHistory: state.historySnapshot != nil,
+                isSynced: state.lastSyncedAt != nil,
+                onSync: { Task { await state.syncAndEvaluate() } },
+                onLoadHistory: { Task { await state.loadHistory() } },
+                qboURL: { txn in QBOWebLink.url(forRecordID: txn.id, transactions: [txn], accounts: [], isSandbox: state.environment != .production) }
             )
 
         case .pricingCalculator:

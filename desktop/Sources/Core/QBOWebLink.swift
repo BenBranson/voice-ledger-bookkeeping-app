@@ -41,6 +41,10 @@ public enum QBOWebLink {
     /// links to QBO's own entry form and the bookkeeper types it in.
     public static let manualEntryRules: Set<String> = ["VL-RECON-MISSING-001"]
 
+    public static let accountEvidenceRules: Set<String> = [
+        "VL-BS-NEGBAL-001", "VL-OBE-BALANCE-001", "VL-BS-SUSPENSE-001", "VL-BS-EQUITY-DR-001", "VL-RECON-DIFF-001"
+    ]
+
     /// QBO's blank "new expense" form.
     public static func newExpense(isSandbox: Bool) -> URL { URL(string: "\(base(isSandbox: isSandbox))/expense")! }
 
@@ -49,6 +53,12 @@ public enum QBOWebLink {
 
     public static func url(for finding: Finding, transactions: [LedgerTransaction], accounts: [LedgerAccount], isSandbox: Bool) -> URL? {
         if manualEntryRules.contains(finding.ruleID.rawValue) { return newExpense(isSandbox: isSandbox) }
+        // These rules' evidence ID is always a QBO Account ID, so the
+        // register link works even before this session's sync has loaded
+        // the chart of accounts (owner screenshot 2026-09-29).
+        if accountEvidenceRules.contains(finding.ruleID.rawValue), let id = finding.evidence.first?.transactionID, id.allSatisfy(\.isNumber) {
+            return URL(string: "\(base(isSandbox: isSandbox))/register?accountId=\(id)")
+        }
         for item in finding.evidence {
             if let url = url(forRecordID: item.transactionID, transactions: transactions, accounts: accounts, isSandbox: isSandbox) {
                 return url
