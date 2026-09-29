@@ -34,7 +34,8 @@ export type LogEvent =
   | "ask_ai_failed"
   | "ask_ai_disabled"
   | "ask_ai_not_configured"
-  | "ai_settings_changed";
+  | "ai_settings_changed"
+  | "connection_disconnected";
 
 /**
  * Every field a log line is EVER allowed to carry. Adding a field here is a

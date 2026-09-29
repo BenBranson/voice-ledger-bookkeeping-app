@@ -14,6 +14,7 @@ import { logEvent } from "../logging/logger.js";
 
 const AUTHORIZATION_BASE_URL = "https://appcenter.intuit.com/connect/oauth2";
 const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 
 // The only scope QBO's accounting API offers. It grants read AND write
 // together — there is no read-only scope. Self-enforcement (the operation
@@ -114,6 +115,22 @@ export async function refreshAccessToken(
       error: error instanceof Error ? error.name : "UnknownError"
     });
     throw error;
+  }
+}
+
+/** Revoking the refresh token ends the app's whole grant for that company. */
+export async function revokeToken(credentials: QBOCredentials, refreshToken: string): Promise<void> {
+  const response = await fetch(REVOKE_URL, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuthHeader(credentials.clientId, credentials.clientSecret),
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({ token: refreshToken })
+  });
+  if (!response.ok) {
+    throw new OAuthError(`Revoke endpoint returned HTTP ${response.status}`, response.status);
   }
 }
 

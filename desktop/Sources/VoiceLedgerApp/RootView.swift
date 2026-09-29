@@ -425,7 +425,9 @@ struct RootView: View {
                             isAvailable: model == .gemma || state.aiStatus?.anthropicConfigured == true
                         )
                     },
-                    selectedVoiceAssistantModelID: selectedVoiceToolLoopModel.rawValue
+                    selectedVoiceAssistantModelID: selectedVoiceToolLoopModel.rawValue,
+                    isDisconnecting: state.isDisconnecting,
+                    disconnectError: state.disconnectError
                 ),
                 onCheckHealth: { Task { await state.checkHealth() } },
                 onToggleWriteAccess: { enabled in Task { await state.setWriteAccess(enabled) } },
@@ -434,7 +436,8 @@ struct RootView: View {
                     guard let model = VoiceToolLoopModel(rawValue: modelID) else { return }
                     VoiceToolLoopPreference.current = model
                     selectedVoiceToolLoopModel = model
-                }
+                },
+                onDisconnect: { Task { await state.disconnectActiveClient() } }
             )
 
         case .batchFixes:

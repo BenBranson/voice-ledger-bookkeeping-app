@@ -77,7 +77,7 @@ function main(): void {
   app.use(healthRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(operationsRoutes(qboClient, tokenStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware));
   app.use(aiRoutes(aiConfig, aiSettingsStore, sessionMiddleware, requireRealmMatch, rateLimitMiddleware, secondaryAIConfig, anthropicConfig));
-  app.use(connectionsRoutes(tokenStore, sessionStore, sessionMiddleware));
+  app.use(connectionsRoutes(tokenStore, sessionStore, sessionMiddleware, qboCredentials));
 
   app.listen(appConfig.port, () => {
     logEvent("server_started");

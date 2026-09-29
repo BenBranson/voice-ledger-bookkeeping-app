@@ -25,10 +25,19 @@ export class QBOApiError extends Error {
   }
 }
 
+const MAX_CONCURRENT_PER_REALM = 10;
+const MAX_429_RETRIES = 4;
+const BASE_BACKOFF_MS = 1000;
+
 export class QBOClient {
+  private readonly activeRequests = new Map<string, number>();
+  private readonly waiting = new Map<string, Array<() => void>>();
+
   constructor(
     private readonly credentials: QBOCredentials,
-    private readonly tokenStore: TokenStore
+    private readonly tokenStore: TokenStore,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
   ) {}
 
   /**
@@ -74,7 +83,7 @@ export class QBOClient {
     }
 
     const startedAt = Date.now();
-    const response = await fetch(url, {
+    const response = await this.send(realmId, url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -82,11 +91,6 @@ export class QBOClient {
       }
     });
     const latencyMs = Date.now() - startedAt;
-
-    if (response.status === 429) {
-      logEvent("rate_limited", { realmId, httpStatus: 429, latencyMs });
-      throw new QBOApiError("QBO rate limit hit", 429, realmId);
-    }
 
     if (!response.ok) {
       logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs });
@@ -118,7 +122,7 @@ export class QBOClient {
     }
 
     const startedAt = Date.now();
-    const response = await fetch(url, {
+    const response = await this.send(realmId, url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -129,11 +133,6 @@ export class QBOClient {
     });
     const latencyMs = Date.now() - startedAt;
 
-    if (response.status === 429) {
-      logEvent("rate_limited", { realmId, httpStatus: 429, latencyMs });
-      throw new QBOApiError("QBO rate limit hit", 429, realmId);
-    }
-
     if (!response.ok) {
       logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs });
       throw new QBOApiError(`QBO returned HTTP ${response.status} for ${path}`, response.status, realmId);
@@ -141,5 +140,53 @@ export class QBOClient {
 
     logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion });
     return response.json();
+  }
+
+  /**
+   * Intuit allows at most 10 concurrent requests per realm and answers
+   * overload with 429. A 429 means the request was NOT processed, so
+   * retrying is safe even for a POST. Backoff honors Retry-After when sent.
+   */
+  private async send(realmId: string, url: URL, init: RequestInit): Promise<Response> {
+    await this.acquireSlot(realmId);
+    try {
+      for (let attempt = 0; ; attempt++) {
+        const response = await this.fetchImpl(url, init);
+        if (response.status !== 429) return response;
+        logEvent("rate_limited", { realmId, httpStatus: 429 });
+        if (attempt >= MAX_429_RETRIES) {
+          throw new QBOApiError("QBO rate limit hit", 429, realmId);
+        }
+        const retryAfterSeconds = Number(response.headers.get("retry-after"));
+        const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+          ? retryAfterSeconds * 1000
+          : BASE_BACKOFF_MS * 2 ** attempt + Math.floor(Math.random() * 250);
+        await this.sleep(delayMs);
+      }
+    } finally {
+      this.releaseSlot(realmId);
+    }
+  }
+
+  private acquireSlot(realmId: string): Promise<void> {
+    const active = this.activeRequests.get(realmId) ?? 0;
+    if (active < MAX_CONCURRENT_PER_REALM) {
+      this.activeRequests.set(realmId, active + 1);
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const queue = this.waiting.get(realmId) ?? [];
+      queue.push(resolve);
+      this.waiting.set(realmId, queue);
+    });
+  }
+
+  private releaseSlot(realmId: string): void {
+    const next = this.waiting.get(realmId)?.shift();
+    if (next) {
+      next(); // hand the slot straight to the next waiter; count unchanged
+      return;
+    }
+    this.activeRequests.set(realmId, (this.activeRequests.get(realmId) ?? 1) - 1);
   }
 }

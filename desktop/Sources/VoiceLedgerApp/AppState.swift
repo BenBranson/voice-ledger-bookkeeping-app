@@ -469,7 +469,7 @@ public final class AppState {
     public private(set) var isSwitchingClient = false
     public private(set) var switchClientError: String?
 
-    private let realmID: RealmID
+    public let realmID: RealmID
     private let period: AccountingPeriod
     /// Exposed read-only so the view layer can filter period-scoped state
     /// (e.g. `checklistCompletions`) without duplicating the period value.
@@ -904,6 +904,32 @@ public final class AppState {
     /// Called by `onSwitchToClient` (app layer) when the switch attempt
     /// itself fails — never called on success, since success means this
     /// `AppState` instance is about to be replaced, not updated.
+    /// Set by the app layer, which owns what to show after the active
+    /// client disappears (see `VoiceLedgerApp.performDisconnect`).
+    public var onDisconnectClient: (() async -> Void)?
+    public private(set) var isDisconnecting = false
+    public private(set) var disconnectError: String?
+
+    public func disconnectActiveClient() async {
+        guard let onDisconnectClient, !isDisconnecting else { return }
+        isDisconnecting = true
+        disconnectError = nil
+        await onDisconnectClient()
+    }
+
+    public func revokeConnection() async throws -> DisconnectResult {
+        try await backend.disconnect(realmID: realmID)
+    }
+
+    public func connectedClients() async throws -> [ConnectedClient] {
+        try await backend.getConnections()
+    }
+
+    public func failDisconnect(_ message: String) {
+        isDisconnecting = false
+        disconnectError = message
+    }
+
     public func failClientSwitch(_ message: String) {
         isSwitchingClient = false
         switchClientError = message

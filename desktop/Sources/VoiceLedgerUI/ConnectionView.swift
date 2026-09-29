@@ -64,6 +64,8 @@ public struct ConnectionView: View {
         public let aiStatusError: String?
         public let voiceAssistantModelOptions: [VoiceModelOption]
         public let selectedVoiceAssistantModelID: String
+        public let isDisconnecting: Bool
+        public let disconnectError: String?
 
         public init(
             environment: VLEnvironmentTone,
@@ -81,7 +83,9 @@ public struct ConnectionView: View {
             isTogglingAIEnabled: Bool = false,
             aiStatusError: String? = nil,
             voiceAssistantModelOptions: [VoiceModelOption] = [],
-            selectedVoiceAssistantModelID: String = ""
+            selectedVoiceAssistantModelID: String = "",
+            isDisconnecting: Bool = false,
+            disconnectError: String? = nil
         ) {
             self.environment = environment
             self.companyName = companyName
@@ -99,6 +103,8 @@ public struct ConnectionView: View {
             self.aiStatusError = aiStatusError
             self.voiceAssistantModelOptions = voiceAssistantModelOptions
             self.selectedVoiceAssistantModelID = selectedVoiceAssistantModelID
+            self.isDisconnecting = isDisconnecting
+            self.disconnectError = disconnectError
         }
     }
 
@@ -107,19 +113,23 @@ public struct ConnectionView: View {
     private let onToggleWriteAccess: (Bool) -> Void
     private let onToggleAIEnabled: (Bool) -> Void
     private let onSelectVoiceAssistantModel: (String) -> Void
+    private let onDisconnect: () -> Void
+    @State private var isConfirmingDisconnect = false
 
     public init(
         state: ViewState,
         onCheckHealth: @escaping () -> Void,
         onToggleWriteAccess: @escaping (Bool) -> Void,
         onToggleAIEnabled: @escaping (Bool) -> Void = { _ in },
-        onSelectVoiceAssistantModel: @escaping (String) -> Void = { _ in }
+        onSelectVoiceAssistantModel: @escaping (String) -> Void = { _ in },
+        onDisconnect: @escaping () -> Void = {}
     ) {
         self.state = state
         self.onCheckHealth = onCheckHealth
         self.onToggleWriteAccess = onToggleWriteAccess
         self.onToggleAIEnabled = onToggleAIEnabled
         self.onSelectVoiceAssistantModel = onSelectVoiceAssistantModel
+        self.onDisconnect = onDisconnect
     }
 
     public var body: some View {
@@ -221,6 +231,8 @@ public struct ConnectionView: View {
                 if !state.voiceAssistantModelOptions.isEmpty {
                     voiceAssistantModelSection
                 }
+
+                disconnectSection
             }
             .padding(VLSpacing.pageGutter)
         }
@@ -236,6 +248,47 @@ public struct ConnectionView: View {
     /// connection, so a real warning here means the connection has
     /// genuinely gone unused (or was revoked) for a long stretch, not that
     /// anything is imminently wrong on a normally-used connection.
+    private var disconnectSection: some View {
+        VLCard(accentRail: .red) {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                HStack {
+                    VStack(alignment: .leading, spacing: VLSpacing.xxs) {
+                        Text("DISCONNECT FROM QUICKBOOKS")
+                            .font(VLTypography.eyebrow())
+                            .tracking(VLTypography.eyebrowTracking)
+                            .foregroundStyle(VLColor.textMuted)
+                        Text(state.companyName ?? "This client")
+                            .font(VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                    }
+                    Spacer()
+                    Button(state.isDisconnecting ? "Disconnecting…" : "Disconnect…", role: .destructive) {
+                        isConfirmingDisconnect = true
+                    }
+                    .disabled(state.isDisconnecting)
+                }
+                Text("Revokes Voice Ledger's access to this QuickBooks company at Intuit, deletes its stored tokens, and deletes this client's local Voice Ledger data (findings, notes, AI history). Nothing in QuickBooks itself is changed. Reports you already exported are kept. To use this client again, reconnect it through Intuit.")
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+                if let error = state.disconnectError {
+                    Text(error)
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .confirmationDialog(
+            "Disconnect \(state.companyName ?? "this client") from QuickBooks?",
+            isPresented: $isConfirmingDisconnect,
+            titleVisibility: .visible
+        ) {
+            Button("Disconnect and Delete Local Data", role: .destructive) { onDisconnect() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This revokes access at Intuit and permanently deletes this client's local Voice Ledger data. It can't be undone.")
+        }
+    }
+
     private var refreshTokenExpirySection: some View {
         VStack(alignment: .leading, spacing: VLSpacing.xxs) {
             Text("REFRESH TOKEN")

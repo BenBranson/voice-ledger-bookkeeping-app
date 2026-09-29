@@ -194,6 +194,9 @@ struct VoiceLedgerApp: App {
         newState.onSwitchToClient = { [weak newState] targetRealmID, targetEnvironment in
             await performSwitch(to: targetRealmID, environment: targetEnvironment, requestingFrom: newState)
         }
+        newState.onDisconnectClient = { [weak newState] in
+            await performDisconnect(requestingFrom: newState)
+        }
         return newState
     }
 
@@ -212,6 +215,43 @@ struct VoiceLedgerApp: App {
             appState = newState
         } catch {
             current.failClientSwitch("\(error)")
+        }
+    }
+
+    /// Disconnecting deletes the active realm's backend sessions, so a
+    /// session for the client to land on next must be minted FIRST.
+    private func performDisconnect(requestingFrom current: AppState?) async {
+        guard let current, let backendBaseURL else { return }
+        let realmID = current.realmID
+        let companyName = current.companyInfo?.companyName ?? realmID.rawValue
+        do {
+            let next = try await current.connectedClients().first { $0.realmID != realmID }
+            var nextToken: String?
+            if let next { nextToken = try await current.requestSwitchSessionToken(forRealmID: next.realmID) }
+            let result = try await current.revokeConnection()
+
+            if let next, let nextToken {
+                appState = try buildAppState(realmID: next.realmID, environment: next.environment, sessionToken: nextToken, backendBaseURL: backendBaseURL)
+            } else {
+                appState = nil
+                configError = "\(companyName) was disconnected and it was your last connected client. Connect a QuickBooks company through Intuit to continue."
+            }
+
+            let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appending(path: "VoiceLedger", directoryHint: .isDirectory)
+            let localDataRemoved = (try? FileManager.default.removeItem(at: supportDir.appending(path: realmID.rawValue, directoryHint: .isDirectory))) != nil
+
+            let alert = NSAlert()
+            alert.messageText = "\(companyName) disconnected"
+            var lines = [result.revokedAtIntuit
+                ? "Intuit confirmed Voice Ledger's access was revoked."
+                : "Voice Ledger deleted its tokens, but Intuit did not confirm the revoke. To be sure, also remove Voice Ledger in QuickBooks under Settings > Apps."]
+            lines.append(localDataRemoved ? "This client's local Voice Ledger data was deleted." : "This client's local data folder could not be deleted; it is at Application Support/VoiceLedger/\(realmID.rawValue).")
+            alert.informativeText = lines.joined(separator: "\n\n")
+            alert.alertStyle = result.revokedAtIntuit && localDataRemoved ? .informational : .warning
+            alert.runModal()
+        } catch {
+            current.failDisconnect("Disconnect failed — nothing was removed. \(error)")
         }
     }
 }

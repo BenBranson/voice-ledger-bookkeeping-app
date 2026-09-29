@@ -35,8 +35,18 @@
 import { Router, type RequestHandler } from "express";
 import type { TokenStore } from "../auth/tokenStore.js";
 import type { SessionStore } from "../auth/session.js";
+import type { QBOCredentials } from "../config.js";
+import { revokeToken } from "../auth/oauth.js";
+import { requireRealmMatch } from "../middleware/realmAuthorization.js";
+import { logEvent } from "../logging/logger.js";
 
-export function connectionsRoutes(tokenStore: TokenStore, sessionStore: SessionStore, requireSession: RequestHandler): Router {
+export function connectionsRoutes(
+  tokenStore: TokenStore,
+  sessionStore: SessionStore,
+  requireSession: RequestHandler,
+  credentials: QBOCredentials,
+  revoke: typeof revokeToken = revokeToken
+): Router {
   const router = Router();
 
   router.get("/connections", requireSession, (_req, res) => {
@@ -52,6 +62,29 @@ export function connectionsRoutes(tokenStore: TokenStore, sessionStore: SessionS
     }
     const sessionToken = sessionStore.create(targetRealmId);
     res.json({ realmId: targetRealmId, environment: connection.environment, sessionToken });
+  });
+
+  // Intuit-required disconnect: revoke the grant at Intuit, then delete
+  // the stored tokens and every session for the realm. Local deletion
+  // happens even if Intuit's revoke call fails, and the response says
+  // which, so the UI never claims a revoke that didn't happen.
+  router.post("/realms/:realmId/disconnect", requireSession, requireRealmMatch, async (req, res) => {
+    const realmId = req.params.realmId!;
+    const refreshToken = tokenStore.getRefreshToken(realmId);
+    if (!refreshToken) {
+      res.status(404).json({ error: "No connection found for this realmId." });
+      return;
+    }
+    let revokedAtIntuit = true;
+    try {
+      await revoke(credentials, refreshToken);
+    } catch (error) {
+      revokedAtIntuit = false;
+      logEvent("connection_disconnected", { realmId, outcome: "fault", error: error instanceof Error ? error.message : "UnknownError" });
+    }
+    tokenStore.deleteConnection(realmId);
+    if (revokedAtIntuit) logEvent("connection_disconnected", { realmId, outcome: "success" });
+    res.json({ realmId, revokedAtIntuit, localTokensDeleted: true });
   });
 
   return router;

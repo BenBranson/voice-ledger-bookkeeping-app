@@ -203,6 +203,15 @@ export class TokenStore {
     return current;
   }
 
+  /** Removes every server-side trace of a realm's authorization. */
+  deleteConnection(realmId: string): void {
+    this.accessTokenCache.delete(realmId);
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM sessions WHERE realm_id = @realmId").run({ realmId });
+      this.db.prepare("DELETE FROM connections WHERE realm_id = @realmId").run({ realmId });
+    })();
+  }
+
   recordHealthCheck(realmId: string, status: string, at: string): void {
     this.db
       .prepare(

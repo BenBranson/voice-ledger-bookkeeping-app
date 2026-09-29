@@ -176,6 +176,30 @@ public actor BackendClient {
         return try JSONDecoder().decode(SwitchSessionResponse.self, from: data).sessionToken
     }
 
+    /// Intuit-required in-app disconnect: the backend revokes the grant at
+    /// Intuit and deletes this realm's stored tokens and sessions. After
+    /// this returns, this client's session token is no longer valid.
+    public func disconnect(realmID: RealmID) async throws -> DisconnectResult {
+        var url = configuration.baseURL
+        url.append(path: "/realms/\(realmID.rawValue)/disconnect")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token = configuration.sessionToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw BackendClientError.invalidResponse
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            throw BackendClientError.httpError(status: http.statusCode, body: body)
+        }
+        return try JSONDecoder().decode(DisconnectResult.self, from: data)
+    }
+
     /// docs/VOICE_LEDGER_SPEC.md's Ask [AI] panel status — `GET /ai/status`.
     /// Not realm-scoped (the kill switch and API-key configuration are
     /// app-wide, per the backend's `ai_settings` table), but still
@@ -376,6 +400,16 @@ struct WriteAccessRequest: Encodable, Sendable {
 
 struct WriteAccessResponse: Decodable, Sendable {
     let writeEnabled: Bool
+}
+
+public struct DisconnectResult: Decodable, Sendable, Equatable {
+    public let revokedAtIntuit: Bool
+    public let localTokensDeleted: Bool
+
+    public init(revokedAtIntuit: Bool, localTokensDeleted: Bool) {
+        self.revokedAtIntuit = revokedAtIntuit
+        self.localTokensDeleted = localTokensDeleted
+    }
 }
 
 struct SwitchSessionResponse: Decodable, Sendable {
