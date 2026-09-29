@@ -34,20 +34,20 @@ ${fontFaces(fontDir)}
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:500 7.5pt Inter;color:#56637A;}}
 *{box-sizing:border-box}
 html{font-family:Inter,"Helvetica Neue",Arial,sans-serif;font-size:9.5pt;color:var(--ink);line-height:1.42}
-h1{font-size:21pt;font-weight:700;margin:0 0 2pt;letter-spacing:-0.2pt}
-h2{font-size:13pt;font-weight:700;margin:20pt 0 8pt;padding-bottom:4pt;border-bottom:1.5pt solid var(--navy);break-after:avoid}
+h1{font-size:20pt;font-weight:700;margin:0 0 1pt;letter-spacing:-0.2pt}
+h2{font-size:13pt;font-weight:700;margin:14pt 0 6pt;padding-bottom:4pt;border-bottom:1.5pt solid var(--navy);break-after:avoid}
 h2 .num{color:var(--gold);margin-right:6pt}
 h3{font-size:10pt;font-weight:600;margin:12pt 0 5pt;color:var(--navy);break-after:avoid}
 p{margin:0 0 6pt}
 .muted{color:var(--muted)}
 .small{font-size:8pt}
-.masthead{border-top:4pt solid var(--navy);padding-top:10pt;margin-bottom:6pt}
+.masthead{border-top:4pt solid var(--navy);padding-top:8pt;margin-bottom:2pt}
 .firm{font-size:8pt;font-weight:600;letter-spacing:1.4pt;text-transform:uppercase;color:var(--teal)}
 .meta{display:flex;flex-wrap:wrap;gap:4pt 14pt;font-size:8.2pt;color:var(--muted);margin-top:4pt}
 .meta b{color:var(--ink);font-weight:600}
 .flag{display:inline-block;margin-top:6pt;padding:3pt 7pt;border:1pt solid var(--gold);color:#6E5812;background:#FBF6E6;border-radius:3pt;font-size:8pt;font-weight:600}
-.kpis{display:flex;gap:8pt;margin-top:10pt;break-inside:avoid}
-.kpi{flex:1;border:1pt solid var(--line);border-top:3pt solid var(--teal);border-radius:4pt;padding:8pt 9pt;break-inside:avoid;background:#fff}
+.kpis{display:flex;gap:8pt;margin-top:6pt;break-inside:avoid}
+.kpi{flex:1;border:1pt solid var(--line);border-top:3pt solid var(--teal);border-radius:4pt;padding:6pt 8pt;break-inside:avoid;background:#fff}
 .kpi .label{font-size:7.5pt;font-weight:600;letter-spacing:0.8pt;text-transform:uppercase;color:var(--muted)}
 .kpi .value{font-size:15pt;font-weight:700;margin:3pt 0 2pt}
 .kpi .value.neg{color:var(--neg)}
@@ -87,16 +87,16 @@ h2{bookmark-level:1}
 .story{border:1pt solid var(--line);border-radius:4pt;padding:7pt 9pt;margin:4pt 0 10pt;break-inside:avoid;background:#fff}
 .story div{margin:1.5pt 0}
 .story b{display:inline-block;min-width:92pt;color:var(--teal);font-size:7.6pt;letter-spacing:0.6pt;text-transform:uppercase}
-.takeaways{margin:10pt 0 4pt;padding:0;list-style:none}
-.takeaways li{padding:5pt 0 5pt 14pt;border-bottom:0.5pt solid var(--line);position:relative;font-size:10pt}
-.takeaways li:before{content:"";position:absolute;left:0;top:10pt;width:6pt;height:6pt;border-radius:3pt;background:var(--gold)}
+.takeaways{margin:6pt 0 2pt;padding:0;list-style:none}
+.takeaways li{padding:3.5pt 0 3.5pt 14pt;border-bottom:0.5pt solid var(--line);position:relative;font-size:9.6pt}
+.takeaways li:before{content:"";position:absolute;left:0;top:8pt;width:6pt;height:6pt;border-radius:3pt;background:var(--gold)}
 .health{display:grid;grid-template-columns:1fr 1fr;gap:7pt;margin-top:6pt}
-.hc{border:1pt solid var(--line);border-left:4pt solid var(--teal);border-radius:4pt;padding:6pt 8pt;break-inside:avoid}
+.hc{border:1pt solid var(--line);border-left:4pt solid var(--teal);border-radius:4pt;padding:4pt 7pt;break-inside:avoid}
 .hc.attention{border-left-color:var(--gold)}
 .hc.insufficient{border-left-color:#9AA5B4}
 .hc .area{font-weight:700;font-size:10pt}
 .hc .q{font-size:7.8pt;color:var(--muted)}
-.hc .st{display:inline-block;margin:4pt 0 2pt;font-size:7.6pt;font-weight:700;letter-spacing:0.5pt;text-transform:uppercase;padding:1.5pt 5pt;border-radius:2pt;background:#E3F2F2;color:#135E5E}
+.hc .st{display:inline-block;margin:2pt 0 1pt;font-size:7.6pt;font-weight:700;letter-spacing:0.5pt;text-transform:uppercase;padding:1.5pt 5pt;border-radius:2pt;background:#E3F2F2;color:#135E5E}
 .hc.attention .st{background:#FBF1D9;color:#6E5812}
 .hc.insufficient .st{background:#ECEFF3;color:#56637A}
 .hc .d{font-size:8.4pt}
@@ -175,6 +175,7 @@ export function renderHTML(report, charts, fontDir) {
 ${flag ? `<div class="flag">${esc(flag)}</div>` : ""}</div>
 ${h2("Your month at a glance")}
 ${kpiCards(report.kpis)}
+${charts.sparklines ? `<figure class="keep" style="margin-top:8pt">${svgImg(charts.sparklines, "Twelve-month trends for revenue, expenses, net income and cash")}<div class="caption">12-month trend, ${esc(report.sparklines.rangeLabel)}. The dot marks this month; its color shows whether the change from last month helped (teal) or hurt (red).</div></figure>` : ""}
 ${report.takeaways?.length ? `<ul class="takeaways">${report.takeaways.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
 ${report.healthChecks?.length ? `<h3>Business health check</h3><div class="health">${report.healthChecks.map((h) => `<div class="hc ${esc(h.statusKind)}"><div class="area">${esc(h.area)}</div><div class="q">${esc(h.question)}</div><div class="st">${esc(h.status)}</div><div class="d">${esc(h.detail)}</div></div>`).join("")}</div>` : ""}`);
 
@@ -189,7 +190,7 @@ ${counts ? `<h3>Bookkeeping work this month</h3><div class="counts">${counts}</d
 
   // 3 — Sales and profitability
   const perf = [];
-  if (charts.trendRevenueExpenses) perf.push(`<figure><h3>Revenue and expenses by month</h3>${svgImg(charts.trendRevenueExpenses, "Revenue versus expenses by month")}<div class="caption">${esc(report.trend?.note ?? "")}</div></figure>`);
+  if (charts.trendMixed) perf.push(`<figure><h3>Revenue, expenses and profit margin by month</h3>${svgImg(charts.trendMixed, "Revenue and expenses by month with profit margin")}<div class="caption">Bars use the left axis; the margin line (net income as a share of revenue) uses the right. Months without revenue have no margin. ${esc(report.trend?.note ?? "")}</div></figure>`);
   if (charts.trendNetIncome) perf.push(`<figure><h3>Net income by month</h3>${svgImg(charts.trendNetIncome, "Net income by month")}<div class="caption">Bars below the line are losses.</div></figure>`);
   if (report.monthOverMonth.length) perf.push(`<h3>Compared with last month</h3>${comparisonTable(report.monthOverMonth, "Last month")}`);
   if (report.yearOverYear) perf.push(`<h3>Compared with the same month last year</h3>${comparisonTable(report.yearOverYear, "Last year")}`);
@@ -199,6 +200,7 @@ ${counts ? `<h3>Bookkeeping work this month</h3><div class="counts">${counts}</d
   // 4 — Where the money went
   const exp = report.expenses;
   if (exp) sections.push(`<div class="page">${h2("Where the money went")}${story(N.expenses)}
+    ${charts.moneyFlow ? `<figure class="keep"><h3>Every dollar in, every dollar out</h3>${svgImg(charts.moneyFlow, "Money flow from income to costs and profit")}<div class="caption">${esc(report.moneyFlow.note)}</div></figure>` : ""}
     <figure>${svgImg(charts.expenses, "Largest expense categories")}<div class="caption">Largest operating-expense categories this month${exp.items.some((i) => i.category === "other") ? "; smaller categories grouped as Other" : ""}.</div></figure>
     ${report.expenseChanges?.length ? `<h3>Biggest changes from last month</h3>${table(["Category", "This month", "Last month", "Change", "% change"], report.expenseChanges.map((r) => ({ cells: [r.label, r.currentText, r.priorText, r.changeText, r.percentText] })))}` : ""}
     <p class="small muted">Operating expenses total ${esc(exp.totalText)}${exp.reconciles ? ", which ties to QuickBooks" : ` (QuickBooks reports ${esc(exp.reportedTotalText ?? "n/a")})`}. Every category appears in the Profit &amp; Loss at the back of this report.</p></div>`);

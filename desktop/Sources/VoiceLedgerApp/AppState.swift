@@ -166,6 +166,14 @@ public final class AppState {
         return trend.points.count >= 2 ? trend : nil
     }
 
+    /// 12-month KPI sparklines; only from real loaded history.
+    public var historySparklines: SparklineData? {
+        guard let history = historySnapshot else { return nil }
+        let today = AccountingDate(date: Date())
+        let lastComplete = AccountingPeriod(year: today.year, month: today.month).previousMonth
+        return ChartData.sparklines(months: history.monthlyProfitAndLoss, monthEndCash: history.monthEndCash ?? [], through: lastComplete)
+    }
+
     public func loadAccountLedgerRows(accountID: String) async {
         guard !loadingAccountLedgerIDs.contains(accountID) else { return }
         loadingAccountLedgerIDs.insert(accountID)

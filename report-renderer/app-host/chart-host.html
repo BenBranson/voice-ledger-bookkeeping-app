@@ -20,7 +20,8 @@
   var el = document.getElementById("chart");
   var chart = echarts.init(el, null, { renderer: "svg" });
   var state = { kind: null, data: null, ids: [] };
-  var allowed = { breakdownDoughnut: 1, breakdownDiverging: 1, waterfall: 1, rankedBars: 1, trendRevenueExpenses: 1, trendNetIncome: 1, agingBars: 1 };
+  var allowed = { breakdownDoughnut: 1, breakdownDiverging: 1, waterfall: 1, rankedBars: 1, trendRevenueExpenses: 1, trendNetIncome: 1, agingBars: 1,
+                  moneyFlow: 1, sparklines: 1, trendMixed: 1, postingCalendar: 1, expenseTreemap: 1 };
 
   function idsFor(kind, data) {
     switch (kind) {
@@ -29,7 +30,8 @@
       case "waterfall": return data.steps.map(function (s) { return s.id; });
       case "rankedBars": return data.items.slice().reverse().map(function (i) { return i.id; });
       case "trendRevenueExpenses":
-      case "trendNetIncome": return data.points.map(function (p) { return p.period; });
+      case "trendNetIncome":
+      case "trendMixed": return data.points.map(function (p) { return p.period; });
       default: return [];
     }
   }
@@ -41,7 +43,10 @@
   }
 
   chart.on("click", function (params) {
-    var id = state.ids[params.dataIndex];
+    if (params.dataType === "edge") return;
+    // Items that carry their own stable id (sankey nodes, treemap tiles,
+    // calendar days) use it; indexed series map dataIndex to an id.
+    var id = params.data && typeof params.data.id === "string" ? params.data.id : state.ids[params.dataIndex];
     if (typeof id === "string") post({ type: "select", id: id });
   });
   chart.getZr().on("click", function (event) {

@@ -136,6 +136,8 @@ public struct MonthlyClientReport: Codable, Sendable {
     public var workSummary: [Row] = []
     public var comparativeProfitAndLoss: [ComparativeRow] = []
     public var cashFlowStatement: [Row] = []
+    public var moneyFlow: MoneyFlowData?
+    public var sparklines: SparklineData?
 }
 
 public struct MonthlyReportInputs: Sendable {
@@ -162,6 +164,7 @@ public struct MonthlyReportInputs: Sendable {
     public var activityLog: [ActivityLogEntry] = []
     public var clientQuestions: [ClientQuestionDrafter.Thread] = []
     public var preparedBy = "Benjamin Branson"
+    public var monthEndCash: [MonthlyAmount] = []
 
     public init(clientName: String, period: AccountingPeriod, today: AccountingDate, generatedAt: Date, accountingBasis: String?, environment: String, monthlyProfitAndLoss: [MonthlyReport], balanceSheet: [ReportLine], cashFlow: [ReportLine], agedReceivables: [AgingLine], accountTypes: [String: LedgerAccountType], findings: [Finding], coverage: Coverage) {
         self.clientName = clientName

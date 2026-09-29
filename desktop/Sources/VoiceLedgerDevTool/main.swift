@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -318,6 +318,37 @@ case "monthly-report":
         print("Snapshot \(sealed.snapshotID.prefix(12)) written to \(arguments[4])")
     } catch {
         FileHandle.standardError.write("monthly-report failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+
+case "chart-samples":
+    do {
+        let client = QBOSyncClient(backend: BackendClient(configuration: try BackendConfiguration.fromEnvironment()))
+        let history = try await client.syncHistory(realmID: realmID, months: 24, through: AccountingDate(date: Date()))
+        let july = history.monthlyProfitAndLoss.first { $0.period == AccountingPeriod(year: 2026, month: 7) }?.lines ?? []
+        let feeds = ClientDiagnostics.bankFeedActivity(history: history, asOf: history.through)
+        let busiest = feeds.max { a, b in
+            history.transactions.filter { $0.paymentAccountID == a.accountID }.count < history.transactions.filter { $0.paymentAccountID == b.accountID }.count
+        }
+        struct Samples: Encodable {
+            let moneyFlow: MoneyFlowData?
+            let sparklines: SparklineData?
+            let trend: TrendData
+            let calendar: PostingCalendar?
+            let treemap: ExpenseTree?
+        }
+        let samples = Samples(
+            moneyFlow: ChartData.moneyFlow(from: july, hubLabel: "July 2026", topExpenses: 6),
+            sparklines: ChartData.sparklines(months: history.monthlyProfitAndLoss, monthEndCash: history.monthEndCash ?? []),
+            trend: ChartData.trend(from: history.monthlyProfitAndLoss),
+            calendar: busiest.flatMap { ChartData.postingCalendar(history: history, accountID: $0.accountID) },
+            treemap: ChartData.expenseTree(from: july)
+        )
+        let encoder = JSONEncoder()
+        try encoder.encode(samples).write(to: URL(fileURLWithPath: arguments.count >= 3 ? arguments[2] : "chart-samples.json"))
+        print("flow:\(samples.moneyFlow != nil) spark:\(samples.sparklines?.rows.count ?? 0) trend:\(samples.trend.points.count) cal:\(samples.calendar?.days.count ?? -1) tree:\(samples.treemap?.nodes.count ?? -1)")
+    } catch {
+        FileHandle.standardError.write("chart-samples failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 

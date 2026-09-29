@@ -396,7 +396,8 @@ struct RootView: View {
                 ].compactMap { $0 },
                 accountTypes: state.accountTypesByID,
                 chartActions: chartAccountActions,
-                trend: state.historyTrend
+                trend: state.historyTrend,
+                sparklines: state.historySparklines
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -2232,7 +2233,8 @@ struct RootView: View {
                     feeds: state.bankFeedActivity,
                     flux: state.fluxAlerts,
                     kpi: state.kpiSummary,
-                    unreconciledMonths: state.unreconciledMonths
+                    unreconciledMonths: state.unreconciledMonths,
+                    history: state.historySnapshot
                 ),
                 onLoadHistory: { Task { await state.loadHistory() } },
                 onSetUnreconciledMonths: { months in Task { await state.setUnreconciledMonths(months) } }

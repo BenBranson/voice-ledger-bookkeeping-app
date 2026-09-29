@@ -264,6 +264,8 @@ public enum MonthlyReportSections {
             )
         }
         report.narratives = n
+        report.moneyFlow = ChartData.moneyFlow(from: current, hubLabel: "\(month(period)) \(period.year)", topExpenses: 6)
+        report.sparklines = ChartData.sparklines(months: input.monthlyProfitAndLoss, monthEndCash: input.monthEndCash)
         if input.agedPayables.isEmpty && !input.payablesLoaded { report.notes.append("The payables aging report could not be loaded, so bills coming due are not shown.") }
         return report
     }

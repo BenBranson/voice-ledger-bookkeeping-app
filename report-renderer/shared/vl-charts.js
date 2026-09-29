@@ -397,7 +397,173 @@
     return parts.length === 2 ? parts[0] + " '" + parts[1].slice(2) : label;
   }
 
-  const builders = { breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars };
+  // Where the money came from and went. Node colors: inflows teal/blue,
+  // costs by stable category color, profit green, a loss's shortfall red.
+  function moneyFlow(data, theme, opts) {
+    opts = opts || {};
+    const byId = {};
+    data.nodes.forEach(function (n) { byId[n.id] = n; });
+    function nodeColor(n) {
+      if (n.kind === "hub") return theme.total;
+      if (n.kind === "profit") return theme.positive;
+      if (n.kind === "loss") return theme.negative;
+      if (n.kind === "source") return theme.palette[1];
+      return colorFor({ id: n.id, category: n.id === "other" ? "other" : "expense" }, theme);
+    }
+    return Object.assign(base(theme, opts.reducedMotion), {
+      tooltip: tooltip(theme, function (p) {
+        if (p.dataType === "edge") {
+          return esc(byId[p.data.source].label) + " → " + esc(byId[p.data.target].label) + "<br/><b>" + esc(p.data.valueText) + "</b>";
+        }
+        const n = byId[p.data.id];
+        return "<b>" + esc(n.label) + "</b><br/>" + esc(n.valueText);
+      }),
+      series: [{
+        type: "sankey",
+        left: 200, right: 200, top: 8, bottom: 8,
+        nodeWidth: 14,
+        nodeGap: 12,
+        layoutIterations: 0,
+        draggable: false,
+        emphasis: { focus: theme.interactive ? "adjacency" : "none" },
+        label: {
+          color: theme.text, fontFamily: theme.font, fontSize: theme.interactive ? 11 : 10,
+          formatter: function (p) { const n = byId[p.data.id]; return n ? n.label + "  " + n.valueText : ""; }
+        },
+        lineStyle: { opacity: theme.interactive ? 0.35 : 0.4, curveness: 0.5 },
+        data: data.nodes.map(function (n) {
+          return { id: n.id, name: n.id, itemStyle: { color: nodeColor(n), opacity: opts.selectedId && opts.selectedId !== n.id && n.kind !== "hub" ? 0.4 : 1 },
+                   label: n.kind === "hub" ? { show: false } : (n.kind === "source" || n.kind === "loss" ? { position: "left" } : undefined) };
+        }),
+        links: data.links.map(function (l) {
+          // Each band takes the color of its non-hub end.
+          return { source: l.source, target: l.target, value: l.value, valueText: l.valueText,
+                   lineStyle: { color: l.target === "hub" ? "source" : "target" } };
+        })
+      }]
+    });
+  }
+
+  // One chart, one grid per KPI row: label | sparkline | latest value.
+  function sparklines(data, theme, opts) {
+    opts = opts || {};
+    const rows = data.rows;
+    const rowH = theme.interactive ? 46 : 34;
+    const option = Object.assign(base(theme, opts.reducedMotion), {
+      grid: [], xAxis: [], yAxis: [], series: [], graphic: [],
+      tooltip: tooltip(theme, function (p) {
+        const r = rows[p.seriesIndex];
+        return "<b>" + esc(r.label) + "</b> · " + esc(r.periods[p.dataIndex]) + "<br/>" + money(r.values[p.dataIndex]);
+      })
+    });
+    rows.forEach(function (r, i) {
+      const top = i * rowH + 6;
+      option.grid.push({ left: 130, right: 190, top: top, height: rowH - 16 });
+      option.xAxis.push({ gridIndex: i, type: "category", show: false, boundaryGap: false, data: r.periods });
+      option.yAxis.push({ gridIndex: i, type: "value", show: false, scale: true });
+      const last = r.values[r.values.length - 1];
+      const prev = r.values.length > 1 ? r.values[r.values.length - 2] : null;
+      const good = last == null || prev == null ? null : (r.higherIsBetter ? last >= prev : last <= prev);
+      const color = good == null ? theme.muted : (good ? theme.positive : theme.negative);
+      option.series.push({
+        type: "line", xAxisIndex: i, yAxisIndex: i, data: r.values, connectNulls: false, smooth: 0.25,
+        symbol: "circle", symbolSize: function (v, p) { return p.dataIndex === r.values.length - 1 ? 6 : 0; }, showSymbol: true,
+        lineStyle: { width: 2, color: theme.palette[1] }, itemStyle: { color: color },
+        areaStyle: { color: theme.palette[1], opacity: 0.12 }
+      });
+      option.graphic.push({ type: "text", left: 4, top: top + (rowH - 16) / 2 - 8, style: { text: r.label, fill: theme.text, fontFamily: theme.font, fontSize: 12, fontWeight: 600 } });
+      option.graphic.push({ type: "text", right: 8, top: top + 2, style: { text: r.latestText, fill: theme.text, fontFamily: theme.font, fontSize: 13, fontWeight: 700, textAlign: "right" } });
+      option.graphic.push({ type: "text", right: 8, top: top + (theme.interactive ? 20 : 17), style: { text: r.changeText, fill: color, fontFamily: theme.font, fontSize: 10, textAlign: "right" } });
+    });
+    return option;
+  }
+
+  // Revenue and expense bars with a profit-margin line (right axis). The
+  // zoom slider is interactive-only; print shows the full range.
+  function trendMixed(data, theme, opts) {
+    opts = opts || {};
+    const pts = data.points;
+    const option = Object.assign(base(theme, opts.reducedMotion), {
+      grid: { left: 8, right: 8, top: 34, bottom: theme.interactive ? 44 : 8, containLabel: true },
+      legend: { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8, data: ["Revenue", "Expenses", "Profit margin"] },
+      tooltip: tooltip(theme, function (params) {
+        const p = pts[params[0].dataIndex];
+        return "<b>" + esc(p.label) + "</b><br/>Revenue: " + money(p.revenue) + "<br/>Expenses: " + money(p.expenses) +
+          "<br/>Net income: " + money(p.netIncome) + "<br/>Margin: " + (p.marginPercent == null ? "n/m (no revenue)" : p.marginPercent.toFixed(1) + "%");
+      }, "axis"),
+      xAxis: categoryAxis(theme, pts.map(function (p) { return shortMonth(p.label); }), { axisLabel: { color: theme.muted, fontFamily: theme.font, interval: "auto" } }),
+      yAxis: [valueAxis(theme), valueAxis(theme, { position: "right", splitLine: { show: false }, axisLabel: { formatter: function (v) { return v + "%"; } } })],
+      series: [
+        { name: "Revenue", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.palette[1], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.revenue; }) },
+        { name: "Expenses", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.name === "print" ? theme.palette[2] : theme.palette[3], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.expenses; }) },
+        { name: "Profit margin", type: "line", yAxisIndex: 1, connectNulls: false, symbolSize: 5, lineStyle: { width: 2, color: theme.name === "print" ? theme.palette[0] : theme.palette[5] }, itemStyle: { color: theme.name === "print" ? theme.palette[0] : theme.palette[5] }, data: pts.map(function (p) { return p.marginPercent; }) }
+      ]
+    });
+    if (theme.interactive && pts.length > 6) {
+      option.dataZoom = [
+        { type: "inside", xAxisIndex: 0, startValue: Math.max(0, pts.length - 12), endValue: pts.length - 1, zoomOnMouseWheel: "shift", moveOnMouseWheel: false },
+        { type: "slider", xAxisIndex: 0, height: 18, bottom: 8, startValue: Math.max(0, pts.length - 12), endValue: pts.length - 1,
+          borderColor: theme.grid, fillerColor: "rgba(41,211,242,0.15)", textStyle: { color: theme.muted }, dataBackground: { lineStyle: { color: theme.axis }, areaStyle: { color: theme.grid } } }
+      ];
+    }
+    return option;
+  }
+
+  // Posting activity by day for one account. Empty cells inside the range
+  // are real zero-activity days.
+  function postingCalendar(data, theme, opts) {
+    opts = opts || {};
+    const byDate = {};
+    data.days.forEach(function (d) { byDate[d.date] = d; });
+    const start = data.end.slice(0, 4) - 1 + data.end.slice(4, 8) + "01";
+    const from = data.start > start ? data.start : start;
+    return Object.assign(base(theme, opts.reducedMotion), {
+      tooltip: tooltip(theme, function (p) {
+        const d = byDate[p.value[0]];
+        return "<b>" + esc(p.value[0]) + "</b><br/>" + (d ? d.count + " posting" + (d.count === 1 ? "" : "s") + " · " + esc(d.amountText) : "No postings");
+      }),
+      visualMap: { show: false, min: 0, max: data.maxCount, inRange: { color: theme.interactive ? ["#123047", "#29D3F2"] : ["#D8EEEE", "#1F8A8A"] } },
+      calendar: {
+        range: [from, data.end], top: 22, left: 34, right: 8, cellSize: ["auto", 13],
+        itemStyle: { color: theme.interactive ? "#0B192A" : "#F4F7FA", borderColor: theme.interactive ? "#07111F" : "#FFFFFF", borderWidth: 2 },
+        splitLine: { show: false },
+        yearLabel: { show: false },
+        monthLabel: { color: theme.muted, fontFamily: theme.font, fontSize: 10 },
+        dayLabel: { color: theme.muted, fontFamily: theme.font, fontSize: 9, firstDay: 0, nameMap: ["S", "M", "T", "W", "T", "F", "S"] }
+      },
+      series: [{
+        type: "heatmap", coordinateSystem: "calendar",
+        data: data.days.filter(function (d) { return d.date >= from; }).map(function (d) { return { id: d.date, value: [d.date, d.count] }; })
+      }]
+    });
+  }
+
+  function expenseTreemap(data, theme, opts) {
+    opts = opts || {};
+    function map(n) {
+      return { id: n.id, name: n.label, value: n.value, valueText: n.valueText,
+               itemStyle: { color: colorFor({ id: n.id, category: "expense" }, theme) },
+               children: n.children && n.children.length ? n.children.map(map) : undefined };
+    }
+    return Object.assign(base(theme, opts.reducedMotion), {
+      tooltip: tooltip(theme, function (p) {
+        const path = (p.treePathInfo || []).slice(1).map(function (x) { return esc(x.name); }).join(" › ");
+        return "<b>" + path + "</b><br/>" + esc(p.data.valueText || "");
+      }),
+      series: [{
+        type: "treemap", roam: false, nodeClick: false, breadcrumb: { show: false },
+        left: 4, right: 4, top: 4, bottom: 4, leafDepth: 2,
+        label: { show: true, color: theme.name === "print" ? "#FFFFFF" : "#07111F", fontFamily: theme.font, fontSize: 11, fontWeight: 600,
+                 formatter: function (p) { return p.name + "\n" + (p.data.valueText || ""); } },
+        upperLabel: { show: true, height: 18, color: theme.text, fontFamily: theme.font, fontSize: 10, fontWeight: 600 },
+        itemStyle: { borderColor: theme.interactive ? "#07111F" : "#FFFFFF", borderWidth: 1, gapWidth: 1 },
+        levels: [{ itemStyle: { borderWidth: 0, gapWidth: 3 } }, { itemStyle: { gapWidth: 1 }, upperLabel: { show: true } }, { colorSaturation: [0.35, 0.6] }],
+        data: data.nodes.map(map)
+      }]
+    });
+  }
+
+  const builders = { breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars, moneyFlow, sparklines, trendMixed, postingCalendar, expenseTreemap };
 
   return { themes, builders, colorFor, esc, money, NEGATIVE_CATEGORIES };
 });

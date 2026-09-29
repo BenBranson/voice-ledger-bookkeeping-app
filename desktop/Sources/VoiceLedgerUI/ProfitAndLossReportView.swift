@@ -133,7 +133,9 @@ public struct ProfitAndLossReportView: View {
                 } else {
                     KPICardRow(cards: kpiCards)
                     WaterfallCard(data: ChartData.waterfall(from: lines))
+                    MoneyFlowCard(data: ChartData.moneyFlow(from: lines, hubLabel: "This period", topExpenses: 8), actions: chartActions)
                     ExpenseCategoriesCard(data: ChartData.expenseCategories(from: lines, top: 8), actions: chartActions)
+                    ExpenseTreemapCard(data: ChartData.expenseTree(from: lines), actions: chartActions)
                     if let trend { TrendCard(data: trend) }
                     ReportLinesTable(lines: lines)
                 }

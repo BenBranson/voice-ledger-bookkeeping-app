@@ -247,6 +247,8 @@ public struct TrendPoint: Codable, Equatable, Sendable {
     public let revenue: Double?
     public let expenses: Double?
     public let netIncome: Double?
+    /// Net income as a percent of revenue; `nil` (never zero) without revenue.
+    public var marginPercent: Double?
 }
 
 public struct TrendData: Codable, Equatable, Sendable {
@@ -269,7 +271,8 @@ public extension ChartData {
             return TrendPoint(
                 period: "\(month.period.year)-\(String(format: "%02d", month.period.month))",
                 label: "\(names[month.period.month - 1]) \(month.period.year)",
-                revenue: revenue.majorUnitsDouble, expenses: costs.majorUnitsDouble, netIncome: net.majorUnitsDouble
+                revenue: revenue.majorUnitsDouble, expenses: costs.majorUnitsDouble, netIncome: net.majorUnitsDouble,
+                marginPercent: revenue.minorUnits > 0 ? (net.majorUnitsDouble / revenue.majorUnitsDouble * 100 * 10).rounded() / 10 : nil
             )
         }
         let dropped = firstActive

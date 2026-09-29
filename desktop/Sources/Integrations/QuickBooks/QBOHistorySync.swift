@@ -63,14 +63,17 @@ extension QBOSyncClient {
         let accounts = (try decoder.decode(QBOAccountQueryResponse.self, from: accountsData).queryResponse.account ?? []).compactMap { Self.normalize($0) }
 
         var monthly: [MonthlyReport] = []
+        var monthEndCash: [MonthlyAmount] = []
         for month in monthsInRange {
             let lines = try await withRateLimitRetry { try await fetchProfitAndLoss(realmID: realmID, period: month) }
             monthly.append(MonthlyReport(period: month, lines: lines))
+            let sheet = try? await withRateLimitRetry { try await fetchBalanceSheet(realmID: realmID, period: month) }
+            monthEndCash.append(MonthlyAmount(period: month, amount: sheet.flatMap { $0.first { $0.isSummary && $0.label == "Total Bank Accounts" }?.amount }))
         }
         let balanceSheet = try await withRateLimitRetry { try await fetchBalanceSheet(realmID: realmID, period: currentMonth) }
         let cashFlow = try await withRateLimitRetry { try await fetchCashFlow(realmID: realmID, period: currentMonth.previousMonth) }
 
-        return HistorySnapshot(
+        var snapshot = HistorySnapshot(
             realmID: realmID,
             fetchedAt: Date(),
             from: from,
@@ -84,6 +87,8 @@ extension QBOSyncClient {
             latestCashFlow: cashFlow,
             coverage: .complete
         )
+        snapshot.monthEndCash = monthEndCash
+        return snapshot
     }
 
     private func pagedHistory<T>(
@@ -162,11 +167,14 @@ extension QBOSyncClient {
     /// account types. No writes.
     public func loadMonthlyReportInputs(realmID: RealmID, period: AccountingPeriod, clientName: String, environment: String, findings: [Finding], coverage: Coverage, today: AccountingDate) async throws -> MonthlyReportInputs {
         var monthly: [MonthlyReport] = []
+        var monthEndCash: [MonthlyAmount] = []
         var basis: String?
         for month in period.trailingMonths(13) {
             let result = try await withReportRetry { try await fetchProfitAndLossWithBasis(realmID: realmID, period: month) }
             if month == period { basis = result.basis }
             monthly.append(MonthlyReport(period: month, lines: result.lines))
+            let sheet = try? await withReportRetry { try await fetchBalanceSheet(realmID: realmID, period: month) }
+            monthEndCash.append(MonthlyAmount(period: month, amount: sheet.flatMap { $0.first { $0.isSummary && $0.label == "Total Bank Accounts" }?.amount }))
         }
         let balanceSheet = try await withReportRetry { try await fetchBalanceSheet(realmID: realmID, period: period) }
         let cashFlow = (try? await withReportRetry { try await fetchCashFlow(realmID: realmID, period: period) }) ?? []
@@ -181,6 +189,7 @@ extension QBOSyncClient {
             findings: findings, coverage: coverage
         )
         inputs.agedPayables = payables ?? []
+        inputs.monthEndCash = monthEndCash
         inputs.receivablesLoaded = receivables != nil
         inputs.payablesLoaded = payables != nil
         return inputs

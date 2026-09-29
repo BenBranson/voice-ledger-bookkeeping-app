@@ -70,6 +70,8 @@ it against the IDs it sent; everything else (legend, detail panel, postings,
 Open in QBO) is native SwiftUI. Colors come from an FNV-1a hash of the account
 ID, mirrored in Swift (`ChartPalette`) so legends always match. Builders only map already-computed values to chart options.
 
+Builders: `breakdownDoughnut`, `breakdownDiverging`, `waterfall`, `rankedBars`, `trendRevenueExpenses`, `trendNetIncome`, `agingBars`, `trendMixed` (bars + margin line, zoom in-app only), `moneyFlow` (Sankey), `sparklines`, `postingCalendar` (heatmap), `expenseTreemap`. Each new builder must also be added to the allowed-kinds list in `app-host/chart-host.html`.
+
 ## Sample data
 
 `samples/sample-snapshot.json` is FICTIONAL (built by

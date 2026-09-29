@@ -56,9 +56,11 @@ function svg(builder, data, width, height) {
 let charts;
 try {
   const breakdownHeight = (b) => b ? Math.max(80, 19 * (b.positiveItems.length + b.negativeItems.length) + 26) : 0;
-  const expensesHeight = report.expenses ? Math.max(120, 30 * report.expenses.items.length + 16) : 0;
+  const expensesHeight = report.expenses ? Math.max(110, 24 * report.expenses.items.length + 12) : 0;
   charts = {
-    trendRevenueExpenses: report.trend ? svg("trendRevenueExpenses", report.trend, 720, 200) : null,
+    trendMixed: report.trend ? svg("trendMixed", report.trend, 720, 210) : null,
+    sparklines: report.sparklines ? svg("sparklines", report.sparklines, 720, 34 * report.sparklines.rows.length + 8) : null,
+    moneyFlow: report.moneyFlow ? svg("moneyFlow", report.moneyFlow, 720, 290) : null,
     trendNetIncome: report.trend ? svg("trendNetIncome", report.trend, 720, 140) : null,
     waterfall: svg("waterfall", report.waterfall, 720, 250),
     expenses: svg("rankedBars", report.expenses, 720, expensesHeight),

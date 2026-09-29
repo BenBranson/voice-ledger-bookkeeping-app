@@ -895,13 +895,191 @@
     "clientName" : "Sample Landscaping Co.",
     "environment" : "sample",
     "firmName" : "Benjamin Branson Bookkeeping",
-    "generatedAt" : "2026-09-29T08:45:30Z",
-    "generatedAtLabel" : "September 29, 2026 at 3:45 AM",
+    "generatedAt" : "2026-09-29T12:17:10Z",
+    "generatedAtLabel" : "September 29, 2026 at 7:17 AM",
     "isPartialMonth" : false,
     "isSample" : true,
     "periodKey" : "2026-07",
     "periodLabel" : "July 2026",
-    "snapshotID" : "baa3cd8be15c1491a1a60387210d67d3fcc75c28d48b9d072085fc909453348a"
+    "snapshotID" : "c7bdcd99a8ee406992ef7362bde46dfc37aaaae61e0619411a03a55d8547f3fb"
+  },
+  "moneyFlow" : {
+    "links" : [
+      {
+        "source" : "acct:i1",
+        "target" : "hub",
+        "value" : 61053,
+        "valueText" : "$61,053.00"
+      },
+      {
+        "source" : "acct:i2",
+        "target" : "hub",
+        "value" : 14022,
+        "valueText" : "$14,022.00"
+      },
+      {
+        "source" : "other-income",
+        "target" : "hub",
+        "value" : 42,
+        "valueText" : "$42.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "cogs",
+        "value" : 20954,
+        "valueText" : "$20,954.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e1",
+        "value" : 15166,
+        "valueText" : "$15,166.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e13",
+        "value" : 3750,
+        "valueText" : "$3,750.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e4",
+        "value" : 3200,
+        "valueText" : "$3,200.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e2",
+        "value" : 2881,
+        "valueText" : "$2,881.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e3",
+        "value" : 2546,
+        "valueText" : "$2,546.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "acct:e6",
+        "value" : 1152,
+        "valueText" : "$1,152.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "other",
+        "value" : 3139,
+        "valueText" : "$3,139.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "other-expenses",
+        "value" : 310,
+        "valueText" : "$310.00"
+      },
+      {
+        "source" : "hub",
+        "target" : "profit",
+        "value" : 22019,
+        "valueText" : "$22,019.00"
+      }
+    ],
+    "nodes" : [
+      {
+        "id" : "hub",
+        "kind" : "hub",
+        "label" : "July 2026",
+        "valueText" : "$75,117.00"
+      },
+      {
+        "accountID" : "i1",
+        "id" : "acct:i1",
+        "kind" : "source",
+        "label" : "Landscaping Services",
+        "valueText" : "$61,053.00"
+      },
+      {
+        "accountID" : "i2",
+        "id" : "acct:i2",
+        "kind" : "source",
+        "label" : "Materials Sales",
+        "valueText" : "$14,022.00"
+      },
+      {
+        "id" : "other-income",
+        "kind" : "source",
+        "label" : "Other income",
+        "valueText" : "$42.00"
+      },
+      {
+        "id" : "cogs",
+        "kind" : "use",
+        "label" : "Cost of goods sold",
+        "valueText" : "$20,954.00"
+      },
+      {
+        "accountID" : "e1",
+        "id" : "acct:e1",
+        "kind" : "use",
+        "label" : "Payroll Expenses",
+        "valueText" : "$15,166.00"
+      },
+      {
+        "accountID" : "e13",
+        "id" : "acct:e13",
+        "kind" : "use",
+        "label" : "Professional Fees",
+        "valueText" : "$3,750.00"
+      },
+      {
+        "accountID" : "e4",
+        "id" : "acct:e4",
+        "kind" : "use",
+        "label" : "Rent or Lease",
+        "valueText" : "$3,200.00"
+      },
+      {
+        "accountID" : "e2",
+        "id" : "acct:e2",
+        "kind" : "use",
+        "label" : "Vehicle Fuel",
+        "valueText" : "$2,881.00"
+      },
+      {
+        "accountID" : "e3",
+        "id" : "acct:e3",
+        "kind" : "use",
+        "label" : "Equipment Rental",
+        "valueText" : "$2,546.00"
+      },
+      {
+        "accountID" : "e6",
+        "id" : "acct:e6",
+        "kind" : "use",
+        "label" : "Repairs & Maintenance",
+        "valueText" : "$1,152.00"
+      },
+      {
+        "id" : "other",
+        "kind" : "use",
+        "label" : "Other (7 categories)",
+        "valueText" : "$3,139.00"
+      },
+      {
+        "id" : "other-expenses",
+        "kind" : "use",
+        "label" : "Other expenses",
+        "valueText" : "$310.00"
+      },
+      {
+        "id" : "profit",
+        "kind" : "profit",
+        "label" : "Net profit",
+        "valueText" : "$22,019.00"
+      }
+    ],
+    "note" : "Every dollar that came in is shown going to a cost or to profit; both sides total $75,117.00.",
+    "totalText" : "$75,117.00"
   },
   "monthOverMonth" : [
     {
@@ -1346,6 +1524,151 @@
     }
   ],
   "schemaVersion" : 1,
+  "sparklines" : {
+    "rangeLabel" : "Aug 2025 – Jul 2026",
+    "rows" : [
+      {
+        "changeText" : "+$2,241.00 vs prior month",
+        "higherIsBetter" : true,
+        "id" : "revenue",
+        "label" : "Revenue",
+        "latestText" : "$75,075.00",
+        "periods" : [
+          "Aug 2025",
+          "Sep 2025",
+          "Oct 2025",
+          "Nov 2025",
+          "Dec 2025",
+          "Jan 2026",
+          "Feb 2026",
+          "Mar 2026",
+          "Apr 2026",
+          "May 2026",
+          "Jun 2026",
+          "Jul 2026"
+        ],
+        "values" : [
+          64764,
+          55512,
+          47288,
+          38036,
+          32896,
+          34736,
+          36977,
+          47062,
+          58827,
+          68352,
+          72834,
+          75075
+        ]
+      },
+      {
+        "changeText" : "+$4,236.00 vs prior month",
+        "higherIsBetter" : false,
+        "id" : "expenses",
+        "label" : "Expenses",
+        "latestText" : "$53,098.00",
+        "periods" : [
+          "Aug 2025",
+          "Sep 2025",
+          "Oct 2025",
+          "Nov 2025",
+          "Dec 2025",
+          "Jan 2026",
+          "Feb 2026",
+          "Mar 2026",
+          "Apr 2026",
+          "May 2026",
+          "Jun 2026",
+          "Jul 2026"
+        ],
+        "values" : [
+          46300,
+          42323,
+          38787,
+          34810,
+          32600,
+          32959,
+          33894,
+          39854,
+          44766,
+          46991,
+          48862,
+          53098
+        ]
+      },
+      {
+        "changeText" : "($1,995.00) vs prior month",
+        "higherIsBetter" : true,
+        "id" : "net",
+        "label" : "Net income",
+        "latestText" : "$22,019.00",
+        "periods" : [
+          "Aug 2025",
+          "Sep 2025",
+          "Oct 2025",
+          "Nov 2025",
+          "Dec 2025",
+          "Jan 2026",
+          "Feb 2026",
+          "Mar 2026",
+          "Apr 2026",
+          "May 2026",
+          "Jun 2026",
+          "Jul 2026"
+        ],
+        "values" : [
+          18506,
+          13231,
+          8543,
+          3268,
+          338,
+          1819,
+          3125,
+          7250,
+          14103,
+          21403,
+          24014,
+          22019
+        ]
+      },
+      {
+        "changeText" : "+$3,811.18 vs prior month",
+        "higherIsBetter" : true,
+        "id" : "cash",
+        "label" : "Cash (month end)",
+        "latestText" : "$62,128.45",
+        "periods" : [
+          "Aug 2025",
+          "Sep 2025",
+          "Oct 2025",
+          "Nov 2025",
+          "Dec 2025",
+          "Jan 2026",
+          "Feb 2026",
+          "Mar 2026",
+          "Apr 2026",
+          "May 2026",
+          "Jun 2026",
+          "Jul 2026"
+        ],
+        "values" : [
+          44850,
+          43100,
+          39400,
+          35900,
+          31750,
+          33200,
+          36900,
+          42300,
+          49800,
+          55100,
+          58317.27,
+          62128.45
+        ]
+      }
+    ]
+  },
   "takeaways" : [
     "The business earned a profit of $22,019.00 in July, down $1,995.00 from June.",
     "Professional Fees rose $3,300.00 from June — the biggest change in costs.",
@@ -1357,6 +1680,7 @@
       {
         "expenses" : 48068,
         "label" : "Jul 2025",
+        "marginPercent" : 30.3,
         "netIncome" : 20850,
         "period" : "2025-07",
         "revenue" : 68876
@@ -1364,6 +1688,7 @@
       {
         "expenses" : 46300,
         "label" : "Aug 2025",
+        "marginPercent" : 28.6,
         "netIncome" : 18506,
         "period" : "2025-08",
         "revenue" : 64764
@@ -1371,6 +1696,7 @@
       {
         "expenses" : 42323,
         "label" : "Sep 2025",
+        "marginPercent" : 23.8,
         "netIncome" : 13231,
         "period" : "2025-09",
         "revenue" : 55512
@@ -1378,6 +1704,7 @@
       {
         "expenses" : 38787,
         "label" : "Oct 2025",
+        "marginPercent" : 18.1,
         "netIncome" : 8543,
         "period" : "2025-10",
         "revenue" : 47288
@@ -1385,6 +1712,7 @@
       {
         "expenses" : 34810,
         "label" : "Nov 2025",
+        "marginPercent" : 8.6,
         "netIncome" : 3268,
         "period" : "2025-11",
         "revenue" : 38036
@@ -1392,6 +1720,7 @@
       {
         "expenses" : 32600,
         "label" : "Dec 2025",
+        "marginPercent" : 1,
         "netIncome" : 338,
         "period" : "2025-12",
         "revenue" : 32896
@@ -1399,6 +1728,7 @@
       {
         "expenses" : 32959,
         "label" : "Jan 2026",
+        "marginPercent" : 5.2,
         "netIncome" : 1819,
         "period" : "2026-01",
         "revenue" : 34736
@@ -1406,6 +1736,7 @@
       {
         "expenses" : 33894,
         "label" : "Feb 2026",
+        "marginPercent" : 8.5,
         "netIncome" : 3125,
         "period" : "2026-02",
         "revenue" : 36977
@@ -1413,6 +1744,7 @@
       {
         "expenses" : 39854,
         "label" : "Mar 2026",
+        "marginPercent" : 15.4,
         "netIncome" : 7250,
         "period" : "2026-03",
         "revenue" : 47062
@@ -1420,6 +1752,7 @@
       {
         "expenses" : 44766,
         "label" : "Apr 2026",
+        "marginPercent" : 24,
         "netIncome" : 14103,
         "period" : "2026-04",
         "revenue" : 58827
@@ -1427,6 +1760,7 @@
       {
         "expenses" : 46991,
         "label" : "May 2026",
+        "marginPercent" : 31.3,
         "netIncome" : 21403,
         "period" : "2026-05",
         "revenue" : 68352
@@ -1434,6 +1768,7 @@
       {
         "expenses" : 48862,
         "label" : "Jun 2026",
+        "marginPercent" : 33,
         "netIncome" : 24014,
         "period" : "2026-06",
         "revenue" : 72834
@@ -1441,6 +1776,7 @@
       {
         "expenses" : 53098,
         "label" : "Jul 2026",
+        "marginPercent" : 29.3,
         "netIncome" : 22019,
         "period" : "2026-07",
         "revenue" : 75075
@@ -1522,19 +1858,6 @@
   },
   "workCompleted" : [
     {
-      "action" : "Client Clarification Needed: asked Kris what the Amazon order was for.",
-      "affectedPeriodLabel" : "July 2026",
-      "amountText" : "$420.00",
-      "doneAtLabel" : "Aug 6, 2026",
-      "doneBy" : "Benjamin Branson",
-      "findingID" : "s9",
-      "found" : "An Amazon charge is in Uncategorized Expense.",
-      "impact" : "Waiting on the client's answer; numbers unchanged for now.",
-      "status" : "awaitingClient",
-      "statusLabel" : "Awaiting client",
-      "title" : "Uncategorized transaction — Amazon, $420.00"
-    },
-    {
       "action" : "Not an error: new annual contract rate starting July.",
       "affectedPeriodLabel" : "July 2026",
       "amountText" : "$180.00",
@@ -1548,17 +1871,17 @@
       "title" : "Vendor price increase — Waste Management"
     },
     {
-      "action" : "Reclassified Transaction: Moved to Materials (COGS) after Kris confirmed it was for the Hillcrest job.",
+      "action" : "Client Clarification Needed: asked Kris what the Amazon order was for.",
       "affectedPeriodLabel" : "July 2026",
-      "amountText" : "$1,240.00",
-      "doneAtLabel" : "Aug 5, 2026",
+      "amountText" : "$420.00",
+      "doneAtLabel" : "Aug 6, 2026",
       "doneBy" : "Benjamin Branson",
-      "findingID" : "s6",
-      "found" : "A Lowe's purchase was sitting in Uncategorized Expense.",
-      "impact" : "Moved $1,240.00 to the correct account; category totals are now accurate. Total profit may be unchanged.",
-      "status" : "correctedVerified",
-      "statusLabel" : "Corrected and verified",
-      "title" : "Uncategorized transaction — Lowe's, $1,240.00"
+      "findingID" : "s9",
+      "found" : "An Amazon charge is in Uncategorized Expense.",
+      "impact" : "Waiting on the client's answer; numbers unchanged for now.",
+      "status" : "awaitingClient",
+      "statusLabel" : "Awaiting client",
+      "title" : "Uncategorized transaction — Amazon, $420.00"
     },
     {
       "action" : "Reclassified Transaction: Moved to Owner's Draw — personal groceries.",
@@ -1572,6 +1895,19 @@
       "status" : "correctedVerified",
       "statusLabel" : "Corrected and verified",
       "title" : "Possible personal expense — Costco, $600.00"
+    },
+    {
+      "action" : "Reclassified Transaction: Moved to Materials (COGS) after Kris confirmed it was for the Hillcrest job.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$1,240.00",
+      "doneAtLabel" : "Aug 5, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s6",
+      "found" : "A Lowe's purchase was sitting in Uncategorized Expense.",
+      "impact" : "Moved $1,240.00 to the correct account; category totals are now accurate. Total profit may be unchanged.",
+      "status" : "correctedVerified",
+      "statusLabel" : "Corrected and verified",
+      "title" : "Uncategorized transaction — Lowe's, $1,240.00"
     },
     {
       "action" : "Corrected in QBO: Voided the hand-entered copy; kept the bank-feed charge.",

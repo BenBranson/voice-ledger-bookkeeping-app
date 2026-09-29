@@ -361,7 +361,7 @@ public struct ExpenseCategoriesCard: View {
 
 public struct TrendCard: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case revenueExpenses = "Revenue & expenses"
+        case revenueExpenses = "Revenue, expenses & margin"
         case net = "Net income"
         var id: String { rawValue }
     }
@@ -391,9 +391,13 @@ public struct TrendCard: View {
                 }
                 if let t = data, t.points.count >= 2, ChartAssets.directory != nil {
                     let ids = Set(t.points.map(\.period))
-                    EChartView(kind: mode == .revenueExpenses ? "trendRevenueExpenses" : "trendNetIncome", data: t, allowedIDs: ids, selectedID: selectedID,
+                    EChartView(kind: mode == .revenueExpenses ? "trendMixed" : "trendNetIncome", data: t, allowedIDs: ids, selectedID: selectedID,
                                summary: "Monthly \(mode.rawValue.lowercased()) for \(t.points.first!.label) through \(t.points.last!.label).") { selectedID = $0 }
-                        .frame(height: 220)
+                        .frame(height: mode == .revenueExpenses ? 270 : 220)
+                    if mode == .revenueExpenses && t.points.count > 6 {
+                        Text("Drag the slider (or shift-scroll over the chart) to zoom into any range.")
+                            .font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                    }
                     Picker("Month", selection: $selectedID) {
                         Text("Choose a month…").tag(String?.none)
                         ForEach(t.points, id: \.period) { Text($0.label).tag(String?.some($0.period)) }
@@ -406,6 +410,7 @@ public struct TrendCard: View {
                             Text("Revenue \(money(point.revenue))")
                             Text("Expenses \(money(point.expenses))")
                             Text("Net \(money(point.netIncome))")
+                            Text("Margin \(point.marginPercent.map { String(format: "%.1f%%", $0) } ?? "n/m")")
                         }
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
@@ -422,5 +427,201 @@ public struct TrendCard: View {
 
     private func money(_ value: Double?) -> String {
         value.map { Money(minorUnits: Int64(($0 * 100).rounded()), currency: .usd).accountingDescription } ?? "no data"
+    }
+}
+
+// MARK: - Money flow (Sankey)
+
+public struct MoneyFlowCard: View {
+    let data: MoneyFlowData?
+    let actions: ChartAccountActions
+    @State private var selectedID: String?
+
+    public init(data: MoneyFlowData?, actions: ChartAccountActions = .none) {
+        self.data = data
+        self.actions = actions
+    }
+
+    private var selectable: [FlowNode] { data?.nodes.filter { $0.kind != "hub" } ?? [] }
+
+    public var body: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Eyebrow(text: "Where the money went")
+                if let f = data, ChartAssets.directory != nil {
+                    EChartView(kind: "moneyFlow", data: f, allowedIDs: Set(selectable.map(\.id)), selectedID: selectedID,
+                               summary: "Money flow: " + selectable.map { "\($0.label) \($0.valueText)" }.joined(separator: "; ")) { selectedID = $0 }
+                        .frame(height: CGFloat(max(260, 30 * selectable.count)))
+                    Picker("Flow", selection: $selectedID) {
+                        Text("Choose an item…").tag(String?.none)
+                        ForEach(selectable, id: \.id) { Text("\($0.label) — \($0.valueText)").tag(String?.some($0.id)) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    Text(f.note).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                    if let id = selectedID, let node = selectable.first(where: { $0.id == id }) {
+                        AccountDetail(item: ChartItem(id: node.id, accountID: node.accountID, label: node.label, value: 0, valueText: node.valueText, category: node.kind == "loss" ? "netLoss" : "expense",
+                                                      note: node.kind == "loss" ? "Spending beyond this month's income — the net loss" : nil),
+                                      shareLabel: nil, actions: actions) { selectedID = nil }
+                    }
+                } else {
+                    ChartUnavailable(message: data == nil ? "Not available — the P&L sections don't tie to QuickBooks' totals, or no P&L is loaded." : "Chart files are missing — run \"npm install\" in report-renderer.")
+                }
+            }
+        }
+        .onChange(of: data) { _, _ in reconcileSelection(&selectedID, validIDs: Set(selectable.map(\.id))) }
+    }
+}
+
+// MARK: - KPI sparklines
+
+public struct SparklinesCard: View {
+    let data: SparklineData?
+
+    public init(data: SparklineData?) { self.data = data }
+
+    public var body: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.xs) {
+                HStack {
+                    Eyebrow(text: "12-month trends")
+                    Spacer()
+                    if let data { Text(data.rangeLabel).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted) }
+                }
+                if let s = data, ChartAssets.directory != nil {
+                    EChartView(kind: "sparklines", data: s, allowedIDs: [], selectedID: nil,
+                               summary: s.rows.map { "\($0.label) \($0.latestText), \($0.changeText)" }.joined(separator: "; ")) { _ in }
+                        .frame(height: CGFloat(46 * s.rows.count + 12))
+                } else {
+                    ChartUnavailable(message: "Load history on Client Diagnostics to see 12-month trends.")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Posting-activity calendar
+
+public struct PostingCalendarCard: View {
+    let history: HistorySnapshot?
+    let accounts: [(id: String, label: String)]
+    @State private var accountID: String?
+    @State private var selectedDate: String?
+
+    public init(history: HistorySnapshot?, accounts: [(id: String, label: String)]) {
+        self.history = history
+        self.accounts = accounts
+    }
+
+    public var body: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                HStack {
+                    Eyebrow(text: "Posting activity by day")
+                    Spacer()
+                    if !accounts.isEmpty {
+                        Picker("Account", selection: Binding(get: { accountID ?? accounts.first?.id }, set: { accountID = $0; selectedDate = nil })) {
+                            ForEach(accounts, id: \.id) { Text($0.label).tag(String?.some($0.id)) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+                if let history, let id = accountID ?? accounts.first?.id, let calendar = ChartData.postingCalendar(history: history, accountID: id), ChartAssets.directory != nil {
+                    EChartView(kind: "postingCalendar", data: calendar, allowedIDs: Set(calendar.days.map(\.date)), selectedID: selectedDate,
+                               summary: "\(calendar.accountLabel): \(calendar.days.count) days with postings. \(calendar.lastPostingText).") { selectedDate = $0 }
+                        .frame(height: 150)
+                    HStack {
+                        Text(calendar.lastPostingText)
+                        Spacer()
+                        Text("Brighter = more postings that day. Empty cells are days with none.")
+                    }
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textMuted)
+                    if let date = selectedDate {
+                        let postings = history.transactions.filter { $0.paymentAccountID == id && !$0.isVoided && String(format: "%04d-%02d-%02d", $0.txnDate.year, $0.txnDate.month, $0.txnDate.day) == date }
+                        let deposits = history.deposits.filter { $0.depositToAccountID == id && $0.txnDate.map { String(format: "%04d-%02d-%02d", $0.year, $0.month, $0.day) } == date }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(date).font(VLTypography.cardTitle()).foregroundStyle(VLColor.textPrimary)
+                            ForEach(postings, id: \.id) { txn in
+                                HStack {
+                                    Text(txn.entityKind.rawValue).frame(width: 90, alignment: .leading)
+                                    Text(txn.vendorName ?? "—").lineLimit(1)
+                                    Spacer()
+                                    Text(txn.totalAmount.accountingDescription)
+                                }
+                            }
+                            ForEach(deposits, id: \.id) { deposit in
+                                HStack {
+                                    Text("Deposit").frame(width: 90, alignment: .leading)
+                                    Spacer()
+                                    Text(deposit.totalAmount?.accountingDescription ?? "")
+                                }
+                            }
+                        }
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                        .monospacedDigit()
+                        .padding(VLSpacing.sm)
+                        .background(VLColor.surfaceInset, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                } else {
+                    ChartUnavailable(message: history == nil ? "Load history to see posting activity." : "No bank or credit card accounts in the loaded history.")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Expense treemap
+
+public struct ExpenseTreemapCard: View {
+    let data: ExpenseTree?
+    let actions: ChartAccountActions
+    @State private var selectedID: String?
+
+    public init(data: ExpenseTree?, actions: ChartAccountActions = .none) {
+        self.data = data
+        self.actions = actions
+    }
+
+    private var flat: [TreeNode] {
+        func walk(_ nodes: [TreeNode]) -> [TreeNode] { nodes.flatMap { [$0] + walk($0.children) } }
+        return walk(data?.nodes ?? [])
+    }
+
+    public var body: some View {
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                HStack {
+                    Eyebrow(text: "Expenses by account")
+                    Spacer()
+                    if let data { Text("Total \(data.totalText)").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted) }
+                }
+                if let t = data, ChartAssets.directory != nil {
+                    EChartView(kind: "expenseTreemap", data: t, allowedIDs: Set(flat.map(\.id)), selectedID: selectedID,
+                               summary: "Expenses by account: " + t.nodes.map { "\($0.label) \($0.valueText)" }.joined(separator: "; ")) { selectedID = $0 }
+                        .frame(height: 300)
+                    Picker("Account", selection: $selectedID) {
+                        Text("Choose an account…").tag(String?.none)
+                        ForEach(flat, id: \.id) { Text("\($0.label) — \($0.valueText)").tag(String?.some($0.id)) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    if !t.credits.isEmpty {
+                        Text("Credits not shown as area: " + t.credits.map { "\($0.label) \($0.valueText)" }.joined(separator: ", "))
+                            .font(VLTypography.caption()).foregroundStyle(.orange)
+                    }
+                    if let id = selectedID, let node = flat.first(where: { $0.id == id }) {
+                        AccountDetail(item: ChartItem(id: node.id, accountID: node.accountID, label: node.label, value: node.value, valueText: node.valueText, category: "expense",
+                                                      note: node.children.isEmpty ? nil : "Includes \(node.children.count) sub-account\(node.children.count == 1 ? "" : "s")"),
+                                      shareLabel: nil, actions: actions) { selectedID = nil }
+                    }
+                } else {
+                    ChartUnavailable(message: data == nil ? "No operating expenses in the loaded P&L." : "Chart files are missing — run \"npm install\" in report-renderer.")
+                }
+            }
+        }
+        .onChange(of: data) { _, _ in reconcileSelection(&selectedID, validIDs: Set(flat.map(\.id))) }
     }
 }

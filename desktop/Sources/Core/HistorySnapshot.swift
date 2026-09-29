@@ -46,6 +46,9 @@ public struct HistorySnapshot: Codable, Sendable, Equatable {
     public let latestBalanceSheet: [ReportLine]
     public let latestCashFlow: [ReportLine]
     public let coverage: Coverage
+    /// Total Bank Accounts at each month end, oldest first. `nil` on
+    /// snapshots saved before this was collected.
+    public var monthEndCash: [MonthlyAmount]?
 
     public init(realmID: RealmID, fetchedAt: Date, from: AccountingDate, through: AccountingDate, transactions: [LedgerTransaction], deposits: [LedgerDeposit], vendorCredits: [LedgerVendorCredit], accounts: [LedgerAccount], monthlyProfitAndLoss: [MonthlyReport], latestBalanceSheet: [ReportLine], latestCashFlow: [ReportLine], coverage: Coverage) {
         self.realmID = realmID

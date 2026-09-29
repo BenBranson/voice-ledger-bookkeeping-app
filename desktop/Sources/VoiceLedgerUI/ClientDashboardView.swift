@@ -135,6 +135,7 @@ public struct ClientDashboardView: View {
     private let accountTypes: [String: LedgerAccountType]
     private let chartActions: ChartAccountActions
     private let trend: TrendData?
+    private let sparklines: SparklineData?
     private let state: ViewState
     private let onOpenFinding: (Finding) -> Void
     private let onViewAllFindings: () -> Void
@@ -181,11 +182,13 @@ public struct ClientDashboardView: View {
         alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
         accountTypes: [String: LedgerAccountType] = [:],
         chartActions: ChartAccountActions = .none,
-        trend: TrendData? = nil
+        trend: TrendData? = nil,
+        sparklines: SparklineData? = nil
     ) {
         self.accountTypes = accountTypes
         self.chartActions = chartActions
         self.trend = trend
+        self.sparklines = sparklines
         self.state = state
         self.onOpenFinding = onOpenFinding
         self.onViewAllFindings = onViewAllFindings
@@ -248,11 +251,13 @@ public struct ClientDashboardView: View {
                     if !state.profitAndLossLines.isEmpty {
                         KPICardRow(cards: profitAndLossKPICards)
                         WaterfallCard(data: ChartData.waterfall(from: state.profitAndLossLines))
+                        MoneyFlowCard(data: ChartData.moneyFlow(from: state.profitAndLossLines, hubLabel: "This period", topExpenses: 6), actions: chartActions)
                         ExpenseCategoriesCard(data: ChartData.expenseCategories(from: state.profitAndLossLines, top: 6), actions: chartActions)
                     }
                 }
 
                 if !state.profitAndLossLines.isEmpty || trend != nil {
+                    SparklinesCard(data: sparklines)
                     TrendCard(data: trend)
                 }
 

@@ -19,8 +19,10 @@ public struct DiagnosticsView: View {
         public let flux: [FluxAlert]
         public let kpi: KPISummary?
         public let unreconciledMonths: Int
+        public var history: HistorySnapshot? = nil
 
-        public init(environment: VLEnvironmentTone, historyRange: String?, historyFetchedAt: Date?, isLoadingHistory: Bool, historyError: String?, scope: CleanupScopeScore?, feeds: [BankFeedActivity], flux: [FluxAlert], kpi: KPISummary?, unreconciledMonths: Int) {
+        public init(environment: VLEnvironmentTone, historyRange: String?, historyFetchedAt: Date?, isLoadingHistory: Bool, historyError: String?, scope: CleanupScopeScore?, feeds: [BankFeedActivity], flux: [FluxAlert], kpi: KPISummary?, unreconciledMonths: Int, history: HistorySnapshot? = nil) {
+            self.history = history
             self.environment = environment
             self.historyRange = historyRange
             self.historyFetchedAt = historyFetchedAt
@@ -77,6 +79,7 @@ public struct DiagnosticsView: View {
                 } else {
                     if let scope = state.scope { scopeCard(scope) }
                     feedsCard
+                    PostingCalendarCard(history: state.history, accounts: state.feeds.map { (id: $0.accountID, label: $0.accountName) })
                     fluxCard
                     if let kpi = state.kpi { kpiCard(kpi) }
                 }

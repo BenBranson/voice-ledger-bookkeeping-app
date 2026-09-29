@@ -321,7 +321,10 @@ public struct QBOSyncClient: Sendable {
         var lines: [ReportLine] = []
         for row in rowList.row ?? [] {
             if let header = row.header {
-                lines.append(ReportLine(label: header.colData.first?.value ?? "", amount: nil, depth: depth, isSummary: false))
+                // A parent account's header carries its Account Id; a plain
+                // section header ("Expenses") doesn't.
+                let headerID = header.colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }
+                lines.append(ReportLine(label: header.colData.first?.value ?? "", amount: nil, depth: depth, isSummary: false, accountID: headerID))
             }
             if let nested = row.rows {
                 lines.append(contentsOf: flatten(nested, depth: depth + 1))

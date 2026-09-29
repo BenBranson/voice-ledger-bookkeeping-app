@@ -148,6 +148,8 @@ enum SampleMonthlyReport {
             agedReceivables: receivables, accountTypes: types, findings: findings, coverage: .complete
         )
         input.isSample = true
+        let cashPath: [Double] = [41_200, 44_850, 43_100, 39_400, 35_900, 31_750, 33_200, 36_900, 42_300, 49_800, 55_100, 58_317.27, 62_128.45]
+        input.monthEndCash = zip(period.trailingMonths(13), cashPath).map { MonthlyAmount(period: $0, amount: usd($1)) }
         input.activityLog = activity
         input.agedPayables = payables
         input.clientQuestions = [ClientQuestionDrafter.Thread(findingID: "s9", findingTitle: "Amazon order on July 22 ($420.00)", question: "What was this Amazon order for, and which job (if any) should it be charged to?", askedAt: Date(), answer: nil, answeredAt: nil)]

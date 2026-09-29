@@ -51,3 +51,25 @@ test("stable colors: same account id gives the same color", () => {
   assert.equal(VL.colorFor(a, VL.themes.dark), VL.colorFor({ ...a, label: "Renamed" }, VL.themes.dark));
   assert.equal(VL.colorFor({ id: "x", category: "overdraft" }, VL.themes.dark), VL.themes.dark.negative);
 });
+
+test("new chart types render as SVG in print and build interactive options in dark", () => {
+  const cases = [["moneyFlow", sample.moneyFlow], ["sparklines", sample.sparklines], ["trendMixed", sample.trend]];
+  for (const [kind, data] of cases) {
+    assert.ok(data, `${kind} data missing from sample`);
+    const chart = echarts.init(null, null, { renderer: "svg", ssr: true, width: 700, height: 300 });
+    chart.setOption(VL.builders[kind](data, VL.themes.print, {}));
+    assert.ok(chart.renderToSVGString().length > 1000, kind);
+    chart.dispose();
+    assert.ok(VL.builders[kind](data, VL.themes.dark, {}).tooltip.show, kind);
+  }
+  assert.equal(VL.builders.trendMixed(sample.trend, VL.themes.print, {}).dataZoom, undefined);
+  assert.ok(VL.builders.trendMixed(sample.trend, VL.themes.dark, {}).dataZoom.length === 2);
+  const tree = { nodes: [{ id: "a", accountID: "1", label: "Vehicle", value: 400, valueText: "$400.00", children: [{ id: "b", accountID: "2", label: "Fuel", value: 400, valueText: "$400.00", children: [] }] }], totalText: "$400.00", credits: [] };
+  const cal = { accountID: "1", accountLabel: "Checking", start: "2025-10-01", end: "2026-09-29", days: [{ date: "2026-07-03", count: 2, amountText: "$20.00" }], maxCount: 2, lastPostingText: "x" };
+  for (const [kind, data] of [["expenseTreemap", tree], ["postingCalendar", cal]]) {
+    const chart = echarts.init(null, null, { renderer: "svg", ssr: true, width: 700, height: 200 });
+    chart.setOption(VL.builders[kind](data, VL.themes.dark, {}));
+    assert.ok(chart.renderToSVGString().includes("<svg"), kind);
+    chart.dispose();
+  }
+});
