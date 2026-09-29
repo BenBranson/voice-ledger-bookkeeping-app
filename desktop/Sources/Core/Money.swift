@@ -76,3 +76,22 @@ extension Money: CustomStringConvertible {
         return "\(sign)\(currency.rawValue) \(whole).\(String(format: "%02d", fraction))"
     }
 }
+
+extension Money {
+    /// Display format for screens and client-facing text: `$1,263.76`, with
+    /// negatives in accounting brackets `($1,263.76)`. `description` keeps
+    /// its plain `USD 1263.76` form because persisted narratives, amount
+    /// search, and the AI context all match against it.
+    public var accountingDescription: String {
+        let absUnits = abs(minorUnits)
+        var whole = String(absUnits / 100)
+        var grouped = ""
+        while whole.count > 3 {
+            grouped = "," + whole.suffix(3) + grouped
+            whole = String(whole.dropLast(3))
+        }
+        let symbol = currency == .usd ? "$" : "\(currency.rawValue) "
+        let body = "\(symbol)\(whole)\(grouped).\(String(format: "%02d", absUnits % 100))"
+        return minorUnits < 0 ? "(\(body))" : body
+    }
+}

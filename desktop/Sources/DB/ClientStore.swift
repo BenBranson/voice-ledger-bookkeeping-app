@@ -99,6 +99,8 @@ public actor ClientStore {
     /// `voiceledger-mcp` can answer chart-of-accounts/recent-transactions/
     /// financial-summary questions without a live backend connection.
     private let financialSnapshotKey = "financial-snapshot"
+    private let historySnapshotKey = "history-snapshot"
+    private let unreconciledMonthsKey = "diagnostics-unreconciled-months"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
     /// trims to this length so an unattended conversation-mode session left
@@ -367,6 +369,24 @@ public actor ClientStore {
     /// after every sync.
     public func saveFinancialSnapshot(_ snapshot: FinancialSnapshot) throws {
         try save(snapshot, key: financialSnapshotKey)
+    }
+
+    // MARK: - Multi-month history (2026-09-29)
+
+    public func loadHistorySnapshot() throws -> HistorySnapshot? {
+        try load(HistorySnapshot?.self, key: historySnapshotKey, default: nil)
+    }
+
+    public func saveHistorySnapshot(_ snapshot: HistorySnapshot) throws {
+        try save(snapshot, key: historySnapshotKey)
+    }
+
+    public func loadUnreconciledMonths() throws -> Int {
+        try load(Int.self, key: unreconciledMonthsKey, default: 0)
+    }
+
+    public func saveUnreconciledMonths(_ months: Int) throws {
+        try save(months, key: unreconciledMonthsKey)
     }
 
     // MARK: - AI report generation timestamp (2026-08-29)

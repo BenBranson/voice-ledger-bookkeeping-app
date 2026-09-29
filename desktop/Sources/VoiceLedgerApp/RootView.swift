@@ -259,6 +259,7 @@ struct RootView: View {
                 case .pricingCalculator: return .pricingCalculator
                 case .audioSettings: return .audioSettings
                 case .cashFlowForecast: return .cashFlowForecast
+                case .diagnostics: return .diagnostics
                 case .recurringVendors: return .recurringVendors
                 case .intakeQuestions: return .intakeQuestions
                 }
@@ -294,6 +295,7 @@ struct RootView: View {
                 case .pricingCalculator: state.screen = .pricingCalculator
                 case .audioSettings: state.screen = .audioSettings
                 case .cashFlowForecast: state.screen = .cashFlowForecast
+                case .diagnostics: state.screen = .diagnostics
                 case .recurringVendors: state.screen = .recurringVendors
                 case .intakeQuestions: state.screen = .intakeQuestions
                 }
@@ -1140,7 +1142,9 @@ struct RootView: View {
                         Task { await state.askAI(contextKey: "\(cleanupAssessmentAskAIKey)-claude", contextText: context, question: question, model: "claude-haiku-4-5") }
                     }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                scopeQuoteSummary: state.cleanupScopeScore.map { "Recommended cleanup scope: \($0.cleanupQuote.accountingDescription) (\($0.estimatedHoursLow)–\($0.estimatedHoursHigh) est. hours) · scope score \($0.score)/100 \($0.band)" },
+                onOpenDiagnostics: { state.screen = .diagnostics }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2155,6 +2159,24 @@ struct RootView: View {
 
         case .audioSettings:
             AudioSettingsView()
+
+        case .diagnostics:
+            DiagnosticsView(
+                state: DiagnosticsView.ViewState(
+                    environment: state.environment == .production ? .production : .sandbox,
+                    historyRange: state.historySnapshot.map { "\($0.from.formatted) to \($0.through.formatted) (\($0.monthsCovered) months, \($0.transactions.count) transactions)" },
+                    historyFetchedAt: state.historySnapshot?.fetchedAt,
+                    isLoadingHistory: state.isLoadingHistory,
+                    historyError: state.historyError,
+                    scope: state.cleanupScopeScore,
+                    feeds: state.bankFeedActivity,
+                    flux: state.fluxAlerts,
+                    kpi: state.kpiSummary,
+                    unreconciledMonths: state.unreconciledMonths
+                ),
+                onLoadHistory: { Task { await state.loadHistory() } },
+                onSetUnreconciledMonths: { months in Task { await state.setUnreconciledMonths(months) } }
+            )
 
         case .cashFlowForecast:
             let cashFlowAskAIKey = "page:cash-flow-forecast"

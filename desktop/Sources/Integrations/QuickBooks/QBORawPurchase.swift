@@ -318,10 +318,16 @@ public struct QBOPaymentQueryResponse: Decodable, Sendable {
 public struct QBORawDeposit: Decodable, Sendable {
     public let id: String
     public let line: [QBORawDepositLine]?
+    public let txnDate: String?
+    public let totalAmt: Decimal?
+    public let depositToAccountRef: QBORawRef?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
         case line = "Line"
+        case txnDate = "TxnDate"
+        case totalAmt = "TotalAmt"
+        case depositToAccountRef = "DepositToAccountRef"
     }
 
     public var linkedPaymentIDs: [String] {

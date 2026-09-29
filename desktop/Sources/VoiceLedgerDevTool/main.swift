@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -291,6 +291,37 @@ case "tax-check":
     } catch {
         FileHandle.standardError.write("tax-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
+    }
+
+case "history-check":
+    let months = arguments.count >= 3 ? Int(arguments[2]) ?? 24 : 24
+    do {
+        let backend = BackendClient(configuration: try BackendConfiguration.fromEnvironment())
+        let started = Date()
+        let history = try await QBOSyncClient(backend: backend).syncHistory(realmID: realmID, months: months, through: AccountingDate(date: Date()))
+        print("History \(history.from.formatted) → \(history.through.formatted): \(history.monthsCovered) months in \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
+        let byKind = Dictionary(grouping: history.transactions, by: \.entityKind).mapValues(\.count)
+        print("Transactions: \(history.transactions.count) \(byKind.sorted { $0.key.rawValue < $1.key.rawValue }.map { "\($0.key.rawValue)=\($0.value)" }.joined(separator: " "))")
+        print("Deposits: \(history.deposits.count) (with date: \(history.deposits.filter { $0.txnDate != nil }.count)), vendor credits: \(history.vendorCredits.count), accounts: \(history.accounts.count)")
+        let nonEmptyMonths = history.monthlyProfitAndLoss.filter { !$0.lines.isEmpty }.map { "\($0.period.year)-\($0.period.month)" }
+        print("P&L months with data: \(nonEmptyMonths.count) [\(nonEmptyMonths.joined(separator: ", "))]")
+        print("Balance sheet lines: \(history.latestBalanceSheet.count), cash flow lines: \(history.latestCashFlow.count)")
+        print("Cash flow: " + history.latestCashFlow.map { "\($0.label)=\($0.amount?.description ?? "-")\($0.isSummary ? "*" : "")" }.joined(separator: " | "))
+        print("Balance sheet summaries: " + history.latestBalanceSheet.filter(\.isSummary).map { "\($0.label)=\($0.amount?.description ?? "-")" }.joined(separator: " | "))
+        print("P&L (latest) summaries: " + (history.monthlyProfitAndLoss.last?.lines.filter(\.isSummary).map { "\($0.label)=\($0.amount?.description ?? "-")" }.joined(separator: " | ") ?? ""))
+        let asOf = AccountingDate(date: Date())
+        for feed in ClientDiagnostics.bankFeedActivity(history: history, asOf: asOf) {
+            print("Feed: \(feed.accountName) last=\(feed.lastActivity?.formatted ?? "none") stale=\(feed.isStale)")
+        }
+        for alert in ClientDiagnostics.fluxAlerts(history: history, asOf: asOf) {
+            print("Flux: \(alert.label) \(alert.current.accountingDescription) vs \(alert.trailingAverage.accountingDescription)")
+        }
+        ClientDiagnostics.kpiSummary(history: history, asOf: asOf).emailBullets.forEach { print("KPI: \($0)") }
+        let scope = ClientDiagnostics.scopeScore(history: history, openFindings: [], asOf: asOf, inputs: CleanupScopeInputs(unreconciledMonths: 3))
+        print("Scope: \(scope.score)/100 \(scope.band) quote=\(scope.cleanupQuote.accountingDescription) undeposited=\(scope.undepositedPaymentCount) aged90=\(scope.agedOver90Count) dupAcctGroups=\(scope.duplicateAccountGroups) avg/mo=\(scope.averageMonthlyTransactions)")
+    } catch {
+        FileHandle.standardError.write("history-check failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
     }
 
 case "sync-check":

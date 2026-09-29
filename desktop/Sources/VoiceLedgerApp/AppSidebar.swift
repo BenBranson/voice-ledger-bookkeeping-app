@@ -45,6 +45,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case firmCockpit
     /// Owner directive (2026-09-06): "build cash flow forecasting."
     case cashFlowForecast
+    case diagnostics
     case cleanupAssessment
     case balanceSheetIntegrity
     case chartOfAccountsCleanup
@@ -84,6 +85,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .intakeQuestions: return "Intake Questions"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
+        case .diagnostics: return "Client Diagnostics"
         case .cleanupAssessment: return "Cleanup Assessment"
         case .balanceSheetIntegrity: return "Balance Sheet Integrity"
         case .chartOfAccountsCleanup: return "Chart of Accounts"
@@ -119,6 +121,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .intakeQuestions: return "checklist"
         case .firmCockpit: return "square.grid.2x2"
         case .cashFlowForecast: return "chart.line.uptrend.xyaxis.circle"
+        case .diagnostics: return "stethoscope"
         case .cleanupAssessment: return "checkmark.seal"
         case .balanceSheetIntegrity: return "chart.bar.doc.horizontal"
         case .chartOfAccountsCleanup: return "folder.badge.gearshape"
@@ -154,7 +157,7 @@ struct SidebarSection: Identifiable {
 
 let sidebarSections: [SidebarSection] = [
     SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .cashFlowForecast, .amountSearch, .pricingCalculator, .intakeQuestions]),
-    SidebarSection(title: "CLEANUP", items: [.cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview, .recurringVendors]),
+    SidebarSection(title: "CLEANUP", items: [.diagnostics, .cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview, .recurringVendors]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),
     SidebarSection(title: "CLIENT", items: [.clientMemory]),
@@ -225,7 +228,7 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
-                Text("v1.5")
+                Text("v1.6")
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(VLColor.textMuted)
                 voiceMicButton

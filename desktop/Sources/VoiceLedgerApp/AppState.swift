@@ -61,6 +61,7 @@ public final class AppState {
         case audioSettings
         /// Owner directive (2026-09-06): "build cash flow forecasting."
         case cashFlowForecast
+        case diagnostics
         /// Owner directive (2026-09-06): "build... recurring-vendor
         /// detection."
         case recurringVendors
@@ -123,6 +124,30 @@ public final class AppState {
     /// `syncAndEvaluate()` in this session completes, set every time
     /// after that at the same atomic-publish point as `transactions`.
     public private(set) var lastSyncedAt: Date?
+    /// Multi-month history (owner decision 2026-09-29) behind the
+    /// Diagnostics page. Persisted per realm; `nil` until first loaded.
+    public private(set) var historySnapshot: HistorySnapshot?
+    public private(set) var isLoadingHistory = false
+    public private(set) var historyError: String?
+    public private(set) var unreconciledMonths = 0
+
+    private var diagnosticsAsOf: AccountingDate { AccountingDate(date: Date()) }
+
+    public var cleanupScopeScore: CleanupScopeScore? {
+        historySnapshot.map { ClientDiagnostics.scopeScore(history: $0, openFindings: findings, asOf: diagnosticsAsOf, inputs: CleanupScopeInputs(unreconciledMonths: unreconciledMonths)) }
+    }
+
+    public var bankFeedActivity: [BankFeedActivity] {
+        historySnapshot.map { ClientDiagnostics.bankFeedActivity(history: $0, asOf: diagnosticsAsOf) } ?? []
+    }
+
+    public var fluxAlerts: [FluxAlert] {
+        historySnapshot.map { ClientDiagnostics.fluxAlerts(history: $0, asOf: diagnosticsAsOf) } ?? []
+    }
+
+    public var kpiSummary: KPISummary? {
+        historySnapshot.map { ClientDiagnostics.kpiSummary(history: $0, asOf: diagnosticsAsOf) }
+    }
     /// docs/VOICE_LEDGER_SPEC.md Page 2 — Voice Ledger's own stricter period
     /// lock, independent of QBO's unread `BookCloseDate`. `nil` until the
     /// bookkeeper sets one for this realm.
@@ -546,6 +571,8 @@ public final class AppState {
             let newWriteJournal = try await store.loadWriteJournal()
             let newLastReportGeneratedAt = try await store.loadLastReportGeneratedAt()
             let newConversationHistory = try await store.loadAskAIConversationHistory()
+            let newHistorySnapshot = try? await store.loadHistorySnapshot()
+            let newUnreconciledMonths = (try? await store.loadUnreconciledMonths()) ?? 0
             findings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
@@ -559,9 +586,30 @@ public final class AppState {
             writeJournal = newWriteJournal
             lastReportGeneratedAt = newLastReportGeneratedAt
             conversationHistory = newConversationHistory
+            historySnapshot = newHistorySnapshot ?? nil
+            unreconciledMonths = newUnreconciledMonths
             loadState = .loaded
         } catch {
             loadState = .failed(error.localizedDescription)
+        }
+    }
+
+    public func setUnreconciledMonths(_ months: Int) async {
+        unreconciledMonths = months
+        try? await store.saveUnreconciledMonths(months)
+    }
+
+    public func loadHistory(months: Int = 24) async {
+        guard !isLoadingHistory else { return }
+        isLoadingHistory = true
+        historyError = nil
+        defer { isLoadingHistory = false }
+        do {
+            let snapshot = try await syncClient.syncHistory(realmID: realmID, months: months, through: AccountingDate(date: Date()))
+            try await store.saveHistorySnapshot(snapshot)
+            historySnapshot = snapshot
+        } catch {
+            historyError = "\(error)"
         }
     }
 
@@ -2960,6 +3008,21 @@ public final class AppState {
 
         case .intakeQuestions:
             return "Page: Intake Questions (discovery call script for prospect qualification and client onboarding)."
+
+        case .diagnostics:
+            guard let history = historySnapshot else {
+                return "Page: Client Diagnostics. No multi-month history loaded yet — the person can press Load 24-Month History."
+            }
+            var lines = ["Page: Client Diagnostics (history \(history.from.formatted) to \(history.through.formatted), \(history.monthsCovered) months)."]
+            if let scope = cleanupScopeScore {
+                lines.append("Cleanup scope score: \(scope.score)/100 (\(scope.band)). Recommended cleanup quote \(scope.cleanupQuote.accountingDescription), \(scope.estimatedHoursLow)-\(scope.estimatedHoursHigh) hours; monthly retainer \(scope.monthlyRetainer.monthlyInvestment.accountingDescription).")
+                lines.append("Inputs: \(scope.unreconciledMonths) unreconciled months (owner-entered), \(scope.openAnomalies) open anomalies, \(scope.uncategorizedTransactions) uncategorized, \(scope.undepositedPaymentCount) undeposited payments (\(scope.agedOver90Count) over 90 days), \(scope.duplicateAccountGroups) duplicate account groups, \(scope.averageMonthlyTransactions) transactions/month.")
+            }
+            let stale = bankFeedActivity.filter(\.isStale)
+            lines.append(stale.isEmpty ? "Bank feeds: all active within 5 days." : "Stale bank feeds: " + stale.map { "\($0.accountName) (last posting \($0.lastActivity?.formatted ?? "none"))" }.joined(separator: "; "))
+            lines.append(fluxAlerts.isEmpty ? "Flux: no P&L line swung >20% and >$500." : "Flux alerts: " + fluxAlerts.map { "\($0.label) \($0.current.accountingDescription) vs trailing avg \($0.trailingAverage.accountingDescription)" }.joined(separator: "; "))
+            if let kpi = kpiSummary { lines.append("KPIs: " + kpi.emailBullets.joined(separator: "; ")) }
+            return lines.joined(separator: "\n")
 
         default:
             let pageName = String(describing: screen)

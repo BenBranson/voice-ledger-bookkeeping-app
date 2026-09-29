@@ -12,7 +12,9 @@ import DesignSystem
 /// gap map, no VL-CAT-UNCAT-001). Inventing a formula from the two rules
 /// that do exist would be exactly the kind of unearned precision `CLAUDE.md`
 /// rule 6 exists to prevent — an honest "not yet available" beats a number
-/// nobody should trust.
+/// nobody should trust. **Superseded 2026-09-29:** the quote now comes from
+/// `ClientDiagnostics.scopeScore` over real 24-month history (owner's
+/// formula), shown only once that history is loaded.
 public struct CleanupAssessmentView: View {
     public struct RuleSummary: Identifiable {
         public let ruleID: String
@@ -33,6 +35,8 @@ public struct CleanupAssessmentView: View {
     private let summaries: [RuleSummary]
     private let onSelectFinding: (Finding) -> Void
     private let onExport: (ReportExportFormat) -> Void
+    private let scopeQuoteSummary: String?
+    private let onOpenDiagnostics: () -> Void
     /// Owner directive (2026-08-30): "a lot of the sections say unsynced
     /// yet there is no refresh button for them to sync" — see `SyncButton`.
     private let isSyncing: Bool
@@ -79,8 +83,12 @@ public struct CleanupAssessmentView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        scopeQuoteSummary: String? = nil,
+        onOpenDiagnostics: @escaping () -> Void = {}
     ) {
+        self.scopeQuoteSummary = scopeQuoteSummary
+        self.onOpenDiagnostics = onOpenDiagnostics
         self.environment = environment
         self.coverageStatus = coverageStatus
         self.coverageDetail = coverageDetail
@@ -180,12 +188,20 @@ public struct CleanupAssessmentView: View {
                             .font(VLTypography.eyebrow())
                             .tracking(VLTypography.eyebrowTracking)
                             .foregroundStyle(VLColor.textMuted)
-                        Text(totalExposure?.description ?? "$0.00")
+                        Text(totalExposure?.accountingDescription ?? "$0.00")
                             .font(VLTypography.metricLarge())
                             .foregroundStyle(VLColor.textPrimary)
-                        Text("Estimated hours and price band: not yet available — needs the reconciliation gap map and uncategorized-transaction count, neither built yet. Not shown rather than guessed.")
-                            .font(VLTypography.caption())
-                            .foregroundStyle(VLColor.textMuted)
+                        if let scopeQuoteSummary {
+                            Text(scopeQuoteSummary)
+                                .font(VLTypography.cardTitle())
+                                .foregroundStyle(VLColor.cyan)
+                        } else {
+                            Text("Estimated hours and price band: load 24-month history on Client Diagnostics to compute the cleanup quote.")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        }
+                        Button("Open Client Diagnostics") { onOpenDiagnostics() }
+                            .buttonStyle(.link)
                     }
                 }
 

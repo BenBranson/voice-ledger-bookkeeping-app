@@ -138,10 +138,16 @@ public struct CompanyConnectionInfo: Sendable, Codable, Hashable {
 public struct LedgerDeposit: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let linkedPaymentIDs: [String]
+    public let txnDate: AccountingDate?
+    public let depositToAccountID: String?
+    public let totalAmount: Money?
 
-    public init(id: String, linkedPaymentIDs: [String]) {
+    public init(id: String, linkedPaymentIDs: [String], txnDate: AccountingDate? = nil, depositToAccountID: String? = nil, totalAmount: Money? = nil) {
         self.id = id
         self.linkedPaymentIDs = linkedPaymentIDs
+        self.txnDate = txnDate
+        self.depositToAccountID = depositToAccountID
+        self.totalAmount = totalAmount
     }
 }
 

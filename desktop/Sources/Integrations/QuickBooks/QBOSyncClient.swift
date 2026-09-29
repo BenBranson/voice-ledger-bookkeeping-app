@@ -8,7 +8,7 @@ import Core
 /// itself has zero knowledge of QBO's JSON shape, by design (`CLAUDE.md`:
 /// `/core` never imports `/integrations`).
 public struct QBOSyncClient: Sendable {
-    private let backend: BackendClient
+    let backend: BackendClient
 
     public init(backend: BackendClient) {
         self.backend = backend
@@ -697,7 +697,13 @@ public struct QBOSyncClient: Sendable {
     }
 
     static func normalize(_ raw: QBORawDeposit) -> LedgerDeposit {
-        LedgerDeposit(id: raw.id, linkedPaymentIDs: raw.linkedPaymentIDs)
+        LedgerDeposit(
+            id: raw.id,
+            linkedPaymentIDs: raw.linkedPaymentIDs,
+            txnDate: raw.txnDate.map { AccountingDate(qboDateString: $0) },
+            depositToAccountID: raw.depositToAccountRef?.value,
+            totalAmount: raw.totalAmt.map { Money(minorUnits: Self.minorUnits(from: $0), currency: .usd) }
+        )
     }
 
     /// `balance` defaults to 0 (not `totalAmt`) when QBO omits the field —
