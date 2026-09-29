@@ -2037,8 +2037,24 @@ struct RootView: View {
                 executiveSummarySecondOpinionError: state.secondOpinionError?.contextKey == closePackageSummaryAskAIKey ? state.secondOpinionError?.message : nil,
                 onGenerateExecutiveSummarySecondOpinion: {
                     Task { await state.askSecondOpinion(contextKey: closePackageSummaryAskAIKey, contextText: closePackageContext(), question: closePackageSummaryPrompt, format: .report) }
-                }
+                },
+                monthlyReportCard: AnyView(MonthlyReportCard(
+                    isGenerating: state.isGeneratingMonthlyReport,
+                    stageText: state.monthlyReportStage,
+                    error: state.monthlyReportError,
+                    history: state.monthlyReportHistory.map { report in
+                        MonthlyReportCard.HistoryItem(id: report.id, title: report.periodKey, subtitle: "generated \(report.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(report.snapshotID.prefix(8))")
+                    },
+                    onGenerate: { Task { await state.generateMonthlyReport() } },
+                    onOpen: { id in state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id } }
+                ))
             )
+            .onAppear { state.refreshMonthlyReportHistory() }
+            .sheet(item: Binding(get: { state.previewedMonthlyReport }, set: { state.previewedMonthlyReport = $0 })) { report in
+                PDFPreviewSheet(url: report.pdfURL, title: "\(state.companyInfo?.companyName ?? "Client") — Monthly Report \(report.periodKey)") {
+                    state.previewedMonthlyReport = nil
+                }
+            }
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }

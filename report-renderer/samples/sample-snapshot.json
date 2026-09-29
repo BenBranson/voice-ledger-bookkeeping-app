@@ -1,0 +1,1092 @@
+{
+  "assets" : {
+    "negativeItems" : [
+      {
+        "accountID" : "f2",
+        "category" : "contra",
+        "id" : "acct:f2",
+        "label" : "Accumulated Depreciation",
+        "note" : "Contra asset — reduces the related asset",
+        "value" : -31400,
+        "valueText" : "($31,400.00)"
+      },
+      {
+        "accountID" : "b2",
+        "category" : "overdraft",
+        "id" : "acct:b2",
+        "label" : "Payroll Checking",
+        "note" : "Overdrawn bank account",
+        "value" : -1284.1,
+        "valueText" : "($1,284.10)"
+      }
+    ],
+    "negativeSubtotal" : -32684.1,
+    "negativeSubtotalText" : "($32,684.10)",
+    "net" : 156993.85,
+    "netText" : "$156,993.85",
+    "percentDenominatorLabel" : "Slice percentages are shares of positive balances only ($189,677.95)",
+    "positiveItems" : [
+      {
+        "accountID" : "f1",
+        "category" : "asset",
+        "id" : "acct:f1",
+        "label" : "Trucks & Equipment",
+        "share" : 0.5087570800928627,
+        "value" : 96500,
+        "valueText" : "$96,500.00"
+      },
+      {
+        "accountID" : "b1",
+        "category" : "asset",
+        "id" : "acct:b1",
+        "label" : "Business Checking",
+        "share" : 0.2025145779991823,
+        "value" : 38412.55,
+        "valueText" : "$38,412.55"
+      },
+      {
+        "accountID" : "a1",
+        "category" : "asset",
+        "id" : "acct:a1",
+        "label" : "Accounts Receivable (A\/R)",
+        "share" : 0.147172615477972,
+        "value" : 27915.4,
+        "valueText" : "$27,915.40"
+      },
+      {
+        "accountID" : "b3",
+        "category" : "asset",
+        "id" : "acct:b3",
+        "label" : "Savings",
+        "share" : 0.1318023523556639,
+        "value" : 25000,
+        "valueText" : "$25,000.00"
+      },
+      {
+        "accountID" : "a2",
+        "category" : "asset",
+        "id" : "acct:a2",
+        "label" : "Undeposited Funds",
+        "share" : 0.00975337407431913,
+        "value" : 1850,
+        "valueText" : "$1,850.00"
+      }
+    ],
+    "positiveSubtotal" : 189677.95,
+    "positiveSubtotalText" : "$189,677.95",
+    "reconciles" : true,
+    "reportedTotalText" : "$156,993.85",
+    "title" : "Assets"
+  },
+  "balanceSheetTable" : [
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Business Checking",
+      "valueText" : "$38,412.55"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Payroll Checking",
+      "valueText" : "($1,284.10)"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Savings",
+      "valueText" : "$25,000.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : true,
+      "label" : "Total Bank Accounts",
+      "valueText" : "$62,128.45"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Accounts Receivable (A\/R)",
+      "valueText" : "$27,915.40"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Undeposited Funds",
+      "valueText" : "$1,850.00"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Trucks & Equipment",
+      "valueText" : "$96,500.00"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Accumulated Depreciation",
+      "valueText" : "($31,400.00)"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "TOTAL ASSETS",
+      "valueText" : "$156,993.85"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Accounts Payable (A\/P)",
+      "valueText" : "$9,842.18"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Business Credit Card",
+      "valueText" : "$4,318.92"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Sales Tax Payable",
+      "valueText" : "$1,206.44"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Equipment Loan",
+      "valueText" : "$48,750.00"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Owner's Investment",
+      "valueText" : "$20,000.00"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Owner's Draw",
+      "valueText" : "($18,500.00)"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Retained Earnings",
+      "valueText" : "$62,210.47"
+    },
+    {
+      "depth" : 3,
+      "isTotal" : false,
+      "label" : "Net Income",
+      "valueText" : "$29,165.84"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "TOTAL LIABILITIES AND EQUITY",
+      "valueText" : "$156,993.85"
+    }
+  ],
+  "cash" : {
+    "accounts" : [
+      {
+        "accountID" : "b1",
+        "category" : "asset",
+        "id" : "acct:b1",
+        "label" : "Business Checking",
+        "value" : 38412.55,
+        "valueText" : "$38,412.55"
+      },
+      {
+        "accountID" : "b2",
+        "category" : "overdraft",
+        "id" : "acct:b2",
+        "label" : "Payroll Checking",
+        "note" : "Overdrawn",
+        "value" : -1284.1,
+        "valueText" : "($1,284.10)"
+      },
+      {
+        "accountID" : "b3",
+        "category" : "asset",
+        "id" : "acct:b3",
+        "label" : "Savings",
+        "value" : 25000,
+        "valueText" : "$25,000.00"
+      }
+    ],
+    "cashFlow" : [
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Net cash provided by operating activities",
+        "valueText" : "$11,236.18"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Net cash provided by investing activities",
+        "valueText" : "($4,800.00)"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Net cash provided by financing activities",
+        "valueText" : "($2,625.00)"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Net cash increase for period",
+        "valueText" : "$3,811.18"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : true,
+        "label" : "Cash at end of period",
+        "valueText" : "$62,128.45"
+      }
+    ],
+    "note" : "Cash movement comes from QuickBooks' Statement of Cash Flows for July 2026 — it differs from profit because of timing (receivables, payables) and non-operating items.",
+    "totalText" : "$62,128.45"
+  },
+  "checks" : [
+    {
+      "detail" : "Ties exactly.",
+      "label" : "Revenue-to-net-income bridge ties to QuickBooks net income",
+      "passed" : true
+    },
+    {
+      "detail" : "Categories $31,834.00 vs reported $31,834.00",
+      "label" : "Expense categories sum to Total Expenses",
+      "passed" : true
+    },
+    {
+      "detail" : "Accounts $156,993.85 vs reported $156,993.85",
+      "label" : "Asset accounts sum to Total Assets",
+      "passed" : true
+    },
+    {
+      "detail" : "Accounts $156,993.85 vs reported $156,993.85",
+      "label" : "Liability and equity accounts sum to Total Liabilities & Equity",
+      "passed" : true
+    }
+  ],
+  "expenses" : {
+    "allItems" : [
+      {
+        "accountID" : "e1",
+        "category" : "expense",
+        "id" : "acct:e1",
+        "label" : "Payroll Expenses",
+        "share" : 0.476408871018408,
+        "value" : 15166,
+        "valueText" : "$15,166.00"
+      },
+      {
+        "accountID" : "e13",
+        "category" : "expense",
+        "id" : "acct:e13",
+        "label" : "Professional Fees",
+        "share" : 0.11779858013444744,
+        "value" : 3750,
+        "valueText" : "$3,750.00"
+      },
+      {
+        "accountID" : "e4",
+        "category" : "expense",
+        "id" : "acct:e4",
+        "label" : "Rent or Lease",
+        "share" : 0.10052145504806181,
+        "value" : 3200,
+        "valueText" : "$3,200.00"
+      },
+      {
+        "accountID" : "e2",
+        "category" : "expense",
+        "id" : "acct:e2",
+        "label" : "Vehicle Fuel",
+        "share" : 0.09050072249795815,
+        "value" : 2881,
+        "valueText" : "$2,881.00"
+      },
+      {
+        "accountID" : "e3",
+        "category" : "expense",
+        "id" : "acct:e3",
+        "label" : "Equipment Rental",
+        "share" : 0.07997738267261419,
+        "value" : 2546,
+        "valueText" : "$2,546.00"
+      },
+      {
+        "accountID" : "e6",
+        "category" : "expense",
+        "id" : "acct:e6",
+        "label" : "Repairs & Maintenance",
+        "share" : 0.03618772381730226,
+        "value" : 1152,
+        "valueText" : "$1,152.00"
+      },
+      {
+        "accountID" : "e5",
+        "category" : "expense",
+        "id" : "acct:e5",
+        "label" : "Insurance",
+        "share" : 0.035810768360872026,
+        "value" : 1140,
+        "valueText" : "$1,140.00"
+      },
+      {
+        "accountID" : "e7",
+        "category" : "expense",
+        "id" : "acct:e7",
+        "label" : "Advertising & Marketing",
+        "share" : 0.02041842055663756,
+        "value" : 650,
+        "valueText" : "$650.00"
+      },
+      {
+        "accountID" : "e8",
+        "category" : "expense",
+        "id" : "acct:e8",
+        "label" : "Utilities",
+        "share" : 0.016962995539360433,
+        "value" : 540,
+        "valueText" : "$540.00"
+      },
+      {
+        "accountID" : "e9",
+        "category" : "expense",
+        "id" : "acct:e9",
+        "label" : "Software & Subscriptions",
+        "share" : 0.012093987560469938,
+        "value" : 385,
+        "valueText" : "$385.00"
+      },
+      {
+        "accountID" : "e10",
+        "category" : "expense",
+        "id" : "acct:e10",
+        "label" : "Office Supplies",
+        "share" : 0.0066595463969340955,
+        "value" : 212,
+        "valueText" : "$212.00"
+      },
+      {
+        "accountID" : "e12",
+        "category" : "expense",
+        "id" : "acct:e12",
+        "label" : "Meals",
+        "share" : 0.004649117295972859,
+        "value" : 148,
+        "valueText" : "$148.00"
+      },
+      {
+        "accountID" : "e11",
+        "category" : "expense",
+        "id" : "acct:e11",
+        "label" : "Bank Fees",
+        "share" : 0.0020104291009612365,
+        "value" : 64,
+        "valueText" : "$64.00"
+      }
+    ],
+    "creditItems" : [
+
+    ],
+    "items" : [
+      {
+        "accountID" : "e1",
+        "category" : "expense",
+        "id" : "acct:e1",
+        "label" : "Payroll Expenses",
+        "share" : 0.476408871018408,
+        "value" : 15166,
+        "valueText" : "$15,166.00"
+      },
+      {
+        "accountID" : "e13",
+        "category" : "expense",
+        "id" : "acct:e13",
+        "label" : "Professional Fees",
+        "share" : 0.11779858013444744,
+        "value" : 3750,
+        "valueText" : "$3,750.00"
+      },
+      {
+        "accountID" : "e4",
+        "category" : "expense",
+        "id" : "acct:e4",
+        "label" : "Rent or Lease",
+        "share" : 0.10052145504806181,
+        "value" : 3200,
+        "valueText" : "$3,200.00"
+      },
+      {
+        "accountID" : "e2",
+        "category" : "expense",
+        "id" : "acct:e2",
+        "label" : "Vehicle Fuel",
+        "share" : 0.09050072249795815,
+        "value" : 2881,
+        "valueText" : "$2,881.00"
+      },
+      {
+        "accountID" : "e3",
+        "category" : "expense",
+        "id" : "acct:e3",
+        "label" : "Equipment Rental",
+        "share" : 0.07997738267261419,
+        "value" : 2546,
+        "valueText" : "$2,546.00"
+      },
+      {
+        "accountID" : "e6",
+        "category" : "expense",
+        "id" : "acct:e6",
+        "label" : "Repairs & Maintenance",
+        "share" : 0.03618772381730226,
+        "value" : 1152,
+        "valueText" : "$1,152.00"
+      },
+      {
+        "accountID" : "e5",
+        "category" : "expense",
+        "id" : "acct:e5",
+        "label" : "Insurance",
+        "share" : 0.035810768360872026,
+        "value" : 1140,
+        "valueText" : "$1,140.00"
+      },
+      {
+        "accountID" : "e7",
+        "category" : "expense",
+        "id" : "acct:e7",
+        "label" : "Advertising & Marketing",
+        "share" : 0.02041842055663756,
+        "value" : 650,
+        "valueText" : "$650.00"
+      },
+      {
+        "category" : "other",
+        "id" : "other",
+        "label" : "Other (5 categories)",
+        "share" : 0.04237607589369856,
+        "value" : 1349,
+        "valueText" : "$1,349.00"
+      }
+    ],
+    "reconciles" : true,
+    "reportedTotalText" : "$31,834.00",
+    "totalText" : "$31,834.00"
+  },
+  "kpis" : [
+    {
+      "comparisonText" : "+$2,241.00 vs June 2026 (+3.1%)",
+      "detail" : "Total Income, July 2026",
+      "id" : "revenue",
+      "isNegative" : false,
+      "label" : "Revenue",
+      "valueText" : "$75,075.00"
+    },
+    {
+      "comparisonText" : "+$4,236.00 vs June 2026 (+8.7%)",
+      "detail" : "COGS + operating + other expenses",
+      "id" : "expenses",
+      "isNegative" : false,
+      "label" : "Expenses",
+      "valueText" : "$53,098.00"
+    },
+    {
+      "comparisonText" : "($1,995.00) vs June 2026 (-8.3%)",
+      "detail" : "Net Income per QuickBooks",
+      "id" : "net",
+      "isNegative" : false,
+      "label" : "Net Profit",
+      "valueText" : "$22,019.00"
+    },
+    {
+      "comparisonText" : "Balance as of July 31, 2026",
+      "detail" : "Total Bank Accounts on the Balance Sheet",
+      "id" : "cash",
+      "isNegative" : false,
+      "label" : "Cash in Bank",
+      "valueText" : "$62,128.45"
+    }
+  ],
+  "liabilitiesAndEquity" : {
+    "negativeItems" : [
+      {
+        "accountID" : "q2",
+        "category" : "draw",
+        "id" : "acct:q2",
+        "label" : "Owner's Draw",
+        "note" : "Owner draws \/ distributions (normally negative)",
+        "value" : -18500,
+        "valueText" : "($18,500.00)"
+      }
+    ],
+    "negativeSubtotal" : -18500,
+    "negativeSubtotalText" : "($18,500.00)",
+    "net" : 156993.85,
+    "netText" : "$156,993.85",
+    "percentDenominatorLabel" : "Slice percentages are shares of positive balances only ($175,493.85)",
+    "positiveItems" : [
+      {
+        "accountID" : "q3",
+        "category" : "equity",
+        "id" : "acct:q3",
+        "label" : "Retained Earnings",
+        "share" : 0.35448803476589064,
+        "value" : 62210.47,
+        "valueText" : "$62,210.47"
+      },
+      {
+        "accountID" : "l4",
+        "category" : "liability",
+        "id" : "acct:l4",
+        "label" : "Equipment Loan",
+        "share" : 0.2777875122119664,
+        "value" : 48750,
+        "valueText" : "$48,750.00"
+      },
+      {
+        "category" : "equity",
+        "id" : "label:Net Income",
+        "label" : "Net Income",
+        "share" : 0.16619294636250787,
+        "value" : 29165.84,
+        "valueText" : "$29,165.84"
+      },
+      {
+        "accountID" : "q1",
+        "category" : "equity",
+        "id" : "acct:q1",
+        "label" : "Owner's Investment",
+        "share" : 0.11396410757414006,
+        "value" : 20000,
+        "valueText" : "$20,000.00"
+      },
+      {
+        "accountID" : "l1",
+        "category" : "liability",
+        "id" : "acct:l1",
+        "label" : "Accounts Payable (A\/P)",
+        "share" : 0.056082763014202494,
+        "value" : 9842.18,
+        "valueText" : "$9,842.18"
+      },
+      {
+        "accountID" : "l2",
+        "category" : "liability",
+        "id" : "acct:l2",
+        "label" : "Business Credit Card",
+        "share" : 0.02461009317420525,
+        "value" : 4318.92,
+        "valueText" : "$4,318.92"
+      },
+      {
+        "accountID" : "l3",
+        "category" : "liability",
+        "id" : "acct:l3",
+        "label" : "Sales Tax Payable",
+        "share" : 0.006874542897087277,
+        "value" : 1206.44,
+        "valueText" : "$1,206.44"
+      }
+    ],
+    "positiveSubtotal" : 175493.85,
+    "positiveSubtotalText" : "$175,493.85",
+    "reconciles" : true,
+    "reportedTotalText" : "$156,993.85",
+    "title" : "Liabilities & Equity"
+  },
+  "meta" : {
+    "accountingBasis" : "Accrual",
+    "balanceDateLabel" : "Balances as of July 31, 2026",
+    "clientName" : "Sample Landscaping Co.",
+    "environment" : "sample",
+    "firmName" : "Benjamin Branson Bookkeeping",
+    "generatedAt" : "2026-09-29T08:26:42Z",
+    "generatedAtLabel" : "September 29, 2026 at 3:26 AM",
+    "isPartialMonth" : false,
+    "isSample" : true,
+    "periodKey" : "2026-07",
+    "periodLabel" : "July 2026",
+    "snapshotID" : "221a20ad7fe73bd69a9925a12e49485ab977245eae0d21558330d26ba08d8d07"
+  },
+  "monthOverMonth" : [
+    {
+      "changeText" : "+$2,241.00",
+      "currentText" : "$75,075.00",
+      "label" : "Revenue",
+      "percentText" : "+3.1%",
+      "priorText" : "$72,834.00"
+    },
+    {
+      "changeText" : "+$4,236.00",
+      "currentText" : "$53,098.00",
+      "label" : "Expenses",
+      "percentText" : "+8.7%",
+      "priorText" : "$48,862.00"
+    },
+    {
+      "changeText" : "($1,995.00)",
+      "currentText" : "$22,019.00",
+      "label" : "Net income",
+      "percentText" : "-8.3%",
+      "priorText" : "$24,014.00"
+    }
+  ],
+  "notes" : [
+    "Accounting basis: Accrual — all periods in this report use the same basis and calendar-month boundaries.",
+    "Trend: All loaded months shown.",
+    "Findings come from Voice Ledger's automated checks; items marked \"needs review\" are possible issues, not confirmed errors."
+  ],
+  "profitAndLossTable" : [
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Landscaping Services",
+      "valueText" : "$61,053.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Materials Sales",
+      "valueText" : "$14,022.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Income",
+      "valueText" : "$75,075.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Cost of Goods Sold",
+      "valueText" : "$20,954.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Cost of Goods Sold",
+      "valueText" : "$20,954.00"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Gross Profit",
+      "valueText" : "$54,121.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Payroll Expenses",
+      "valueText" : "$15,166.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Vehicle Fuel",
+      "valueText" : "$2,881.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Equipment Rental",
+      "valueText" : "$2,546.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Rent or Lease",
+      "valueText" : "$3,200.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Insurance",
+      "valueText" : "$1,140.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Repairs & Maintenance",
+      "valueText" : "$1,152.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Advertising & Marketing",
+      "valueText" : "$650.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Utilities",
+      "valueText" : "$540.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Software & Subscriptions",
+      "valueText" : "$385.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Office Supplies",
+      "valueText" : "$212.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Bank Fees",
+      "valueText" : "$64.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Meals",
+      "valueText" : "$148.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Professional Fees",
+      "valueText" : "$3,750.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Expenses",
+      "valueText" : "$31,834.00"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Operating Income",
+      "valueText" : "$22,287.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Interest Earned",
+      "valueText" : "$42.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Other Income",
+      "valueText" : "$42.00"
+    },
+    {
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Depreciation",
+      "valueText" : "$310.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Other Expenses",
+      "valueText" : "$310.00"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Other Income",
+      "valueText" : "($268.00)"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Income",
+      "valueText" : "$22,019.00"
+    }
+  ],
+  "receivables" : {
+    "buckets" : [
+      {
+        "category" : "asset",
+        "id" : "current",
+        "label" : "Current",
+        "value" : 17625.4,
+        "valueText" : "$17,625.40"
+      },
+      {
+        "category" : "asset",
+        "id" : "1-30",
+        "label" : "1–30 days",
+        "value" : 5350,
+        "valueText" : "$5,350.00"
+      },
+      {
+        "category" : "asset",
+        "id" : "31-60",
+        "label" : "31–60 days",
+        "value" : 1480,
+        "valueText" : "$1,480.00"
+      },
+      {
+        "category" : "asset",
+        "id" : "61-90",
+        "label" : "61–90 days",
+        "value" : 1150,
+        "valueText" : "$1,150.00"
+      },
+      {
+        "category" : "overdraft",
+        "id" : "91+",
+        "label" : "91+ days",
+        "value" : 2310,
+        "valueText" : "$2,310.00"
+      }
+    ],
+    "note" : "Accounts receivable aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected.",
+    "topCustomers" : [
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Hillcrest HOA",
+        "valueText" : "$11,550.00"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Maple Ridge Apartments",
+        "valueText" : "$8,605.40"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Cedar Park Church",
+        "valueText" : "$3,460.00"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Various residential",
+        "valueText" : "$2,440.00"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Dr. Patel (residence)",
+        "valueText" : "$1,860.00"
+      }
+    ],
+    "totalText" : "$27,915.40"
+  },
+  "recommendedActions" : [
+    "Follow up with the client on the April invoices ($2,310.00)",
+    "Record or confirm the July 31 funding transfer ($1,284.10)",
+    "Compare both bills and void the duplicate ($1,640.00)",
+    "Confirm the July legal invoice is a one-time cost ($3,300.00)"
+  ],
+  "reviewFindings" : [
+    {
+      "action" : "Compare both bills and void the duplicate",
+      "amountText" : "$1,640.00",
+      "detail" : "Two bills for the same amount 3 days apart with slightly different vendor spellings.",
+      "title" : "Possible duplicate bill — Green Valley Nursery, $1,640.00"
+    },
+    {
+      "action" : "Confirm the July legal invoice is a one-time cost",
+      "amountText" : "$3,300.00",
+      "detail" : "July Professional Fees were $3,750 against a 3-month average of $450.",
+      "title" : "Professional Fees up sharply vs. trailing average"
+    }
+  ],
+  "schemaVersion" : 1,
+  "trend" : {
+    "note" : "All loaded months shown.",
+    "points" : [
+      {
+        "expenses" : 48068,
+        "label" : "Jul 2025",
+        "netIncome" : 20850,
+        "period" : "2025-07",
+        "revenue" : 68876
+      },
+      {
+        "expenses" : 46300,
+        "label" : "Aug 2025",
+        "netIncome" : 18506,
+        "period" : "2025-08",
+        "revenue" : 64764
+      },
+      {
+        "expenses" : 42323,
+        "label" : "Sep 2025",
+        "netIncome" : 13231,
+        "period" : "2025-09",
+        "revenue" : 55512
+      },
+      {
+        "expenses" : 38787,
+        "label" : "Oct 2025",
+        "netIncome" : 8543,
+        "period" : "2025-10",
+        "revenue" : 47288
+      },
+      {
+        "expenses" : 34810,
+        "label" : "Nov 2025",
+        "netIncome" : 3268,
+        "period" : "2025-11",
+        "revenue" : 38036
+      },
+      {
+        "expenses" : 32600,
+        "label" : "Dec 2025",
+        "netIncome" : 338,
+        "period" : "2025-12",
+        "revenue" : 32896
+      },
+      {
+        "expenses" : 32959,
+        "label" : "Jan 2026",
+        "netIncome" : 1819,
+        "period" : "2026-01",
+        "revenue" : 34736
+      },
+      {
+        "expenses" : 33894,
+        "label" : "Feb 2026",
+        "netIncome" : 3125,
+        "period" : "2026-02",
+        "revenue" : 36977
+      },
+      {
+        "expenses" : 39854,
+        "label" : "Mar 2026",
+        "netIncome" : 7250,
+        "period" : "2026-03",
+        "revenue" : 47062
+      },
+      {
+        "expenses" : 44766,
+        "label" : "Apr 2026",
+        "netIncome" : 14103,
+        "period" : "2026-04",
+        "revenue" : 58827
+      },
+      {
+        "expenses" : 46991,
+        "label" : "May 2026",
+        "netIncome" : 21403,
+        "period" : "2026-05",
+        "revenue" : 68352
+      },
+      {
+        "expenses" : 48862,
+        "label" : "Jun 2026",
+        "netIncome" : 24014,
+        "period" : "2026-06",
+        "revenue" : 72834
+      },
+      {
+        "expenses" : 53098,
+        "label" : "Jul 2026",
+        "netIncome" : 22019,
+        "period" : "2026-07",
+        "revenue" : 75075
+      }
+    ]
+  },
+  "verifiedFindings" : [
+    {
+      "action" : "Follow up with the client on the April invoices",
+      "amountText" : "$2,310.00",
+      "detail" : "Two invoices from April remain unpaid.",
+      "title" : "Payment from Cedar Park Church is 91+ days past due"
+    },
+    {
+      "action" : "Record or confirm the July 31 funding transfer",
+      "amountText" : "$1,284.10",
+      "detail" : "The payroll account went negative after the July 31 payroll run posted before the funding transfer.",
+      "title" : "Payroll Checking is overdrawn — ($1,284.10)"
+    }
+  ],
+  "waterfall" : {
+    "reconciles" : true,
+    "steps" : [
+      {
+        "from" : 0,
+        "id" : "revenue",
+        "kind" : "total",
+        "label" : "Revenue",
+        "to" : 75075,
+        "valueText" : "$75,075.00"
+      },
+      {
+        "from" : 75075,
+        "id" : "cogs",
+        "kind" : "decrease",
+        "label" : "Cost of Goods Sold",
+        "to" : 54121,
+        "valueText" : "($20,954.00)"
+      },
+      {
+        "from" : 54121,
+        "id" : "expenses",
+        "kind" : "decrease",
+        "label" : "Operating Expenses",
+        "to" : 22287,
+        "valueText" : "($31,834.00)"
+      },
+      {
+        "from" : 22287,
+        "id" : "other-income",
+        "kind" : "increase",
+        "label" : "Other Income",
+        "to" : 22329,
+        "valueText" : "$42.00"
+      },
+      {
+        "from" : 22329,
+        "id" : "other-expenses",
+        "kind" : "decrease",
+        "label" : "Other Expenses",
+        "to" : 22019,
+        "valueText" : "($310.00)"
+      },
+      {
+        "from" : 0,
+        "id" : "net",
+        "kind" : "total",
+        "label" : "Net Income",
+        "to" : 22019,
+        "valueText" : "$22,019.00"
+      }
+    ]
+  },
+  "yearOverYear" : [
+    {
+      "changeText" : "+$6,199.00",
+      "currentText" : "$75,075.00",
+      "label" : "Revenue",
+      "percentText" : "+9.0%",
+      "priorText" : "$68,876.00"
+    },
+    {
+      "changeText" : "+$5,030.00",
+      "currentText" : "$53,098.00",
+      "label" : "Expenses",
+      "percentText" : "+10.5%",
+      "priorText" : "$48,068.00"
+    },
+    {
+      "changeText" : "+$1,169.00",
+      "currentText" : "$22,019.00",
+      "label" : "Net income",
+      "percentText" : "+5.6%",
+      "priorText" : "$20,850.00"
+    }
+  ]
+}

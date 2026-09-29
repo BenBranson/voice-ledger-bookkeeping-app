@@ -76,6 +76,7 @@ public struct ClosePackageView: View {
     /// passed through as-is (already sorted most-recent-first by the app
     /// layer, same convention as `recentActivity`).
     private let conversationHistory: [AskAIConversationEntry]
+    private let monthlyReportCard: AnyView?
     private let onExport: (ReportExportFormat) -> Void
     /// The designed, multi-section cover-page-plus-sections PDF
     /// (`ClosePackagePDFExporter`) — distinct from `onExport`'s generic
@@ -159,8 +160,10 @@ public struct ClosePackageView: View {
         executiveSummarySecondOpinionAnswer: String? = nil,
         isGeneratingExecutiveSummarySecondOpinion: Bool = false,
         executiveSummarySecondOpinionError: String? = nil,
-        onGenerateExecutiveSummarySecondOpinion: @escaping () -> Void = {}
+        onGenerateExecutiveSummarySecondOpinion: @escaping () -> Void = {},
+        monthlyReportCard: AnyView? = nil
     ) {
+        self.monthlyReportCard = monthlyReportCard
         self.environment = environment
         self.period = period
         self.checklistStatus = checklistStatus
@@ -222,6 +225,10 @@ public struct ClosePackageView: View {
                 Text(verbatim: "\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
+
+                if let monthlyReportCard {
+                    monthlyReportCard
+                }
 
                 executiveSummarySection
                 checklistSection

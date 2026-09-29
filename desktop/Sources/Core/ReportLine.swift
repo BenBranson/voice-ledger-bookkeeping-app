@@ -17,12 +17,20 @@ public struct ReportLine: Identifiable, Hashable, Sendable, Codable {
     /// distinctly (e.g. bold) so "Total Current Assets" doesn't read like
     /// just another account line.
     public let isSummary: Bool
+    /// QBO's Account Id for an account row (report ColData `id`); `nil` for
+    /// section headers, totals, and computed rows like Net Income.
+    public let accountID: String?
 
-    public init(label: String, amount: Money?, depth: Int, isSummary: Bool) {
+    public init(label: String, amount: Money?, depth: Int, isSummary: Bool, accountID: String? = nil) {
         self.id = "\(depth)-\(label)-\(isSummary)-\(UUID().uuidString.prefix(8))"
         self.label = label
         self.amount = amount
         self.depth = depth
         self.isSummary = isSummary
+        self.accountID = accountID
     }
+
+    /// Stable across refreshes: the account ID when QBO supplies one,
+    /// otherwise the label (never an array position or random ID).
+    public var stableKey: String { accountID.map { "acct:\($0)" } ?? "label:\(label)" }
 }

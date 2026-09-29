@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -291,6 +291,34 @@ case "tax-check":
     } catch {
         FileHandle.standardError.write("tax-check failed: \(error)\n".data(using: .utf8)!)
         exit(2)
+    }
+
+case "sample-report":
+    let out = arguments.count >= 3 ? arguments[2] : "sample-snapshot.json"
+    do {
+        let sealed = try SampleMonthlyReport.build(generatedAt: Date()).sealedJSON()
+        try sealed.json.write(to: URL(fileURLWithPath: out))
+        print("SAMPLE snapshot \(sealed.snapshotID.prefix(12)) written to \(out)")
+    } catch {
+        FileHandle.standardError.write("sample-report failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+
+case "monthly-report":
+    guard arguments.count >= 5, let year = Int(arguments[2]), let month = Int(arguments[3]) else {
+        FileHandle.standardError.write("Usage: monthly-report <year> <month> <out.json>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    do {
+        let client = QBOSyncClient(backend: BackendClient(configuration: try BackendConfiguration.fromEnvironment()))
+        let company = try await client.fetchCompanyInfo(realmID: realmID)
+        let inputs = try await client.loadMonthlyReportInputs(realmID: realmID, period: AccountingPeriod(year: year, month: month), clientName: company.companyName, environment: "sandbox", findings: [], coverage: .complete, today: AccountingDate(date: Date()))
+        let sealed = try MonthlyReportBuilder.build(inputs).sealedJSON()
+        try sealed.json.write(to: URL(fileURLWithPath: arguments[4]))
+        print("Snapshot \(sealed.snapshotID.prefix(12)) written to \(arguments[4])")
+    } catch {
+        FileHandle.standardError.write("monthly-report failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
     }
 
 case "history-check":

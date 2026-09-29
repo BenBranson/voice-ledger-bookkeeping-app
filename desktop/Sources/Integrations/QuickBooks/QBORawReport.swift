@@ -12,9 +12,18 @@ import Core
 /// shape it's looking at.
 public struct QBORawReport: Decodable, Sendable {
     public let rows: QBORawReportRowList
+    public let header: Header?
+
+    /// Only the field the monthly report needs: QBO states the report's
+    /// accounting basis ("Accrual"/"Cash") in its header.
+    public struct Header: Decodable, Sendable {
+        public let reportBasis: String?
+        enum CodingKeys: String, CodingKey { case reportBasis = "ReportBasis" }
+    }
 
     enum CodingKeys: String, CodingKey {
         case rows = "Rows"
+        case header = "Header"
     }
 }
 

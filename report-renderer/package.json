@@ -1,0 +1,14 @@
+{
+  "name": "voice-ledger-report-renderer",
+  "private": true,
+  "type": "module",
+  "description": "Renders Voice Ledger monthly client reports: ECharts (server-side SVG) + HTML template -> WeasyPrint PDF. Local only.",
+  "scripts": {
+    "sample": "node render.mjs samples/sample-snapshot.json samples/sample-report.pdf",
+    "test": "node --test test/render.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "echarts": "^6.1.0"
+  }
+}

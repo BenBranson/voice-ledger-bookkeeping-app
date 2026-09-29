@@ -477,7 +477,8 @@ public struct QBOSyncClient: Sendable {
         let label = colData.first?.value ?? ""
         let amountString = colData.count > 1 ? colData[1].value : nil
         let amount = amountString.flatMap { $0.isEmpty ? nil : Money(minorUnits: Self.minorUnits(from: Decimal(string: $0) ?? 0), currency: .usd) }
-        return ReportLine(label: label, amount: amount, depth: depth, isSummary: isSummary)
+        let accountID = isSummary ? nil : colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }
+        return ReportLine(label: label, amount: amount, depth: depth, isSummary: isSummary, accountID: accountID)
     }
 
     public func sync(realmID: RealmID, period: AccountingPeriod) async throws -> NormalizedDataSet {

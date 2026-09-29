@@ -146,3 +146,47 @@ extension QBOSyncClient {
         return Self.flattenGeneralLedger(decoded.rows, depth: 0).filter { !$0.isSummary && !$0.isAccountHeader && $0.transactionType != nil }
     }
 }
+
+extension QBOSyncClient {
+    /// Profit & Loss lines plus the accounting basis QBO states for them.
+    public func fetchProfitAndLossWithBasis(realmID: RealmID, period: AccountingPeriod) async throws -> (lines: [ReportLine], basis: String?) {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let data = try await backend.call(.readReport, realmID: realmID, params: ReadReportParams(reportKind: "ProfitAndLoss", startDate: startDate, endDate: endDate))
+        let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
+        return (Self.flatten(decoded.rows, depth: 0), decoded.header?.reportBasis)
+    }
+
+    /// Everything the monthly client report needs, read-only: 13 monthly
+    /// P&Ls ending with `period` (so last year's same month can be
+    /// compared), the period's Balance Sheet and Cash Flow, A/R aging, and
+    /// account types. No writes.
+    public func loadMonthlyReportInputs(realmID: RealmID, period: AccountingPeriod, clientName: String, environment: String, findings: [Finding], coverage: Coverage, today: AccountingDate) async throws -> MonthlyReportInputs {
+        var monthly: [MonthlyReport] = []
+        var basis: String?
+        for month in period.trailingMonths(13) {
+            let result = try await withReportRetry { try await fetchProfitAndLossWithBasis(realmID: realmID, period: month) }
+            if month == period { basis = result.basis }
+            monthly.append(MonthlyReport(period: month, lines: result.lines))
+        }
+        let balanceSheet = try await withReportRetry { try await fetchBalanceSheet(realmID: realmID, period: period) }
+        let cashFlow = (try? await withReportRetry { try await fetchCashFlow(realmID: realmID, period: period) }) ?? []
+        let aging = (try? await withReportRetry { try await fetchAgedReceivables(realmID: realmID) }) ?? []
+        let accountsData = try await backend.call(.readAccounts, realmID: realmID, params: ReadAccountsParams(activeOnly: false))
+        let accounts = (try JSONDecoder().decode(QBOAccountQueryResponse.self, from: accountsData).queryResponse.account ?? []).compactMap { Self.normalize($0) }
+        return MonthlyReportInputs(
+            clientName: clientName, period: period, today: today, generatedAt: Date(), accountingBasis: basis, environment: environment,
+            monthlyProfitAndLoss: monthly, balanceSheet: balanceSheet, cashFlow: cashFlow, agedReceivables: aging,
+            accountTypes: Dictionary(accounts.map { ($0.id, $0.accountType) }, uniquingKeysWith: { first, _ in first }),
+            findings: findings, coverage: coverage
+        )
+    }
+
+    private func withReportRetry<T>(_ work: () async throws -> T) async throws -> T {
+        for attempt in 0..<3 {
+            do { return try await work() } catch BackendClientError.httpError(let status, _) where status == 429 && attempt < 2 {
+                try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 1_000_000_000)
+            }
+        }
+        return try await work()
+    }
+}

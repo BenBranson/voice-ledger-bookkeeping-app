@@ -2676,6 +2676,54 @@ public final class AppState {
     /// `ActivityLogEntry` keyed by `findingID`, not a separate record.
     public private(set) var reCatImportMessage: String?
 
+    // MARK: Monthly client report (ECharts + WeasyPrint, rendered locally)
+    public private(set) var isGeneratingMonthlyReport = false
+    public private(set) var monthlyReportStage: String?
+    public private(set) var monthlyReportError: String?
+    private(set) var monthlyReportHistory: [MonthlyReportService.GeneratedReport] = []
+    var previewedMonthlyReport: MonthlyReportService.GeneratedReport?
+
+    func refreshMonthlyReportHistory() {
+        guard let root = clientStoreRootDirectory else { return }
+        monthlyReportHistory = MonthlyReportService.history(root: root, realmID: realmID)
+    }
+
+    public func generateMonthlyReport() async {
+        guard !isGeneratingMonthlyReport else { return }
+        guard let root = clientStoreRootDirectory else {
+            monthlyReportError = "No local store location for this client."
+            return
+        }
+        isGeneratingMonthlyReport = true
+        monthlyReportError = nil
+        monthlyReportStage = "Reading 13 months of reports from QuickBooks…"
+        defer { isGeneratingMonthlyReport = false; monthlyReportStage = nil }
+        do {
+            let inputs = try await syncClient.loadMonthlyReportInputs(
+                realmID: realmID, period: period,
+                clientName: companyInfo?.companyName ?? "Client",
+                environment: environment == .production ? "production" : "sandbox",
+                findings: findings, coverage: coverage, today: AccountingDate(date: Date())
+            )
+            monthlyReportStage = "Checking figures…"
+            let report = MonthlyReportBuilder.build(inputs)
+            let generated = try await MonthlyReportService.render(report: report, root: root, realmID: realmID) { stage in
+                let text: String
+                switch stage {
+                case "charts": text = "Drawing charts…"
+                case "html": text = "Laying out pages…"
+                case "pdf": text = "Creating the PDF…"
+                default: text = "Finishing…"
+                }
+                Task { @MainActor [weak self] in self?.monthlyReportStage = text }
+            }
+            refreshMonthlyReportHistory()
+            previewedMonthlyReport = generated
+        } catch {
+            monthlyReportError = "Report not generated: \(error.localizedDescription)"
+        }
+    }
+
     /// Reads a client-filled ReCat sheet and records each explanation as
     /// that finding's client answer. Never writes to QBO.
     public func importReCatAnswers(from url: URL, actorName: String) async {
