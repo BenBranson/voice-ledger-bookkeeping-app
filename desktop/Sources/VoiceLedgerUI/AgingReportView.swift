@@ -132,7 +132,7 @@ public struct AgingReportView: View {
                                             .frame(width: 200, alignment: .leading)
                                         let amounts = [line.current, line.days1to30, line.days31to60, line.days61to90, line.days91AndOver, line.total]
                                         ForEach(amounts.indices, id: \.self) { index in
-                                            Text(amounts[index]?.description ?? "")
+                                            Text(amounts[index]?.accountingDescription ?? "")
                                                 .font(VLTypography.tabularNumeric())
                                                 .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
                                                 .frame(width: Self.columnWidth, alignment: .trailing)

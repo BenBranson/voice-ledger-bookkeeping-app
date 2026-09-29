@@ -273,7 +273,48 @@ public struct QBOSyncClient: Sendable {
             params: ReadAgingReportParams(reportKind: reportKind, endDate: asOf.map { Self.format($0) })
         )
         let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
-        return Self.flattenAging(decoded.rows, depth: 0)
+        let lines = Self.flattenAging(decoded.rows, depth: 0)
+        // QBO's AgedPayables SUMMARY can come back empty ("NoReportData")
+        // while bills are open — seen live 2026-09-29 with 7 open bills.
+        // The detail report still lists them; rebuild the same shape from it.
+        if reportKind == "AgedPayables", !lines.contains(where: { !$0.isSummary && ($0.total?.minorUnits ?? 0) != 0 }) {
+            let detail = try await backend.call(.readReport, realmID: realmID,
+                                                params: ReadAgingReportParams(reportKind: "AgedPayableDetail", endDate: asOf.map { Self.format($0) }))
+            let rebuilt = Self.agingFromDetail(try JSONDecoder().decode(QBORawReport.self, from: detail).rows)
+            if !rebuilt.isEmpty { return rebuilt }
+        }
+        return lines
+    }
+
+    /// Detail columns (verified live): Date, Transaction Type, Num, Vendor,
+    /// Due Date, Past Due (days), Amount, Open Balance. Buckets by Past Due.
+    static func agingFromDetail(_ rows: QBORawReportRowList) -> [AgingLine] {
+        var buckets: [String: [Int64]] = [:]   // name -> [current, 1-30, 31-60, 61-90, 91+]
+        var order: [String] = []
+        func walk(_ list: QBORawReportRowList) {
+            for row in list.row ?? [] {
+                if let nested = row.rows { walk(nested) }
+                guard row.header == nil, row.rows == nil, let cols = row.colData, cols.count >= 8 else { continue }
+                let name = cols[3].value.isEmpty ? "(no vendor)" : cols[3].value
+                let pastDue = Int(cols[5].value) ?? 0
+                let open = Self.minorUnits(from: Decimal(string: cols[7].value) ?? 0)
+                guard open != 0 else { continue }
+                let index = pastDue <= 0 ? 0 : pastDue <= 30 ? 1 : pastDue <= 60 ? 2 : pastDue <= 90 ? 3 : 4
+                if buckets[name] == nil { buckets[name] = [0, 0, 0, 0, 0]; order.append(name) }
+                buckets[name]![index] += open
+            }
+        }
+        walk(rows)
+        guard !order.isEmpty else { return [] }
+        func line(_ label: String, _ b: [Int64], summary: Bool) -> AgingLine {
+            func m(_ v: Int64) -> Money { Money(minorUnits: v, currency: .usd) }
+            return AgingLine(label: label, current: m(b[0]), days1to30: m(b[1]), days31to60: m(b[2]), days61to90: m(b[3]), days91AndOver: m(b[4]),
+                             total: m(b.reduce(0, +)), depth: 0, isSummary: summary)
+        }
+        var lines = order.sorted().map { line($0, buckets[$0]!, summary: false) }
+        let totals = (0..<5).map { i in order.map { buckets[$0]![i] }.reduce(0, +) }
+        lines.append(line("TOTAL", totals, summary: true))
+        return lines
     }
 
     private func fetchReport(reportKind: String, realmID: RealmID, period: AccountingPeriod) async throws -> [ReportLine] {

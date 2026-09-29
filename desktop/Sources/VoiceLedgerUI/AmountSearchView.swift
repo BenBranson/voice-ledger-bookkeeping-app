@@ -46,6 +46,16 @@ public struct AmountSearchView: View {
             .sorted { $0.txnDate < $1.txnDate }
     }
 
+    private var balanceAccounts: [LedgerAccount] {
+        guard let parsedAmount else { return [] }
+        return AmountSearch.accountsWithBalance(parsedAmount, in: accounts)
+    }
+
+    private var combination: [LedgerTransaction]? {
+        guard let parsedAmount, matches.isEmpty else { return nil }
+        return AmountSearch.combination(matching: parsedAmount, in: transactions)
+    }
+
     private func accountName(_ accountID: String?) -> String {
         guard let accountID else { return "—" }
         return accounts.first { $0.id == accountID }?.name ?? accountID
@@ -97,7 +107,11 @@ public struct AmountSearchView: View {
                                     .foregroundStyle(VLColor.textMuted)
                                 Spacer()
                             }
-                            if matches.isEmpty {
+                            if matches.isEmpty && (!balanceAccounts.isEmpty || combination != nil) {
+                                Text("No single transaction is this amount — but see below.")
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            } else if matches.isEmpty {
                                 Text(transactions.isEmpty ? "Nothing to search yet — sync first." : "No transaction for this exact amount in \(scopeDescription). Account balances (like a clearing account's total) aren't transactions, so they won't match unless a single transaction had that amount.")
                                     .font(VLTypography.caption())
                                     .foregroundStyle(VLColor.textMuted)
@@ -111,11 +125,63 @@ public struct AmountSearchView: View {
                             }
                         }
                     }
+                    ForEach(balanceAccounts, id: \.id) { account in
+                        balanceCard(account, amount: parsedAmount)
+                    }
+                    if let combination {
+                        VLCard(accentRail: VLColor.violet) {
+                            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                                Text(verbatim: "\(combination.count) TRANSACTIONS THAT ADD UP TO \(parsedAmount.accountingDescription)")
+                                    .font(VLTypography.eyebrow()).tracking(VLTypography.eyebrowTracking).foregroundStyle(VLColor.violet)
+                                Text("Possibly one payment split into parts, or a total posted as pieces. This is a match on amounts only — check before relying on it.")
+                                    .font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                ForEach(combination) { row($0) }
+                            }
+                        }
+                    }
                 }
             }
             .padding(VLSpacing.pageGutter)
         }
         .background(VLColor.background)
+    }
+
+    private func balanceCard(_ account: LedgerAccount, amount: Money) -> some View {
+        let postings = AmountSearch.transactions(for: account, in: transactions)
+        let register = qboURL.flatMap { make in
+            // Reuse the transaction link's base to reach the account register.
+            postings.first.flatMap(make).map { url -> URL in
+                var parts = url.absoluteString.components(separatedBy: "/app/")
+                parts[parts.count - 1] = "register?accountId=\(account.id)"
+                return URL(string: parts.joined(separator: "/app/")) ?? url
+            }
+        }
+        return VLCard(accentRail: VLColor.cyan) {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                HStack {
+                    Text(verbatim: "THIS IS THE BALANCE OF \(account.name.uppercased())")
+                        .font(VLTypography.eyebrow()).tracking(VLTypography.eyebrowTracking).foregroundStyle(VLColor.cyan)
+                    Spacer()
+                    if let register {
+                        Link(destination: register) { Label("Open account in QBO", systemImage: "arrow.up.right.square") }.font(VLTypography.caption())
+                    }
+                }
+                Text("\(account.name) currently shows \(account.currentBalance.accountingDescription). A balance is the running total of many postings, so no single transaction matches it. \(postings.isEmpty ? "No postings to this account are in the loaded data — load the 24-month history to see them." : "The \(postings.count) posting\(postings.count == 1 ? "" : "s") paid from or into it in the loaded data:")")
+                    .font(VLTypography.caption()).foregroundStyle(VLColor.textSecondary)
+                ForEach(postings.suffix(25)) { transaction in
+                    row(transaction)
+                    Divider().overlay(VLColor.border)
+                }
+                if postings.count > 25 {
+                    Text("Showing the latest 25 of \(postings.count).").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                }
+                if !postings.isEmpty {
+                    let total = postings.map(\.totalAmount).reduce(Money.zero, +)
+                    Text("These postings total \(total.accountingDescription)\(total.minorUnits == abs(account.currentBalance.minorUnits) ? " — they account for the whole balance." : "; the rest of the balance comes from activity not in the loaded data (e.g. deposits, transfers, or journal entries).")")
+                        .font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                }
+            }
+        }
     }
 
     static func kindLabel(_ kind: QBOEntityKind) -> String {

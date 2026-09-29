@@ -87,6 +87,20 @@ struct QBOReportTests {
         #expect(lines[1].accountID == nil)
     }
 
+    @Test("Aged payables rebuilt from the detail report when the summary is empty (live shape 2026-09-29)")
+    func agingFromDetail() throws {
+        func row(_ vendor: String, _ pastDue: String, _ open: String) -> String {
+            #"{ "ColData": [{"value":"2026-01-01"},{"value":"Bill"},{"value":""},{"value":"\#(vendor)"},{"value":"2026-01-31"},{"value":"\#(pastDue)"},{"value":"\#(open)"},{"value":"\#(open)"}], "type": "Data" }"#
+        }
+        let json = #"{ "Rows": { "Row": [ { "Header": { "ColData": [{"value":"91 or more days past due"}] }, "Rows": { "Row": ["# + row("Norton", "147", "1188.00") + "," + row("PG&E", "262", "86.44") + #"] }, "type": "Section" }, { "Header": { "ColData": [{"value":"Current"}] }, "Rows": { "Row": ["# + row("Norton", "-6", "756.93") + "," + row("Permian", "44", "-12.00") + #"] }, "type": "Section" } ] } }"#
+        let lines = QBOSyncClient.agingFromDetail(try JSONDecoder().decode(QBORawReport.self, from: Data(json.utf8)).rows)
+        let norton = try #require(lines.first { $0.label == "Norton" })
+        #expect(norton.current == Money(minorUnits: 75_693, currency: .usd))
+        #expect(norton.days91AndOver == Money(minorUnits: 118_800, currency: .usd))
+        #expect(lines.first { $0.label == "Permian" }?.days31to60 == Money(minorUnits: -1_200, currency: .usd))
+        #expect(lines.last?.isSummary == true && lines.last?.total == Money(minorUnits: 201_937, currency: .usd))
+    }
+
     @Test("An empty report (no rows) flattens to an empty list, not a crash")
     func emptyReportFlattensToEmptyList() throws {
         let json = "{ \"Rows\": { \"Row\": [] } }"

@@ -1290,3 +1290,9 @@ Applied with `QBO_SPIKE_REALM_ID=… tsx spike/seed.ts apply operating-history` 
 **Row-click AI:** on the Balance Sheet, P&L and Cash Flow pages, clicking a report row asks the default (local Ollama `gemma4:12b`) model about it via `AskAIContext.reportRow`. The context holds the row, its section path, last period's amount, and the report totals, all taken from the report. The answer lands in that page's own Ask AI panel. Wired through the `askAIAboutReportRow` environment value in `ReportLinesTable`. Live-verified on Owner's Draw.
 
 **Manual-entry links:** a bank line with nothing posted (`VL-RECON-MISSING-001`) shows three actions: "1. Check bank feed" (`/app/banking`), "2. Enter expense in QBO" (`/app/expense`), and "Copy details". The owner enters it by hand, per his decision; Voice Ledger never writes it (rule 8). Finding titles, descriptions, and evidence are display-polished with `ClientText.polish`.
+
+## 2026-09-29 — Search by Amount, Aged Payables, finding Back (v1.25–v1.29)
+- **Finding Back** returns to the page the finding was opened from (`AppState.findingReturnScreen`, set in `screen`'s didSet), and the button is labeled with that page's name.
+- **Search by Amount** searches this session's sync plus the 24-month history, and says what it searched. When an amount equals an account's balance it lists that account's postings and whether they total the balance. When no single transaction matches, it looks for 2–3 transactions that add up to the amount.
+- **Aged Payables quirk (verified live):** QBO's `AgedPayables` summary returned `NoReportData` while 7 bills were open. `AgedPayableDetail` had them (total $3,523.60). `fetchAgingReport` rebuilds the summary shape from the detail report when the summary is empty (`QBOSyncClient.agingFromDetail`; the backend report enum now allows `AgedPayableDetail`). AgedReceivables' summary works.
+- Balance-type findings always link to the account register, even before accounts are loaded.
