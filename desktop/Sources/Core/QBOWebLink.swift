@@ -35,7 +35,20 @@ public enum QBOWebLink {
         return URL(string: "\(base)/\(route)?txnId=\(txn.id)")
     }
 
+    /// Rules whose fix is entering a NEW transaction by hand in QBO (a bank
+    /// line with nothing posted for it). Owner decision 2026-09-29: scanned
+    /// or imported figures never go into QBO automatically — Voice Ledger
+    /// links to QBO's own entry form and the bookkeeper types it in.
+    public static let manualEntryRules: Set<String> = ["VL-RECON-MISSING-001"]
+
+    /// QBO's blank "new expense" form.
+    public static func newExpense(isSandbox: Bool) -> URL { URL(string: "\(base(isSandbox: isSandbox))/expense")! }
+
+    /// QBO's Banking page, where the bank feed's "For Review" queue lives.
+    public static func bankFeed(isSandbox: Bool) -> URL { URL(string: "\(base(isSandbox: isSandbox))/banking")! }
+
     public static func url(for finding: Finding, transactions: [LedgerTransaction], accounts: [LedgerAccount], isSandbox: Bool) -> URL? {
+        if manualEntryRules.contains(finding.ruleID.rawValue) { return newExpense(isSandbox: isSandbox) }
         for item in finding.evidence {
             if let url = url(forRecordID: item.transactionID, transactions: transactions, accounts: accounts, isSandbox: isSandbox) {
                 return url

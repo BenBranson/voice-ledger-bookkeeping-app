@@ -308,8 +308,8 @@ public enum MonthlyReportBuilder {
                 totalText: grand.accountingDescription,
                 topCustomers: Array(customers),
                 note: split.credits.minorUnits < 0
-                    ? "Aging as of the report date QuickBooks returned. \(split.credits.accountingDescription) is customer credits or payments not yet applied to an invoice — not money owed. It is netted into the total but excluded from the \"older than 60 days\" figures; it should be applied to an open invoice or refunded. 91+ days is at risk of not being collected."
-                    : "Aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected.",
+                    ? "Aging as of \(balanceDate), matching the Balance Sheet. \(split.credits.accountingDescription) is customer credits or payments not yet applied to an invoice — not money owed. It is netted into the total but excluded from the \"older than 60 days\" figures; it should be applied to an open invoice or refunded. 91+ days is at risk of not being collected."
+                    : "Aging as of \(balanceDate), matching the Balance Sheet; 91+ days is at risk of not being collected.",
                 creditsText: split.credits.minorUnits < 0 ? split.credits.accountingDescription : nil
             )
         }

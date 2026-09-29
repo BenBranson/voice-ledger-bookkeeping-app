@@ -10,7 +10,25 @@
     "VL Spike Suspense": "1150040017",
     "VL Spike Payroll Clearing": "1150040018",
     "VL Spike Sweeper Checking": "1150040019",
-    "VL Spike Sweeper Supplies": "1150040020"
+    "VL Spike Sweeper Supplies": "1150040020",
+    "Checking": "35",
+    "Mastercard": "41",
+    "Cost of Labor": "59",
+    "Fuel": "56",
+    "Job Materials": "63",
+    "Plants and Soil": "66",
+    "Supplies": "20",
+    "Equipment Rental": "29",
+    "Rent or Lease": "17",
+    "Insurance": "11",
+    "Telephone": "77",
+    "Gas and Electric": "76",
+    "Dues & Subscriptions": "10",
+    "Advertising": "7",
+    "Automobile": "55",
+    "Notes Payable": "44",
+    "Interest Paid": "1150040021",
+    "Owner's Draw": "1150040022"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
@@ -19,7 +37,22 @@
     "VL Spike ADP": "61",
     "VL Spike Permian Supply, Inc.": "62",
     "VL Spike Gulf Coast Hardware": "200000001",
-    "VL SPIKE GULF COAST HARDWARE, LLC": "200000011"
+    "VL SPIKE GULF COAST HARDWARE, LLC": "200000011",
+    "Gusto Payroll": "200000021",
+    "Chin's Gas and Oil": "33",
+    "Norton Lumber and Building Materials": "46",
+    "Tania's Nursery": "50",
+    "Hicks Hardware": "41",
+    "Ellis Equipment Rental": "38",
+    "Hall Properties": "40",
+    "Brosnahan Insurance Agency": "31",
+    "Cal Telephone": "32",
+    "PG&E": "48",
+    "Intuit QuickBooks": "200000041",
+    "Lee Advertising": "42",
+    "Diego's Road Warrior Bodyshop": "36",
+    "First Basin Bank": "200000051",
+    "Owner Draw": "200000061"
   },
   "purchases": {
     "VL-SPIKE-ZERO": {
@@ -109,6 +142,966 @@
     "VL-SPIKE-NEAR-DATE-B": {
       "id": "238",
       "syncToken": "0"
+    },
+    "VL history 2025-07 owner draw": {
+      "id": "239",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 loan payment": {
+      "id": "240",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 fuel 1": {
+      "id": "241",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payroll 1": {
+      "id": "247",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payroll 2": {
+      "id": "248",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 rent": {
+      "id": "249",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 insurance": {
+      "id": "250",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 phone": {
+      "id": "251",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 utilities": {
+      "id": "252",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 fuel 2": {
+      "id": "253",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 fuel 3": {
+      "id": "254",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 supplies": {
+      "id": "255",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 software": {
+      "id": "256",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 plants 1": {
+      "id": "257",
+      "syncToken": "1"
+    },
+    "VL history 2025-07 plants 2": {
+      "id": "258",
+      "syncToken": "1"
+    },
+    "VL history 2025-07 equipment": {
+      "id": "259",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payroll 1": {
+      "id": "260",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payroll 2": {
+      "id": "261",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 rent": {
+      "id": "262",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 insurance": {
+      "id": "263",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 phone": {
+      "id": "264",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 utilities": {
+      "id": "265",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 fuel 1": {
+      "id": "266",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 fuel 2": {
+      "id": "267",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 fuel 3": {
+      "id": "268",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 supplies": {
+      "id": "269",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 software": {
+      "id": "270",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 plants 1": {
+      "id": "271",
+      "syncToken": "1"
+    },
+    "VL history 2025-08 plants 2": {
+      "id": "272",
+      "syncToken": "1"
+    },
+    "VL history 2025-08 equipment": {
+      "id": "273",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 loan payment": {
+      "id": "274",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 owner draw": {
+      "id": "275",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payroll 1": {
+      "id": "276",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payroll 2": {
+      "id": "277",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 rent": {
+      "id": "278",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 insurance": {
+      "id": "279",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 phone": {
+      "id": "280",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 utilities": {
+      "id": "281",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 fuel 1": {
+      "id": "282",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 fuel 2": {
+      "id": "283",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 fuel 3": {
+      "id": "284",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 supplies": {
+      "id": "285",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 software": {
+      "id": "286",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 plants 1": {
+      "id": "287",
+      "syncToken": "1"
+    },
+    "VL history 2025-09 plants 2": {
+      "id": "288",
+      "syncToken": "1"
+    },
+    "VL history 2025-09 equipment": {
+      "id": "289",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 advertising": {
+      "id": "290",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 loan payment": {
+      "id": "291",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 owner draw": {
+      "id": "292",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payroll 1": {
+      "id": "293",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payroll 2": {
+      "id": "294",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 rent": {
+      "id": "295",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 insurance": {
+      "id": "296",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 phone": {
+      "id": "297",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 utilities": {
+      "id": "298",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 fuel 1": {
+      "id": "299",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 fuel 2": {
+      "id": "300",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 fuel 3": {
+      "id": "301",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 supplies": {
+      "id": "302",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 software": {
+      "id": "303",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 plants 1": {
+      "id": "304",
+      "syncToken": "1"
+    },
+    "VL history 2025-10 plants 2": {
+      "id": "305",
+      "syncToken": "1"
+    },
+    "VL history 2025-10 truck repair": {
+      "id": "306",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 loan payment": {
+      "id": "307",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 owner draw": {
+      "id": "308",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payroll 1": {
+      "id": "309",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payroll 2": {
+      "id": "310",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 rent": {
+      "id": "311",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 insurance": {
+      "id": "312",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 phone": {
+      "id": "313",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 utilities": {
+      "id": "314",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 fuel 1": {
+      "id": "315",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 fuel 2": {
+      "id": "316",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 fuel 3": {
+      "id": "317",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 supplies": {
+      "id": "318",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 software": {
+      "id": "319",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 plants 1": {
+      "id": "320",
+      "syncToken": "1"
+    },
+    "VL history 2025-11 plants 2": {
+      "id": "321",
+      "syncToken": "1"
+    },
+    "VL history 2025-11 loan payment": {
+      "id": "322",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 owner draw": {
+      "id": "323",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payroll 1": {
+      "id": "324",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payroll 2": {
+      "id": "325",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 rent": {
+      "id": "326",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 insurance": {
+      "id": "327",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 phone": {
+      "id": "328",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 utilities": {
+      "id": "329",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 fuel 1": {
+      "id": "330",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 fuel 2": {
+      "id": "331",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 fuel 3": {
+      "id": "332",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 supplies": {
+      "id": "333",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 software": {
+      "id": "334",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 plants 1": {
+      "id": "335",
+      "syncToken": "1"
+    },
+    "VL history 2025-12 plants 2": {
+      "id": "336",
+      "syncToken": "1"
+    },
+    "VL history 2025-12 advertising": {
+      "id": "337",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 loan payment": {
+      "id": "338",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 owner draw": {
+      "id": "339",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payroll 1": {
+      "id": "340",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payroll 2": {
+      "id": "341",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 rent": {
+      "id": "342",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 insurance": {
+      "id": "343",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 phone": {
+      "id": "344",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 utilities": {
+      "id": "345",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 fuel 1": {
+      "id": "346",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 fuel 2": {
+      "id": "347",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 fuel 3": {
+      "id": "348",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 supplies": {
+      "id": "349",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 software": {
+      "id": "350",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 plants 1": {
+      "id": "351",
+      "syncToken": "1"
+    },
+    "VL history 2026-01 plants 2": {
+      "id": "352",
+      "syncToken": "1"
+    },
+    "VL history 2026-01 loan payment": {
+      "id": "353",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 owner draw": {
+      "id": "354",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payroll 1": {
+      "id": "355",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payroll 2": {
+      "id": "356",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 rent": {
+      "id": "357",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 insurance": {
+      "id": "358",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 phone": {
+      "id": "359",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 utilities": {
+      "id": "360",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 fuel 1": {
+      "id": "361",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 fuel 2": {
+      "id": "362",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 fuel 3": {
+      "id": "363",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 supplies": {
+      "id": "364",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 software": {
+      "id": "365",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 plants 1": {
+      "id": "366",
+      "syncToken": "1"
+    },
+    "VL history 2026-02 plants 2": {
+      "id": "367",
+      "syncToken": "1"
+    },
+    "VL history 2026-02 truck repair": {
+      "id": "368",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 loan payment": {
+      "id": "369",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 owner draw": {
+      "id": "370",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payroll 1": {
+      "id": "371",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payroll 2": {
+      "id": "372",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 rent": {
+      "id": "373",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 insurance": {
+      "id": "374",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 phone": {
+      "id": "375",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 utilities": {
+      "id": "376",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 fuel 1": {
+      "id": "377",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 fuel 2": {
+      "id": "378",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 fuel 3": {
+      "id": "379",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 supplies": {
+      "id": "380",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 software": {
+      "id": "381",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 plants 1": {
+      "id": "382",
+      "syncToken": "1"
+    },
+    "VL history 2026-03 plants 2": {
+      "id": "383",
+      "syncToken": "1"
+    },
+    "VL history 2026-03 advertising": {
+      "id": "384",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 loan payment": {
+      "id": "385",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 owner draw": {
+      "id": "386",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payroll 1": {
+      "id": "387",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payroll 2": {
+      "id": "388",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 rent": {
+      "id": "389",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 insurance": {
+      "id": "390",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 phone": {
+      "id": "391",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 utilities": {
+      "id": "392",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 fuel 1": {
+      "id": "393",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 fuel 2": {
+      "id": "394",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 fuel 3": {
+      "id": "395",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 supplies": {
+      "id": "396",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 software": {
+      "id": "397",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 plants 1": {
+      "id": "398",
+      "syncToken": "1"
+    },
+    "VL history 2026-04 plants 2": {
+      "id": "399",
+      "syncToken": "1"
+    },
+    "VL history 2026-04 equipment": {
+      "id": "400",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 loan payment": {
+      "id": "401",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 owner draw": {
+      "id": "402",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payroll 1": {
+      "id": "403",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payroll 2": {
+      "id": "404",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 rent": {
+      "id": "405",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 insurance": {
+      "id": "406",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 phone": {
+      "id": "407",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 utilities": {
+      "id": "408",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 fuel 1": {
+      "id": "409",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 fuel 2": {
+      "id": "410",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 fuel 3": {
+      "id": "411",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 supplies": {
+      "id": "412",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 software": {
+      "id": "413",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 plants 1": {
+      "id": "414",
+      "syncToken": "1"
+    },
+    "VL history 2026-05 plants 2": {
+      "id": "415",
+      "syncToken": "1"
+    },
+    "VL history 2026-05 equipment": {
+      "id": "416",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 loan payment": {
+      "id": "417",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 owner draw": {
+      "id": "418",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payroll 1": {
+      "id": "419",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payroll 2": {
+      "id": "420",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 rent": {
+      "id": "421",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 insurance": {
+      "id": "422",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 phone": {
+      "id": "423",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 utilities": {
+      "id": "424",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 fuel 1": {
+      "id": "425",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 fuel 2": {
+      "id": "426",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 fuel 3": {
+      "id": "427",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 supplies": {
+      "id": "428",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 software": {
+      "id": "429",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 plants 1": {
+      "id": "430",
+      "syncToken": "1"
+    },
+    "VL history 2026-06 plants 2": {
+      "id": "431",
+      "syncToken": "1"
+    },
+    "VL history 2026-06 equipment": {
+      "id": "432",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 advertising": {
+      "id": "433",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 loan payment": {
+      "id": "434",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 owner draw": {
+      "id": "435",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payroll 1": {
+      "id": "436",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payroll 2": {
+      "id": "437",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 rent": {
+      "id": "438",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 insurance": {
+      "id": "439",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 phone": {
+      "id": "440",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 utilities": {
+      "id": "441",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 fuel 1": {
+      "id": "442",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 fuel 2": {
+      "id": "443",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 fuel 3": {
+      "id": "444",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 supplies": {
+      "id": "445",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 software": {
+      "id": "446",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 plants 1": {
+      "id": "447",
+      "syncToken": "1"
+    },
+    "VL history 2026-07 plants 2": {
+      "id": "448",
+      "syncToken": "1"
+    },
+    "VL history 2026-07 equipment": {
+      "id": "449",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 loan payment": {
+      "id": "450",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 owner draw": {
+      "id": "451",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payroll 1": {
+      "id": "452",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payroll 2": {
+      "id": "453",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 rent": {
+      "id": "454",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 insurance": {
+      "id": "455",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 phone": {
+      "id": "456",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 utilities": {
+      "id": "457",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 fuel 1": {
+      "id": "458",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 fuel 2": {
+      "id": "459",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 fuel 3": {
+      "id": "460",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 supplies": {
+      "id": "461",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 software": {
+      "id": "462",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 plants 1": {
+      "id": "463",
+      "syncToken": "1"
+    },
+    "VL history 2026-08 plants 2": {
+      "id": "464",
+      "syncToken": "1"
+    },
+    "VL history 2026-08 equipment": {
+      "id": "465",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 loan payment": {
+      "id": "466",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 owner draw": {
+      "id": "467",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 payroll 1": {
+      "id": "468",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 rent": {
+      "id": "469",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 insurance": {
+      "id": "470",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 phone": {
+      "id": "471",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 utilities": {
+      "id": "472",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 fuel 1": {
+      "id": "473",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 fuel 2": {
+      "id": "474",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 fuel 3": {
+      "id": "475",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 supplies": {
+      "id": "476",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 software": {
+      "id": "477",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 plants 1": {
+      "id": "478",
+      "syncToken": "1"
+    },
+    "VL history 2026-09 plants 2": {
+      "id": "479",
+      "syncToken": "1"
+    },
+    "VL history 2026-09 equipment": {
+      "id": "480",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 advertising": {
+      "id": "481",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 loan payment": {
+      "id": "482",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 owner draw": {
+      "id": "483",
+      "syncToken": "0"
     }
   },
   "bills": {
@@ -119,13 +1112,100 @@
     "VL-SPIKE-DUP-BILL-B": {
       "id": "216",
       "syncToken": "0"
+    },
+    "VL history 2025-07 lumber bill": {
+      "id": "242",
+      "syncToken": "2"
+    },
+    "VL history 2025-08 lumber bill": {
+      "id": "484",
+      "syncToken": "2"
+    },
+    "VL history 2025-09 lumber bill": {
+      "id": "485",
+      "syncToken": "2"
+    },
+    "VL history 2025-10 lumber bill": {
+      "id": "486",
+      "syncToken": "2"
+    },
+    "VL history 2025-11 lumber bill": {
+      "id": "487",
+      "syncToken": "2"
+    },
+    "VL history 2025-12 lumber bill": {
+      "id": "488",
+      "syncToken": "2"
+    },
+    "VL history 2026-01 lumber bill": {
+      "id": "489",
+      "syncToken": "2"
+    },
+    "VL history 2026-02 lumber bill": {
+      "id": "490",
+      "syncToken": "2"
+    },
+    "VL history 2026-03 lumber bill": {
+      "id": "491",
+      "syncToken": "2"
+    },
+    "VL history 2026-04 lumber bill": {
+      "id": "492",
+      "syncToken": "1"
+    },
+    "VL history 2026-05 lumber bill": {
+      "id": "493",
+      "syncToken": "2"
+    },
+    "VL history 2026-06 lumber bill": {
+      "id": "494",
+      "syncToken": "2"
+    },
+    "VL history 2026-07 lumber bill": {
+      "id": "495",
+      "syncToken": "2"
+    },
+    "VL history 2026-08 lumber bill": {
+      "id": "496",
+      "syncToken": "2"
+    },
+    "VL history 2026-09 lumber bill": {
+      "id": "497",
+      "syncToken": "1"
     }
   },
   "customers": {
-    "Cool Cars": "3"
+    "Cool Cars": "3",
+    "Wedding Planning by Whitney": "28",
+    "Video Games by Dan": "27",
+    "55 Twin Lane": "9",
+    "Kate Whelan": "14",
+    "Sushi by Katsuyuki": "25",
+    "Dylan Sollfrank": "6",
+    "Shara Barnett": "22",
+    "0969 Ocean View Road": "8",
+    "Freeman Sporting Goods": "7",
+    "Rago Travel Agency": "19",
+    "Barnett Design": "23",
+    "Jeff's Jalopies": "12",
+    "Dukes Basketball Camp": "5",
+    "Gevelber Photography": "11",
+    "Bill's Windsurf Shop": "2",
+    "Diego Rodriguez": "4",
+    "Rondonuwu Fruit and Vegi": "21",
+    "Red Rock Diner": "20",
+    "Pye's Cakes": "15",
+    "Kookies by Kathy": "16"
   },
   "items": {
-    "Design": "4"
+    "Design": "4",
+    "Soil": "15",
+    "Maintenance & Repair": "9",
+    "Gardening": "6",
+    "Installation": "7",
+    "Pest Control": "10",
+    "Trimming": "18",
+    "Sod": "14"
   },
   "invoices": {
     "VL-SPIKE-DUP-INV-A": {
@@ -134,6 +1214,622 @@
     },
     "VL-SPIKE-DUP-INV-B": {
       "id": "221",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 01": {
+      "id": "243",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 02": {
+      "id": "498",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 03": {
+      "id": "499",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 04": {
+      "id": "500",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 05": {
+      "id": "501",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 06": {
+      "id": "502",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 07": {
+      "id": "503",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 08": {
+      "id": "504",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 09": {
+      "id": "505",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 10": {
+      "id": "506",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 11": {
+      "id": "507",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 invoice 12": {
+      "id": "508",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 01": {
+      "id": "509",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 02": {
+      "id": "510",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 03": {
+      "id": "511",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 04": {
+      "id": "512",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 05": {
+      "id": "513",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 06": {
+      "id": "514",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 07": {
+      "id": "515",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 08": {
+      "id": "516",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 09": {
+      "id": "517",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 10": {
+      "id": "518",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 invoice 11": {
+      "id": "519",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 01": {
+      "id": "520",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 02": {
+      "id": "521",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 03": {
+      "id": "522",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 04": {
+      "id": "523",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 05": {
+      "id": "524",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 06": {
+      "id": "525",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 07": {
+      "id": "526",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 08": {
+      "id": "527",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 09": {
+      "id": "528",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 10": {
+      "id": "529",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 11": {
+      "id": "530",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 invoice 12": {
+      "id": "531",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 01": {
+      "id": "532",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 02": {
+      "id": "533",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 03": {
+      "id": "534",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 04": {
+      "id": "535",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 05": {
+      "id": "536",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 06": {
+      "id": "537",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 07": {
+      "id": "538",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 08": {
+      "id": "539",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 09": {
+      "id": "540",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 invoice 10": {
+      "id": "541",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 01": {
+      "id": "542",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 02": {
+      "id": "543",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 03": {
+      "id": "544",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 04": {
+      "id": "545",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 05": {
+      "id": "546",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 06": {
+      "id": "547",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 07": {
+      "id": "548",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 invoice 08": {
+      "id": "549",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 01": {
+      "id": "550",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 02": {
+      "id": "551",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 03": {
+      "id": "552",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 04": {
+      "id": "553",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 05": {
+      "id": "554",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 06": {
+      "id": "555",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 invoice 07": {
+      "id": "556",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 01": {
+      "id": "557",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 02": {
+      "id": "558",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 03": {
+      "id": "559",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 04": {
+      "id": "560",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 05": {
+      "id": "561",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 06": {
+      "id": "562",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 invoice 07": {
+      "id": "563",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 01": {
+      "id": "564",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 02": {
+      "id": "565",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 03": {
+      "id": "566",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 04": {
+      "id": "567",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 05": {
+      "id": "568",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 06": {
+      "id": "569",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 invoice 07": {
+      "id": "570",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 01": {
+      "id": "571",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 02": {
+      "id": "572",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 03": {
+      "id": "573",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 04": {
+      "id": "574",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 05": {
+      "id": "575",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 06": {
+      "id": "576",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 07": {
+      "id": "577",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 08": {
+      "id": "578",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 invoice 09": {
+      "id": "579",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 01": {
+      "id": "580",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 02": {
+      "id": "581",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 03": {
+      "id": "582",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 04": {
+      "id": "583",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 05": {
+      "id": "584",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 06": {
+      "id": "585",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 07": {
+      "id": "586",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 08": {
+      "id": "587",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 09": {
+      "id": "588",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 10": {
+      "id": "589",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 11": {
+      "id": "590",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 invoice 12": {
+      "id": "591",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 01": {
+      "id": "592",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 02": {
+      "id": "593",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 03": {
+      "id": "594",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 04": {
+      "id": "595",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 05": {
+      "id": "596",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 06": {
+      "id": "597",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 07": {
+      "id": "598",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 08": {
+      "id": "599",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 09": {
+      "id": "600",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 10": {
+      "id": "601",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 11": {
+      "id": "602",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 12": {
+      "id": "603",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 invoice 13": {
+      "id": "604",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 01": {
+      "id": "605",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 02": {
+      "id": "606",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 03": {
+      "id": "607",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 04": {
+      "id": "608",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 05": {
+      "id": "609",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 06": {
+      "id": "610",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 07": {
+      "id": "611",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 08": {
+      "id": "612",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 09": {
+      "id": "613",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 10": {
+      "id": "614",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 11": {
+      "id": "615",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 12": {
+      "id": "616",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 13": {
+      "id": "617",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 invoice 14": {
+      "id": "618",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 01": {
+      "id": "619",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 02": {
+      "id": "620",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 03": {
+      "id": "621",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 04": {
+      "id": "622",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 05": {
+      "id": "623",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 06": {
+      "id": "624",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 07": {
+      "id": "625",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 08": {
+      "id": "626",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 09": {
+      "id": "627",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 10": {
+      "id": "628",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 11": {
+      "id": "629",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 12": {
+      "id": "630",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 invoice 13": {
+      "id": "631",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 01": {
+      "id": "632",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 02": {
+      "id": "633",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 03": {
+      "id": "634",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 04": {
+      "id": "635",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 05": {
+      "id": "636",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 06": {
+      "id": "637",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 07": {
+      "id": "638",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 08": {
+      "id": "639",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 09": {
+      "id": "640",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 10": {
+      "id": "641",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 invoice 11": {
+      "id": "642",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 01": {
+      "id": "643",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 02": {
+      "id": "644",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 03": {
+      "id": "645",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 04": {
+      "id": "646",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 05": {
+      "id": "647",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 06": {
+      "id": "648",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 09": {
+      "id": "649",
+      "syncToken": "0"
+    },
+    "VL history 2026-09 invoice 10": {
+      "id": "650",
       "syncToken": "0"
     }
   },
@@ -145,11 +1841,695 @@
     "VL-SPIKE-DUP-PAY-B": {
       "id": "223",
       "syncToken": "0"
+    },
+    "VL history 2025-07 payment 01": {
+      "id": "244",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 02": {
+      "id": "651",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 03": {
+      "id": "652",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 04": {
+      "id": "653",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 05": {
+      "id": "654",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 06": {
+      "id": "655",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 07": {
+      "id": "656",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 08": {
+      "id": "657",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 09": {
+      "id": "658",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 10": {
+      "id": "659",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 11": {
+      "id": "660",
+      "syncToken": "0"
+    },
+    "VL history 2025-07 payment 12": {
+      "id": "661",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 01": {
+      "id": "662",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 02": {
+      "id": "663",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 03": {
+      "id": "664",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 04": {
+      "id": "665",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 05": {
+      "id": "666",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 06": {
+      "id": "667",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 07": {
+      "id": "668",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 08": {
+      "id": "669",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 09": {
+      "id": "670",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 10": {
+      "id": "671",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 payment 11": {
+      "id": "672",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 01": {
+      "id": "673",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 02": {
+      "id": "674",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 03": {
+      "id": "675",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 04": {
+      "id": "676",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 05": {
+      "id": "677",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 06": {
+      "id": "678",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 07": {
+      "id": "679",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 08": {
+      "id": "680",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 09": {
+      "id": "681",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 10": {
+      "id": "682",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 11": {
+      "id": "683",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 payment 12": {
+      "id": "684",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 01": {
+      "id": "685",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 02": {
+      "id": "686",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 03": {
+      "id": "687",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 04": {
+      "id": "688",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 05": {
+      "id": "689",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 06": {
+      "id": "690",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 07": {
+      "id": "691",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 08": {
+      "id": "692",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 09": {
+      "id": "693",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 payment 10": {
+      "id": "694",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 01": {
+      "id": "695",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 02": {
+      "id": "696",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 03": {
+      "id": "697",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 04": {
+      "id": "698",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 05": {
+      "id": "699",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 06": {
+      "id": "700",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 07": {
+      "id": "701",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 payment 08": {
+      "id": "702",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 01": {
+      "id": "703",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 02": {
+      "id": "704",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 03": {
+      "id": "705",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 04": {
+      "id": "706",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 05": {
+      "id": "707",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 06": {
+      "id": "708",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 payment 07": {
+      "id": "709",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 01": {
+      "id": "710",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 02": {
+      "id": "711",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 03": {
+      "id": "712",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 04": {
+      "id": "713",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 05": {
+      "id": "714",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 06": {
+      "id": "715",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 payment 07": {
+      "id": "716",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 01": {
+      "id": "717",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 02": {
+      "id": "718",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 03": {
+      "id": "719",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 04": {
+      "id": "720",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 05": {
+      "id": "721",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 06": {
+      "id": "722",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 payment 07": {
+      "id": "723",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 01": {
+      "id": "724",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 03": {
+      "id": "725",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 04": {
+      "id": "726",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 05": {
+      "id": "727",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 06": {
+      "id": "728",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 07": {
+      "id": "729",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 08": {
+      "id": "730",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 payment 09": {
+      "id": "731",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 01": {
+      "id": "732",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 02": {
+      "id": "733",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 03": {
+      "id": "734",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 04": {
+      "id": "735",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 05": {
+      "id": "736",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 06": {
+      "id": "737",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 07": {
+      "id": "738",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 08": {
+      "id": "739",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 09": {
+      "id": "740",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 10": {
+      "id": "741",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 11": {
+      "id": "742",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 payment 12": {
+      "id": "743",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 01": {
+      "id": "744",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 02": {
+      "id": "745",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 03": {
+      "id": "746",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 05": {
+      "id": "747",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 06": {
+      "id": "748",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 07": {
+      "id": "749",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 08": {
+      "id": "750",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 09": {
+      "id": "751",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 10": {
+      "id": "752",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 11": {
+      "id": "753",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 12": {
+      "id": "754",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 payment 13": {
+      "id": "755",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 01": {
+      "id": "756",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 02": {
+      "id": "757",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 03": {
+      "id": "758",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 04": {
+      "id": "759",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 05": {
+      "id": "760",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 06": {
+      "id": "761",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 07": {
+      "id": "762",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 08": {
+      "id": "763",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 09": {
+      "id": "764",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 10": {
+      "id": "765",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 11": {
+      "id": "766",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 12": {
+      "id": "767",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 13": {
+      "id": "768",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 payment 14": {
+      "id": "769",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 01": {
+      "id": "770",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 02": {
+      "id": "771",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 03": {
+      "id": "772",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 04": {
+      "id": "773",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 05": {
+      "id": "774",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 07": {
+      "id": "775",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 08": {
+      "id": "776",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 09": {
+      "id": "777",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 10": {
+      "id": "778",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 11": {
+      "id": "779",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 12": {
+      "id": "780",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 payment 13": {
+      "id": "781",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 01": {
+      "id": "782",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 02": {
+      "id": "783",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 03": {
+      "id": "784",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 04": {
+      "id": "785",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 05": {
+      "id": "786",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 06": {
+      "id": "787",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 07": {
+      "id": "788",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 08": {
+      "id": "789",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 09": {
+      "id": "790",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 10": {
+      "id": "791",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 payment 11": {
+      "id": "792",
+      "syncToken": "0"
     }
   },
   "vendorCredits": {
     "VL-SPIKE-VENDCREDIT-UNAPPLIED": {
       "id": "225",
+      "syncToken": "0"
+    }
+  },
+  "billPayments": {
+    "VL history 2025-07 lumber payment": {
+      "id": "245",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 lumber payment": {
+      "id": "793",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 lumber payment": {
+      "id": "794",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 lumber payment": {
+      "id": "795",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 lumber payment": {
+      "id": "796",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 lumber payment": {
+      "id": "797",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 lumber payment": {
+      "id": "798",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 lumber payment": {
+      "id": "799",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 lumber payment": {
+      "id": "800",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 lumber payment": {
+      "id": "801",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 lumber payment": {
+      "id": "802",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 lumber payment": {
+      "id": "803",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 lumber payment": {
+      "id": "804",
+      "syncToken": "0"
+    }
+  },
+  "transfers": {
+    "VL history 2025-07 card payoff": {
+      "id": "246",
+      "syncToken": "0"
+    },
+    "VL history 2025-08 card payoff": {
+      "id": "805",
+      "syncToken": "0"
+    },
+    "VL history 2025-09 card payoff": {
+      "id": "806",
+      "syncToken": "0"
+    },
+    "VL history 2025-10 card payoff": {
+      "id": "807",
+      "syncToken": "0"
+    },
+    "VL history 2025-11 card payoff": {
+      "id": "808",
+      "syncToken": "0"
+    },
+    "VL history 2025-12 card payoff": {
+      "id": "809",
+      "syncToken": "0"
+    },
+    "VL history 2026-01 card payoff": {
+      "id": "810",
+      "syncToken": "0"
+    },
+    "VL history 2026-02 card payoff": {
+      "id": "811",
+      "syncToken": "0"
+    },
+    "VL history 2026-03 card payoff": {
+      "id": "812",
+      "syncToken": "0"
+    },
+    "VL history 2026-04 card payoff": {
+      "id": "813",
+      "syncToken": "0"
+    },
+    "VL history 2026-05 card payoff": {
+      "id": "814",
+      "syncToken": "0"
+    },
+    "VL history 2026-06 card payoff": {
+      "id": "815",
+      "syncToken": "0"
+    },
+    "VL history 2026-07 card payoff": {
+      "id": "816",
+      "syncToken": "0"
+    },
+    "VL history 2026-08 card payoff": {
+      "id": "817",
       "syncToken": "0"
     }
   }

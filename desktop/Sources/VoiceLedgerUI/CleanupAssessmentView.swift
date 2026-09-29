@@ -285,7 +285,7 @@ public struct CleanupAssessmentView: View {
                             onSelectFinding(finding)
                         } label: {
                             HStack {
-                                Text(finding.title)
+                                Text(ClientText.polish(finding.title))
                                     .font(VLTypography.body())
                                     .foregroundStyle(VLColor.textPrimary)
                                     .lineLimit(1)
@@ -330,7 +330,7 @@ public struct CleanupAssessmentView: View {
                                 onSelectFinding(finding)
                             } label: {
                                 HStack {
-                                    Text(finding.title)
+                                    Text(ClientText.polish(finding.title))
                                         .font(VLTypography.body())
                                         .foregroundStyle(VLColor.textSecondary)
                                     Spacer()

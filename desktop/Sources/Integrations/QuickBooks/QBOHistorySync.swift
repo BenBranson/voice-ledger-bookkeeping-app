@@ -178,8 +178,9 @@ extension QBOSyncClient {
         }
         let balanceSheet = try await withReportRetry { try await fetchBalanceSheet(realmID: realmID, period: period) }
         let cashFlow = (try? await withReportRetry { try await fetchCashFlow(realmID: realmID, period: period) }) ?? []
-        let receivables = try? await withReportRetry { try await fetchAgedReceivables(realmID: realmID) }
-        let payables = try? await withReportRetry { try await fetchAgedPayables(realmID: realmID) }
+        let agingAsOf = Self.agingDate(for: period, today: today)
+        let receivables = try? await withReportRetry { try await fetchAgedReceivables(realmID: realmID, asOf: agingAsOf) }
+        let payables = try? await withReportRetry { try await fetchAgedPayables(realmID: realmID, asOf: agingAsOf) }
         let accountsData = try await backend.call(.readAccounts, realmID: realmID, params: ReadAccountsParams(activeOnly: false))
         let accounts = (try JSONDecoder().decode(QBOAccountQueryResponse.self, from: accountsData).queryResponse.account ?? []).compactMap { Self.normalize($0) }
         var inputs = MonthlyReportInputs(

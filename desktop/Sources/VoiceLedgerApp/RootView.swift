@@ -1515,6 +1515,7 @@ struct RootView: View {
                 accountTypes: state.accountTypesByID,
                 chartActions: chartAccountActions
             )
+            .environment(\.askAIAboutReportRow, askAboutReportRow(key: balanceSheetReportAskAIKey, title: "Balance Sheet", lines: state.balanceSheetLines, prior: state.priorPeriodBalanceSheetLines.isEmpty ? nil : state.priorPeriodBalanceSheetLines))
             .task {
                 // Owner directive (2026-08-30): "why should i have to click
                 // on sections and then have to press refresh and wait" —
@@ -1586,6 +1587,7 @@ struct RootView: View {
                 chartActions: chartAccountActions,
                 trend: state.historyTrend
             )
+            .environment(\.askAIAboutReportRow, askAboutReportRow(key: profitAndLossReportAskAIKey, title: "Profit & Loss", lines: state.profitAndLossLines, prior: state.priorPeriodProfitAndLossLines.isEmpty ? nil : state.priorPeriodProfitAndLossLines))
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
             }
@@ -1642,6 +1644,7 @@ struct RootView: View {
                 ) : nil
                 ].compactMap { $0 }
             )
+            .environment(\.askAIAboutReportRow, askAboutReportRow(key: cashFlowReportAskAIKey, title: "Statement of Cash Flows", lines: state.cashFlowLines, prior: nil))
             .task {
                 if state.cashFlowLines.isEmpty { await state.loadCashFlow() }
             }
@@ -2588,6 +2591,15 @@ struct RootView: View {
     // state (ReportLine, Finding, ActivityLogEntry) — these just reshape
     // that same data into the one generic `ExportTable` shape every format
     // writer consumes, rather than each page inventing its own export path.
+
+    /// Clicking a report row asks the default (local) model about it; the
+    /// answer lands in that page's own Ask AI panel (same context key).
+    private func askAboutReportRow(key: String, title: String, lines: [ReportLine], prior: [ReportLine]?) -> (ReportLine) -> Void {
+        { line in
+            let ask = AskAIContext.reportRow(line, in: lines, priorLines: prior, reportTitle: title, periodLabel: Self.periodLabel(state.currentPeriod))
+            Task { await state.askAI(contextKey: key, contextText: ask.context, question: ask.question) }
+        }
+    }
 
     private static func periodLabel(_ period: AccountingPeriod) -> String {
         "\(period.year)-\(String(format: "%02d", period.month))"

@@ -1,0 +1,235 @@
+{
+ "description": "probe: one of each new type (same notes as operating-history, so the full run skips them)",
+ "accounts": [
+  {
+   "name": "Checking",
+   "accountType": "Bank"
+  },
+  {
+   "name": "Mastercard",
+   "accountType": "Credit Card"
+  },
+  {
+   "name": "Cost of Labor",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Fuel",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Job Materials",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Plants and Soil",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Supplies",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Equipment Rental",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Rent or Lease",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Insurance",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Telephone",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Gas and Electric",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Dues & Subscriptions",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Advertising",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Automobile",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Notes Payable",
+   "accountType": "Long Term Liability"
+  },
+  {
+   "name": "Interest Paid",
+   "accountType": "Other Expense"
+  },
+  {
+   "name": "Owner's Draw",
+   "accountType": "Equity",
+   "accountSubType": "PartnerDistributions"
+  }
+ ],
+ "vendors": [
+  {
+   "displayName": "Gusto Payroll"
+  },
+  {
+   "displayName": "Chin's Gas and Oil"
+  },
+  {
+   "displayName": "Norton Lumber and Building Materials"
+  },
+  {
+   "displayName": "Tania's Nursery"
+  },
+  {
+   "displayName": "Hicks Hardware"
+  },
+  {
+   "displayName": "Ellis Equipment Rental"
+  },
+  {
+   "displayName": "Hall Properties"
+  },
+  {
+   "displayName": "Brosnahan Insurance Agency"
+  },
+  {
+   "displayName": "Cal Telephone"
+  },
+  {
+   "displayName": "PG&E"
+  },
+  {
+   "displayName": "Intuit QuickBooks"
+  },
+  {
+   "displayName": "Lee Advertising"
+  },
+  {
+   "displayName": "Diego's Road Warrior Bodyshop"
+  },
+  {
+   "displayName": "First Basin Bank"
+  },
+  {
+   "displayName": "Owner Draw"
+  }
+ ],
+ "purchases": [
+  {
+   "case": "2025-07 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2025-07-25",
+   "note": "VL history 2025-07 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-07 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-07-10",
+   "note": "VL history 2025-07 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 49375,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 15625,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-07 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 29895,
+   "date": "2025-07-11",
+   "note": "VL history 2025-07 fuel 1",
+   "paymentType": "CreditCard"
+  }
+ ],
+ "invoices": [
+  {
+   "case": "2025-07 invoice 01",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Soil",
+   "amountMinorUnits": 113243,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 34844
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 78399
+    }
+   ],
+   "date": "2025-07-25",
+   "dueDate": "2025-08-24",
+   "docNumber": "H2507-01",
+   "note": "VL history 2025-07 invoice 01"
+  }
+ ],
+ "payments": [
+  {
+   "case": "2025-07 payment 01",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 113243,
+   "date": "2025-08-23",
+   "note": "VL history 2025-07 payment 01",
+   "invoiceNote": "VL history 2025-07 invoice 01",
+   "depositTo": "Checking"
+  }
+ ],
+ "bills": [
+  {
+   "case": "2025-07 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 96485,
+   "date": "2025-07-05",
+   "dueDate": "2025-08-04",
+   "note": "VL history 2025-07 lumber bill"
+  }
+ ],
+ "billPayments": [
+  {
+   "case": "2025-07 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-07 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 96485,
+   "date": "2025-08-02",
+   "note": "VL history 2025-07 lumber payment"
+  }
+ ],
+ "transfers": [
+  {
+   "case": "2025-07 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 103911,
+   "date": "2025-08-20",
+   "note": "VL history 2025-07 card payoff"
+  }
+ ]
+}

@@ -505,3 +505,36 @@ public enum AskAIContext {
         return lines
     }
 }
+
+// MARK: - One report row (owner request 2026-09-29: click a report row to ask the local AI)
+
+public extension AskAIContext {
+    /// Context and question for a single clicked report row. Every figure
+    /// comes from the report itself (the row, its section, last month's
+    /// amount when loaded); the AI only explains them (CLAUDE.md rule 1).
+    static func reportRow(_ line: ReportLine, in lines: [ReportLine], priorLines: [ReportLine]?, reportTitle: String, periodLabel: String) -> (context: String, question: String) {
+        var path: [String] = []
+        if let index = lines.firstIndex(where: { $0.id == line.id }) {
+            var depth = line.depth
+            for candidate in lines[..<index].reversed() where candidate.depth < depth && !candidate.isSummary {
+                path.insert(candidate.label, at: 0)
+                depth = candidate.depth
+            }
+        }
+        let amount = line.amount?.accountingDescription ?? "no amount"
+        var out = ["Report: \(reportTitle) — \(periodLabel)",
+                   "Selected row: \(line.label)\(line.isSummary ? " (a total line)" : "")",
+                   "Amount: \(amount)"]
+        if !path.isEmpty { out.append("Section: \(path.joined(separator: " > "))") }
+        if let priorLines {
+            let prior = priorLines.first { line.isSummary ? ($0.isSummary && $0.label == line.label) : $0.stableKey == line.stableKey }
+            out.append("Same row last period: \(prior?.amount?.accountingDescription ?? "not present")")
+        }
+        // The report's own totals, so the row can be put in proportion.
+        for total in lines.filter({ $0.isSummary && $0.depth <= 1 }).prefix(12) {
+            out.append("\(total.label): \(total.amount?.accountingDescription ?? "—")")
+        }
+        let question = "Explain the \"\(line.label)\" line (\(amount)) on this \(reportTitle) in plain English: what it represents, what could explain this amount, and anything I should check in QuickBooks. Use only the figures given; don't calculate new ones."
+        return (out.joined(separator: "\n"), question)
+    }
+}

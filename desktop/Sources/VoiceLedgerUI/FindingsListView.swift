@@ -586,7 +586,7 @@ private struct FindingRow: View {
         VLCard(accentRail: StatusMapping.priorityStatus(finding.priorityScore).color) {
             VStack(alignment: .leading, spacing: VLSpacing.xs) {
                 HStack {
-                    Text(finding.title)
+                    Text(ClientText.polish(finding.title))
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()

@@ -35,9 +35,13 @@ public enum PersonalExpenseRule: Rule {
 
     public static func evaluate(_ input: NormalizedDataSet, context: RuleContext) -> RuleOutcome {
         var findings: [Finding] = []
+        // A draw already coded entirely to equity is correct, not a finding
+        // (false positive found 2026-09-29 against the seeded owner draws).
+        let equityAccountIDs = Set(input.accounts.filter { $0.accountType == .equity }.map(\.id))
 
         for transaction in input.transactions.sorted(by: { $0.id < $1.id }) {
             guard !transaction.isVoided else { continue }
+            if !transaction.lineAccountIDs.isEmpty && transaction.lineAccountIDs.allSatisfy(equityAccountIDs.contains) { continue }
             let haystack = [transaction.vendorName, transaction.memo]
                 .compactMap { $0?.lowercased() }
                 .joined(separator: " ")

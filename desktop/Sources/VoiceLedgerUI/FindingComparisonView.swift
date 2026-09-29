@@ -214,7 +214,7 @@ public struct FindingComparisonView: View {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                        Text(finding.title)
+                        Text(ClientText.polish(finding.title))
                             .font(VLTypography.cardTitle())
                             .foregroundStyle(VLColor.textPrimary)
                         if let vendorName = finding.vendorName {
@@ -245,7 +245,7 @@ public struct FindingComparisonView: View {
                     .foregroundStyle(VLColor.textPrimary)
 
                 if let narrative = finding.narrative {
-                    Text(narrative)
+                    Text(ClientText.polish(narrative))
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
                         .lineLimit(4)

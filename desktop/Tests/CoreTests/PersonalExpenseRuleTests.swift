@@ -39,6 +39,17 @@ struct PersonalExpenseRuleTests {
         )
     }
 
+    @Test("An owner draw already coded entirely to an equity account is correct — no finding")
+    func drawCodedToEquityIsNotFlagged() {
+        let draw = LedgerTransaction(id: "9", entityKind: .purchase, vendorName: "Owner Draw", txnDate: AccountingDate(year: 2026, month: 7, day: 25),
+                                     totalAmount: Money(minorUnits: 150_000, currency: .usd), paymentAccountID: "checking-1", docNumber: nil,
+                                     isVoided: false, memo: "Owner's draw", lineAccountIDs: ["eq-1"], provenance: .qboAPI(readAt: Date()))
+        let data = NormalizedDataSet(realmID: realm, period: period, transactions: [draw],
+                                     accounts: [LedgerAccount(id: "eq-1", name: "Owner's Draw", accountType: .equity)],
+                                     coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        if case .findings = PersonalExpenseRule.evaluate(data, context: context()) { Issue.record("a correctly coded draw must not be flagged") }
+    }
+
     @Test("A memo containing 'owner draw' produces a finding")
     func ownerDrawInMemoProducesFinding() {
         let txn = purchase(id: "1", vendor: "ATM Withdrawal", memo: "Owner draw for personal use")

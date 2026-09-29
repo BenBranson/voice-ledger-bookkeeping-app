@@ -475,14 +475,15 @@ case "sync-check":
             print("  ...TOTAL: debit=\(total.debit?.description ?? "-") credit=\(total.credit?.description ?? "-")")
         }
 
-        let agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
+        let agingAsOf = QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date()))
+        let agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)
         print("Aged Receivables: \(agedReceivablesLines.count) lines")
         for line in agedReceivablesLines.prefix(6) {
             let indent = String(repeating: "  ", count: line.depth)
             print("  \(indent)\(line.label): total=\(line.total?.description ?? "-")\(line.isSummary ? " [SUMMARY]" : "")")
         }
 
-        let agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
+        let agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)
         print("Aged Payables: \(agedPayablesLines.count) lines")
         for line in agedPayablesLines.prefix(6) {
             let indent = String(repeating: "  ", count: line.depth)

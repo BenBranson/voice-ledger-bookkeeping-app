@@ -28,6 +28,8 @@ import { QboRawClient } from "./qboRawClient.js";
 interface SeedAccount {
   name: string;
   accountType: string;
+  /** Required for some types, e.g. a second Equity account (QBO fault 6000 "only one account of this detail type"). */
+  accountSubType?: string;
 }
 
 interface SeedVendor {
@@ -44,6 +46,8 @@ interface SeedPurchase {
   docNumber?: string;
   note: string;
   memo?: string;
+  /** Optional split lines (e.g. loan principal + interest). When present, replaces the single expenseAccount/amount line. */
+  lines?: { account: string; amountMinorUnits: number; memo?: string }[];
   /** QBO requires PaymentType to match the AccountRef's account type — "Check" fails outright (fault 6430) against a Credit Card account. Defaults to "Check"; pass "CreditCard" when `account` is Credit Card-typed. */
   paymentType?: "Check" | "CreditCard" | "Cash";
 }
@@ -55,6 +59,7 @@ interface SeedBill {
   amountMinorUnits: number;
   date: string;
   note: string;
+  dueDate?: string;
 }
 
 interface SeedVendorCredit {
@@ -79,11 +84,38 @@ interface SeedInvoice {
   date: string;
   docNumber?: string;
   note: string;
+  /** Optional multi-line invoice; replaces itemName/amount when present. */
+  lines?: { itemName: string; amountMinorUnits: number; description?: string }[];
+  /** Net-N due date, e.g. "2025-08-14". */
+  dueDate?: string;
 }
 
 interface SeedPayment {
   case: string;
   customer: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
+  /** Apply the payment to this seeded invoice (by its note). */
+  invoiceNote?: string;
+  /** Deposit straight to this account (by name) instead of Undeposited Funds. */
+  depositTo?: string;
+}
+
+interface SeedBillPayment {
+  case: string;
+  vendor: string;
+  billNote: string;
+  bankAccount: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
+}
+
+interface SeedTransfer {
+  case: string;
+  from: string;
+  to: string;
   amountMinorUnits: number;
   date: string;
   note: string;
@@ -100,6 +132,8 @@ interface SeedFile {
   invoices?: SeedInvoice[];
   payments?: SeedPayment[];
   vendorCredits?: SeedVendorCredit[];
+  billPayments?: SeedBillPayment[];
+  transfers?: SeedTransfer[];
 }
 
 const MANIFEST_PATH = join(process.cwd(), "spike", "fixtures", "seed-manifest.json");
@@ -114,6 +148,8 @@ interface Manifest {
   invoices?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   payments?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   vendorCredits?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
+  billPayments?: Record<string, { id: string; syncToken: string }>;
+  transfers?: Record<string, { id: string; syncToken: string }>;
 }
 
 function loadManifest(): Manifest {
@@ -139,14 +175,19 @@ async function ensureAccount(client: QboRawClient, manifest: Manifest, spec: See
   const cached = manifest.accounts[spec.name];
   if (cached) return cached;
 
-  const existing = await client.query(`select Id from Account where Name = '${spec.name}'`);
-  const found = (existing.body as any)?.QueryResponse?.Account?.[0];
+  // Names aren't unique across types: this sandbox has "Job Materials" and
+  // "Plants and Soil" as BOTH Income and Expense accounts. Picking the first
+  // match posted 2026-09-29's lumber bills to Income — match the type too.
+  const existing = await client.query(`select Id, AccountType from Account where Name = '${escapeQboStringLiteral(spec.name)}'`);
+  const matches = ((existing.body as any)?.QueryResponse?.Account ?? []) as any[];
+  const found = matches.find((a) => a.AccountType === spec.accountType) ?? (matches.length === 1 ? matches[0] : undefined);
   if (found) {
     manifest.accounts[spec.name] = found.Id;
     return found.Id;
   }
 
-  const created = await client.post("account", { Name: spec.name, AccountType: spec.accountType });
+  const created = await client.post("account", { Name: spec.name, AccountType: spec.accountType, AccountSubType: spec.accountSubType });
+  if (created.status !== 200) throw new Error(`Account create failed for "${spec.name}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   const id = (created.body as any).Account.Id;
   manifest.accounts[spec.name] = id;
   return id;
@@ -156,7 +197,7 @@ async function ensureVendor(client: QboRawClient, manifest: Manifest, spec: Seed
   const cached = manifest.vendors[spec.displayName];
   if (cached) return cached;
 
-  const existing = await client.query(`select Id from Vendor where DisplayName = '${spec.displayName}'`);
+  const existing = await client.query(`select Id from Vendor where DisplayName = '${escapeQboStringLiteral(spec.displayName)}'`);
   const found = (existing.body as any)?.QueryResponse?.Vendor?.[0];
   if (found) {
     manifest.vendors[spec.displayName] = found.Id;
@@ -164,6 +205,7 @@ async function ensureVendor(client: QboRawClient, manifest: Manifest, spec: Seed
   }
 
   const created = await client.post("vendor", { DisplayName: spec.displayName });
+  if (created.status !== 200) throw new Error(`Vendor create failed for "${spec.displayName}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   const id = (created.body as any).Vendor.Id;
   manifest.vendors[spec.displayName] = id;
   return id;
@@ -201,7 +243,7 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
 
   const accountId = manifest.accounts[spec.account];
   const vendorId = manifest.vendors[spec.vendor];
-  const expenseAccountId = manifest.accounts[spec.expenseAccount];
+  const expenseAccountId = spec.lines ? "split" : manifest.accounts[spec.expenseAccount];
   if (!accountId || !vendorId || !expenseAccountId) {
     throw new Error(
       `Missing dependency for purchase "${spec.case}" — run 'apply baseline' first (account=${spec.account}, vendor=${spec.vendor}, expenseAccount=${spec.expenseAccount}).`
@@ -223,14 +265,20 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
     // "CreditCard" when spec.account is Credit Card-typed — QBO fault 6430
     // ("Invalid account type used") otherwise.
     PaymentType: spec.paymentType ?? "Check",
-    Line: [
-      {
-        Amount: spec.amountMinorUnits / 100,
-        DetailType: "AccountBasedExpenseLineDetail",
-        Description: spec.memo,
-        AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } }
-      }
-    ]
+    Line: spec.lines
+      ? spec.lines.map((line) => {
+          const id = manifest.accounts[line.account];
+          if (!id) throw new Error(`Missing account "${line.account}" for purchase "${spec.case}"`);
+          return { Amount: line.amountMinorUnits / 100, DetailType: "AccountBasedExpenseLineDetail", Description: line.memo, AccountBasedExpenseLineDetail: { AccountRef: { value: id } } };
+        })
+      : [
+          {
+            Amount: spec.amountMinorUnits / 100,
+            DetailType: "AccountBasedExpenseLineDetail",
+            Description: spec.memo,
+            AccountBasedExpenseLineDetail: { AccountRef: { value: expenseAccountId } }
+          }
+        ]
   });
   if (created.status !== 200) {
     throw new Error(`Purchase create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
@@ -262,6 +310,7 @@ async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBi
   const created = await client.post("bill", {
     VendorRef: { value: vendorId },
     TxnDate: spec.date,
+    DueDate: spec.dueDate,
     PrivateNote: spec.note,
     Line: [
       {
@@ -324,7 +373,10 @@ async function ensureVendorCredit(client: QboRawClient, manifest: Manifest, spec
 // (ensureCustomer, ensureItem); the pre-existing ensureAccount/ensureVendor
 // queries have the same latent bug but are out of scope for this fix.
 function escapeQboStringLiteral(value: string): string {
-  return value.replace(/'/g, "''");
+  // Corrected 2026-09-29, verified live: QBO's query parser rejects a
+  // doubled quote (QueryParserError on 'Chin''s Gas and Oil') and accepts a
+  // backslash escape ('Chin\'s Gas and Oil'). Backslashes are escaped first.
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
 async function ensureCustomer(client: QboRawClient, manifest: Manifest, spec: SeedCustomerRef): Promise<string> {
@@ -366,20 +418,20 @@ async function ensureInvoice(client: QboRawClient, manifest: Manifest, spec: See
   }
 
   const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
-  const itemId = await ensureItem(client, manifest, spec.itemName);
+  const specLines = spec.lines ?? [{ itemName: spec.itemName, amountMinorUnits: spec.amountMinorUnits }];
+  const lines = [];
+  for (const line of specLines) {
+    const itemId = await ensureItem(client, manifest, line.itemName);
+    lines.push({ Amount: line.amountMinorUnits / 100, Description: (line as any).description, DetailType: "SalesItemLineDetail", SalesItemLineDetail: { ItemRef: { value: itemId } } });
+  }
 
   const created = await client.post("invoice", {
     CustomerRef: { value: customerId },
     TxnDate: spec.date,
+    DueDate: spec.dueDate,
     DocNumber: spec.docNumber,
     PrivateNote: spec.note,
-    Line: [
-      {
-        Amount: spec.amountMinorUnits / 100,
-        DetailType: "SalesItemLineDetail",
-        SalesItemLineDetail: { ItemRef: { value: itemId } }
-      }
-    ]
+    Line: lines
   });
   if (created.status !== 200) {
     throw new Error(`Invoice create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
@@ -404,17 +456,81 @@ async function ensurePayment(client: QboRawClient, manifest: Manifest, spec: See
 
   const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
 
-  const created = await client.post("payment", {
+  const body: any = {
     CustomerRef: { value: customerId },
     TotalAmt: spec.amountMinorUnits / 100,
     TxnDate: spec.date
-  });
+  };
+  if (spec.invoiceNote) {
+    const invoice = manifest.invoices?.[spec.invoiceNote];
+    if (!invoice) throw new Error(`Payment "${spec.case}" applies to unseeded invoice "${spec.invoiceNote}"`);
+    body.Line = [{ Amount: spec.amountMinorUnits / 100, LinkedTxn: [{ TxnId: invoice.id, TxnType: "Invoice" }] }];
+  }
+  if (spec.depositTo) {
+    const depositId = manifest.accounts[spec.depositTo];
+    if (!depositId) throw new Error(`Payment "${spec.case}" deposit account "${spec.depositTo}" not seeded`);
+    body.DepositToAccountRef = { value: depositId };
+  }
+  const created = await client.post("payment", body);
   if (created.status !== 200) {
     throw new Error(`Payment create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   }
   const payment = (created.body as any).Payment;
   manifest.payments[spec.note] = { id: payment.Id, syncToken: payment.SyncToken };
   process.stdout.write(`  [created] ${spec.case} -> Payment ${payment.Id}\n`);
+}
+
+// Added 2026-09-29 for the 15-month operating history: pays a seeded bill.
+async function ensureBillPayment(client: QboRawClient, manifest: Manifest, spec: SeedBillPayment): Promise<void> {
+  manifest.billPayments ??= {};
+  if (manifest.billPayments[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+  const vendorId = manifest.vendors[spec.vendor];
+  const bankId = manifest.accounts[spec.bankAccount];
+  const bill = manifest.bills?.[spec.billNote];
+  if (!vendorId || !bankId || !bill) throw new Error(`Missing dependency for bill payment "${spec.case}"`);
+  const created = await client.post("billpayment", {
+    VendorRef: { value: vendorId },
+    PayType: "Check",
+    CheckPayment: { BankAccountRef: { value: bankId } },
+    TotalAmt: spec.amountMinorUnits / 100,
+    TxnDate: spec.date,
+    PrivateNote: spec.note,
+    Line: [{ Amount: spec.amountMinorUnits / 100, LinkedTxn: [{ TxnId: bill.id, TxnType: "Bill" }] }]
+  });
+  if (created.status !== 200) {
+    throw new Error(`BillPayment create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const payment = (created.body as any).BillPayment;
+  manifest.billPayments[spec.note] = { id: payment.Id, syncToken: payment.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> BillPayment ${payment.Id}\n`);
+}
+
+// Added 2026-09-29: moves money between balance-sheet accounts (e.g. paying the credit card).
+async function ensureTransfer(client: QboRawClient, manifest: Manifest, spec: SeedTransfer): Promise<void> {
+  manifest.transfers ??= {};
+  if (manifest.transfers[spec.note]) {
+    process.stdout.write(`  [skip, already seeded] ${spec.case}\n`);
+    return;
+  }
+  const fromId = manifest.accounts[spec.from];
+  const toId = manifest.accounts[spec.to];
+  if (!fromId || !toId) throw new Error(`Missing account for transfer "${spec.case}"`);
+  const created = await client.post("transfer", {
+    FromAccountRef: { value: fromId },
+    ToAccountRef: { value: toId },
+    Amount: spec.amountMinorUnits / 100,
+    TxnDate: spec.date,
+    PrivateNote: spec.note
+  });
+  if (created.status !== 200) {
+    throw new Error(`Transfer create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  }
+  const transfer = (created.body as any).Transfer;
+  manifest.transfers[spec.note] = { id: transfer.Id, syncToken: transfer.SyncToken };
+  process.stdout.write(`  [created] ${spec.case} -> Transfer ${transfer.Id}\n`);
 }
 
 async function apply(seedName: string): Promise<void> {
@@ -459,6 +575,14 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const vendorCredit of seed.vendorCredits ?? []) {
     await ensureVendorCredit(client, manifest, vendorCredit);
+    saveManifest(manifest);
+  }
+  for (const billPayment of seed.billPayments ?? []) {
+    await ensureBillPayment(client, manifest, billPayment);
+    saveManifest(manifest);
+  }
+  for (const transfer of seed.transfers ?? []) {
+    await ensureTransfer(client, manifest, transfer);
     saveManifest(manifest);
   }
 

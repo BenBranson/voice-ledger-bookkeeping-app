@@ -334,7 +334,7 @@ public struct ClientDashboardView: View {
                             onOpenFinding(finding)
                         } label: {
                             HStack {
-                                Text(finding.title)
+                                Text(ClientText.polish(finding.title))
                                     .font(VLTypography.body())
                                     .foregroundStyle(VLColor.textPrimary)
                                     .lineLimit(1)

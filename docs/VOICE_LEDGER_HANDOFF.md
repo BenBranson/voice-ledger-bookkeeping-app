@@ -1267,3 +1267,26 @@ Intake Questions → **Agreement** (roster bar) or **Engagement Agreement…** (
 - **Storage:** `~/Library/Application Support/VoiceLedger/Agreements/` (`index.json`, `firm-profile.json`, one folder per prepared agreement). Not per realm: agreements precede QBO connection, the same reasoning as the intake roster.
 - **Possible upgrade:** a hosted signing link needs the backend deployed publicly plus storage for the signature audit trail.
 - **Dev tool:** `agreement-sample <dir>` writes signing/review/signed HTML for a FICTIONAL client.
+
+## 2026-09-29 — 15-month operating history seeded (sandbox), row-click AI, manual-entry links (v1.22–v1.24)
+
+**Sandbox now has a realistic business history.** `backend/spike/generateHistory.py` (deterministic) writes `spike/seeds/operating-history.json`, covering Jul 2025–Sep 26 2026 for a seasonal landscaping business. It includes:
+- about 154 multi-line invoices, with payments applied to them and deposited to Checking
+- 240 expenses: twice-monthly payroll, rent, insurance, fuel and supplies on Mastercard, nursery, lumber bills and bill payments, loan principal+interest splits, owner draws, and monthly card payoffs by Transfer
+- deliberate open items: Mar/May/Jul 2026 invoices left unpaid for aging, and the Apr 2026 lumber bill left unpaid
+
+Applied with `QBO_SPIKE_REALM_ID=… tsx spike/seed.ts apply operating-history` (579 records, 0 failures). `seed.ts` gained split purchase lines, multi-line invoices, payment→invoice linking plus `depositTo`, bill due dates, BillPayment, Transfer, and account sub-types. August 2026 is now a clean profitable month ($12,633.92 revenue, $3,817.09 net). July keeps the forced-reconciliation fixture.
+
+**Real bugs this data exposed (all fixed and verified live):**
+- **Parent-account own postings were dropped** from every P&L/Balance Sheet read. QBO puts a parent's own amount on its Header row (`"Landscaping Services | 2875.69"`). `QBOSyncClient.flatten` now emits it as an `"<name> (other)"` leaf without an accountID, so its key can't collide with the header's. Without this, leaves didn't foot to section totals and the Sankey refused to draw.
+- **Aging was always "as of today"**, so `VL-REPORT-TIE-001` fired falsely for any past month, and the monthly report's A/R section used today's aging. The backend `readReport` now sends `report_date` for Aged* reports. Verified: aging as of 2026-08-31 = Balance Sheet A/R 2026-08-31 = $15,283.03, and 2026-07-31 = $17,771.03. `QBOSyncClient.agingDate(for:today:)` gives the period end for finished months and nil (today) for the current month. The Aging report pages still show today's aging, as labeled.
+- **`VL-PERSONAL-001` flagged correctly coded draws.** It now skips transactions whose lines all hit Equity accounts.
+- **Seed tooling:**
+  - QBO query escaping is backslash (`\'`), not a doubled quote. Doubled quotes give QueryParserError; verified live. The handoff's earlier "doubled works" claim was wrong.
+  - Account names aren't unique across types: "Job Materials" and "Plants and Soil" exist as both Income and Expense. `ensureAccount` now matches AccountType. The 45 misrouted records were moved by `spike/fixMisroutedAccounts.ts`.
+
+**Remaining August findings are real or intended:** suspense/clearing/Sweeper fixtures, OBE, payroll booked as one lump line (the seed deliberately posts it that way), and vendor price swings (`VL-VEND-PRICE-001` fires on small-dollar swings, e.g. Hicks +90% on about $100; consider a dollar floor).
+
+**Row-click AI:** on the Balance Sheet, P&L and Cash Flow pages, clicking a report row asks the default (local Ollama `gemma4:12b`) model about it via `AskAIContext.reportRow`. The context holds the row, its section path, last period's amount, and the report totals, all taken from the report. The answer lands in that page's own Ask AI panel. Wired through the `askAIAboutReportRow` environment value in `ReportLinesTable`. Live-verified on Owner's Draw.
+
+**Manual-entry links:** a bank line with nothing posted (`VL-RECON-MISSING-001`) shows three actions: "1. Check bank feed" (`/app/banking`), "2. Enter expense in QBO" (`/app/expense`), and "Copy details". The owner enters it by hand, per his decision; Voice Ledger never writes it (rule 8). Finding titles, descriptions, and evidence are display-polished with `ClientText.polish`.

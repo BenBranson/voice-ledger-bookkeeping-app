@@ -183,7 +183,7 @@ public struct BalanceSheetIntegrityView: View {
                                 onSelectFinding(finding)
                             } label: {
                                 HStack {
-                                    Text(finding.title)
+                                    Text(ClientText.polish(finding.title))
                                         .font(VLTypography.body())
                                         .foregroundStyle(VLColor.textSecondary)
                                     Spacer()

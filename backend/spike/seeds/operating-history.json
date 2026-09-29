@@ -1,0 +1,7443 @@
+{
+ "description": "15-month operating history (Jul 2025 - Sep 2026) for a seasonal landscaping business. SANDBOX ONLY.",
+ "accounts": [
+  {
+   "name": "Checking",
+   "accountType": "Bank"
+  },
+  {
+   "name": "Mastercard",
+   "accountType": "Credit Card"
+  },
+  {
+   "name": "Cost of Labor",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Fuel",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Job Materials",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Plants and Soil",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Supplies",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Equipment Rental",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Rent or Lease",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Insurance",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Telephone",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Gas and Electric",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Dues & Subscriptions",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Advertising",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Automobile",
+   "accountType": "Expense"
+  },
+  {
+   "name": "Notes Payable",
+   "accountType": "Long Term Liability"
+  },
+  {
+   "name": "Interest Paid",
+   "accountType": "Other Expense"
+  },
+  {
+   "name": "Owner's Draw",
+   "accountType": "Equity",
+   "accountSubType": "PartnerDistributions"
+  }
+ ],
+ "vendors": [
+  {
+   "displayName": "Gusto Payroll"
+  },
+  {
+   "displayName": "Chin's Gas and Oil"
+  },
+  {
+   "displayName": "Norton Lumber and Building Materials"
+  },
+  {
+   "displayName": "Tania's Nursery"
+  },
+  {
+   "displayName": "Hicks Hardware"
+  },
+  {
+   "displayName": "Ellis Equipment Rental"
+  },
+  {
+   "displayName": "Hall Properties"
+  },
+  {
+   "displayName": "Brosnahan Insurance Agency"
+  },
+  {
+   "displayName": "Cal Telephone"
+  },
+  {
+   "displayName": "PG&E"
+  },
+  {
+   "displayName": "Intuit QuickBooks"
+  },
+  {
+   "displayName": "Lee Advertising"
+  },
+  {
+   "displayName": "Diego's Road Warrior Bodyshop"
+  },
+  {
+   "displayName": "First Basin Bank"
+  },
+  {
+   "displayName": "Owner Draw"
+  }
+ ],
+ "purchases": [
+  {
+   "case": "2025-07 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 175272,
+   "date": "2025-07-15",
+   "note": "VL history 2025-07 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-07 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 175112,
+   "date": "2025-07-28",
+   "note": "VL history 2025-07 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-07 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-07-01",
+   "note": "VL history 2025-07 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-07 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-07-03",
+   "note": "VL history 2025-07 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10097,
+   "date": "2025-07-08",
+   "note": "VL history 2025-07 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 28394,
+   "date": "2025-07-12",
+   "note": "VL history 2025-07 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 29895,
+   "date": "2025-07-11",
+   "note": "VL history 2025-07 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-07 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 26616,
+   "date": "2025-07-17",
+   "note": "VL history 2025-07 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-07 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 27583,
+   "date": "2025-07-19",
+   "note": "VL history 2025-07 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-07 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 10817,
+   "date": "2025-07-05",
+   "note": "VL history 2025-07 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-07 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-07-06",
+   "note": "VL history 2025-07 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-07 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 40916,
+   "date": "2025-07-10",
+   "note": "VL history 2025-07 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 35065,
+   "date": "2025-07-25",
+   "note": "VL history 2025-07 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 31557,
+   "date": "2025-07-13",
+   "note": "VL history 2025-07 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-07 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-07-10",
+   "note": "VL history 2025-07 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 49375,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 15625,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-07 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2025-07-25",
+   "note": "VL history 2025-07 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-08 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 161715,
+   "date": "2025-08-15",
+   "note": "VL history 2025-08 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-08 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 155176,
+   "date": "2025-08-28",
+   "note": "VL history 2025-08 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-08 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-08-01",
+   "note": "VL history 2025-08 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-08 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-08-03",
+   "note": "VL history 2025-08 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9684,
+   "date": "2025-08-08",
+   "note": "VL history 2025-08 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 25434,
+   "date": "2025-08-12",
+   "note": "VL history 2025-08 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 19669,
+   "date": "2025-08-04",
+   "note": "VL history 2025-08 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-08 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 26685,
+   "date": "2025-08-18",
+   "note": "VL history 2025-08 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-08 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 19671,
+   "date": "2025-08-24",
+   "note": "VL history 2025-08 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-08 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 12047,
+   "date": "2025-08-05",
+   "note": "VL history 2025-08 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-08 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-08-06",
+   "note": "VL history 2025-08 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-08 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 65955,
+   "date": "2025-08-10",
+   "note": "VL history 2025-08 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 46383,
+   "date": "2025-08-21",
+   "note": "VL history 2025-08 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 39178,
+   "date": "2025-08-19",
+   "note": "VL history 2025-08 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-08 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-08-10",
+   "note": "VL history 2025-08 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 49684,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 15316,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-08 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 180000,
+   "date": "2025-08-25",
+   "note": "VL history 2025-08 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-09 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 167261,
+   "date": "2025-09-15",
+   "note": "VL history 2025-09 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-09 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 165888,
+   "date": "2025-09-28",
+   "note": "VL history 2025-09 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-09 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-09-01",
+   "note": "VL history 2025-09 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-09 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-09-03",
+   "note": "VL history 2025-09 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10175,
+   "date": "2025-09-08",
+   "note": "VL history 2025-09 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 24889,
+   "date": "2025-09-12",
+   "note": "VL history 2025-09 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 20420,
+   "date": "2025-09-04",
+   "note": "VL history 2025-09 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-09 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 19627,
+   "date": "2025-09-13",
+   "note": "VL history 2025-09 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-09 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21058,
+   "date": "2025-09-25",
+   "note": "VL history 2025-09 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-09 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 13355,
+   "date": "2025-09-04",
+   "note": "VL history 2025-09 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-09 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-09-06",
+   "note": "VL history 2025-09 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-09 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 51688,
+   "date": "2025-09-08",
+   "note": "VL history 2025-09 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 58430,
+   "date": "2025-09-07",
+   "note": "VL history 2025-09 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 37917,
+   "date": "2025-09-09",
+   "note": "VL history 2025-09 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-09 advertising",
+   "vendor": "Lee Advertising",
+   "account": "Checking",
+   "expenseAccount": "Advertising",
+   "amountMinorUnits": 45000,
+   "date": "2025-09-10",
+   "note": "VL history 2025-09 advertising",
+   "paymentType": "Check",
+   "memo": "Quarterly mailer and yard signs"
+  },
+  {
+   "case": "2025-09 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-09-10",
+   "note": "VL history 2025-09 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 49994,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 15006,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-09 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2025-09-25",
+   "note": "VL history 2025-09 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-10 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 144230,
+   "date": "2025-10-15",
+   "note": "VL history 2025-10 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-10 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 140266,
+   "date": "2025-10-28",
+   "note": "VL history 2025-10 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-10 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-10-01",
+   "note": "VL history 2025-10 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-10 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-10-03",
+   "note": "VL history 2025-10 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9952,
+   "date": "2025-10-08",
+   "note": "VL history 2025-10 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 24253,
+   "date": "2025-10-12",
+   "note": "VL history 2025-10 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 20091,
+   "date": "2025-10-14",
+   "note": "VL history 2025-10 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-10 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 20083,
+   "date": "2025-10-17",
+   "note": "VL history 2025-10 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-10 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21081,
+   "date": "2025-10-22",
+   "note": "VL history 2025-10 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-10 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 16335,
+   "date": "2025-10-07",
+   "note": "VL history 2025-10 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-10 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-10-06",
+   "note": "VL history 2025-10 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-10 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 36861,
+   "date": "2025-10-11",
+   "note": "VL history 2025-10 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 33376,
+   "date": "2025-10-19",
+   "note": "VL history 2025-10 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 truck repair",
+   "vendor": "Diego's Road Warrior Bodyshop",
+   "account": "Checking",
+   "expenseAccount": "Automobile",
+   "amountMinorUnits": 55182,
+   "date": "2025-10-17",
+   "note": "VL history 2025-10 truck repair",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-10 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-10-10",
+   "note": "VL history 2025-10 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 50307,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 14693,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-10 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 180000,
+   "date": "2025-10-25",
+   "note": "VL history 2025-10 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-11 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 113911,
+   "date": "2025-11-15",
+   "note": "VL history 2025-11 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-11 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 120844,
+   "date": "2025-11-28",
+   "note": "VL history 2025-11 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-11 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-11-01",
+   "note": "VL history 2025-11 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-11 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-11-03",
+   "note": "VL history 2025-11 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-11 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10071,
+   "date": "2025-11-08",
+   "note": "VL history 2025-11 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-11 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 23944,
+   "date": "2025-11-12",
+   "note": "VL history 2025-11 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-11 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 23713,
+   "date": "2025-11-04",
+   "note": "VL history 2025-11 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-11 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 20224,
+   "date": "2025-11-12",
+   "note": "VL history 2025-11 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-11 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 23937,
+   "date": "2025-11-24",
+   "note": "VL history 2025-11 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-11 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 16155,
+   "date": "2025-11-20",
+   "note": "VL history 2025-11 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-11 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-11-06",
+   "note": "VL history 2025-11 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-11 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 39671,
+   "date": "2025-11-07",
+   "note": "VL history 2025-11 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-11 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 30594,
+   "date": "2025-11-22",
+   "note": "VL history 2025-11 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-11 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-11-10",
+   "note": "VL history 2025-11 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 50621,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 14379,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-11 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2025-11-25",
+   "note": "VL history 2025-11 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2025-12 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 101387,
+   "date": "2025-12-15",
+   "note": "VL history 2025-12 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-12 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 100451,
+   "date": "2025-12-28",
+   "note": "VL history 2025-12 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2025-12 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2025-12-01",
+   "note": "VL history 2025-12 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2025-12 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2025-12-03",
+   "note": "VL history 2025-12 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-12 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9911,
+   "date": "2025-12-08",
+   "note": "VL history 2025-12 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-12 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 20608,
+   "date": "2025-12-12",
+   "note": "VL history 2025-12 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-12 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 27037,
+   "date": "2025-12-04",
+   "note": "VL history 2025-12 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-12 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 24219,
+   "date": "2025-12-21",
+   "note": "VL history 2025-12 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-12 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 22944,
+   "date": "2025-12-22",
+   "note": "VL history 2025-12 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-12 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 19192,
+   "date": "2025-12-21",
+   "note": "VL history 2025-12 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2025-12 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2025-12-06",
+   "note": "VL history 2025-12 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2025-12 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 36783,
+   "date": "2025-12-14",
+   "note": "VL history 2025-12 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-12 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 35324,
+   "date": "2025-12-14",
+   "note": "VL history 2025-12 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2025-12 advertising",
+   "vendor": "Lee Advertising",
+   "account": "Checking",
+   "expenseAccount": "Advertising",
+   "amountMinorUnits": 45000,
+   "date": "2025-12-10",
+   "note": "VL history 2025-12 advertising",
+   "paymentType": "Check",
+   "memo": "Quarterly mailer and yard signs"
+  },
+  {
+   "case": "2025-12 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2025-12-10",
+   "note": "VL history 2025-12 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 50937,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 14063,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2025-12 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2025-12-25",
+   "note": "VL history 2025-12 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-01 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 101504,
+   "date": "2026-01-15",
+   "note": "VL history 2026-01 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-01 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 102833,
+   "date": "2026-01-28",
+   "note": "VL history 2026-01 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-01 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-01-01",
+   "note": "VL history 2026-01 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-01 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-01-03",
+   "note": "VL history 2026-01 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-01 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10203,
+   "date": "2026-01-08",
+   "note": "VL history 2026-01 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-01 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 21710,
+   "date": "2026-01-12",
+   "note": "VL history 2026-01 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-01 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 26284,
+   "date": "2026-01-10",
+   "note": "VL history 2026-01 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-01 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21061,
+   "date": "2026-01-12",
+   "note": "VL history 2026-01 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-01 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 24137,
+   "date": "2026-01-21",
+   "note": "VL history 2026-01 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-01 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 14363,
+   "date": "2026-01-16",
+   "note": "VL history 2026-01 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-01 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-01-06",
+   "note": "VL history 2026-01 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-01 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 21496,
+   "date": "2026-01-05",
+   "note": "VL history 2026-01 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-01 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 26043,
+   "date": "2026-01-12",
+   "note": "VL history 2026-01 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-01 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-01-10",
+   "note": "VL history 2026-01 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 51256,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 13744,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-01 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2026-01-25",
+   "note": "VL history 2026-01 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-02 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 95893,
+   "date": "2026-02-15",
+   "note": "VL history 2026-02 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-02 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 92144,
+   "date": "2026-02-28",
+   "note": "VL history 2026-02 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-02 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-02-01",
+   "note": "VL history 2026-02 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-02 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-02-03",
+   "note": "VL history 2026-02 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10154,
+   "date": "2026-02-08",
+   "note": "VL history 2026-02 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 20896,
+   "date": "2026-02-12",
+   "note": "VL history 2026-02 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 18213,
+   "date": "2026-02-08",
+   "note": "VL history 2026-02 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-02 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 27756,
+   "date": "2026-02-10",
+   "note": "VL history 2026-02 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-02 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 17878,
+   "date": "2026-02-20",
+   "note": "VL history 2026-02 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-02 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 16909,
+   "date": "2026-02-24",
+   "note": "VL history 2026-02 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-02 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-02-06",
+   "note": "VL history 2026-02 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-02 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 28887,
+   "date": "2026-02-21",
+   "note": "VL history 2026-02 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 20093,
+   "date": "2026-02-21",
+   "note": "VL history 2026-02 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 truck repair",
+   "vendor": "Diego's Road Warrior Bodyshop",
+   "account": "Checking",
+   "expenseAccount": "Automobile",
+   "amountMinorUnits": 58917,
+   "date": "2026-02-17",
+   "note": "VL history 2026-02 truck repair",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-02 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-02-10",
+   "note": "VL history 2026-02 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 51576,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 13424,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-02 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2026-02-25",
+   "note": "VL history 2026-02 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-03 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 128679,
+   "date": "2026-03-15",
+   "note": "VL history 2026-03 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-03 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 130077,
+   "date": "2026-03-28",
+   "note": "VL history 2026-03 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-03 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-03-01",
+   "note": "VL history 2026-03 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-03 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-03-03",
+   "note": "VL history 2026-03 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-03 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9850,
+   "date": "2026-03-08",
+   "note": "VL history 2026-03 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-03 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 24383,
+   "date": "2026-03-12",
+   "note": "VL history 2026-03 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-03 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 26643,
+   "date": "2026-03-03",
+   "note": "VL history 2026-03 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-03 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 22743,
+   "date": "2026-03-10",
+   "note": "VL history 2026-03 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-03 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 29898,
+   "date": "2026-03-20",
+   "note": "VL history 2026-03 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-03 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 10070,
+   "date": "2026-03-23",
+   "note": "VL history 2026-03 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-03 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-03-06",
+   "note": "VL history 2026-03 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-03 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 27759,
+   "date": "2026-03-20",
+   "note": "VL history 2026-03 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-03 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 44677,
+   "date": "2026-03-07",
+   "note": "VL history 2026-03 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-03 advertising",
+   "vendor": "Lee Advertising",
+   "account": "Checking",
+   "expenseAccount": "Advertising",
+   "amountMinorUnits": 45000,
+   "date": "2026-03-10",
+   "note": "VL history 2026-03 advertising",
+   "paymentType": "Check",
+   "memo": "Quarterly mailer and yard signs"
+  },
+  {
+   "case": "2026-03 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-03-10",
+   "note": "VL history 2026-03 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 51898,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 13102,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-03 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2026-03-25",
+   "note": "VL history 2026-03 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-04 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 166048,
+   "date": "2026-04-15",
+   "note": "VL history 2026-04 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-04 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 162266,
+   "date": "2026-04-28",
+   "note": "VL history 2026-04 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-04 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-04-01",
+   "note": "VL history 2026-04 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-04 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-04-03",
+   "note": "VL history 2026-04 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10237,
+   "date": "2026-04-08",
+   "note": "VL history 2026-04 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 28365,
+   "date": "2026-04-12",
+   "note": "VL history 2026-04 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21606,
+   "date": "2026-04-07",
+   "note": "VL history 2026-04 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-04 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 27856,
+   "date": "2026-04-16",
+   "note": "VL history 2026-04 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-04 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 19815,
+   "date": "2026-04-19",
+   "note": "VL history 2026-04 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-04 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 10694,
+   "date": "2026-04-22",
+   "note": "VL history 2026-04 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-04 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-04-06",
+   "note": "VL history 2026-04 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-04 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 39928,
+   "date": "2026-04-20",
+   "note": "VL history 2026-04 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 68950,
+   "date": "2026-04-15",
+   "note": "VL history 2026-04 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 41947,
+   "date": "2026-04-06",
+   "note": "VL history 2026-04 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-04 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-04-10",
+   "note": "VL history 2026-04 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 52223,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 12777,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-04 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2026-04-25",
+   "note": "VL history 2026-04 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-05 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 183950,
+   "date": "2026-05-15",
+   "note": "VL history 2026-05 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-05 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 178323,
+   "date": "2026-05-28",
+   "note": "VL history 2026-05 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-05 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-05-01",
+   "note": "VL history 2026-05 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-05 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-05-03",
+   "note": "VL history 2026-05 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10189,
+   "date": "2026-05-08",
+   "note": "VL history 2026-05 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 26259,
+   "date": "2026-05-12",
+   "note": "VL history 2026-05 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 23846,
+   "date": "2026-05-10",
+   "note": "VL history 2026-05 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-05 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 32117,
+   "date": "2026-05-21",
+   "note": "VL history 2026-05 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-05 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 33870,
+   "date": "2026-05-22",
+   "note": "VL history 2026-05 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-05 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 12059,
+   "date": "2026-05-21",
+   "note": "VL history 2026-05 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-05 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-05-06",
+   "note": "VL history 2026-05 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-05 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 74259,
+   "date": "2026-05-15",
+   "note": "VL history 2026-05 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 71175,
+   "date": "2026-05-13",
+   "note": "VL history 2026-05 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 41312,
+   "date": "2026-05-19",
+   "note": "VL history 2026-05 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-05 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-05-10",
+   "note": "VL history 2026-05 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 52549,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 12451,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-05 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2026-05-25",
+   "note": "VL history 2026-05 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-06 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 191035,
+   "date": "2026-06-15",
+   "note": "VL history 2026-06 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-06 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 194460,
+   "date": "2026-06-28",
+   "note": "VL history 2026-06 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-06 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-06-01",
+   "note": "VL history 2026-06 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-06 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-06-03",
+   "note": "VL history 2026-06 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10148,
+   "date": "2026-06-08",
+   "note": "VL history 2026-06 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 28549,
+   "date": "2026-06-12",
+   "note": "VL history 2026-06 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 25048,
+   "date": "2026-06-12",
+   "note": "VL history 2026-06 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-06 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 22066,
+   "date": "2026-06-15",
+   "note": "VL history 2026-06 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-06 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 22096,
+   "date": "2026-06-17",
+   "note": "VL history 2026-06 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-06 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 22732,
+   "date": "2026-06-09",
+   "note": "VL history 2026-06 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-06 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-06-06",
+   "note": "VL history 2026-06 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-06 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 48548,
+   "date": "2026-06-19",
+   "note": "VL history 2026-06 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 59335,
+   "date": "2026-06-22",
+   "note": "VL history 2026-06 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 32156,
+   "date": "2026-06-15",
+   "note": "VL history 2026-06 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-06 advertising",
+   "vendor": "Lee Advertising",
+   "account": "Checking",
+   "expenseAccount": "Advertising",
+   "amountMinorUnits": 45000,
+   "date": "2026-06-10",
+   "note": "VL history 2026-06 advertising",
+   "paymentType": "Check",
+   "memo": "Quarterly mailer and yard signs"
+  },
+  {
+   "case": "2026-06 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-06-10",
+   "note": "VL history 2026-06 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 52878,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 12122,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-06 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 180000,
+   "date": "2026-06-25",
+   "note": "VL history 2026-06 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-07 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 176969,
+   "date": "2026-07-15",
+   "note": "VL history 2026-07 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-07 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 175908,
+   "date": "2026-07-28",
+   "note": "VL history 2026-07 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-07 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-07-01",
+   "note": "VL history 2026-07 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-07 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-07-03",
+   "note": "VL history 2026-07 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 10179,
+   "date": "2026-07-08",
+   "note": "VL history 2026-07 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 27671,
+   "date": "2026-07-12",
+   "note": "VL history 2026-07 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21515,
+   "date": "2026-07-08",
+   "note": "VL history 2026-07 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-07 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21231,
+   "date": "2026-07-13",
+   "note": "VL history 2026-07 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-07 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 32260,
+   "date": "2026-07-18",
+   "note": "VL history 2026-07 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-07 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 11344,
+   "date": "2026-07-11",
+   "note": "VL history 2026-07 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-07 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-07-06",
+   "note": "VL history 2026-07 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-07 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 61813,
+   "date": "2026-07-08",
+   "note": "VL history 2026-07 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 30582,
+   "date": "2026-07-15",
+   "note": "VL history 2026-07 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 30050,
+   "date": "2026-07-17",
+   "note": "VL history 2026-07 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-07 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-07-10",
+   "note": "VL history 2026-07 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 53208,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 11792,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-07 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 150000,
+   "date": "2026-07-25",
+   "note": "VL history 2026-07 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-08 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 156002,
+   "date": "2026-08-15",
+   "note": "VL history 2026-08 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-08 payroll 2",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 153714,
+   "date": "2026-08-28",
+   "note": "VL history 2026-08 payroll 2",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-08 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-08-01",
+   "note": "VL history 2026-08 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-08 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-08-03",
+   "note": "VL history 2026-08 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9688,
+   "date": "2026-08-08",
+   "note": "VL history 2026-08 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 27821,
+   "date": "2026-08-12",
+   "note": "VL history 2026-08 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 27439,
+   "date": "2026-08-18",
+   "note": "VL history 2026-08 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-08 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 21449,
+   "date": "2026-08-20",
+   "note": "VL history 2026-08 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-08 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 29127,
+   "date": "2026-08-25",
+   "note": "VL history 2026-08 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-08 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 21532,
+   "date": "2026-08-21",
+   "note": "VL history 2026-08 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-08 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-08-06",
+   "note": "VL history 2026-08 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-08 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 65906,
+   "date": "2026-08-19",
+   "note": "VL history 2026-08 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 53687,
+   "date": "2026-08-09",
+   "note": "VL history 2026-08 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 37683,
+   "date": "2026-08-08",
+   "note": "VL history 2026-08 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-08 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-08-10",
+   "note": "VL history 2026-08 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 53541,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 11459,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-08 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2026-08-25",
+   "note": "VL history 2026-08 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  },
+  {
+   "case": "2026-09 payroll 1",
+   "vendor": "Gusto Payroll",
+   "account": "Checking",
+   "expenseAccount": "Cost of Labor",
+   "amountMinorUnits": 136841,
+   "date": "2026-09-15",
+   "note": "VL history 2026-09 payroll 1",
+   "paymentType": "Check",
+   "memo": "Crew payroll (net pay + taxes)"
+  },
+  {
+   "case": "2026-09 rent",
+   "vendor": "Hall Properties",
+   "account": "Checking",
+   "expenseAccount": "Rent or Lease",
+   "amountMinorUnits": 120000,
+   "date": "2026-09-01",
+   "note": "VL history 2026-09 rent",
+   "paymentType": "Check",
+   "memo": "Yard and shop rent"
+  },
+  {
+   "case": "2026-09 insurance",
+   "vendor": "Brosnahan Insurance Agency",
+   "account": "Checking",
+   "expenseAccount": "Insurance",
+   "amountMinorUnits": 38500,
+   "date": "2026-09-03",
+   "note": "VL history 2026-09 insurance",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 phone",
+   "vendor": "Cal Telephone",
+   "account": "Checking",
+   "expenseAccount": "Telephone",
+   "amountMinorUnits": 9679,
+   "date": "2026-09-08",
+   "note": "VL history 2026-09 phone",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 utilities",
+   "vendor": "PG&E",
+   "account": "Checking",
+   "expenseAccount": "Gas and Electric",
+   "amountMinorUnits": 25756,
+   "date": "2026-09-12",
+   "note": "VL history 2026-09 utilities",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 fuel 1",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 23455,
+   "date": "2026-09-04",
+   "note": "VL history 2026-09 fuel 1",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-09 fuel 2",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 31742,
+   "date": "2026-09-15",
+   "note": "VL history 2026-09 fuel 2",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-09 fuel 3",
+   "vendor": "Chin's Gas and Oil",
+   "account": "Mastercard",
+   "expenseAccount": "Fuel",
+   "amountMinorUnits": 29402,
+   "date": "2026-09-19",
+   "note": "VL history 2026-09 fuel 3",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-09 supplies",
+   "vendor": "Hicks Hardware",
+   "account": "Mastercard",
+   "expenseAccount": "Supplies",
+   "amountMinorUnits": 12899,
+   "date": "2026-09-09",
+   "note": "VL history 2026-09 supplies",
+   "paymentType": "CreditCard"
+  },
+  {
+   "case": "2026-09 software",
+   "vendor": "Intuit QuickBooks",
+   "account": "Mastercard",
+   "expenseAccount": "Dues & Subscriptions",
+   "amountMinorUnits": 9000,
+   "date": "2026-09-06",
+   "note": "VL history 2026-09 software",
+   "paymentType": "CreditCard",
+   "memo": "QuickBooks Online subscription"
+  },
+  {
+   "case": "2026-09 plants 1",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 30424,
+   "date": "2026-09-14",
+   "note": "VL history 2026-09 plants 1",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 plants 2",
+   "vendor": "Tania's Nursery",
+   "account": "Checking",
+   "expenseAccount": "Plants and Soil",
+   "amountMinorUnits": 28428,
+   "date": "2026-09-24",
+   "note": "VL history 2026-09 plants 2",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 equipment",
+   "vendor": "Ellis Equipment Rental",
+   "account": "Checking",
+   "expenseAccount": "Equipment Rental",
+   "amountMinorUnits": 40530,
+   "date": "2026-09-17",
+   "note": "VL history 2026-09 equipment",
+   "paymentType": "Check"
+  },
+  {
+   "case": "2026-09 advertising",
+   "vendor": "Lee Advertising",
+   "account": "Checking",
+   "expenseAccount": "Advertising",
+   "amountMinorUnits": 45000,
+   "date": "2026-09-10",
+   "note": "VL history 2026-09 advertising",
+   "paymentType": "Check",
+   "memo": "Quarterly mailer and yard signs"
+  },
+  {
+   "case": "2026-09 loan payment",
+   "vendor": "First Basin Bank",
+   "account": "Checking",
+   "expenseAccount": "Notes Payable",
+   "amountMinorUnits": 65000,
+   "date": "2026-09-10",
+   "note": "VL history 2026-09 loan payment",
+   "paymentType": "Check",
+   "lines": [
+    {
+     "account": "Notes Payable",
+     "amountMinorUnits": 53875,
+     "memo": "Principal"
+    },
+    {
+     "account": "Interest Paid",
+     "amountMinorUnits": 11125,
+     "memo": "Interest"
+    }
+   ]
+  },
+  {
+   "case": "2026-09 owner draw",
+   "vendor": "Owner Draw",
+   "account": "Checking",
+   "expenseAccount": "Owner's Draw",
+   "amountMinorUnits": 120000,
+   "date": "2026-09-25",
+   "note": "VL history 2026-09 owner draw",
+   "paymentType": "Check",
+   "memo": "Owner's draw"
+  }
+ ],
+ "bills": [
+  {
+   "case": "2025-07 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 96485,
+   "date": "2025-07-05",
+   "dueDate": "2025-08-04",
+   "note": "VL history 2025-07 lumber bill"
+  },
+  {
+   "case": "2025-08 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 92958,
+   "date": "2025-08-05",
+   "dueDate": "2025-09-04",
+   "note": "VL history 2025-08 lumber bill"
+  },
+  {
+   "case": "2025-09 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 109109,
+   "date": "2025-09-05",
+   "dueDate": "2025-10-05",
+   "note": "VL history 2025-09 lumber bill"
+  },
+  {
+   "case": "2025-10 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 74481,
+   "date": "2025-10-05",
+   "dueDate": "2025-11-04",
+   "note": "VL history 2025-10 lumber bill"
+  },
+  {
+   "case": "2025-11 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 72204,
+   "date": "2025-11-05",
+   "dueDate": "2025-12-05",
+   "note": "VL history 2025-11 lumber bill"
+  },
+  {
+   "case": "2025-12 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 49770,
+   "date": "2025-12-05",
+   "dueDate": "2026-01-04",
+   "note": "VL history 2025-12 lumber bill"
+  },
+  {
+   "case": "2026-01 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 53223,
+   "date": "2026-01-05",
+   "dueDate": "2026-02-04",
+   "note": "VL history 2026-01 lumber bill"
+  },
+  {
+   "case": "2026-02 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 53571,
+   "date": "2026-02-05",
+   "dueDate": "2026-03-07",
+   "note": "VL history 2026-02 lumber bill"
+  },
+  {
+   "case": "2026-03 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 79251,
+   "date": "2026-03-05",
+   "dueDate": "2026-04-04",
+   "note": "VL history 2026-03 lumber bill"
+  },
+  {
+   "case": "2026-04 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 118800,
+   "date": "2026-04-05",
+   "dueDate": "2026-05-05",
+   "note": "VL history 2026-04 lumber bill"
+  },
+  {
+   "case": "2026-05 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 136817,
+   "date": "2026-05-05",
+   "dueDate": "2026-06-04",
+   "note": "VL history 2026-05 lumber bill"
+  },
+  {
+   "case": "2026-06 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 121380,
+   "date": "2026-06-05",
+   "dueDate": "2026-07-05",
+   "note": "VL history 2026-06 lumber bill"
+  },
+  {
+   "case": "2026-07 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 112309,
+   "date": "2026-07-05",
+   "dueDate": "2026-08-04",
+   "note": "VL history 2026-07 lumber bill"
+  },
+  {
+   "case": "2026-08 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 92076,
+   "date": "2026-08-05",
+   "dueDate": "2026-09-04",
+   "note": "VL history 2026-08 lumber bill"
+  },
+  {
+   "case": "2026-09 lumber bill",
+   "vendor": "Norton Lumber and Building Materials",
+   "expenseAccount": "Job Materials",
+   "amountMinorUnits": 75693,
+   "date": "2026-09-05",
+   "dueDate": "2026-10-05",
+   "note": "VL history 2026-09 lumber bill"
+  }
+ ],
+ "invoices": [
+  {
+   "case": "2025-07 invoice 01",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Soil",
+   "amountMinorUnits": 113243,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 34844
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 78399
+    }
+   ],
+   "date": "2025-07-25",
+   "dueDate": "2025-08-24",
+   "docNumber": "H2507-01",
+   "note": "VL history 2025-07 invoice 01"
+  },
+  {
+   "case": "2025-07 invoice 02",
+   "customer": "Video Games by Dan",
+   "itemName": "Gardening",
+   "amountMinorUnits": 105945,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 105945
+    }
+   ],
+   "date": "2025-07-17",
+   "dueDate": "2025-08-16",
+   "docNumber": "H2507-02",
+   "note": "VL history 2025-07 invoice 02"
+  },
+  {
+   "case": "2025-07 invoice 03",
+   "customer": "55 Twin Lane",
+   "itemName": "Soil",
+   "amountMinorUnits": 141885,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 43657
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 98228
+    }
+   ],
+   "date": "2025-07-16",
+   "dueDate": "2025-08-15",
+   "docNumber": "H2507-03",
+   "note": "VL history 2025-07 invoice 03"
+  },
+  {
+   "case": "2025-07 invoice 04",
+   "customer": "Kate Whelan",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 102598,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 51299
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 51299
+    }
+   ],
+   "date": "2025-07-17",
+   "dueDate": "2025-08-16",
+   "docNumber": "H2507-04",
+   "note": "VL history 2025-07 invoice 04"
+  },
+  {
+   "case": "2025-07 invoice 05",
+   "customer": "Sushi by Katsuyuki",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 117138,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 117138
+    }
+   ],
+   "date": "2025-07-06",
+   "dueDate": "2025-08-05",
+   "docNumber": "H2507-05",
+   "note": "VL history 2025-07 invoice 05"
+  },
+  {
+   "case": "2025-07 invoice 06",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Design",
+   "amountMinorUnits": 113046,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 50676
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 62370
+    }
+   ],
+   "date": "2025-07-16",
+   "dueDate": "2025-08-15",
+   "docNumber": "H2507-06",
+   "note": "VL history 2025-07 invoice 06"
+  },
+  {
+   "case": "2025-07 invoice 07",
+   "customer": "Shara Barnett",
+   "itemName": "Gardening",
+   "amountMinorUnits": 102778,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 68519
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 34259
+    }
+   ],
+   "date": "2025-07-20",
+   "dueDate": "2025-08-19",
+   "docNumber": "H2507-07",
+   "note": "VL history 2025-07 invoice 07"
+  },
+  {
+   "case": "2025-07 invoice 08",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Soil",
+   "amountMinorUnits": 99494,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 49747
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 49747
+    }
+   ],
+   "date": "2025-07-12",
+   "dueDate": "2025-08-11",
+   "docNumber": "H2507-08",
+   "note": "VL history 2025-07 invoice 08"
+  },
+  {
+   "case": "2025-07 invoice 09",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 93047,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 93047
+    }
+   ],
+   "date": "2025-07-07",
+   "dueDate": "2025-08-06",
+   "docNumber": "H2507-09",
+   "note": "VL history 2025-07 invoice 09"
+  },
+  {
+   "case": "2025-07 invoice 10",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 102495,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 102495
+    }
+   ],
+   "date": "2025-07-04",
+   "dueDate": "2025-08-03",
+   "docNumber": "H2507-10",
+   "note": "VL history 2025-07 invoice 10"
+  },
+  {
+   "case": "2025-07 invoice 11",
+   "customer": "Rago Travel Agency",
+   "itemName": "Design",
+   "amountMinorUnits": 124700,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 124700
+    }
+   ],
+   "date": "2025-07-07",
+   "dueDate": "2025-08-06",
+   "docNumber": "H2507-11",
+   "note": "VL history 2025-07 invoice 11"
+  },
+  {
+   "case": "2025-07 invoice 12",
+   "customer": "Video Games by Dan",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 145318,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 52315
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 58127
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 34876
+    }
+   ],
+   "date": "2025-07-27",
+   "dueDate": "2025-08-26",
+   "docNumber": "H2507-12",
+   "note": "VL history 2025-07 invoice 12"
+  },
+  {
+   "case": "2025-08 invoice 01",
+   "customer": "Barnett Design",
+   "itemName": "Trimming",
+   "amountMinorUnits": 135045,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 73661
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 61384
+    }
+   ],
+   "date": "2025-08-06",
+   "dueDate": "2025-09-05",
+   "docNumber": "H2508-01",
+   "note": "VL history 2025-08 invoice 01"
+  },
+  {
+   "case": "2025-08 invoice 02",
+   "customer": "Sushi by Katsuyuki",
+   "itemName": "Sod",
+   "amountMinorUnits": 93058,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 93058
+    }
+   ],
+   "date": "2025-08-02",
+   "dueDate": "2025-09-01",
+   "docNumber": "H2508-02",
+   "note": "VL history 2025-08 invoice 02"
+  },
+  {
+   "case": "2025-08 invoice 03",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Design",
+   "amountMinorUnits": 97439,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 74512
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 22927
+    }
+   ],
+   "date": "2025-08-04",
+   "dueDate": "2025-09-03",
+   "docNumber": "H2508-03",
+   "note": "VL history 2025-08 invoice 03"
+  },
+  {
+   "case": "2025-08 invoice 04",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Design",
+   "amountMinorUnits": 97915,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 97915
+    }
+   ],
+   "date": "2025-08-09",
+   "dueDate": "2025-09-08",
+   "docNumber": "H2508-04",
+   "note": "VL history 2025-08 invoice 04"
+  },
+  {
+   "case": "2025-08 invoice 05",
+   "customer": "Video Games by Dan",
+   "itemName": "Sod",
+   "amountMinorUnits": 101737,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 58135
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 43602
+    }
+   ],
+   "date": "2025-08-02",
+   "dueDate": "2025-09-01",
+   "docNumber": "H2508-05",
+   "note": "VL history 2025-08 invoice 05"
+  },
+  {
+   "case": "2025-08 invoice 06",
+   "customer": "Kate Whelan",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 110248,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 110248
+    }
+   ],
+   "date": "2025-08-11",
+   "dueDate": "2025-09-10",
+   "docNumber": "H2508-06",
+   "note": "VL history 2025-08 invoice 06"
+  },
+  {
+   "case": "2025-08 invoice 07",
+   "customer": "Gevelber Photography",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 103312,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 103312
+    }
+   ],
+   "date": "2025-08-23",
+   "dueDate": "2025-09-22",
+   "docNumber": "H2508-07",
+   "note": "VL history 2025-08 invoice 07"
+  },
+  {
+   "case": "2025-08 invoice 08",
+   "customer": "55 Twin Lane",
+   "itemName": "Installation",
+   "amountMinorUnits": 144260,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 144260
+    }
+   ],
+   "date": "2025-08-03",
+   "dueDate": "2025-09-02",
+   "docNumber": "H2508-08",
+   "note": "VL history 2025-08 invoice 08"
+  },
+  {
+   "case": "2025-08 invoice 09",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Soil",
+   "amountMinorUnits": 96922,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 96922
+    }
+   ],
+   "date": "2025-08-04",
+   "dueDate": "2025-09-03",
+   "docNumber": "H2508-09",
+   "note": "VL history 2025-08 invoice 09"
+  },
+  {
+   "case": "2025-08 invoice 10",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Installation",
+   "amountMinorUnits": 117400,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 60593
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 34084
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 22723
+    }
+   ],
+   "date": "2025-08-17",
+   "dueDate": "2025-09-16",
+   "docNumber": "H2508-10",
+   "note": "VL history 2025-08 invoice 10"
+  },
+  {
+   "case": "2025-08 invoice 11",
+   "customer": "55 Twin Lane",
+   "itemName": "Sod",
+   "amountMinorUnits": 117804,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 58902
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 58902
+    }
+   ],
+   "date": "2025-08-23",
+   "dueDate": "2025-09-22",
+   "docNumber": "H2508-11",
+   "note": "VL history 2025-08 invoice 11"
+  },
+  {
+   "case": "2025-09 invoice 01",
+   "customer": "Rago Travel Agency",
+   "itemName": "Soil",
+   "amountMinorUnits": 104337,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 104337
+    }
+   ],
+   "date": "2025-09-21",
+   "dueDate": "2025-10-21",
+   "docNumber": "H2509-01",
+   "note": "VL history 2025-09 invoice 01"
+  },
+  {
+   "case": "2025-09 invoice 02",
+   "customer": "Diego Rodriguez",
+   "itemName": "Sod",
+   "amountMinorUnits": 122097,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 122097
+    }
+   ],
+   "date": "2025-09-25",
+   "dueDate": "2025-10-25",
+   "docNumber": "H2509-02",
+   "note": "VL history 2025-09 invoice 02"
+  },
+  {
+   "case": "2025-09 invoice 03",
+   "customer": "Gevelber Photography",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 111520,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 45622
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 65898
+    }
+   ],
+   "date": "2025-09-03",
+   "dueDate": "2025-10-03",
+   "docNumber": "H2509-03",
+   "note": "VL history 2025-09 invoice 03"
+  },
+  {
+   "case": "2025-09 invoice 04",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 110155,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 17767
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 35534
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 56854
+    }
+   ],
+   "date": "2025-09-21",
+   "dueDate": "2025-10-21",
+   "docNumber": "H2509-04",
+   "note": "VL history 2025-09 invoice 04"
+  },
+  {
+   "case": "2025-09 invoice 05",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Sod",
+   "amountMinorUnits": 127680,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 63840
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 63840
+    }
+   ],
+   "date": "2025-09-05",
+   "dueDate": "2025-10-05",
+   "docNumber": "H2509-05",
+   "note": "VL history 2025-09 invoice 05"
+  },
+  {
+   "case": "2025-09 invoice 06",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Gardening",
+   "amountMinorUnits": 98401,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 42783
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 55618
+    }
+   ],
+   "date": "2025-09-23",
+   "dueDate": "2025-10-23",
+   "docNumber": "H2509-06",
+   "note": "VL history 2025-09 invoice 06"
+  },
+  {
+   "case": "2025-09 invoice 07",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Trimming",
+   "amountMinorUnits": 139128,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 75888
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 63240
+    }
+   ],
+   "date": "2025-09-12",
+   "dueDate": "2025-10-12",
+   "docNumber": "H2509-07",
+   "note": "VL history 2025-09 invoice 07"
+  },
+  {
+   "case": "2025-09 invoice 08",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Soil",
+   "amountMinorUnits": 135412,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 54165
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 81247
+    }
+   ],
+   "date": "2025-09-11",
+   "dueDate": "2025-10-11",
+   "docNumber": "H2509-08",
+   "note": "VL history 2025-09 invoice 08"
+  },
+  {
+   "case": "2025-09 invoice 09",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Design",
+   "amountMinorUnits": 95374,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 95374
+    }
+   ],
+   "date": "2025-09-17",
+   "dueDate": "2025-10-17",
+   "docNumber": "H2509-09",
+   "note": "VL history 2025-09 invoice 09"
+  },
+  {
+   "case": "2025-09 invoice 10",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Soil",
+   "amountMinorUnits": 107939,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 30840
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 77099
+    }
+   ],
+   "date": "2025-09-18",
+   "dueDate": "2025-10-18",
+   "docNumber": "H2509-10",
+   "note": "VL history 2025-09 invoice 10"
+  },
+  {
+   "case": "2025-09 invoice 11",
+   "customer": "Kate Whelan",
+   "itemName": "Soil",
+   "amountMinorUnits": 85669,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 26360
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 59309
+    }
+   ],
+   "date": "2025-09-20",
+   "dueDate": "2025-10-20",
+   "docNumber": "H2509-11",
+   "note": "VL history 2025-09 invoice 11"
+  },
+  {
+   "case": "2025-09 invoice 12",
+   "customer": "Rago Travel Agency",
+   "itemName": "Gardening",
+   "amountMinorUnits": 87144,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 54465
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 32679
+    }
+   ],
+   "date": "2025-09-13",
+   "dueDate": "2025-10-13",
+   "docNumber": "H2509-12",
+   "note": "VL history 2025-09 invoice 12"
+  },
+  {
+   "case": "2025-10 invoice 01",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Gardening",
+   "amountMinorUnits": 120123,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 28601
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 45761
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 45761
+    }
+   ],
+   "date": "2025-10-25",
+   "dueDate": "2025-11-24",
+   "docNumber": "H2510-01",
+   "note": "VL history 2025-10 invoice 01"
+  },
+  {
+   "case": "2025-10 invoice 02",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Trimming",
+   "amountMinorUnits": 146532,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 48844
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 97688
+    }
+   ],
+   "date": "2025-10-22",
+   "dueDate": "2025-11-21",
+   "docNumber": "H2510-02",
+   "note": "VL history 2025-10 invoice 02"
+  },
+  {
+   "case": "2025-10 invoice 03",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Design",
+   "amountMinorUnits": 139444,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 95409
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 44035
+    }
+   ],
+   "date": "2025-10-06",
+   "dueDate": "2025-11-05",
+   "docNumber": "H2510-03",
+   "note": "VL history 2025-10 invoice 03"
+  },
+  {
+   "case": "2025-10 invoice 04",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Soil",
+   "amountMinorUnits": 136003,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 38858
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 97145
+    }
+   ],
+   "date": "2025-10-25",
+   "dueDate": "2025-11-24",
+   "docNumber": "H2510-04",
+   "note": "VL history 2025-10 invoice 04"
+  },
+  {
+   "case": "2025-10 invoice 05",
+   "customer": "Barnett Design",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 134173,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 47919
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 86254
+    }
+   ],
+   "date": "2025-10-15",
+   "dueDate": "2025-11-14",
+   "docNumber": "H2510-05",
+   "note": "VL history 2025-10 invoice 05"
+  },
+  {
+   "case": "2025-10 invoice 06",
+   "customer": "Barnett Design",
+   "itemName": "Gardening",
+   "amountMinorUnits": 144259,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 144259
+    }
+   ],
+   "date": "2025-10-04",
+   "dueDate": "2025-11-03",
+   "docNumber": "H2510-06",
+   "note": "VL history 2025-10 invoice 06"
+  },
+  {
+   "case": "2025-10 invoice 07",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Design",
+   "amountMinorUnits": 127909,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 127909
+    }
+   ],
+   "date": "2025-10-11",
+   "dueDate": "2025-11-10",
+   "docNumber": "H2510-07",
+   "note": "VL history 2025-10 invoice 07"
+  },
+  {
+   "case": "2025-10 invoice 08",
+   "customer": "Shara Barnett",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 102854,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 42077
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 60777
+    }
+   ],
+   "date": "2025-10-09",
+   "dueDate": "2025-11-08",
+   "docNumber": "H2510-08",
+   "note": "VL history 2025-10 invoice 08"
+  },
+  {
+   "case": "2025-10 invoice 09",
+   "customer": "55 Twin Lane",
+   "itemName": "Installation",
+   "amountMinorUnits": 107776,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 49269
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 27714
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 30793
+    }
+   ],
+   "date": "2025-10-21",
+   "dueDate": "2025-11-20",
+   "docNumber": "H2510-09",
+   "note": "VL history 2025-10 invoice 09"
+  },
+  {
+   "case": "2025-10 invoice 10",
+   "customer": "Red Rock Diner",
+   "itemName": "Soil",
+   "amountMinorUnits": 109970,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 33837
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 76133
+    }
+   ],
+   "date": "2025-10-02",
+   "dueDate": "2025-11-01",
+   "docNumber": "H2510-10",
+   "note": "VL history 2025-10 invoice 10"
+  },
+  {
+   "case": "2025-11 invoice 01",
+   "customer": "Shara Barnett",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 122065,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 43595
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 78470
+    }
+   ],
+   "date": "2025-11-06",
+   "dueDate": "2025-12-06",
+   "docNumber": "H2511-01",
+   "note": "VL history 2025-11 invoice 01"
+  },
+  {
+   "case": "2025-11 invoice 02",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Sod",
+   "amountMinorUnits": 96257,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 33973
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 36804
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 25480
+    }
+   ],
+   "date": "2025-11-13",
+   "dueDate": "2025-12-13",
+   "docNumber": "H2511-02",
+   "note": "VL history 2025-11 invoice 02"
+  },
+  {
+   "case": "2025-11 invoice 03",
+   "customer": "Pye's Cakes",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 130764,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 40582
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 18036
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 72146
+    }
+   ],
+   "date": "2025-11-11",
+   "dueDate": "2025-12-11",
+   "docNumber": "H2511-03",
+   "note": "VL history 2025-11 invoice 03"
+  },
+  {
+   "case": "2025-11 invoice 04",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 115802,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 37222
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 37222
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 41358
+    }
+   ],
+   "date": "2025-11-15",
+   "dueDate": "2025-12-15",
+   "docNumber": "H2511-04",
+   "note": "VL history 2025-11 invoice 04"
+  },
+  {
+   "case": "2025-11 invoice 05",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Soil",
+   "amountMinorUnits": 100334,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 100334
+    }
+   ],
+   "date": "2025-11-25",
+   "dueDate": "2025-12-25",
+   "docNumber": "H2511-05",
+   "note": "VL history 2025-11 invoice 05"
+  },
+  {
+   "case": "2025-11 invoice 06",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Gardening",
+   "amountMinorUnits": 138537,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 138537
+    }
+   ],
+   "date": "2025-11-03",
+   "dueDate": "2025-12-03",
+   "docNumber": "H2511-06",
+   "note": "VL history 2025-11 invoice 06"
+  },
+  {
+   "case": "2025-11 invoice 07",
+   "customer": "Barnett Design",
+   "itemName": "Installation",
+   "amountMinorUnits": 124951,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 99961
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 24990
+    }
+   ],
+   "date": "2025-11-27",
+   "dueDate": "2025-12-27",
+   "docNumber": "H2511-07",
+   "note": "VL history 2025-11 invoice 07"
+  },
+  {
+   "case": "2025-11 invoice 08",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Sod",
+   "amountMinorUnits": 108315,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 108315
+    }
+   ],
+   "date": "2025-11-18",
+   "dueDate": "2025-12-18",
+   "docNumber": "H2511-08",
+   "note": "VL history 2025-11 invoice 08"
+  },
+  {
+   "case": "2025-12 invoice 01",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 143384,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 61450
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 81934
+    }
+   ],
+   "date": "2025-12-09",
+   "dueDate": "2026-01-08",
+   "docNumber": "H2512-01",
+   "note": "VL history 2025-12 invoice 01"
+  },
+  {
+   "case": "2025-12 invoice 02",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Trimming",
+   "amountMinorUnits": 117193,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 24247
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 52535
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 40411
+    }
+   ],
+   "date": "2025-12-08",
+   "dueDate": "2026-01-07",
+   "docNumber": "H2512-02",
+   "note": "VL history 2025-12 invoice 02"
+  },
+  {
+   "case": "2025-12 invoice 03",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Gardening",
+   "amountMinorUnits": 112045,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 40016
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 24010
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 48019
+    }
+   ],
+   "date": "2025-12-20",
+   "dueDate": "2026-01-19",
+   "docNumber": "H2512-03",
+   "note": "VL history 2025-12 invoice 03"
+  },
+  {
+   "case": "2025-12 invoice 04",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Installation",
+   "amountMinorUnits": 113876,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 82819
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 31057
+    }
+   ],
+   "date": "2025-12-11",
+   "dueDate": "2026-01-10",
+   "docNumber": "H2512-04",
+   "note": "VL history 2025-12 invoice 04"
+  },
+  {
+   "case": "2025-12 invoice 05",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Trimming",
+   "amountMinorUnits": 137989,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 137989
+    }
+   ],
+   "date": "2025-12-27",
+   "dueDate": "2026-01-26",
+   "docNumber": "H2512-05",
+   "note": "VL history 2025-12 invoice 05"
+  },
+  {
+   "case": "2025-12 invoice 06",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Design",
+   "amountMinorUnits": 135294,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 135294
+    }
+   ],
+   "date": "2025-12-02",
+   "dueDate": "2026-01-01",
+   "docNumber": "H2512-06",
+   "note": "VL history 2025-12 invoice 06"
+  },
+  {
+   "case": "2025-12 invoice 07",
+   "customer": "Diego Rodriguez",
+   "itemName": "Design",
+   "amountMinorUnits": 130611,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 130611
+    }
+   ],
+   "date": "2025-12-15",
+   "dueDate": "2026-01-14",
+   "docNumber": "H2512-07",
+   "note": "VL history 2025-12 invoice 07"
+  },
+  {
+   "case": "2026-01 invoice 01",
+   "customer": "Barnett Design",
+   "itemName": "Sod",
+   "amountMinorUnits": 99930,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 99930
+    }
+   ],
+   "date": "2026-01-02",
+   "dueDate": "2026-02-01",
+   "docNumber": "H2601-01",
+   "note": "VL history 2026-01 invoice 01"
+  },
+  {
+   "case": "2026-01 invoice 02",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 111522,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 40148
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 71374
+    }
+   ],
+   "date": "2026-01-09",
+   "dueDate": "2026-02-08",
+   "docNumber": "H2601-02",
+   "note": "VL history 2026-01 invoice 02"
+  },
+  {
+   "case": "2026-01 invoice 03",
+   "customer": "55 Twin Lane",
+   "itemName": "Trimming",
+   "amountMinorUnits": 138451,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 138451
+    }
+   ],
+   "date": "2026-01-09",
+   "dueDate": "2026-02-08",
+   "docNumber": "H2601-03",
+   "note": "VL history 2026-01 invoice 03"
+  },
+  {
+   "case": "2026-01 invoice 04",
+   "customer": "Rago Travel Agency",
+   "itemName": "Sod",
+   "amountMinorUnits": 100642,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 37741
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 12580
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 50321
+    }
+   ],
+   "date": "2026-01-27",
+   "dueDate": "2026-02-26",
+   "docNumber": "H2601-04",
+   "note": "VL history 2026-01 invoice 04"
+  },
+  {
+   "case": "2026-01 invoice 05",
+   "customer": "Rago Travel Agency",
+   "itemName": "Installation",
+   "amountMinorUnits": 115851,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 56170
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 45638
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 14043
+    }
+   ],
+   "date": "2026-01-13",
+   "dueDate": "2026-02-12",
+   "docNumber": "H2601-05",
+   "note": "VL history 2026-01 invoice 05"
+  },
+  {
+   "case": "2026-01 invoice 06",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Sod",
+   "amountMinorUnits": 105482,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 105482
+    }
+   ],
+   "date": "2026-01-27",
+   "dueDate": "2026-02-26",
+   "docNumber": "H2601-06",
+   "note": "VL history 2026-01 invoice 06"
+  },
+  {
+   "case": "2026-01 invoice 07",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Soil",
+   "amountMinorUnits": 114100,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 114100
+    }
+   ],
+   "date": "2026-01-12",
+   "dueDate": "2026-02-11",
+   "docNumber": "H2601-07",
+   "note": "VL history 2026-01 invoice 07"
+  },
+  {
+   "case": "2026-02 invoice 01",
+   "customer": "55 Twin Lane",
+   "itemName": "Installation",
+   "amountMinorUnits": 130925,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 67574
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 21117
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 42234
+    }
+   ],
+   "date": "2026-02-03",
+   "dueDate": "2026-03-05",
+   "docNumber": "H2602-01",
+   "note": "VL history 2026-02 invoice 01"
+  },
+  {
+   "case": "2026-02 invoice 02",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Trimming",
+   "amountMinorUnits": 138928,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 34732
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 52098
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 52098
+    }
+   ],
+   "date": "2026-02-02",
+   "dueDate": "2026-03-04",
+   "docNumber": "H2602-02",
+   "note": "VL history 2026-02 invoice 02"
+  },
+  {
+   "case": "2026-02 invoice 03",
+   "customer": "Pye's Cakes",
+   "itemName": "Gardening",
+   "amountMinorUnits": 113480,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 70925
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 42555
+    }
+   ],
+   "date": "2026-02-11",
+   "dueDate": "2026-03-13",
+   "docNumber": "H2602-03",
+   "note": "VL history 2026-02 invoice 03"
+  },
+  {
+   "case": "2026-02 invoice 04",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Sod",
+   "amountMinorUnits": 133373,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 133373
+    }
+   ],
+   "date": "2026-02-10",
+   "dueDate": "2026-03-12",
+   "docNumber": "H2602-04",
+   "note": "VL history 2026-02 invoice 04"
+  },
+  {
+   "case": "2026-02 invoice 05",
+   "customer": "Diego Rodriguez",
+   "itemName": "Soil",
+   "amountMinorUnits": 122558,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 122558
+    }
+   ],
+   "date": "2026-02-09",
+   "dueDate": "2026-03-11",
+   "docNumber": "H2602-05",
+   "note": "VL history 2026-02 invoice 05"
+  },
+  {
+   "case": "2026-02 invoice 06",
+   "customer": "Gevelber Photography",
+   "itemName": "Sod",
+   "amountMinorUnits": 85432,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 41007
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 44425
+    }
+   ],
+   "date": "2026-02-17",
+   "dueDate": "2026-03-19",
+   "docNumber": "H2602-06",
+   "note": "VL history 2026-02 invoice 06"
+  },
+  {
+   "case": "2026-02 invoice 07",
+   "customer": "Kate Whelan",
+   "itemName": "Gardening",
+   "amountMinorUnits": 134212,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 95866
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 38346
+    }
+   ],
+   "date": "2026-02-03",
+   "dueDate": "2026-03-05",
+   "docNumber": "H2602-07",
+   "note": "VL history 2026-02 invoice 07"
+  },
+  {
+   "case": "2026-03 invoice 01",
+   "customer": "55 Twin Lane",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 140716,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 27061
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 64946
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 48709
+    }
+   ],
+   "date": "2026-03-10",
+   "dueDate": "2026-04-09",
+   "docNumber": "H2603-01",
+   "note": "VL history 2026-03 invoice 01"
+  },
+  {
+   "case": "2026-03 invoice 02",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Soil",
+   "amountMinorUnits": 103617,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 31882
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 71735
+    }
+   ],
+   "date": "2026-03-27",
+   "dueDate": "2026-04-26",
+   "docNumber": "H2603-02",
+   "note": "VL history 2026-03 invoice 02"
+  },
+  {
+   "case": "2026-03 invoice 03",
+   "customer": "Red Rock Diner",
+   "itemName": "Sod",
+   "amountMinorUnits": 131681,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 45148
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 37623
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 48910
+    }
+   ],
+   "date": "2026-03-06",
+   "dueDate": "2026-04-05",
+   "docNumber": "H2603-03",
+   "note": "VL history 2026-03 invoice 03"
+  },
+  {
+   "case": "2026-03 invoice 04",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Gardening",
+   "amountMinorUnits": 121215,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 46621
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 74594
+    }
+   ],
+   "date": "2026-03-02",
+   "dueDate": "2026-04-01",
+   "docNumber": "H2603-04",
+   "note": "VL history 2026-03 invoice 04"
+  },
+  {
+   "case": "2026-03 invoice 05",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Design",
+   "amountMinorUnits": 103635,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 38493
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 47376
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 17766
+    }
+   ],
+   "date": "2026-03-04",
+   "dueDate": "2026-04-03",
+   "docNumber": "H2603-05",
+   "note": "VL history 2026-03 invoice 05"
+  },
+  {
+   "case": "2026-03 invoice 06",
+   "customer": "Pye's Cakes",
+   "itemName": "Installation",
+   "amountMinorUnits": 138814,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 88841
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 49973
+    }
+   ],
+   "date": "2026-03-09",
+   "dueDate": "2026-04-08",
+   "docNumber": "H2603-06",
+   "note": "VL history 2026-03 invoice 06"
+  },
+  {
+   "case": "2026-03 invoice 07",
+   "customer": "Kookies by Kathy",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 111455,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 111455
+    }
+   ],
+   "date": "2026-03-07",
+   "dueDate": "2026-04-06",
+   "docNumber": "H2603-07",
+   "note": "VL history 2026-03 invoice 07"
+  },
+  {
+   "case": "2026-03 invoice 08",
+   "customer": "Kate Whelan",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 110532,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 110532
+    }
+   ],
+   "date": "2026-03-16",
+   "dueDate": "2026-04-15",
+   "docNumber": "H2603-08",
+   "note": "VL history 2026-03 invoice 08"
+  },
+  {
+   "case": "2026-03 invoice 09",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Sod",
+   "amountMinorUnits": 117088,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 87816
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 29272
+    }
+   ],
+   "date": "2026-03-16",
+   "dueDate": "2026-04-15",
+   "docNumber": "H2603-09",
+   "note": "VL history 2026-03 invoice 09"
+  },
+  {
+   "case": "2026-04 invoice 01",
+   "customer": "Pye's Cakes",
+   "itemName": "Design",
+   "amountMinorUnits": 129646,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 129646
+    }
+   ],
+   "date": "2026-04-17",
+   "dueDate": "2026-05-17",
+   "docNumber": "H2604-01",
+   "note": "VL history 2026-04 invoice 01"
+  },
+  {
+   "case": "2026-04 invoice 02",
+   "customer": "Barnett Design",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 89422,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 28743
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 41517
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 19162
+    }
+   ],
+   "date": "2026-04-25",
+   "dueDate": "2026-05-25",
+   "docNumber": "H2604-02",
+   "note": "VL history 2026-04 invoice 02"
+  },
+  {
+   "case": "2026-04 invoice 03",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 142802,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 142802
+    }
+   ],
+   "date": "2026-04-18",
+   "dueDate": "2026-05-18",
+   "docNumber": "H2604-03",
+   "note": "VL history 2026-04 invoice 03"
+  },
+  {
+   "case": "2026-04 invoice 04",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Soil",
+   "amountMinorUnits": 106096,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 23577
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 58942
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 23577
+    }
+   ],
+   "date": "2026-04-12",
+   "dueDate": "2026-05-12",
+   "docNumber": "H2604-04",
+   "note": "VL history 2026-04 invoice 04"
+  },
+  {
+   "case": "2026-04 invoice 05",
+   "customer": "Red Rock Diner",
+   "itemName": "Trimming",
+   "amountMinorUnits": 104455,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 104455
+    }
+   ],
+   "date": "2026-04-07",
+   "dueDate": "2026-05-07",
+   "docNumber": "H2604-05",
+   "note": "VL history 2026-04 invoice 05"
+  },
+  {
+   "case": "2026-04 invoice 06",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Gardening",
+   "amountMinorUnits": 91522,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 45761
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 45761
+    }
+   ],
+   "date": "2026-04-26",
+   "dueDate": "2026-05-26",
+   "docNumber": "H2604-06",
+   "note": "VL history 2026-04 invoice 06"
+  },
+  {
+   "case": "2026-04 invoice 07",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Sod",
+   "amountMinorUnits": 141785,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 81020
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 60765
+    }
+   ],
+   "date": "2026-04-21",
+   "dueDate": "2026-05-21",
+   "docNumber": "H2604-07",
+   "note": "VL history 2026-04 invoice 07"
+  },
+  {
+   "case": "2026-04 invoice 08",
+   "customer": "Diego Rodriguez",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 111445,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 37148
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 74297
+    }
+   ],
+   "date": "2026-04-23",
+   "dueDate": "2026-05-23",
+   "docNumber": "H2604-08",
+   "note": "VL history 2026-04 invoice 08"
+  },
+  {
+   "case": "2026-04 invoice 09",
+   "customer": "Rago Travel Agency",
+   "itemName": "Gardening",
+   "amountMinorUnits": 99162,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 49581
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 49581
+    }
+   ],
+   "date": "2026-04-24",
+   "dueDate": "2026-05-24",
+   "docNumber": "H2604-09",
+   "note": "VL history 2026-04 invoice 09"
+  },
+  {
+   "case": "2026-04 invoice 10",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Soil",
+   "amountMinorUnits": 113625,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 22725
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 90900
+    }
+   ],
+   "date": "2026-04-16",
+   "dueDate": "2026-05-16",
+   "docNumber": "H2604-10",
+   "note": "VL history 2026-04 invoice 10"
+  },
+  {
+   "case": "2026-04 invoice 11",
+   "customer": "Diego Rodriguez",
+   "itemName": "Installation",
+   "amountMinorUnits": 101656,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 56086
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 45570
+    }
+   ],
+   "date": "2026-04-20",
+   "dueDate": "2026-05-20",
+   "docNumber": "H2604-11",
+   "note": "VL history 2026-04 invoice 11"
+  },
+  {
+   "case": "2026-04 invoice 12",
+   "customer": "55 Twin Lane",
+   "itemName": "Trimming",
+   "amountMinorUnits": 120878,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 38172
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 82706
+    }
+   ],
+   "date": "2026-04-23",
+   "dueDate": "2026-05-23",
+   "docNumber": "H2604-12",
+   "note": "VL history 2026-04 invoice 12"
+  },
+  {
+   "case": "2026-05 invoice 01",
+   "customer": "Kate Whelan",
+   "itemName": "Installation",
+   "amountMinorUnits": 107781,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 107781
+    }
+   ],
+   "date": "2026-05-20",
+   "dueDate": "2026-06-19",
+   "docNumber": "H2605-01",
+   "note": "VL history 2026-05 invoice 01"
+  },
+  {
+   "case": "2026-05 invoice 02",
+   "customer": "Kate Whelan",
+   "itemName": "Installation",
+   "amountMinorUnits": 132910,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 132910
+    }
+   ],
+   "date": "2026-05-16",
+   "dueDate": "2026-06-15",
+   "docNumber": "H2605-02",
+   "note": "VL history 2026-05 invoice 02"
+  },
+  {
+   "case": "2026-05 invoice 03",
+   "customer": "55 Twin Lane",
+   "itemName": "Soil",
+   "amountMinorUnits": 108448,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 48199
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 60249
+    }
+   ],
+   "date": "2026-05-03",
+   "dueDate": "2026-06-02",
+   "docNumber": "H2605-03",
+   "note": "VL history 2026-05 invoice 03"
+  },
+  {
+   "case": "2026-05 invoice 04",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Design",
+   "amountMinorUnits": 113344,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 58939
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 54405
+    }
+   ],
+   "date": "2026-05-24",
+   "dueDate": "2026-06-23",
+   "docNumber": "H2605-04",
+   "note": "VL history 2026-05 invoice 04"
+  },
+  {
+   "case": "2026-05 invoice 05",
+   "customer": "Kookies by Kathy",
+   "itemName": "Trimming",
+   "amountMinorUnits": 95755,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 95755
+    }
+   ],
+   "date": "2026-05-09",
+   "dueDate": "2026-06-08",
+   "docNumber": "H2605-05",
+   "note": "VL history 2026-05 invoice 05"
+  },
+  {
+   "case": "2026-05 invoice 06",
+   "customer": "Red Rock Diner",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 125264,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 125264
+    }
+   ],
+   "date": "2026-05-27",
+   "dueDate": "2026-06-26",
+   "docNumber": "H2605-06",
+   "note": "VL history 2026-05 invoice 06"
+  },
+  {
+   "case": "2026-05 invoice 07",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Gardening",
+   "amountMinorUnits": 90156,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 60104
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 30052
+    }
+   ],
+   "date": "2026-05-04",
+   "dueDate": "2026-06-03",
+   "docNumber": "H2605-07",
+   "note": "VL history 2026-05 invoice 07"
+  },
+  {
+   "case": "2026-05 invoice 08",
+   "customer": "Video Games by Dan",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 86228,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 22692
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 18153
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 45383
+    }
+   ],
+   "date": "2026-05-08",
+   "dueDate": "2026-06-07",
+   "docNumber": "H2605-08",
+   "note": "VL history 2026-05 invoice 08"
+  },
+  {
+   "case": "2026-05 invoice 09",
+   "customer": "Video Games by Dan",
+   "itemName": "Design",
+   "amountMinorUnits": 107245,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 107245
+    }
+   ],
+   "date": "2026-05-06",
+   "dueDate": "2026-06-05",
+   "docNumber": "H2605-09",
+   "note": "VL history 2026-05 invoice 09"
+  },
+  {
+   "case": "2026-05 invoice 10",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Soil",
+   "amountMinorUnits": 93764,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 18753
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 75011
+    }
+   ],
+   "date": "2026-05-18",
+   "dueDate": "2026-06-17",
+   "docNumber": "H2605-10",
+   "note": "VL history 2026-05 invoice 10"
+  },
+  {
+   "case": "2026-05 invoice 11",
+   "customer": "Diego Rodriguez",
+   "itemName": "Soil",
+   "amountMinorUnits": 114768,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 51008
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 63760
+    }
+   ],
+   "date": "2026-05-11",
+   "dueDate": "2026-06-10",
+   "docNumber": "H2605-11",
+   "note": "VL history 2026-05 invoice 11"
+  },
+  {
+   "case": "2026-05 invoice 12",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Soil",
+   "amountMinorUnits": 104752,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 52376
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 52376
+    }
+   ],
+   "date": "2026-05-12",
+   "dueDate": "2026-06-11",
+   "docNumber": "H2605-12",
+   "note": "VL history 2026-05 invoice 12"
+  },
+  {
+   "case": "2026-05 invoice 13",
+   "customer": "Gevelber Photography",
+   "itemName": "Trimming",
+   "amountMinorUnits": 92409,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 92409
+    }
+   ],
+   "date": "2026-05-21",
+   "dueDate": "2026-06-20",
+   "docNumber": "H2605-13",
+   "note": "VL history 2026-05 invoice 13"
+  },
+  {
+   "case": "2026-06 invoice 01",
+   "customer": "Kate Whelan",
+   "itemName": "Trimming",
+   "amountMinorUnits": 128538,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 28564
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 42846
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 57128
+    }
+   ],
+   "date": "2026-06-05",
+   "dueDate": "2026-07-05",
+   "docNumber": "H2606-01",
+   "note": "VL history 2026-06 invoice 01"
+  },
+  {
+   "case": "2026-06 invoice 02",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Gardening",
+   "amountMinorUnits": 103941,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 64963
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 38978
+    }
+   ],
+   "date": "2026-06-26",
+   "dueDate": "2026-07-26",
+   "docNumber": "H2606-02",
+   "note": "VL history 2026-06 invoice 02"
+  },
+  {
+   "case": "2026-06 invoice 03",
+   "customer": "Kate Whelan",
+   "itemName": "Design",
+   "amountMinorUnits": 103785,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 58661
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 45124
+    }
+   ],
+   "date": "2026-06-19",
+   "dueDate": "2026-07-19",
+   "docNumber": "H2606-03",
+   "note": "VL history 2026-06 invoice 03"
+  },
+  {
+   "case": "2026-06 invoice 04",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Sod",
+   "amountMinorUnits": 108473,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 108473
+    }
+   ],
+   "date": "2026-06-07",
+   "dueDate": "2026-07-07",
+   "docNumber": "H2606-04",
+   "note": "VL history 2026-06 invoice 04"
+  },
+  {
+   "case": "2026-06 invoice 05",
+   "customer": "Red Rock Diner",
+   "itemName": "Design",
+   "amountMinorUnits": 139000,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 139000
+    }
+   ],
+   "date": "2026-06-03",
+   "dueDate": "2026-07-03",
+   "docNumber": "H2606-05",
+   "note": "VL history 2026-06 invoice 05"
+  },
+  {
+   "case": "2026-06 invoice 06",
+   "customer": "Rago Travel Agency",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 106016,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 58898
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 47118
+    }
+   ],
+   "date": "2026-06-09",
+   "dueDate": "2026-07-09",
+   "docNumber": "H2606-06",
+   "note": "VL history 2026-06 invoice 06"
+  },
+  {
+   "case": "2026-06 invoice 07",
+   "customer": "Red Rock Diner",
+   "itemName": "Gardening",
+   "amountMinorUnits": 137516,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 52891
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 84625
+    }
+   ],
+   "date": "2026-06-02",
+   "dueDate": "2026-07-02",
+   "docNumber": "H2606-07",
+   "note": "VL history 2026-06 invoice 07"
+  },
+  {
+   "case": "2026-06 invoice 08",
+   "customer": "Video Games by Dan",
+   "itemName": "Installation",
+   "amountMinorUnits": 122554,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 51602
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 41926
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 29026
+    }
+   ],
+   "date": "2026-06-21",
+   "dueDate": "2026-07-21",
+   "docNumber": "H2606-08",
+   "note": "VL history 2026-06 invoice 08"
+  },
+  {
+   "case": "2026-06 invoice 09",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Trimming",
+   "amountMinorUnits": 137392,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 82435
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 54957
+    }
+   ],
+   "date": "2026-06-09",
+   "dueDate": "2026-07-09",
+   "docNumber": "H2606-09",
+   "note": "VL history 2026-06 invoice 09"
+  },
+  {
+   "case": "2026-06 invoice 10",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Soil",
+   "amountMinorUnits": 85200,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 85200
+    }
+   ],
+   "date": "2026-06-14",
+   "dueDate": "2026-07-14",
+   "docNumber": "H2606-10",
+   "note": "VL history 2026-06 invoice 10"
+  },
+  {
+   "case": "2026-06 invoice 11",
+   "customer": "Diego Rodriguez",
+   "itemName": "Trimming",
+   "amountMinorUnits": 103017,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 41207
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 61810
+    }
+   ],
+   "date": "2026-06-06",
+   "dueDate": "2026-07-06",
+   "docNumber": "H2606-11",
+   "note": "VL history 2026-06 invoice 11"
+  },
+  {
+   "case": "2026-06 invoice 12",
+   "customer": "Pye's Cakes",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 124761,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 41587
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 83174
+    }
+   ],
+   "date": "2026-06-20",
+   "dueDate": "2026-07-20",
+   "docNumber": "H2606-12",
+   "note": "VL history 2026-06 invoice 12"
+  },
+  {
+   "case": "2026-06 invoice 13",
+   "customer": "Diego Rodriguez",
+   "itemName": "Trimming",
+   "amountMinorUnits": 118439,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 44415
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 74024
+    }
+   ],
+   "date": "2026-06-20",
+   "dueDate": "2026-07-20",
+   "docNumber": "H2606-13",
+   "note": "VL history 2026-06 invoice 13"
+  },
+  {
+   "case": "2026-06 invoice 14",
+   "customer": "Wedding Planning by Whitney",
+   "itemName": "Soil",
+   "amountMinorUnits": 107450,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 107450
+    }
+   ],
+   "date": "2026-06-20",
+   "dueDate": "2026-07-20",
+   "docNumber": "H2606-14",
+   "note": "VL history 2026-06 invoice 14"
+  },
+  {
+   "case": "2026-07 invoice 01",
+   "customer": "Sushi by Katsuyuki",
+   "itemName": "Sod",
+   "amountMinorUnits": 99547,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 42663
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 56884
+    }
+   ],
+   "date": "2026-07-23",
+   "dueDate": "2026-08-22",
+   "docNumber": "H2607-01",
+   "note": "VL history 2026-07 invoice 01"
+  },
+  {
+   "case": "2026-07 invoice 02",
+   "customer": "Kookies by Kathy",
+   "itemName": "Installation",
+   "amountMinorUnits": 95072,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 52454
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 42618
+    }
+   ],
+   "date": "2026-07-07",
+   "dueDate": "2026-08-06",
+   "docNumber": "H2607-02",
+   "note": "VL history 2026-07 invoice 02"
+  },
+  {
+   "case": "2026-07 invoice 03",
+   "customer": "55 Twin Lane",
+   "itemName": "Installation",
+   "amountMinorUnits": 95262,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 60968
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 34294
+    }
+   ],
+   "date": "2026-07-20",
+   "dueDate": "2026-08-19",
+   "docNumber": "H2607-03",
+   "note": "VL history 2026-07 invoice 03"
+  },
+  {
+   "case": "2026-07 invoice 04",
+   "customer": "Shara Barnett",
+   "itemName": "Design",
+   "amountMinorUnits": 132129,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 68707
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 63422
+    }
+   ],
+   "date": "2026-07-19",
+   "dueDate": "2026-08-18",
+   "docNumber": "H2607-04",
+   "note": "VL history 2026-07 invoice 04"
+  },
+  {
+   "case": "2026-07 invoice 05",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 121831,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 55378
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 66453
+    }
+   ],
+   "date": "2026-07-13",
+   "dueDate": "2026-08-12",
+   "docNumber": "H2607-05",
+   "note": "VL history 2026-07 invoice 05"
+  },
+  {
+   "case": "2026-07 invoice 06",
+   "customer": "Video Games by Dan",
+   "itemName": "Installation",
+   "amountMinorUnits": 112332,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 48576
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 48576
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 15180
+    }
+   ],
+   "date": "2026-07-17",
+   "dueDate": "2026-08-16",
+   "docNumber": "H2607-06",
+   "note": "VL history 2026-07 invoice 06"
+  },
+  {
+   "case": "2026-07 invoice 07",
+   "customer": "Kookies by Kathy",
+   "itemName": "Trimming",
+   "amountMinorUnits": 87929,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 27767
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 60162
+    }
+   ],
+   "date": "2026-07-06",
+   "dueDate": "2026-08-05",
+   "docNumber": "H2607-07",
+   "note": "VL history 2026-07 invoice 07"
+  },
+  {
+   "case": "2026-07 invoice 08",
+   "customer": "Diego Rodriguez",
+   "itemName": "Sod",
+   "amountMinorUnits": 117546,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 50377
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 67169
+    }
+   ],
+   "date": "2026-07-19",
+   "dueDate": "2026-08-18",
+   "docNumber": "H2607-08",
+   "note": "VL history 2026-07 invoice 08"
+  },
+  {
+   "case": "2026-07 invoice 09",
+   "customer": "Dylan Sollfrank",
+   "itemName": "Gardening",
+   "amountMinorUnits": 125398,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 48230
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 77168
+    }
+   ],
+   "date": "2026-07-15",
+   "dueDate": "2026-08-14",
+   "docNumber": "H2607-09",
+   "note": "VL history 2026-07 invoice 09"
+  },
+  {
+   "case": "2026-07 invoice 10",
+   "customer": "55 Twin Lane",
+   "itemName": "Soil",
+   "amountMinorUnits": 135116,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 54046
+    },
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 81070
+    }
+   ],
+   "date": "2026-07-11",
+   "dueDate": "2026-08-10",
+   "docNumber": "H2607-10",
+   "note": "VL history 2026-07 invoice 10"
+  },
+  {
+   "case": "2026-07 invoice 11",
+   "customer": "0969 Ocean View Road",
+   "itemName": "Installation",
+   "amountMinorUnits": 135928,
+   "lines": [
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 86994
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 48934
+    }
+   ],
+   "date": "2026-07-04",
+   "dueDate": "2026-08-03",
+   "docNumber": "H2607-11",
+   "note": "VL history 2026-07 invoice 11"
+  },
+  {
+   "case": "2026-07 invoice 12",
+   "customer": "Barnett Design",
+   "itemName": "Sod",
+   "amountMinorUnits": 117219,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 82743
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 34476
+    }
+   ],
+   "date": "2026-07-26",
+   "dueDate": "2026-08-25",
+   "docNumber": "H2607-12",
+   "note": "VL history 2026-07 invoice 12"
+  },
+  {
+   "case": "2026-07 invoice 13",
+   "customer": "Kate Whelan",
+   "itemName": "Design",
+   "amountMinorUnits": 126607,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 126607
+    }
+   ],
+   "date": "2026-07-03",
+   "dueDate": "2026-08-02",
+   "docNumber": "H2607-13",
+   "note": "VL history 2026-07 invoice 13"
+  },
+  {
+   "case": "2026-08 invoice 01",
+   "customer": "Barnett Design",
+   "itemName": "Sod",
+   "amountMinorUnits": 89275,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 89275
+    }
+   ],
+   "date": "2026-08-19",
+   "dueDate": "2026-09-18",
+   "docNumber": "H2608-01",
+   "note": "VL history 2026-08 invoice 01"
+  },
+  {
+   "case": "2026-08 invoice 02",
+   "customer": "Diego Rodriguez",
+   "itemName": "Design",
+   "amountMinorUnits": 144519,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 69583
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 21410
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 53526
+    }
+   ],
+   "date": "2026-08-07",
+   "dueDate": "2026-09-06",
+   "docNumber": "H2608-02",
+   "note": "VL history 2026-08 invoice 02"
+  },
+  {
+   "case": "2026-08 invoice 03",
+   "customer": "Shara Barnett",
+   "itemName": "Design",
+   "amountMinorUnits": 108577,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 52278
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 36192
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 20107
+    }
+   ],
+   "date": "2026-08-12",
+   "dueDate": "2026-09-11",
+   "docNumber": "H2608-03",
+   "note": "VL history 2026-08 invoice 03"
+  },
+  {
+   "case": "2026-08 invoice 04",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Sod",
+   "amountMinorUnits": 105745,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 79309
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 26436
+    }
+   ],
+   "date": "2026-08-24",
+   "dueDate": "2026-09-23",
+   "docNumber": "H2608-04",
+   "note": "VL history 2026-08 invoice 04"
+  },
+  {
+   "case": "2026-08 invoice 05",
+   "customer": "Dukes Basketball Camp",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 134926,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 134926
+    }
+   ],
+   "date": "2026-08-03",
+   "dueDate": "2026-09-02",
+   "docNumber": "H2608-05",
+   "note": "VL history 2026-08 invoice 05"
+  },
+  {
+   "case": "2026-08 invoice 06",
+   "customer": "Shara Barnett",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 104844,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 104844
+    }
+   ],
+   "date": "2026-08-02",
+   "dueDate": "2026-09-01",
+   "docNumber": "H2608-06",
+   "note": "VL history 2026-08 invoice 06"
+  },
+  {
+   "case": "2026-08 invoice 07",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Trimming",
+   "amountMinorUnits": 145022,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 145022
+    }
+   ],
+   "date": "2026-08-03",
+   "dueDate": "2026-09-02",
+   "docNumber": "H2608-07",
+   "note": "VL history 2026-08 invoice 07"
+  },
+  {
+   "case": "2026-08 invoice 08",
+   "customer": "Rago Travel Agency",
+   "itemName": "Soil",
+   "amountMinorUnits": 90611,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 14498
+    },
+    {
+     "itemName": "Installation",
+     "amountMinorUnits": 57991
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 18122
+    }
+   ],
+   "date": "2026-08-07",
+   "dueDate": "2026-09-06",
+   "docNumber": "H2608-08",
+   "note": "VL history 2026-08 invoice 08"
+  },
+  {
+   "case": "2026-08 invoice 09",
+   "customer": "Jeff's Jalopies",
+   "itemName": "Gardening",
+   "amountMinorUnits": 133901,
+   "lines": [
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 58218
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 75683
+    }
+   ],
+   "date": "2026-08-17",
+   "dueDate": "2026-09-16",
+   "docNumber": "H2608-09",
+   "note": "VL history 2026-08 invoice 09"
+  },
+  {
+   "case": "2026-08 invoice 10",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Design",
+   "amountMinorUnits": 87892,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 43946
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 30424
+    },
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 13522
+    }
+   ],
+   "date": "2026-08-08",
+   "dueDate": "2026-09-07",
+   "docNumber": "H2608-10",
+   "note": "VL history 2026-08 invoice 10"
+  },
+  {
+   "case": "2026-08 invoice 11",
+   "customer": "Shara Barnett",
+   "itemName": "Trimming",
+   "amountMinorUnits": 118080,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 30803
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 25670
+    },
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 61607
+    }
+   ],
+   "date": "2026-08-16",
+   "dueDate": "2026-09-15",
+   "docNumber": "H2608-11",
+   "note": "VL history 2026-08 invoice 11"
+  },
+  {
+   "case": "2026-09 invoice 01",
+   "customer": "Kate Whelan",
+   "itemName": "Maintenance & Repair",
+   "amountMinorUnits": 89159,
+   "lines": [
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 29720
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 42928
+    },
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 16511
+    }
+   ],
+   "date": "2026-09-23",
+   "dueDate": "2026-10-23",
+   "docNumber": "H2609-01",
+   "note": "VL history 2026-09 invoice 01"
+  },
+  {
+   "case": "2026-09 invoice 02",
+   "customer": "Video Games by Dan",
+   "itemName": "Pest Control",
+   "amountMinorUnits": 118252,
+   "lines": [
+    {
+     "itemName": "Pest Control",
+     "amountMinorUnits": 118252
+    }
+   ],
+   "date": "2026-09-20",
+   "dueDate": "2026-10-20",
+   "docNumber": "H2609-02",
+   "note": "VL history 2026-09 invoice 02"
+  },
+  {
+   "case": "2026-09 invoice 03",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Design",
+   "amountMinorUnits": 122603,
+   "lines": [
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 122603
+    }
+   ],
+   "date": "2026-09-05",
+   "dueDate": "2026-10-05",
+   "docNumber": "H2609-03",
+   "note": "VL history 2026-09 invoice 03"
+  },
+  {
+   "case": "2026-09 invoice 04",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "itemName": "Trimming",
+   "amountMinorUnits": 114128,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 28532
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 42798
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 42798
+    }
+   ],
+   "date": "2026-09-20",
+   "dueDate": "2026-10-20",
+   "docNumber": "H2609-04",
+   "note": "VL history 2026-09 invoice 04"
+  },
+  {
+   "case": "2026-09 invoice 05",
+   "customer": "Freeman Sporting Goods",
+   "itemName": "Trimming",
+   "amountMinorUnits": 96677,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 36254
+    },
+    {
+     "itemName": "Gardening",
+     "amountMinorUnits": 60423
+    }
+   ],
+   "date": "2026-09-23",
+   "dueDate": "2026-10-23",
+   "docNumber": "H2609-05",
+   "note": "VL history 2026-09 invoice 05"
+  },
+  {
+   "case": "2026-09 invoice 06",
+   "customer": "Diego Rodriguez",
+   "itemName": "Soil",
+   "amountMinorUnits": 102826,
+   "lines": [
+    {
+     "itemName": "Soil",
+     "amountMinorUnits": 102826
+    }
+   ],
+   "date": "2026-09-16",
+   "dueDate": "2026-10-16",
+   "docNumber": "H2609-06",
+   "note": "VL history 2026-09 invoice 06"
+  },
+  {
+   "case": "2026-09 invoice 09",
+   "customer": "Barnett Design",
+   "itemName": "Sod",
+   "amountMinorUnits": 95313,
+   "lines": [
+    {
+     "itemName": "Sod",
+     "amountMinorUnits": 33640
+    },
+    {
+     "itemName": "Maintenance & Repair",
+     "amountMinorUnits": 25230
+    },
+    {
+     "itemName": "Design",
+     "amountMinorUnits": 36443
+    }
+   ],
+   "date": "2026-09-26",
+   "dueDate": "2026-10-26",
+   "docNumber": "H2609-09",
+   "note": "VL history 2026-09 invoice 09"
+  },
+  {
+   "case": "2026-09 invoice 10",
+   "customer": "Bill's Windsurf Shop",
+   "itemName": "Trimming",
+   "amountMinorUnits": 101290,
+   "lines": [
+    {
+     "itemName": "Trimming",
+     "amountMinorUnits": 101290
+    }
+   ],
+   "date": "2026-09-22",
+   "dueDate": "2026-10-22",
+   "docNumber": "H2609-10",
+   "note": "VL history 2026-09 invoice 10"
+  }
+ ],
+ "payments": [
+  {
+   "case": "2025-07 payment 01",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 113243,
+   "date": "2025-08-23",
+   "note": "VL history 2025-07 payment 01",
+   "invoiceNote": "VL history 2025-07 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 02",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 105945,
+   "date": "2025-08-19",
+   "note": "VL history 2025-07 payment 02",
+   "invoiceNote": "VL history 2025-07 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 03",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 141885,
+   "date": "2025-08-02",
+   "note": "VL history 2025-07 payment 03",
+   "invoiceNote": "VL history 2025-07 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 04",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 102598,
+   "date": "2025-08-23",
+   "note": "VL history 2025-07 payment 04",
+   "invoiceNote": "VL history 2025-07 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 05",
+   "customer": "Sushi by Katsuyuki",
+   "amountMinorUnits": 117138,
+   "date": "2025-08-09",
+   "note": "VL history 2025-07 payment 05",
+   "invoiceNote": "VL history 2025-07 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 06",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 113046,
+   "date": "2025-07-24",
+   "note": "VL history 2025-07 payment 06",
+   "invoiceNote": "VL history 2025-07 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 07",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 102778,
+   "date": "2025-08-10",
+   "note": "VL history 2025-07 payment 07",
+   "invoiceNote": "VL history 2025-07 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 08",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 99494,
+   "date": "2025-07-29",
+   "note": "VL history 2025-07 payment 08",
+   "invoiceNote": "VL history 2025-07 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 09",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 93047,
+   "date": "2025-08-10",
+   "note": "VL history 2025-07 payment 09",
+   "invoiceNote": "VL history 2025-07 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 10",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 102495,
+   "date": "2025-07-22",
+   "note": "VL history 2025-07 payment 10",
+   "invoiceNote": "VL history 2025-07 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 11",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 124700,
+   "date": "2025-08-01",
+   "note": "VL history 2025-07 payment 11",
+   "invoiceNote": "VL history 2025-07 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-07 payment 12",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 145318,
+   "date": "2025-08-29",
+   "note": "VL history 2025-07 payment 12",
+   "invoiceNote": "VL history 2025-07 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 01",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 135045,
+   "date": "2025-08-15",
+   "note": "VL history 2025-08 payment 01",
+   "invoiceNote": "VL history 2025-08 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 02",
+   "customer": "Sushi by Katsuyuki",
+   "amountMinorUnits": 93058,
+   "date": "2025-09-04",
+   "note": "VL history 2025-08 payment 02",
+   "invoiceNote": "VL history 2025-08 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 03",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 97439,
+   "date": "2025-09-06",
+   "note": "VL history 2025-08 payment 03",
+   "invoiceNote": "VL history 2025-08 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 04",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 97915,
+   "date": "2025-08-16",
+   "note": "VL history 2025-08 payment 04",
+   "invoiceNote": "VL history 2025-08 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 05",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 101737,
+   "date": "2025-08-19",
+   "note": "VL history 2025-08 payment 05",
+   "invoiceNote": "VL history 2025-08 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 06",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 110248,
+   "date": "2025-08-27",
+   "note": "VL history 2025-08 payment 06",
+   "invoiceNote": "VL history 2025-08 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 07",
+   "customer": "Gevelber Photography",
+   "amountMinorUnits": 103312,
+   "date": "2025-09-10",
+   "note": "VL history 2025-08 payment 07",
+   "invoiceNote": "VL history 2025-08 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 08",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 144260,
+   "date": "2025-09-07",
+   "note": "VL history 2025-08 payment 08",
+   "invoiceNote": "VL history 2025-08 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 09",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 96922,
+   "date": "2025-08-17",
+   "note": "VL history 2025-08 payment 09",
+   "invoiceNote": "VL history 2025-08 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 10",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 117400,
+   "date": "2025-09-06",
+   "note": "VL history 2025-08 payment 10",
+   "invoiceNote": "VL history 2025-08 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-08 payment 11",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 117804,
+   "date": "2025-09-04",
+   "note": "VL history 2025-08 payment 11",
+   "invoiceNote": "VL history 2025-08 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 01",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 104337,
+   "date": "2025-10-07",
+   "note": "VL history 2025-09 payment 01",
+   "invoiceNote": "VL history 2025-09 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 02",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 122097,
+   "date": "2025-10-06",
+   "note": "VL history 2025-09 payment 02",
+   "invoiceNote": "VL history 2025-09 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 03",
+   "customer": "Gevelber Photography",
+   "amountMinorUnits": 111520,
+   "date": "2025-10-01",
+   "note": "VL history 2025-09 payment 03",
+   "invoiceNote": "VL history 2025-09 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 04",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 110155,
+   "date": "2025-10-22",
+   "note": "VL history 2025-09 payment 04",
+   "invoiceNote": "VL history 2025-09 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 05",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 127680,
+   "date": "2025-10-06",
+   "note": "VL history 2025-09 payment 05",
+   "invoiceNote": "VL history 2025-09 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 06",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 98401,
+   "date": "2025-10-25",
+   "note": "VL history 2025-09 payment 06",
+   "invoiceNote": "VL history 2025-09 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 07",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 139128,
+   "date": "2025-09-30",
+   "note": "VL history 2025-09 payment 07",
+   "invoiceNote": "VL history 2025-09 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 08",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 135412,
+   "date": "2025-10-03",
+   "note": "VL history 2025-09 payment 08",
+   "invoiceNote": "VL history 2025-09 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 09",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 95374,
+   "date": "2025-10-22",
+   "note": "VL history 2025-09 payment 09",
+   "invoiceNote": "VL history 2025-09 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 10",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 107939,
+   "date": "2025-09-25",
+   "note": "VL history 2025-09 payment 10",
+   "invoiceNote": "VL history 2025-09 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 11",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 85669,
+   "date": "2025-10-20",
+   "note": "VL history 2025-09 payment 11",
+   "invoiceNote": "VL history 2025-09 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-09 payment 12",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 87144,
+   "date": "2025-10-02",
+   "note": "VL history 2025-09 payment 12",
+   "invoiceNote": "VL history 2025-09 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 01",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 120123,
+   "date": "2025-11-25",
+   "note": "VL history 2025-10 payment 01",
+   "invoiceNote": "VL history 2025-10 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 02",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 146532,
+   "date": "2025-11-24",
+   "note": "VL history 2025-10 payment 02",
+   "invoiceNote": "VL history 2025-10 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 03",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 139444,
+   "date": "2025-10-24",
+   "note": "VL history 2025-10 payment 03",
+   "invoiceNote": "VL history 2025-10 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 04",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 136003,
+   "date": "2025-11-27",
+   "note": "VL history 2025-10 payment 04",
+   "invoiceNote": "VL history 2025-10 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 05",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 134173,
+   "date": "2025-11-14",
+   "note": "VL history 2025-10 payment 05",
+   "invoiceNote": "VL history 2025-10 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 06",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 144259,
+   "date": "2025-10-10",
+   "note": "VL history 2025-10 payment 06",
+   "invoiceNote": "VL history 2025-10 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 07",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 127909,
+   "date": "2025-10-17",
+   "note": "VL history 2025-10 payment 07",
+   "invoiceNote": "VL history 2025-10 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 08",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 102854,
+   "date": "2025-10-24",
+   "note": "VL history 2025-10 payment 08",
+   "invoiceNote": "VL history 2025-10 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 09",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 107776,
+   "date": "2025-11-24",
+   "note": "VL history 2025-10 payment 09",
+   "invoiceNote": "VL history 2025-10 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-10 payment 10",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 109970,
+   "date": "2025-10-30",
+   "note": "VL history 2025-10 payment 10",
+   "invoiceNote": "VL history 2025-10 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 01",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 122065,
+   "date": "2025-11-28",
+   "note": "VL history 2025-11 payment 01",
+   "invoiceNote": "VL history 2025-11 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 02",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 96257,
+   "date": "2025-12-07",
+   "note": "VL history 2025-11 payment 02",
+   "invoiceNote": "VL history 2025-11 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 03",
+   "customer": "Pye's Cakes",
+   "amountMinorUnits": 130764,
+   "date": "2025-12-07",
+   "note": "VL history 2025-11 payment 03",
+   "invoiceNote": "VL history 2025-11 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 04",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 115802,
+   "date": "2025-12-14",
+   "note": "VL history 2025-11 payment 04",
+   "invoiceNote": "VL history 2025-11 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 05",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 100334,
+   "date": "2025-12-20",
+   "note": "VL history 2025-11 payment 05",
+   "invoiceNote": "VL history 2025-11 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 06",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 138537,
+   "date": "2025-12-11",
+   "note": "VL history 2025-11 payment 06",
+   "invoiceNote": "VL history 2025-11 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 07",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 124951,
+   "date": "2025-12-17",
+   "note": "VL history 2025-11 payment 07",
+   "invoiceNote": "VL history 2025-11 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-11 payment 08",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 108315,
+   "date": "2025-12-23",
+   "note": "VL history 2025-11 payment 08",
+   "invoiceNote": "VL history 2025-11 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 01",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 143384,
+   "date": "2026-01-03",
+   "note": "VL history 2025-12 payment 01",
+   "invoiceNote": "VL history 2025-12 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 02",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 117193,
+   "date": "2025-12-19",
+   "note": "VL history 2025-12 payment 02",
+   "invoiceNote": "VL history 2025-12 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 03",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 112045,
+   "date": "2026-01-02",
+   "note": "VL history 2025-12 payment 03",
+   "invoiceNote": "VL history 2025-12 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 04",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 113876,
+   "date": "2025-12-30",
+   "note": "VL history 2025-12 payment 04",
+   "invoiceNote": "VL history 2025-12 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 05",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 137989,
+   "date": "2026-01-25",
+   "note": "VL history 2025-12 payment 05",
+   "invoiceNote": "VL history 2025-12 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 06",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 135294,
+   "date": "2025-12-14",
+   "note": "VL history 2025-12 payment 06",
+   "invoiceNote": "VL history 2025-12 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2025-12 payment 07",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 130611,
+   "date": "2026-01-22",
+   "note": "VL history 2025-12 payment 07",
+   "invoiceNote": "VL history 2025-12 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 01",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 99930,
+   "date": "2026-01-26",
+   "note": "VL history 2026-01 payment 01",
+   "invoiceNote": "VL history 2026-01 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 02",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 111522,
+   "date": "2026-02-04",
+   "note": "VL history 2026-01 payment 02",
+   "invoiceNote": "VL history 2026-01 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 03",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 138451,
+   "date": "2026-01-15",
+   "note": "VL history 2026-01 payment 03",
+   "invoiceNote": "VL history 2026-01 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 04",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 100642,
+   "date": "2026-02-15",
+   "note": "VL history 2026-01 payment 04",
+   "invoiceNote": "VL history 2026-01 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 05",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 115851,
+   "date": "2026-01-28",
+   "note": "VL history 2026-01 payment 05",
+   "invoiceNote": "VL history 2026-01 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 06",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 105482,
+   "date": "2026-02-17",
+   "note": "VL history 2026-01 payment 06",
+   "invoiceNote": "VL history 2026-01 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-01 payment 07",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 114100,
+   "date": "2026-01-25",
+   "note": "VL history 2026-01 payment 07",
+   "invoiceNote": "VL history 2026-01 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 01",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 130925,
+   "date": "2026-02-25",
+   "note": "VL history 2026-02 payment 01",
+   "invoiceNote": "VL history 2026-02 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 02",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 138928,
+   "date": "2026-02-11",
+   "note": "VL history 2026-02 payment 02",
+   "invoiceNote": "VL history 2026-02 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 03",
+   "customer": "Pye's Cakes",
+   "amountMinorUnits": 113480,
+   "date": "2026-03-05",
+   "note": "VL history 2026-02 payment 03",
+   "invoiceNote": "VL history 2026-02 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 04",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 133373,
+   "date": "2026-02-27",
+   "note": "VL history 2026-02 payment 04",
+   "invoiceNote": "VL history 2026-02 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 05",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 122558,
+   "date": "2026-03-18",
+   "note": "VL history 2026-02 payment 05",
+   "invoiceNote": "VL history 2026-02 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 06",
+   "customer": "Gevelber Photography",
+   "amountMinorUnits": 85432,
+   "date": "2026-03-11",
+   "note": "VL history 2026-02 payment 06",
+   "invoiceNote": "VL history 2026-02 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-02 payment 07",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 134212,
+   "date": "2026-02-18",
+   "note": "VL history 2026-02 payment 07",
+   "invoiceNote": "VL history 2026-02 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 01",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 140716,
+   "date": "2026-03-22",
+   "note": "VL history 2026-03 payment 01",
+   "invoiceNote": "VL history 2026-03 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 03",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 131681,
+   "date": "2026-04-13",
+   "note": "VL history 2026-03 payment 03",
+   "invoiceNote": "VL history 2026-03 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 04",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 121215,
+   "date": "2026-03-28",
+   "note": "VL history 2026-03 payment 04",
+   "invoiceNote": "VL history 2026-03 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 05",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 103635,
+   "date": "2026-03-18",
+   "note": "VL history 2026-03 payment 05",
+   "invoiceNote": "VL history 2026-03 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 06",
+   "customer": "Pye's Cakes",
+   "amountMinorUnits": 138814,
+   "date": "2026-03-15",
+   "note": "VL history 2026-03 payment 06",
+   "invoiceNote": "VL history 2026-03 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 07",
+   "customer": "Kookies by Kathy",
+   "amountMinorUnits": 111455,
+   "date": "2026-03-21",
+   "note": "VL history 2026-03 payment 07",
+   "invoiceNote": "VL history 2026-03 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 08",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 110532,
+   "date": "2026-04-06",
+   "note": "VL history 2026-03 payment 08",
+   "invoiceNote": "VL history 2026-03 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-03 payment 09",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 117088,
+   "date": "2026-04-06",
+   "note": "VL history 2026-03 payment 09",
+   "invoiceNote": "VL history 2026-03 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 01",
+   "customer": "Pye's Cakes",
+   "amountMinorUnits": 129646,
+   "date": "2026-05-18",
+   "note": "VL history 2026-04 payment 01",
+   "invoiceNote": "VL history 2026-04 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 02",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 89422,
+   "date": "2026-05-22",
+   "note": "VL history 2026-04 payment 02",
+   "invoiceNote": "VL history 2026-04 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 03",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 142802,
+   "date": "2026-05-19",
+   "note": "VL history 2026-04 payment 03",
+   "invoiceNote": "VL history 2026-04 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 04",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 106096,
+   "date": "2026-05-12",
+   "note": "VL history 2026-04 payment 04",
+   "invoiceNote": "VL history 2026-04 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 05",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 104455,
+   "date": "2026-05-04",
+   "note": "VL history 2026-04 payment 05",
+   "invoiceNote": "VL history 2026-04 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 06",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 91522,
+   "date": "2026-06-03",
+   "note": "VL history 2026-04 payment 06",
+   "invoiceNote": "VL history 2026-04 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 07",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 141785,
+   "date": "2026-05-05",
+   "note": "VL history 2026-04 payment 07",
+   "invoiceNote": "VL history 2026-04 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 08",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 111445,
+   "date": "2026-05-25",
+   "note": "VL history 2026-04 payment 08",
+   "invoiceNote": "VL history 2026-04 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 09",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 99162,
+   "date": "2026-05-23",
+   "note": "VL history 2026-04 payment 09",
+   "invoiceNote": "VL history 2026-04 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 10",
+   "customer": "Rondonuwu Fruit and Vegi",
+   "amountMinorUnits": 113625,
+   "date": "2026-04-28",
+   "note": "VL history 2026-04 payment 10",
+   "invoiceNote": "VL history 2026-04 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 11",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 101656,
+   "date": "2026-05-18",
+   "note": "VL history 2026-04 payment 11",
+   "invoiceNote": "VL history 2026-04 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-04 payment 12",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 120878,
+   "date": "2026-05-30",
+   "note": "VL history 2026-04 payment 12",
+   "invoiceNote": "VL history 2026-04 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 01",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 107781,
+   "date": "2026-06-06",
+   "note": "VL history 2026-05 payment 01",
+   "invoiceNote": "VL history 2026-05 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 02",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 132910,
+   "date": "2026-06-04",
+   "note": "VL history 2026-05 payment 02",
+   "invoiceNote": "VL history 2026-05 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 03",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 108448,
+   "date": "2026-05-27",
+   "note": "VL history 2026-05 payment 03",
+   "invoiceNote": "VL history 2026-05 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 05",
+   "customer": "Kookies by Kathy",
+   "amountMinorUnits": 95755,
+   "date": "2026-05-25",
+   "note": "VL history 2026-05 payment 05",
+   "invoiceNote": "VL history 2026-05 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 06",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 125264,
+   "date": "2026-06-24",
+   "note": "VL history 2026-05 payment 06",
+   "invoiceNote": "VL history 2026-05 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 07",
+   "customer": "Bill's Windsurf Shop",
+   "amountMinorUnits": 90156,
+   "date": "2026-05-20",
+   "note": "VL history 2026-05 payment 07",
+   "invoiceNote": "VL history 2026-05 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 08",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 86228,
+   "date": "2026-05-29",
+   "note": "VL history 2026-05 payment 08",
+   "invoiceNote": "VL history 2026-05 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 09",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 107245,
+   "date": "2026-06-10",
+   "note": "VL history 2026-05 payment 09",
+   "invoiceNote": "VL history 2026-05 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 10",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 93764,
+   "date": "2026-05-28",
+   "note": "VL history 2026-05 payment 10",
+   "invoiceNote": "VL history 2026-05 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 11",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 114768,
+   "date": "2026-06-16",
+   "note": "VL history 2026-05 payment 11",
+   "invoiceNote": "VL history 2026-05 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 12",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 104752,
+   "date": "2026-05-29",
+   "note": "VL history 2026-05 payment 12",
+   "invoiceNote": "VL history 2026-05 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-05 payment 13",
+   "customer": "Gevelber Photography",
+   "amountMinorUnits": 92409,
+   "date": "2026-06-28",
+   "note": "VL history 2026-05 payment 13",
+   "invoiceNote": "VL history 2026-05 invoice 13",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 01",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 128538,
+   "date": "2026-06-28",
+   "note": "VL history 2026-06 payment 01",
+   "invoiceNote": "VL history 2026-06 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 02",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 103941,
+   "date": "2026-07-12",
+   "note": "VL history 2026-06 payment 02",
+   "invoiceNote": "VL history 2026-06 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 03",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 103785,
+   "date": "2026-07-13",
+   "note": "VL history 2026-06 payment 03",
+   "invoiceNote": "VL history 2026-06 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 04",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 108473,
+   "date": "2026-07-15",
+   "note": "VL history 2026-06 payment 04",
+   "invoiceNote": "VL history 2026-06 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 05",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 139000,
+   "date": "2026-06-27",
+   "note": "VL history 2026-06 payment 05",
+   "invoiceNote": "VL history 2026-06 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 06",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 106016,
+   "date": "2026-07-13",
+   "note": "VL history 2026-06 payment 06",
+   "invoiceNote": "VL history 2026-06 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 07",
+   "customer": "Red Rock Diner",
+   "amountMinorUnits": 137516,
+   "date": "2026-06-17",
+   "note": "VL history 2026-06 payment 07",
+   "invoiceNote": "VL history 2026-06 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 08",
+   "customer": "Video Games by Dan",
+   "amountMinorUnits": 122554,
+   "date": "2026-07-21",
+   "note": "VL history 2026-06 payment 08",
+   "invoiceNote": "VL history 2026-06 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 09",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 137392,
+   "date": "2026-06-29",
+   "note": "VL history 2026-06 payment 09",
+   "invoiceNote": "VL history 2026-06 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 10",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 85200,
+   "date": "2026-07-02",
+   "note": "VL history 2026-06 payment 10",
+   "invoiceNote": "VL history 2026-06 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 11",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 103017,
+   "date": "2026-07-05",
+   "note": "VL history 2026-06 payment 11",
+   "invoiceNote": "VL history 2026-06 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 12",
+   "customer": "Pye's Cakes",
+   "amountMinorUnits": 124761,
+   "date": "2026-07-09",
+   "note": "VL history 2026-06 payment 12",
+   "invoiceNote": "VL history 2026-06 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 13",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 118439,
+   "date": "2026-07-16",
+   "note": "VL history 2026-06 payment 13",
+   "invoiceNote": "VL history 2026-06 invoice 13",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-06 payment 14",
+   "customer": "Wedding Planning by Whitney",
+   "amountMinorUnits": 107450,
+   "date": "2026-06-26",
+   "note": "VL history 2026-06 payment 14",
+   "invoiceNote": "VL history 2026-06 invoice 14",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 01",
+   "customer": "Sushi by Katsuyuki",
+   "amountMinorUnits": 99547,
+   "date": "2026-08-13",
+   "note": "VL history 2026-07 payment 01",
+   "invoiceNote": "VL history 2026-07 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 02",
+   "customer": "Kookies by Kathy",
+   "amountMinorUnits": 95072,
+   "date": "2026-08-03",
+   "note": "VL history 2026-07 payment 02",
+   "invoiceNote": "VL history 2026-07 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 03",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 95262,
+   "date": "2026-07-27",
+   "note": "VL history 2026-07 payment 03",
+   "invoiceNote": "VL history 2026-07 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 04",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 132129,
+   "date": "2026-07-31",
+   "note": "VL history 2026-07 payment 04",
+   "invoiceNote": "VL history 2026-07 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 05",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 121831,
+   "date": "2026-08-03",
+   "note": "VL history 2026-07 payment 05",
+   "invoiceNote": "VL history 2026-07 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 07",
+   "customer": "Kookies by Kathy",
+   "amountMinorUnits": 87929,
+   "date": "2026-08-11",
+   "note": "VL history 2026-07 payment 07",
+   "invoiceNote": "VL history 2026-07 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 08",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 117546,
+   "date": "2026-08-22",
+   "note": "VL history 2026-07 payment 08",
+   "invoiceNote": "VL history 2026-07 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 09",
+   "customer": "Dylan Sollfrank",
+   "amountMinorUnits": 125398,
+   "date": "2026-08-12",
+   "note": "VL history 2026-07 payment 09",
+   "invoiceNote": "VL history 2026-07 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 10",
+   "customer": "55 Twin Lane",
+   "amountMinorUnits": 135116,
+   "date": "2026-08-18",
+   "note": "VL history 2026-07 payment 10",
+   "invoiceNote": "VL history 2026-07 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 11",
+   "customer": "0969 Ocean View Road",
+   "amountMinorUnits": 135928,
+   "date": "2026-07-24",
+   "note": "VL history 2026-07 payment 11",
+   "invoiceNote": "VL history 2026-07 invoice 11",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 12",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 117219,
+   "date": "2026-08-04",
+   "note": "VL history 2026-07 payment 12",
+   "invoiceNote": "VL history 2026-07 invoice 12",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-07 payment 13",
+   "customer": "Kate Whelan",
+   "amountMinorUnits": 126607,
+   "date": "2026-07-31",
+   "note": "VL history 2026-07 payment 13",
+   "invoiceNote": "VL history 2026-07 invoice 13",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 01",
+   "customer": "Barnett Design",
+   "amountMinorUnits": 89275,
+   "date": "2026-09-24",
+   "note": "VL history 2026-08 payment 01",
+   "invoiceNote": "VL history 2026-08 invoice 01",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 02",
+   "customer": "Diego Rodriguez",
+   "amountMinorUnits": 144519,
+   "date": "2026-08-14",
+   "note": "VL history 2026-08 payment 02",
+   "invoiceNote": "VL history 2026-08 invoice 02",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 03",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 108577,
+   "date": "2026-08-31",
+   "note": "VL history 2026-08 payment 03",
+   "invoiceNote": "VL history 2026-08 invoice 03",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 04",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 105745,
+   "date": "2026-09-04",
+   "note": "VL history 2026-08 payment 04",
+   "invoiceNote": "VL history 2026-08 invoice 04",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 05",
+   "customer": "Dukes Basketball Camp",
+   "amountMinorUnits": 134926,
+   "date": "2026-08-12",
+   "note": "VL history 2026-08 payment 05",
+   "invoiceNote": "VL history 2026-08 invoice 05",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 06",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 104844,
+   "date": "2026-09-06",
+   "note": "VL history 2026-08 payment 06",
+   "invoiceNote": "VL history 2026-08 invoice 06",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 07",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 145022,
+   "date": "2026-09-06",
+   "note": "VL history 2026-08 payment 07",
+   "invoiceNote": "VL history 2026-08 invoice 07",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 08",
+   "customer": "Rago Travel Agency",
+   "amountMinorUnits": 90611,
+   "date": "2026-08-31",
+   "note": "VL history 2026-08 payment 08",
+   "invoiceNote": "VL history 2026-08 invoice 08",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 09",
+   "customer": "Jeff's Jalopies",
+   "amountMinorUnits": 133901,
+   "date": "2026-08-25",
+   "note": "VL history 2026-08 payment 09",
+   "invoiceNote": "VL history 2026-08 invoice 09",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 10",
+   "customer": "Freeman Sporting Goods",
+   "amountMinorUnits": 87892,
+   "date": "2026-09-06",
+   "note": "VL history 2026-08 payment 10",
+   "invoiceNote": "VL history 2026-08 invoice 10",
+   "depositTo": "Checking"
+  },
+  {
+   "case": "2026-08 payment 11",
+   "customer": "Shara Barnett",
+   "amountMinorUnits": 118080,
+   "date": "2026-09-23",
+   "note": "VL history 2026-08 payment 11",
+   "invoiceNote": "VL history 2026-08 invoice 11",
+   "depositTo": "Checking"
+  }
+ ],
+ "billPayments": [
+  {
+   "case": "2025-07 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-07 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 96485,
+   "date": "2025-08-02",
+   "note": "VL history 2025-07 lumber payment"
+  },
+  {
+   "case": "2025-08 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-08 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 92958,
+   "date": "2025-09-06",
+   "note": "VL history 2025-08 lumber payment"
+  },
+  {
+   "case": "2025-09 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-09 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 109109,
+   "date": "2025-10-07",
+   "note": "VL history 2025-09 lumber payment"
+  },
+  {
+   "case": "2025-10 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-10 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 74481,
+   "date": "2025-11-03",
+   "note": "VL history 2025-10 lumber payment"
+  },
+  {
+   "case": "2025-11 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-11 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 72204,
+   "date": "2025-11-29",
+   "note": "VL history 2025-11 lumber payment"
+  },
+  {
+   "case": "2025-12 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2025-12 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 49770,
+   "date": "2026-01-06",
+   "note": "VL history 2025-12 lumber payment"
+  },
+  {
+   "case": "2026-01 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-01 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 53223,
+   "date": "2026-02-01",
+   "note": "VL history 2026-01 lumber payment"
+  },
+  {
+   "case": "2026-02 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-02 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 53571,
+   "date": "2026-03-03",
+   "note": "VL history 2026-02 lumber payment"
+  },
+  {
+   "case": "2026-03 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-03 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 79251,
+   "date": "2026-04-04",
+   "note": "VL history 2026-03 lumber payment"
+  },
+  {
+   "case": "2026-05 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-05 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 136817,
+   "date": "2026-06-01",
+   "note": "VL history 2026-05 lumber payment"
+  },
+  {
+   "case": "2026-06 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-06 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 121380,
+   "date": "2026-07-05",
+   "note": "VL history 2026-06 lumber payment"
+  },
+  {
+   "case": "2026-07 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-07 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 112309,
+   "date": "2026-08-04",
+   "note": "VL history 2026-07 lumber payment"
+  },
+  {
+   "case": "2026-08 lumber bill payment",
+   "vendor": "Norton Lumber and Building Materials",
+   "billNote": "VL history 2026-08 lumber bill",
+   "bankAccount": "Checking",
+   "amountMinorUnits": 92076,
+   "date": "2026-09-05",
+   "note": "VL history 2026-08 lumber payment"
+  }
+ ],
+ "transfers": [
+  {
+   "case": "2025-07 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 103911,
+   "date": "2025-08-20",
+   "note": "VL history 2025-07 card payoff"
+  },
+  {
+   "case": "2025-08 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 87072,
+   "date": "2025-09-20",
+   "note": "VL history 2025-08 card payoff"
+  },
+  {
+   "case": "2025-09 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 83460,
+   "date": "2025-10-20",
+   "note": "VL history 2025-09 card payoff"
+  },
+  {
+   "case": "2025-10 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 86590,
+   "date": "2025-11-20",
+   "note": "VL history 2025-10 card payoff"
+  },
+  {
+   "case": "2025-11 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 93029,
+   "date": "2025-12-20",
+   "note": "VL history 2025-11 card payoff"
+  },
+  {
+   "case": "2025-12 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 102392,
+   "date": "2026-01-20",
+   "note": "VL history 2025-12 card payoff"
+  },
+  {
+   "case": "2026-01 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 94845,
+   "date": "2026-02-20",
+   "note": "VL history 2026-01 card payoff"
+  },
+  {
+   "case": "2026-02 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 89756,
+   "date": "2026-03-20",
+   "note": "VL history 2026-02 card payoff"
+  },
+  {
+   "case": "2026-03 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 98354,
+   "date": "2026-04-20",
+   "note": "VL history 2026-03 card payoff"
+  },
+  {
+   "case": "2026-04 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 88971,
+   "date": "2026-05-20",
+   "note": "VL history 2026-04 card payoff"
+  },
+  {
+   "case": "2026-05 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 110892,
+   "date": "2026-06-20",
+   "note": "VL history 2026-05 card payoff"
+  },
+  {
+   "case": "2026-06 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 100942,
+   "date": "2026-07-20",
+   "note": "VL history 2026-06 card payoff"
+  },
+  {
+   "case": "2026-07 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 95350,
+   "date": "2026-08-20",
+   "note": "VL history 2026-07 card payoff"
+  },
+  {
+   "case": "2026-08 card payoff",
+   "from": "Checking",
+   "to": "Mastercard",
+   "amountMinorUnits": 108547,
+   "date": "2026-09-20",
+   "note": "VL history 2026-08 card payoff"
+  }
+ ]
+}

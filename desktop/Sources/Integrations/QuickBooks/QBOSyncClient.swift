@@ -190,14 +190,24 @@ public struct QBOSyncClient: Sendable {
     /// `ColData` for a customer with no sub-locations; `type: "Data"` when
     /// nested inside a customer-with-sub-customers section) — `flattenAging`
     /// detects leaves structurally so both are caught.
-    public func fetchAgedReceivables(realmID: RealmID) async throws -> [AgingLine] {
-        try await fetchAgingReport(reportKind: "AgedReceivables", realmID: realmID)
+    /// `asOf` = aging as of that date (QBO's `report_date`); `nil` = today.
+    public func fetchAgedReceivables(realmID: RealmID, asOf: AccountingDate? = nil) async throws -> [AgingLine] {
+        try await fetchAgingReport(reportKind: "AgedReceivables", realmID: realmID, asOf: asOf)
     }
 
     /// Aged Payables — verified live 2026-08-18 to share `AgedReceivables`'s
     /// exact shape (Vendor instead of Customer as the row key).
-    public func fetchAgedPayables(realmID: RealmID) async throws -> [AgingLine] {
-        try await fetchAgingReport(reportKind: "AgedPayables", realmID: realmID)
+    public func fetchAgedPayables(realmID: RealmID, asOf: AccountingDate? = nil) async throws -> [AgingLine] {
+        try await fetchAgingReport(reportKind: "AgedPayables", realmID: realmID, asOf: asOf)
+    }
+
+    /// The aging "as of" date that matches a period's Balance Sheet: the
+    /// period's last day for a finished month, `nil` (today) for the
+    /// current one. Verified live 2026-09-29: aging as of 2026-08-31 ties
+    /// to the 2026-08-31 Balance Sheet A/R to the cent; today's aging doesn't.
+    public static func agingDate(for period: AccountingPeriod, today: AccountingDate) -> AccountingDate? {
+        let end = AccountingDate(year: period.year, month: period.month, day: period.daysInMonth)
+        return end < today ? end : nil
     }
 
     /// General Ledger — verified live 2026-08-18. See `GeneralLedgerLine`'s
@@ -240,8 +250,11 @@ public struct QBOSyncClient: Sendable {
 
     public struct ReadAgingReportParams: Encodable, Sendable {
         public let reportKind: String
-        public init(reportKind: String) {
+        /// Sent as QBO's `report_date` by the backend; omitted when `nil`.
+        public let endDate: String?
+        public init(reportKind: String, endDate: String? = nil) {
             self.reportKind = reportKind
+            self.endDate = endDate
         }
     }
 
@@ -253,11 +266,11 @@ public struct QBOSyncClient: Sendable {
     /// current date, no `StartPeriod` at all) — whether passing explicit
     /// dates would change that behavior was not tested, since "as of now"
     /// is the correct semantics for an aging report regardless.
-    private func fetchAgingReport(reportKind: String, realmID: RealmID) async throws -> [AgingLine] {
+    private func fetchAgingReport(reportKind: String, realmID: RealmID, asOf: AccountingDate? = nil) async throws -> [AgingLine] {
         let data = try await backend.call(
             .readReport,
             realmID: realmID,
-            params: ReadAgingReportParams(reportKind: reportKind)
+            params: ReadAgingReportParams(reportKind: reportKind, endDate: asOf.map { Self.format($0) })
         )
         let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
         return Self.flattenAging(decoded.rows, depth: 0)
@@ -324,7 +337,17 @@ public struct QBOSyncClient: Sendable {
                 // A parent account's header carries its Account Id; a plain
                 // section header ("Expenses") doesn't.
                 let headerID = header.colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }
-                lines.append(ReportLine(label: header.colData.first?.value ?? "", amount: nil, depth: depth, isSummary: false, accountID: headerID))
+                let name = header.colData.first?.value ?? ""
+                lines.append(ReportLine(label: name, amount: nil, depth: depth, isSummary: false, accountID: headerID))
+                // A parent account's OWN postings ride on its header row
+                // ("Landscaping Services | 2875.69"), verified live
+                // 2026-09-29. Dropping them left leaves short of the section
+                // total. Emitted as a leaf, "(other)" as QBO labels it,
+                // without the account ID so its key can't collide with the
+                // header's.
+                if header.colData.count > 1, !header.colData[1].value.isEmpty, let value = Decimal(string: header.colData[1].value), value != 0 {
+                    lines.append(ReportLine(label: "\(name) (other)", amount: Money(minorUnits: Self.minorUnits(from: value), currency: .usd), depth: depth + 1, isSummary: false))
+                }
             }
             if let nested = row.rows {
                 lines.append(contentsOf: flatten(nested, depth: depth + 1))

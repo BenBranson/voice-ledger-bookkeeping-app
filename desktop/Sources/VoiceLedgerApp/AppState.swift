@@ -1663,8 +1663,10 @@ public final class AppState {
             // failing must not fail the whole sync, and must not silently
             // make another report's rule look unrelatedly broken.
             let balanceSheetLines = (try? await syncClient.fetchBalanceSheet(realmID: realmID, period: period)) ?? []
-            let agedReceivablesLines = (try? await syncClient.fetchAgedReceivables(realmID: realmID)) ?? []
-            let agedPayablesLines = (try? await syncClient.fetchAgedPayables(realmID: realmID)) ?? []
+            // Aging as of the period's end, so it ties to that Balance Sheet.
+            let agingAsOf = QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date()))
+            let agedReceivablesLines = (try? await syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)) ?? []
+            let agedPayablesLines = (try? await syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)) ?? []
             // VL-CLOSED-PERIOD-DRIFT-001 needs this period's Trial Balance
             // in the same NormalizedDataSet the rule receives — same
             // independent-fetch, try?-wrapped posture as the reports above.

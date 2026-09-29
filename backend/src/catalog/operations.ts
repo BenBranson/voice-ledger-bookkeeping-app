@@ -287,8 +287,13 @@ const readReport = op({
   paramsSchema: readReportParams,
   execute: async (client, realmId, params: z.infer<typeof readReportParams>) => {
     const searchParams: Record<string, string> = {};
-    if (params.startDate) searchParams.start_date = params.startDate;
-    if (params.endDate) searchParams.end_date = params.endDate;
+    // Aging reports take a single "as of" date (report_date), not a range —
+    // verified live 2026-09-29: AgedReceivables with report_date=2026-08-31
+    // ties to the Balance Sheet's A/R at 2026-08-31 to the cent; without it
+    // QBO returns aging as of today.
+    const isAging = params.reportKind === "AgedReceivables" || params.reportKind === "AgedPayables";
+    if (params.startDate && !isAging) searchParams.start_date = params.startDate;
+    if (params.endDate) searchParams[isAging ? "report_date" : "end_date"] = params.endDate;
     if (params.accountId) searchParams.account = params.accountId;
     return client.get(realmId, `reports/${params.reportKind}`, searchParams);
   }

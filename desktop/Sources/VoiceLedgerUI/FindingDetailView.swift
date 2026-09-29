@@ -566,7 +566,7 @@ public struct FindingDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: VLSpacing.xs) {
             HStack {
-                Text(finding.title)
+                Text(ClientText.polish(finding.title))
                     .font(VLTypography.pageTitle())
                     .foregroundStyle(VLColor.textPrimary)
                 Spacer()
@@ -588,7 +588,7 @@ public struct FindingDetailView: View {
             // yet). Rules that haven't been given one yet leave this nil,
             // rendering nothing extra — no regression for the other 16.
             if let narrative = finding.narrative {
-                Text(narrative)
+                Text(ClientText.polish(narrative))
                     .font(VLTypography.body())
                     .foregroundStyle(VLColor.textSecondary)
                     .padding(.top, VLSpacing.xxs)
@@ -727,7 +727,7 @@ public struct FindingDetailView: View {
                                             .font(VLTypography.caption())
                                             .foregroundStyle(VLColor.textMuted)
                                         Spacer()
-                                        Text(value)
+                                        Text(ClientText.polish(value))
                                             .font(VLTypography.tabularNumeric())
                                             .foregroundStyle(VLColor.textSecondary)
                                     }
@@ -768,6 +768,38 @@ public struct FindingDetailView: View {
     /// because the exact same Approve/Mark as Done/Dismiss row rendered
     /// regardless. `@ViewBuilder` so the resolved/dismissed branch can be a
     /// visually distinct card instead of reusing this one's shape.
+    /// For a bank line with nothing posted: you enter it yourself in QBO
+    /// (never imported automatically). Check the bank feed first so it isn't
+    /// added twice; copy the details to paste into QBO's form.
+    private func manualEntryHelp(_ newExpenseURL: URL) -> some View {
+        let values = finding.evidence.first?.fieldValues ?? [:]
+        let details = [values["vendor"].map { "Payee: \($0)" }, values["date"].map { "Date: \(ClientText.polish($0))" },
+                       values["amount"].map { "Amount: \(ClientText.polish($0))" }].compactMap { $0 }
+        let bankFeed = newExpenseURL.deletingLastPathComponent().appending(path: "banking")
+        return VStack(alignment: .leading, spacing: VLSpacing.xs) {
+            Text("Voice Ledger never enters this for you. 1) Check QuickBooks' bank feed — it may already be waiting in For Review. 2) If it isn't there, enter it yourself on QuickBooks' expense form.")
+                .font(VLTypography.caption())
+                .foregroundStyle(VLColor.textMuted)
+            if !details.isEmpty {
+                Text(details.joined(separator: " · "))
+                    .font(VLTypography.caption())
+                    .foregroundStyle(VLColor.textSecondary)
+                    .textSelection(.enabled)
+            }
+            HStack(spacing: VLSpacing.sm) {
+                Link(destination: bankFeed) { Label("1. Check bank feed", systemImage: "tray.full") }
+                Link(destination: newExpenseURL) { Label("2. Enter expense in QBO", systemImage: "square.and.pencil") }
+                if !details.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(details.joined(separator: "\n"), forType: .string)
+                    } label: { Label("Copy details", systemImage: "doc.on.doc") }
+                }
+            }
+            .font(VLTypography.caption())
+        }
+    }
+
     @ViewBuilder
     private func actionSection(_ action: ProposedAction) -> some View {
         if finding.status != .open {
@@ -783,7 +815,9 @@ public struct FindingDetailView: View {
                     ResolutionBadge(action: action, qboURL: qboURL)
                 }
 
-                if action.resolution == .manualQBO {
+                if QBOWebLink.manualEntryRules.contains(finding.ruleID.rawValue), let qboURL {
+                    manualEntryHelp(qboURL)
+                } else if action.resolution == .manualQBO {
                     Text(qboURL == nil ? "Voice Ledger cannot complete this write — it requires action in QBO directly." : "Voice Ledger cannot complete this write — use Open in QBO to go straight to the record.")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
@@ -835,7 +869,7 @@ public struct FindingDetailView: View {
                             .font(VLTypography.eyebrow())
                             .tracking(VLTypography.eyebrowTracking)
                             .foregroundStyle(VLColor.textMuted)
-                        Text(riskIfIgnored)
+                        Text(ClientText.polish(riskIfIgnored))
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
                     }

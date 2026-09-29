@@ -70,6 +70,23 @@ struct QBOReportTests {
         #expect(lines[5].isSummary == true)
     }
 
+    @Test("A parent account's own postings on its header row become an '(other)' leaf, so leaves add up to the section total (live shape 2026-09-29)")
+    func parentOwnPostings() throws {
+        let json = """
+        { "Rows": { "Row": [ {
+          "Header": { "ColData": [{ "value": "Landscaping Services", "id": "45" }, { "value": "2875.69" }] },
+          "Rows": { "Row": [ { "ColData": [{ "value": "Installation", "id": "52" }, { "value": "579.91" }], "type": "Data" } ] },
+          "Summary": { "ColData": [{ "value": "Total Landscaping Services" }, { "value": "3455.60" }] },
+          "type": "Section" } ] } }
+        """
+        let lines = QBOSyncClient.flatten(try JSONDecoder().decode(QBORawReport.self, from: Data(json.utf8)).rows, depth: 0)
+        #expect(lines.map(\.label) == ["Landscaping Services", "Landscaping Services (other)", "Installation", "Total Landscaping Services"])
+        let leaves = lines.filter { !$0.isSummary && $0.amount != nil }.compactMap(\.amount).reduce(Money.zero, +)
+        #expect(leaves == lines.last!.amount)
+        #expect(lines[0].amount == nil && lines[0].accountID == "45")
+        #expect(lines[1].accountID == nil)
+    }
+
     @Test("An empty report (no rows) flattens to an empty list, not a crash")
     func emptyReportFlattensToEmptyList() throws {
         let json = "{ \"Rows\": { \"Row\": [] } }"
