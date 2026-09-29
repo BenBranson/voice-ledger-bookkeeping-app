@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "agreement-sample", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -331,6 +331,25 @@ case "monthly-report":
         FileHandle.standardError.write("monthly-report failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
+
+case "agreement-sample":
+    // FICTIONAL client (Apex Peak Logistics) — writes the signing page and
+    // the review/signed HTML for visual checks. No QuickBooks access.
+    let dir = URL(fileURLWithPath: arguments.count >= 3 ? arguments[2] : ".")
+    var intake = ClientIntake(legalBusinessName: "Apex Peak Logistics, LLC <b>", entityType: "Texas limited liability company", bankAccountCountAnswer: "2", creditCardCountAnswer: "2",
+                              paymentProcessors: "Stripe", pointOfContactName: "Marcus Vance", pointOfContactRole: "Managing Member", pointOfContactEmail: "marcus@example.com", hourlyRateText: "75")
+    intake.needsCleanup = true
+    intake.monthsBehind = .threeToSix
+    intake.cleanupIssues.multipleUncategorized = true
+    intake.cleanupIssues.negativeBalances = true
+    intake.monthlyFlags.payrollProcessing = true
+    let agreement = EngagementAgreement.from(intake: intake, effectiveDate: AccountingDate(year: 2026, month: 10, day: 1))
+    let on = AccountingDate(year: 2026, month: 9, day: 29)
+    let sig = AgreementSignature(typedName: "Marcus Vance", title: "Managing Member", method: .typed, imageDataURL: nil, signedAtLabel: "September 29, 2026 at 3:14 PM CDT", signedAtISO: "2026-09-29T20:14:00Z", device: "In person on the bookkeeper's Mac (Voice Ledger)")
+    try? Data(EngagementAgreementHTML.render(agreement, mode: .signing, providerSignedOn: on).utf8).write(to: dir.appending(path: "signing.html"))
+    try? Data(EngagementAgreementHTML.render(agreement, mode: .review, providerSignedOn: on).utf8).write(to: dir.appending(path: "review.html"))
+    try? Data(EngagementAgreementHTML.render(agreement, mode: .signed(sig), providerSignedOn: on).utf8).write(to: dir.appending(path: "signed.html"))
+    print("Document ID \(EngagementAgreementTemplate.documentID(agreement)) — wrote signing.html, review.html, signed.html")
 
 case "balances-check":
     // Read-only: each asset/liability account's live CurrentBalance next

@@ -2215,8 +2215,24 @@ struct RootView: View {
                 quoteDraftSecondOpinionError: state.secondOpinionError?.contextKey == intakeAskAIKey ? state.secondOpinionError?.message : nil,
                 onDraftQuoteSecondOpinion: { context in
                     Task { await state.askSecondOpinion(contextKey: intakeAskAIKey, contextText: context, question: intakePrompt, format: .clientMessage) }
+                },
+                onOpenAgreement: {
+                    // The agreement is built from the saved roster, so an
+                    // edited or new (named) intake is saved first.
+                    let intake = state.currentIntake
+                    if !intake.legalBusinessName.trimmingCharacters(in: .whitespaces).isEmpty,
+                       state.intakeRoster.first(where: { $0.id == intake.id }) != intake {
+                        state.saveCurrentIntake()
+                        state.clearIntakeStatusMessage()
+                    }
+                    state.showingAgreementBuilder = true
                 }
             )
+            .sheet(isPresented: $state.showingAgreementBuilder) {
+                EngagementAgreementSheet(roster: state.intakeRoster, initialIntakeID: state.currentIntake.id) {
+                    state.showingAgreementBuilder = false
+                }
+            }
 
         case .audioSettings:
             AudioSettingsView()

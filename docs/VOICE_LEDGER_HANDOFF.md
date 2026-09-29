@@ -1252,3 +1252,18 @@ The review found the report **contradicted itself**, and some of that came from 
 - **No Sankey chart in loss months**, because it had to draw the loss as an inflow.
 - **Layout:** a 7-page client summary, then an appendix: A work log, B open items, C checks and notes, D statements. Engine text is polished for clients (`ClientText.polish`: `USD 1234.00` → `$1,234.00`, `2026-7-31` → `Jul 31, 2026`). The rules themselves keep the `USD` form because amount search matches it.
 - **Dev tool:** `monthly-report <y> <m> <out> <store-copy-dir>` builds from a COPY of a client store; never point it at the live store. `balances-check <y> <m>` prints live vs period-end balances.
+
+## 2026-09-29 — Engagement Agreement (v1.17)
+
+Intake Questions → **Agreement** (roster bar) or **Engagement Agreement…** (bottom). Either button saves a named intake first.
+- **Text:** a fixed template, versioned `BBB-EA 2026.10`, in `Core/EngagementAgreement.swift`. No AI. Scope comes from the intake's pricing flags: add-ons the client pays for (payroll support, sales tax tracking, inventory) are listed as included; everything else is under "Services Not Included". The fees are the intake quote, with the clean-up **midpoint** used as the fixed fee (an agreement can't state a range). All values are editable in the sheet.
+- **Document ID** = the first 16 hex characters of SHA-256 over the full canonical text, printed on every page. `Record Signed Copy…` searches a returned PDF for it and says whether it matches.
+- **Texas specifics:** limitation-of-liability and indemnity clauses render bold and all caps (Texas fair-notice / conspicuousness rule). Ector County venue. ESIGN plus Tex. Bus. & Com. Code ch. 322 consent. There is deliberately **no shortened limitations period** (Tex. Civ. Prac. & Rem. Code §16.070 voids periods under 2 years). The firm is stated as not a CPA firm. Owner told to have a Texas attorney review once and to get E&O insurance.
+- **Delivery (no server; the backend isn't publicly deployed):**
+  1. **Email to Client** opens a Mail draft with the self-contained signing page (.html) and a review PDF attached. The owner presses Send. The HTML has typed or drawn signature, consent checkbox, authority checkbox, and "Save signed copy as PDF" via print. On a phone the client can sign the PDF with Markup instead.
+  2. **Sign in Person** loads the same page in a WKWebView. The signature returns over the `vlAgreement` bridge (document ID checked, PNG data URL validated), and a signed PDF with a signature certificate is rendered by the local WeasyPrint engine.
+  3. After signing, **Send Signed Copy to Client** emails the fully signed copy plus next steps.
+  If Mail isn't set up: the Finder window shows the files, the email text is copied, and a mailto draft opens.
+- **Storage:** `~/Library/Application Support/VoiceLedger/Agreements/` (`index.json`, `firm-profile.json`, one folder per prepared agreement). Not per realm: agreements precede QBO connection, the same reasoning as the intake roster.
+- **Possible upgrade:** a hosted signing link needs the backend deployed publicly plus storage for the signature audit trail.
+- **Dev tool:** `agreement-sample <dir>` writes signing/review/signed HTML for a FICTIONAL client.

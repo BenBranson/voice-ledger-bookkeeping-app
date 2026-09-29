@@ -42,6 +42,7 @@ public struct IntakeQuestionsView: View {
     let isDraftingQuoteSecondOpinion: Bool
     let quoteDraftSecondOpinionError: String?
     let onDraftQuoteSecondOpinion: (String) -> Void
+    let onOpenAgreement: () -> Void
 
     public init(
         intake: Binding<ClientIntake>,
@@ -62,8 +63,10 @@ public struct IntakeQuestionsView: View {
         quoteDraftSecondOpinionAnswer: String? = nil,
         isDraftingQuoteSecondOpinion: Bool = false,
         quoteDraftSecondOpinionError: String? = nil,
-        onDraftQuoteSecondOpinion: @escaping (String) -> Void = { _ in }
+        onDraftQuoteSecondOpinion: @escaping (String) -> Void = { _ in },
+        onOpenAgreement: @escaping () -> Void = {}
     ) {
+        self.onOpenAgreement = onOpenAgreement
         self._intake = intake
         self.roster = roster
         self.environment = environment
@@ -198,6 +201,12 @@ public struct IntakeQuestionsView: View {
                     Spacer()
                     Button("Save Client") { onSave() }
                         .buttonStyle(.borderedProminent)
+                    Button {
+                        onOpenAgreement()
+                    } label: {
+                        Label("Engagement Agreement…", systemImage: "signature")
+                    }
+                    .help("Save this client, then prepare their engagement agreement to sign")
                 }
 
                 TwoTierAskAIPanel(
@@ -266,6 +275,12 @@ public struct IntakeQuestionsView: View {
                     }
                 }
                 Button("New Prospect") { onStartNew() }
+                Button {
+                    onOpenAgreement()
+                } label: {
+                    Label("Agreement", systemImage: "signature")
+                }
+                .help("Prepare an engagement agreement for a saved client who has agreed to your price")
             }
         }
     }

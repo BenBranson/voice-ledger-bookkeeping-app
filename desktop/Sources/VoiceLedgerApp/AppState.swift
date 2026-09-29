@@ -238,6 +238,8 @@ public final class AppState {
     /// view state, except this one needs to survive a save/reload/edit
     /// cycle against the roster file, so it lives here instead.
     public var currentIntake = ClientIntake()
+    /// Engagement Agreement builder sheet (Intake Questions page).
+    public var showingAgreementBuilder = false
     /// The full saved roster, loaded from `IntakeRosterStore` — every
     /// prospect/client intake ever saved, across realms (this is
     /// deliberately NOT per-`realmId` scoped; see that store's own doc
