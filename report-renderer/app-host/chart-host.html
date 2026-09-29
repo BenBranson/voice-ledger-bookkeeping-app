@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:;">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; height: 100%; }
+  #chart { position: absolute; inset: 0; }
+</style>
+<script src="echarts.min.js"></script>
+<script src="vl-charts.js"></script>
+</head>
+<body>
+<div id="chart" role="img" aria-label="Chart"></div>
+<script>
+(function () {
+  "use strict";
+  // One chart per host page. Swift pushes validated chart data in with
+  // VLHost.render(); the page only sends back a selection by stable ID.
+  var el = document.getElementById("chart");
+  var chart = echarts.init(el, null, { renderer: "svg" });
+  var state = { kind: null, data: null, ids: [] };
+  var allowed = { breakdownDoughnut: 1, breakdownDiverging: 1, waterfall: 1, rankedBars: 1, trendRevenueExpenses: 1, trendNetIncome: 1, agingBars: 1 };
+
+  function idsFor(kind, data) {
+    switch (kind) {
+      case "breakdownDoughnut": return data.positiveItems.map(function (i) { return i.id; });
+      case "breakdownDiverging": return data.positiveItems.concat(data.negativeItems).slice().sort(function (a, b) { return a.value - b.value; }).map(function (i) { return i.id; });
+      case "waterfall": return data.steps.map(function (s) { return s.id; });
+      case "rankedBars": return data.items.slice().reverse().map(function (i) { return i.id; });
+      case "trendRevenueExpenses":
+      case "trendNetIncome": return data.points.map(function (p) { return p.period; });
+      default: return [];
+    }
+  }
+
+  function post(message) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.vlChart) {
+      window.webkit.messageHandlers.vlChart.postMessage(message);
+    }
+  }
+
+  chart.on("click", function (params) {
+    var id = state.ids[params.dataIndex];
+    if (typeof id === "string") post({ type: "select", id: id });
+  });
+  chart.getZr().on("click", function (event) {
+    if (!event.target) post({ type: "select", id: null });
+  });
+
+  window.VLHost = {
+    render: function (payloadText) {
+      var payload;
+      try { payload = JSON.parse(payloadText); } catch (e) { return "bad-json"; }
+      if (!allowed[payload.kind] || !payload.data) return "bad-kind";
+      state.kind = payload.kind;
+      state.data = payload.data;
+      state.ids = idsFor(payload.kind, payload.data);
+      var option = VLCharts.builders[payload.kind](payload.data, VLCharts.themes.dark, {
+        selectedId: payload.selectedId || null,
+        reducedMotion: !!payload.reducedMotion
+      });
+      chart.setOption(option, { notMerge: true, lazyUpdate: true });
+      el.setAttribute("aria-label", payload.summary || "Chart");
+      return "ok";
+    }
+  };
+
+  new ResizeObserver(function () { chart.resize(); }).observe(el);
+  window.addEventListener("unload", function () { chart.dispose(); });
+  post({ type: "ready" });
+})();
+</script>
+</body>
+</html>
