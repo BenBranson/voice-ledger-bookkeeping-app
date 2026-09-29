@@ -154,6 +154,31 @@ public final class AppState {
     public private(set) var accountLedgerRows: [String: [GeneralLedgerLine]] = [:]
     public private(set) var loadingAccountLedgerIDs: Set<String> = []
 
+    public var accountTypesByID: [String: LedgerAccountType] {
+        let known = accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts
+        return Dictionary(known.map { ($0.id, $0.accountType) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Only real loaded history; never a manufactured series.
+    public var historyTrend: TrendData? {
+        guard let months = historySnapshot?.monthlyProfitAndLoss else { return nil }
+        let trend = ChartData.trend(from: months)
+        return trend.points.count >= 2 ? trend : nil
+    }
+
+    public func loadAccountLedgerRows(accountID: String) async {
+        guard !loadingAccountLedgerIDs.contains(accountID) else { return }
+        loadingAccountLedgerIDs.insert(accountID)
+        defer { loadingAccountLedgerIDs.remove(accountID) }
+        if let rows = try? await syncClient.fetchAccountLedger(realmID: realmID, accountID: accountID, through: AccountingDate(date: Date())) {
+            accountLedgerRows[accountID] = rows
+        }
+    }
+
+    public func qboAccountURL(_ accountID: String) -> URL? {
+        QBOWebLink.url(forRecordID: accountID, transactions: [], accounts: accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts, isSandbox: environment != .production)
+    }
+
     public func evidenceAccountID(for finding: Finding) -> String? {
         let known = accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts
         return finding.evidence.lazy.map(\.transactionID).first { id in known.contains { $0.id == id } }

@@ -95,7 +95,7 @@ public struct EChartView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.userContentController.add(WeakMessageHandler(context.coordinator), name: "vlChart")
         configuration.websiteDataStore = .nonPersistent()
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view = ScrollPassthroughWebView(frame: .zero, configuration: configuration)
         view.setValue(false, forKey: "drawsBackground")
         view.navigationDelegate = context.coordinator
         view.setAccessibilityLabel(summary)
@@ -168,6 +168,14 @@ public struct EChartView: NSViewRepresentable {
 
         public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
             decisionHandler(navigationAction.request.url?.isFileURL == true ? .allow : .cancel)
+        }
+    }
+
+    /// Charts never scroll themselves; wheel/trackpad scrolling goes to the
+    /// page so scrolling over a chart doesn't get stuck.
+    final class ScrollPassthroughWebView: WKWebView {
+        override func scrollWheel(with event: NSEvent) {
+            nextResponder?.scrollWheel(with: event)
         }
     }
 

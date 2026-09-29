@@ -22,8 +22,10 @@ public struct MonthlyReportCard: View {
     let history: [HistoryItem]
     let onGenerate: () -> Void
     let onOpen: (String) -> Void
+    let onExport: (String) -> Void
 
-    public init(isGenerating: Bool, stageText: String?, error: String?, history: [HistoryItem], onGenerate: @escaping () -> Void, onOpen: @escaping (String) -> Void) {
+    public init(isGenerating: Bool, stageText: String?, error: String?, history: [HistoryItem], onGenerate: @escaping () -> Void, onOpen: @escaping (String) -> Void, onExport: @escaping (String) -> Void = { _ in }) {
+        self.onExport = onExport
         self.isGenerating = isGenerating
         self.stageText = stageText
         self.error = error
@@ -70,7 +72,8 @@ public struct MonthlyReportCard: View {
                             Text(item.title).foregroundStyle(VLColor.textPrimary)
                             Text(item.subtitle).foregroundStyle(VLColor.textMuted)
                             Spacer()
-                            Button("Open") { onOpen(item.id) }.buttonStyle(.link)
+                            Button("Preview") { onOpen(item.id) }.buttonStyle(.link)
+                            Button("Export PDF…") { onExport(item.id) }.buttonStyle(.link)
                         }
                         .font(VLTypography.caption())
                     }
@@ -101,7 +104,9 @@ public struct PDFPreviewSheet: View {
             HStack {
                 Text(title).font(VLTypography.cardTitle())
                 Spacer()
-                Button("Save a Copy…") { saveCopy() }
+                Button("Export PDF…") { saveCopy() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut("e", modifiers: .command)
                 Button("Open in Preview") { NSWorkspace.shared.open(url) }
                 Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 Button("Close") { onClose() }.keyboardShortcut(.cancelAction)
@@ -112,9 +117,14 @@ public struct PDFPreviewSheet: View {
         .frame(minWidth: 760, idealWidth: 900, minHeight: 700, idealHeight: 920)
     }
 
-    private func saveCopy() {
+    private func saveCopy() { PDFExport.save(url, suggestedName: title) }
+}
+
+/// Saves a copy of an already-generated report PDF wherever the user picks.
+public enum PDFExport {
+    public static func save(_ url: URL, suggestedName: String) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(title).pdf"
+        panel.nameFieldStringValue = "\(suggestedName).pdf"
         panel.allowedContentTypes = [.pdf]
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let target = panel.url else { return }

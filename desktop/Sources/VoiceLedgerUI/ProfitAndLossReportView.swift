@@ -9,6 +9,9 @@ import DesignSystem
 /// doc comment for the "charts are added, never a replacement" decision
 /// this mirrors.
 public struct ProfitAndLossReportView: View {
+    private let accountTypes: [String: LedgerAccountType]
+    private let chartActions: ChartAccountActions
+    private let trend: TrendData?
     private let sourceDescription: String
     private let environment: VLEnvironmentTone
     private let lines: [ReportLine]
@@ -58,8 +61,14 @@ public struct ProfitAndLossReportView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        accountTypes: [String: LedgerAccountType] = [:],
+        chartActions: ChartAccountActions = .none,
+        trend: TrendData? = nil
     ) {
+        self.accountTypes = accountTypes
+        self.chartActions = chartActions
+        self.trend = trend
         self.sourceDescription = sourceDescription
         self.environment = environment
         self.lines = lines
@@ -123,10 +132,9 @@ public struct ProfitAndLossReportView: View {
                     }
                 } else {
                     KPICardRow(cards: kpiCards)
-                    if let segments = ProfitAndLossWaterfall.segments(from: lines) {
-                        ProfitAndLossWaterfallChart(segments: segments)
-                    }
-                    ExpenseDriverBarChart(drivers: TopExpenseDrivers.top(5, from: lines))
+                    WaterfallCard(data: ChartData.waterfall(from: lines))
+                    ExpenseCategoriesCard(data: ChartData.expenseCategories(from: lines, top: 8), actions: chartActions)
+                    if let trend { TrendCard(data: trend) }
                     ReportLinesTable(lines: lines)
                 }
 
@@ -169,7 +177,7 @@ public struct ProfitAndLossReportView: View {
             kpiCard(label: "Net Margin", percent: FinancialKPIs.netMarginPercent(from: lines)),
             KPICardRow.CardData(
                 label: "Net Income",
-                value: TaxEstimate.netIncome(from: lines)?.description ?? "Not available",
+                value: TaxEstimate.netIncome(from: lines)?.accountingDescription ?? "Not available",
                 isAvailable: TaxEstimate.netIncome(from: lines) != nil
             )
         ]

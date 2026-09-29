@@ -9,6 +9,9 @@ import DesignSystem
 /// full data — there is no "visual only" mode that hides the detailed
 /// table.
 public struct BalanceSheetReportView: View {
+    private let accountTypes: [String: LedgerAccountType]
+    private let chartActions: ChartAccountActions
+    private let trend: TrendData?
     private let sourceDescription: String
     private let environment: VLEnvironmentTone
     private let lines: [ReportLine]
@@ -58,8 +61,14 @@ public struct BalanceSheetReportView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        accountTypes: [String: LedgerAccountType] = [:],
+        chartActions: ChartAccountActions = .none,
+        trend: TrendData? = nil
     ) {
+        self.accountTypes = accountTypes
+        self.chartActions = chartActions
+        self.trend = trend
         self.sourceDescription = sourceDescription
         self.environment = environment
         self.lines = lines
@@ -123,10 +132,10 @@ public struct BalanceSheetReportView: View {
                     }
                 } else {
                     KPICardRow(cards: kpiCards)
-                    BalanceSheetDonutChart(
-                        assetSlices: BalanceSheetBreakdown.assetSlices(from: lines),
-                        liabilitiesAndEquitySlices: BalanceSheetBreakdown.liabilitiesAndEquitySlices(from: lines)
-                    )
+                    HStack(alignment: .top, spacing: VLSpacing.md) {
+                        BalanceBreakdownCard(breakdown: ChartData.signedBreakdown(from: lines, section: .assets, accountTypes: accountTypes), actions: chartActions)
+                        BalanceBreakdownCard(breakdown: ChartData.signedBreakdown(from: lines, section: .liabilitiesAndEquity, accountTypes: accountTypes), actions: chartActions)
+                    }
                     ReportLinesTable(lines: lines)
                 }
 

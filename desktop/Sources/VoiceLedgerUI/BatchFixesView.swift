@@ -257,7 +257,7 @@ public struct BatchFixesView: View {
                         .font(VLTypography.body())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text("Total \(BatchFixPlan.totalExposure(selectedItems)?.description ?? "$0.00")")
+                    Text("Total \(BatchFixPlan.totalExposure(selectedItems)?.accountingDescription ?? "$0.00")")
                         .font(VLTypography.tabularNumericEmphasis())
                         .foregroundStyle(VLColor.textPrimary)
                 }

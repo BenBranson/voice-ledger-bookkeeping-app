@@ -50,15 +50,25 @@ Close Package → **Monthly Client Report → Generate Report**
    and runs `node render.mjs` to produce `report.pdf` beside it.
 4. The preview sheet shows that exact `report.pdf`; Save/Open use the same file.
 
-The app finds this folder by walking up from the app bundle, or via
-`VOICE_LEDGER_REPORT_RENDERER`. Node is looked up in `/opt/homebrew/bin` then
+`Scripts/build-app-bundle.sh` copies this folder (including `.venv`) to
+`~/Library/Application Support/VoiceLedger/Renderer`, and the app runs it from
+there — running it from inside ~/Documents would trigger macOS's
+Documents-folder permission prompt (and re-prompt after every rebuild). The app
+falls back to `VOICE_LEDGER_REPORT_RENDERER`, then to walking up from the app
+bundle. Node is looked up in `/opt/homebrew/bin` then
 `/usr/local/bin`.
 
-## Shared charts
+## Shared charts (PDF + in-app)
 
 `shared/vl-charts.js` is one file loaded two ways: `require()` here (print theme,
-static SVG) and a classic `<script>` in the app's chart view (dark theme,
-interactive). Builders only map already-computed values to chart options.
+static SVG, no animation, no tooltips) and a classic `<script>` in the app's
+`EChartView` (dark theme, interactive). The build script copies
+`app-host/chart-host.html`, `shared/vl-charts.js`, and
+`node_modules/echarts/dist/echarts.min.js` into the app's `Resources/Charts`.
+The web view only reports a clicked item's stable ID back to Swift, which checks
+it against the IDs it sent; everything else (legend, detail panel, postings,
+Open in QBO) is native SwiftUI. Colors come from an FNV-1a hash of the account
+ID, mirrored in Swift (`ChartPalette`) so legends always match. Builders only map already-computed values to chart options.
 
 ## Sample data
 

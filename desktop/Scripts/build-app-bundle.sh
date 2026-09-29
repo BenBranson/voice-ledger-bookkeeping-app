@@ -37,6 +37,24 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/VoiceLedgerApp"
 
+# Interactive chart assets (local only — no CDN): ECharts, the shared option
+# builders also used by the PDF renderer, and the chart host page.
+RENDERER_DIR="$(cd "$(dirname "$0")/../../report-renderer" 2>/dev/null && pwd)"
+if [ -n "$RENDERER_DIR" ] && [ -f "$RENDERER_DIR/node_modules/echarts/dist/echarts.min.js" ]; then
+    mkdir -p "$APP_BUNDLE/Contents/Resources/Charts"
+    cp "$RENDERER_DIR/app-host/chart-host.html" "$RENDERER_DIR/shared/vl-charts.js" "$RENDERER_DIR/node_modules/echarts/dist/echarts.min.js" "$APP_BUNDLE/Contents/Resources/Charts/"
+else
+    echo "warning: report-renderer/node_modules missing — run 'npm install' in report-renderer for in-app charts." >&2
+fi
+
+# The PDF renderer runs outside ~/Documents so the app never needs macOS's
+# Documents-folder permission (which re-prompts after every rebuild).
+if [ -n "$RENDERER_DIR" ] && [ -x "$RENDERER_DIR/.venv/bin/python" ]; then
+    RUNTIME_DIR="$HOME/Library/Application Support/VoiceLedger/Renderer"
+    mkdir -p "$RUNTIME_DIR"
+    rsync -a --delete --exclude samples --exclude test --exclude '__pycache__' "$RENDERER_DIR/" "$RUNTIME_DIR/"
+fi
+
 cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

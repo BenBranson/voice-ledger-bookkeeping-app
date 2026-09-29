@@ -393,7 +393,10 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(dashboardAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(dashboardAskAIKey)-claude", contextText: dashboardContext(), question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                accountTypes: state.accountTypesByID,
+                chartActions: chartAccountActions,
+                trend: state.historyTrend
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -1507,7 +1510,9 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(balanceSheetReportAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(balanceSheetReportAskAIKey)-claude", contextText: balanceSheetReportContext, question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                accountTypes: state.accountTypesByID,
+                chartActions: chartAccountActions
             )
             .task {
                 // Owner directive (2026-08-30): "why should i have to click
@@ -1575,7 +1580,10 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(profitAndLossReportAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(profitAndLossReportAskAIKey)-claude", contextText: profitAndLossReportContext, question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                accountTypes: state.accountTypesByID,
+                chartActions: chartAccountActions,
+                trend: state.historyTrend
             )
             .task {
                 if state.profitAndLossLines.isEmpty { await state.loadProfitAndLoss() }
@@ -2046,7 +2054,11 @@ struct RootView: View {
                         MonthlyReportCard.HistoryItem(id: report.id, title: report.periodKey, subtitle: "generated \(report.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(report.snapshotID.prefix(8))")
                     },
                     onGenerate: { Task { await state.generateMonthlyReport() } },
-                    onOpen: { id in state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id } }
+                    onOpen: { id in state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id } },
+                    onExport: { id in
+                        guard let report = state.monthlyReportHistory.first(where: { $0.id == id }) else { return }
+                        PDFExport.save(report.pdfURL, suggestedName: "\(state.companyInfo?.companyName ?? "Client") — Monthly Report \(report.periodKey)")
+                    }
                 ))
             )
             .onAppear { state.refreshMonthlyReportHistory() }
@@ -2471,6 +2483,15 @@ struct RootView: View {
         case .complete: return .pass(coverage: .complete, checkedCount: state.findings.count)
         case .partial(let reason): return .cannotEvaluate(.partialCoverage(reason: reason))
         }
+    }
+
+    private var chartAccountActions: ChartAccountActions {
+        ChartAccountActions(
+            qboURL: { state.qboAccountURL($0) },
+            postings: { state.accountLedgerRows[$0] },
+            isLoadingPostings: { state.loadingAccountLedgerIDs.contains($0) },
+            loadPostings: { id in Task { await state.loadAccountLedgerRows(accountID: id) } }
+        )
     }
 
     private var coverageDetail: String {

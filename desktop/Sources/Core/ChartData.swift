@@ -123,6 +123,7 @@ public extension ChartData {
         switch section {
         case .assets:
             if type == .bank { return ("overdraft", "Overdrawn bank account") }
+            if type == nil { return ("creditBalance", "Negative balance — sync to identify the account type") }
             if lower.contains("depreciation") || lower.contains("amortization") { return ("contra", "Contra asset — reduces the related asset") }
             return ("creditBalance", "Asset with a credit balance — review for a posting error")
         case .liabilitiesAndEquity:

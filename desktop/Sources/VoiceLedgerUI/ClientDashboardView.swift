@@ -10,7 +10,7 @@ import DesignSystem
 /// Findings.
 ///
 /// Deliberately composes components that already exist rather than
-/// reimplementing them: `KPICardRow`/`BalanceSheetDonutChart`/
+/// reimplementing them: `KPICardRow`/`BalanceBreakdownCard`/
 /// `ProfitAndLossWaterfallChart`/`ExpenseDriverBarChart` are the exact
 /// views `BalanceSheetReportView`/`ProfitAndLossReportView` already use —
 /// same computed data (`FinancialKPIs`, `BalanceSheetBreakdown`,
@@ -132,6 +132,9 @@ public struct ClientDashboardView: View {
         }
     }
 
+    private let accountTypes: [String: LedgerAccountType]
+    private let chartActions: ChartAccountActions
+    private let trend: TrendData?
     private let state: ViewState
     private let onOpenFinding: (Finding) -> Void
     private let onViewAllFindings: () -> Void
@@ -175,8 +178,14 @@ public struct ClientDashboardView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        accountTypes: [String: LedgerAccountType] = [:],
+        chartActions: ChartAccountActions = .none,
+        trend: TrendData? = nil
     ) {
+        self.accountTypes = accountTypes
+        self.chartActions = chartActions
+        self.trend = trend
         self.state = state
         self.onOpenFinding = onOpenFinding
         self.onViewAllFindings = onViewAllFindings
@@ -231,18 +240,20 @@ public struct ClientDashboardView: View {
                 } else {
                     if !state.balanceSheetLines.isEmpty {
                         KPICardRow(cards: balanceSheetKPICards)
-                        BalanceSheetDonutChart(
-                            assetSlices: BalanceSheetBreakdown.assetSlices(from: state.balanceSheetLines),
-                            liabilitiesAndEquitySlices: BalanceSheetBreakdown.liabilitiesAndEquitySlices(from: state.balanceSheetLines)
-                        )
+                        HStack(alignment: .top, spacing: VLSpacing.md) {
+                            BalanceBreakdownCard(breakdown: ChartData.signedBreakdown(from: state.balanceSheetLines, section: .assets, accountTypes: accountTypes), actions: chartActions)
+                            BalanceBreakdownCard(breakdown: ChartData.signedBreakdown(from: state.balanceSheetLines, section: .liabilitiesAndEquity, accountTypes: accountTypes), actions: chartActions)
+                        }
                     }
                     if !state.profitAndLossLines.isEmpty {
                         KPICardRow(cards: profitAndLossKPICards)
-                        if let segments = ProfitAndLossWaterfall.segments(from: state.profitAndLossLines) {
-                            ProfitAndLossWaterfallChart(segments: segments)
-                        }
-                        ExpenseDriverBarChart(drivers: TopExpenseDrivers.top(5, from: state.profitAndLossLines))
+                        WaterfallCard(data: ChartData.waterfall(from: state.profitAndLossLines))
+                        ExpenseCategoriesCard(data: ChartData.expenseCategories(from: state.profitAndLossLines, top: 6), actions: chartActions)
                     }
+                }
+
+                if !state.profitAndLossLines.isEmpty || trend != nil {
+                    TrendCard(data: trend)
                 }
 
                 if let arApCards = arApKPICards {

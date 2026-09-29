@@ -23,6 +23,13 @@ enum MonthlyReportService {
 
     static func rendererDirectory() -> URL? {
         let fm = FileManager.default
+        // Installed by Scripts/build-app-bundle.sh, outside ~/Documents so no
+        // Documents-folder permission is ever needed.
+        if let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appending(path: "VoiceLedger/Renderer"),
+           fm.fileExists(atPath: support.appending(path: "render.mjs").path) {
+            return support
+        }
         if let override = ProcessInfo.processInfo.environment["VOICE_LEDGER_REPORT_RENDERER"] {
             let url = URL(fileURLWithPath: override)
             if fm.fileExists(atPath: url.appending(path: "render.mjs").path) { return url }
