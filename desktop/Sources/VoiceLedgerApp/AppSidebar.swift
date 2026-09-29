@@ -228,7 +228,7 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
-                Text("v1.17")
+                Text("v1.19")
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(VLColor.textMuted)
                 voiceMicButton

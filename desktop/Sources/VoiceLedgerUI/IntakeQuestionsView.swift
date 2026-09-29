@@ -111,7 +111,7 @@ public struct IntakeQuestionsView: View {
             lines.append("Total dollar exposure across open findings: \(totalFindingsExposure.accountingDescription).")
         }
         for finding in openFindings.filter({ $0.severity == .high }).prefix(5) {
-            lines.append("- \(finding.title) (\(finding.dollarExposure.accountingDescription))")
+            lines.append("- \(ClientText.polish(finding.title))")
         }
         return lines
     }
@@ -274,6 +274,8 @@ public struct IntakeQuestionsView: View {
                         Button(saved.displayName) { onLoadForEditing(saved) }
                     }
                 }
+                Button("Save Client") { onSave() }
+                    .buttonStyle(.borderedProminent)
                 Button("New Prospect") { onStartNew() }
                 Button {
                     onOpenAgreement()

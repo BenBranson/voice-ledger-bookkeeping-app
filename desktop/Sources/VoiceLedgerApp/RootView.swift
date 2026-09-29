@@ -2180,7 +2180,8 @@ struct RootView: View {
                 quoteDraftSecondOpinionError: state.secondOpinionError?.contextKey == pricingCalculatorAskAIKey ? state.secondOpinionError?.message : nil,
                 onDraftQuoteSecondOpinion: { context in
                     Task { await state.askSecondOpinion(contextKey: pricingCalculatorAskAIKey, contextText: context, question: pricingCalculatorPrompt, format: .clientMessage) }
-                }
+                },
+                onSaveAsClient: { state.carryPricingToIntake($0) }
             )
 
         case .intakeQuestions:

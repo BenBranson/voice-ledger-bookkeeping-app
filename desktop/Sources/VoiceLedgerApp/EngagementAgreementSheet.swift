@@ -252,7 +252,7 @@ struct EngagementAgreementSheet: View {
             Button("Save PDF…") { run("Creating the PDF…") { r in PDFExport.save(AgreementService.reviewPDFURL(r), suggestedName: AgreementService.baseName(r.agreement)) } }
             Button("Sign in Person…") { run("Preparing…") { r in signingRecord = r } }
             Button("Email to Client…") {
-                run("Preparing the email…") { r in
+                run("Preparing the email…", needsEmail: true) { r in
                     if !AgreementService.composeEmail(r) {
                         AgreementService.emailViaBrowser(r)
                         message = "Mail isn't set up on this Mac, so I opened a new email addressed to \(r.agreement.client.contactEmail.isEmpty ? "the client" : r.agreement.client.contactEmail), copied the message text (paste it into the email), and showed the two files to attach in Finder."
@@ -265,11 +265,20 @@ struct EngagementAgreementSheet: View {
         .padding(VLSpacing.md)
     }
 
-    private func run(_ label: String, then action: @escaping @MainActor (AgreementRecord) -> Void) {
+    private func run(_ label: String, needsEmail: Bool = false, then action: @escaping @MainActor (AgreementRecord) -> Void) {
+        // A macOS text field only hands its text over when editing ends;
+        // end it first so the field typed last (often the email) counts.
+        NSApp.keyWindow?.makeFirstResponder(nil)
         busy = label
-        let snapshot = agreement
         Task { @MainActor in
             defer { busy = nil }
+            await Task.yield()
+            let snapshot = agreement
+            guard snapshot.problems.isEmpty else { error = snapshot.problems.joined(separator: " "); return }
+            if needsEmail && snapshot.client.contactEmail.trimmingCharacters(in: .whitespaces).isEmpty {
+                error = "Add the signer's email address first — that's where the agreement goes."
+                return
+            }
             do {
                 let record = try await AgreementService.prepare(snapshot)
                 records = AgreementService.loadAll()

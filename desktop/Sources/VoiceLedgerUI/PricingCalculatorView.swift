@@ -42,6 +42,8 @@ public struct PricingCalculatorView: View {
     private let isDraftingQuoteSecondOpinion: Bool
     private let quoteDraftSecondOpinionError: String?
     private let onDraftQuoteSecondOpinion: (String) -> Void
+    /// Hands these pricing choices to Intake Questions to save as a client.
+    private let onSaveAsClient: ((ClientIntake) -> Void)?
 
     @State private var needsCleanup: Bool
 
@@ -86,8 +88,10 @@ public struct PricingCalculatorView: View {
         quoteDraftSecondOpinionAnswer: String? = nil,
         isDraftingQuoteSecondOpinion: Bool = false,
         quoteDraftSecondOpinionError: String? = nil,
-        onDraftQuoteSecondOpinion: @escaping (String) -> Void = { _ in }
+        onDraftQuoteSecondOpinion: @escaping (String) -> Void = { _ in },
+        onSaveAsClient: ((ClientIntake) -> Void)? = nil
     ) {
+        self.onSaveAsClient = onSaveAsClient
         self.environment = environment
         self.aiStatus = aiStatus
         self.openFindings = openFindings
@@ -110,6 +114,15 @@ public struct PricingCalculatorView: View {
         self.isDraftingQuoteSecondOpinion = isDraftingQuoteSecondOpinion
         self.quoteDraftSecondOpinionError = quoteDraftSecondOpinionError
         self.onDraftQuoteSecondOpinion = onDraftQuoteSecondOpinion
+    }
+
+    /// Only the pricing inputs; names and contact are filled in on Intake Questions.
+    private var pricingAsIntake: ClientIntake {
+        var intake = ClientIntake(hourlyRateText: hourlyRateText, volumeTier: volumeTier, monthlyFlags: monthlyFlags, needsCleanup: needsCleanup, monthsBehind: monthsBehind)
+        intake.cleanupIssues = .init(multipleUncategorized: multipleUncategorized, personalBusinessMixed: personalBusinessMixed, payrollNotReconciled: payrollNotReconciled,
+                                     salesTaxNotFiled: salesTaxNotFiled, inventoryTrackingIssues: inventoryTrackingIssues, negativeBalances: negativeBalances, duplicatedAccounts: duplicatedAccounts)
+        intake.includeFindingsSummary = includeFindingsSummary
+        return intake
     }
 
     private var hourlyRate: Money {
@@ -182,7 +195,7 @@ public struct PricingCalculatorView: View {
         }
         let highlighted = openFindings.filter { $0.severity == .high }.prefix(5)
         for finding in highlighted {
-            lines.append("- \(finding.title) (\(finding.dollarExposure.accountingDescription))")
+            lines.append("- \(ClientText.polish(finding.title))")
         }
         return lines
     }
@@ -226,6 +239,15 @@ public struct PricingCalculatorView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                     Spacer()
+                    if let onSaveAsClient {
+                        Button {
+                            onSaveAsClient(pricingAsIntake)
+                        } label: {
+                            Label("Save as Client…", systemImage: "person.crop.circle.badge.plus")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .help("Carry these numbers to Intake Questions, add the client's name and contact, and save them")
+                    }
                     VLEnvironmentBadge(environment)
                 }
 

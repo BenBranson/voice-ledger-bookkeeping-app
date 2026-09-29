@@ -2518,6 +2518,21 @@ public final class AppState {
 
     /// Clears the draft for a brand-new prospect — does NOT touch the
     /// saved roster.
+    /// From the Pricing Calculator's "Save as Client…": copies only the
+    /// pricing choices into the intake being edited (names and answers
+    /// already typed there are kept) and opens Intake Questions.
+    public func carryPricingToIntake(_ pricing: ClientIntake) {
+        currentIntake.hourlyRateText = pricing.hourlyRateText
+        currentIntake.volumeTier = pricing.volumeTier
+        currentIntake.monthlyFlags = pricing.monthlyFlags
+        currentIntake.needsCleanup = pricing.needsCleanup
+        currentIntake.monthsBehind = pricing.monthsBehind
+        currentIntake.cleanupIssues = pricing.cleanupIssues
+        currentIntake.includeFindingsSummary = pricing.includeFindingsSummary
+        screen = .intakeQuestions
+        intakeStatusMessage = "Your pricing was carried over (\(currentIntake.monthlyQuote.monthlyInvestment.accountingDescription)/mo\(currentIntake.needsCleanup ? " + clean-up" : "")). Fill in the business name and the contact's name and email, then press Save Client at the top."
+    }
+
     public func startNewIntake() {
         currentIntake = ClientIntake()
         intakeStatusMessage = nil
