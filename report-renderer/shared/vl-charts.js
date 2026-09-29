@@ -374,7 +374,7 @@
       grid: { left: 8, right: 12, top: 22, bottom: 8, containLabel: true },
       tooltip: tooltip(theme, function (p) { return "<b>" + esc(b[p.dataIndex].label) + "</b><br/>" + esc(b[p.dataIndex].valueText); }),
       xAxis: categoryAxis(theme, b.map(function (x) { return x.label; })),
-      yAxis: valueAxis(theme),
+      yAxis: valueAxis(theme, { splitNumber: 3 }),
       series: [{
         type: "bar",
         barMaxWidth: 34,

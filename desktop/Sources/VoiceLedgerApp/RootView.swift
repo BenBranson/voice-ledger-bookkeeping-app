@@ -1011,7 +1011,7 @@ struct RootView: View {
                         guard let vendorName = finding.vendorName else { return }
                         Task { await state.createClientMemoryRule(ruleID: finding.ruleID, vendorName: vendorName, actorName: actorName, note: nil, triggeringFindingID: findingID) }
                     },
-                    onDismiss: { Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: nil) } },
+                    onDismiss: { reason in Task { await state.dismissFinding(findingID: findingID, actorName: actorName, reason: reason) } },
                     onMarkDone: { note in Task { await state.attestCompletion(findingID: findingID, actorName: actorName, note: note) } },
                     onMarkCarriedForward: { reason in Task { await state.markFindingCarriedForward(findingID: findingID, actorName: actorName, reason: reason) } },
                     onUnmarkCarriedForward: { Task { await state.unmarkCarriedForward(findingID: findingID, actorName: actorName) } },

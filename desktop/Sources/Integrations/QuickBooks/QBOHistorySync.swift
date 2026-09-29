@@ -170,15 +170,20 @@ extension QBOSyncClient {
         }
         let balanceSheet = try await withReportRetry { try await fetchBalanceSheet(realmID: realmID, period: period) }
         let cashFlow = (try? await withReportRetry { try await fetchCashFlow(realmID: realmID, period: period) }) ?? []
-        let aging = (try? await withReportRetry { try await fetchAgedReceivables(realmID: realmID) }) ?? []
+        let receivables = try? await withReportRetry { try await fetchAgedReceivables(realmID: realmID) }
+        let payables = try? await withReportRetry { try await fetchAgedPayables(realmID: realmID) }
         let accountsData = try await backend.call(.readAccounts, realmID: realmID, params: ReadAccountsParams(activeOnly: false))
         let accounts = (try JSONDecoder().decode(QBOAccountQueryResponse.self, from: accountsData).queryResponse.account ?? []).compactMap { Self.normalize($0) }
-        return MonthlyReportInputs(
+        var inputs = MonthlyReportInputs(
             clientName: clientName, period: period, today: today, generatedAt: Date(), accountingBasis: basis, environment: environment,
-            monthlyProfitAndLoss: monthly, balanceSheet: balanceSheet, cashFlow: cashFlow, agedReceivables: aging,
+            monthlyProfitAndLoss: monthly, balanceSheet: balanceSheet, cashFlow: cashFlow, agedReceivables: receivables ?? [],
             accountTypes: Dictionary(accounts.map { ($0.id, $0.accountType) }, uniquingKeysWith: { first, _ in first }),
             findings: findings, coverage: coverage
         )
+        inputs.agedPayables = payables ?? []
+        inputs.receivablesLoaded = receivables != nil
+        inputs.payablesLoaded = payables != nil
+        return inputs
     }
 
     private func withReportRetry<T>(_ work: () async throws -> T) async throws -> T {

@@ -2706,7 +2706,10 @@ public final class AppState {
                 findings: findings, coverage: coverage, today: AccountingDate(date: Date())
             )
             monthlyReportStage = "Checking figures…"
-            let report = MonthlyReportBuilder.build(inputs)
+            var fullInputs = inputs
+            fullInputs.activityLog = activityLog
+            fullInputs.clientQuestions = ClientQuestionDrafter.threads(from: activityLog)
+            let report = MonthlyReportBuilder.build(fullInputs)
             let generated = try await MonthlyReportService.render(report: report, root: root, realmID: realmID) { stage in
                 let text: String
                 switch stage {

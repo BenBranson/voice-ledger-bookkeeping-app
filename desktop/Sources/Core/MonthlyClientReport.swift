@@ -91,7 +91,51 @@ public struct MonthlyClientReport: Codable, Sendable {
     public let profitAndLossTable: [Row]
     public let balanceSheetTable: [Row]
     public let checks: [Check]
-    public let notes: [String]
+    public var notes: [String]
+
+    // Owner-summary and narrative sections (MonthlyReportSections.swift).
+    public struct HealthCheck: Codable, Sendable {
+        public let area: String
+        public let question: String
+        public let status: String
+        public let statusKind: String
+        public let detail: String
+    }
+
+    public struct Priority: Codable, Sendable {
+        public let action: String
+        public let owner: String
+        public let why: String
+        public let timing: String
+    }
+
+    public struct Narrative: Codable, Sendable {
+        public let happened: String
+        public let matters: String
+        public let next: String
+    }
+
+    public struct ComparativeRow: Codable, Sendable {
+        public let label: String
+        public let currentText: String
+        public let priorText: String
+        public let depth: Int
+        public let isTotal: Bool
+    }
+
+    public var preparedBy = ""
+    public var healthChecks: [HealthCheck] = []
+    public var takeaways: [String] = []
+    public var priorities: [Priority] = []
+    public var questionsForClient: [String] = []
+    public var narratives: [String: Narrative] = [:]
+    public var expenseChanges: [ComparisonRow] = []
+    public var payables: Receivables?
+    public var position: [Row] = []
+    public var workCompleted: [WorkItem] = []
+    public var workSummary: [Row] = []
+    public var comparativeProfitAndLoss: [ComparativeRow] = []
+    public var cashFlowStatement: [Row] = []
 }
 
 public struct MonthlyReportInputs: Sendable {
@@ -112,6 +156,12 @@ public struct MonthlyReportInputs: Sendable {
     public var accountTypes: [String: LedgerAccountType]
     public var findings: [Finding]
     public var coverage: Coverage
+    public var agedPayables: [AgingLine] = []
+    public var receivablesLoaded = true
+    public var payablesLoaded = true
+    public var activityLog: [ActivityLogEntry] = []
+    public var clientQuestions: [ClientQuestionDrafter.Thread] = []
+    public var preparedBy = "Benjamin Branson"
 
     public init(clientName: String, period: AccountingPeriod, today: AccountingDate, generatedAt: Date, accountingBasis: String?, environment: String, monthlyProfitAndLoss: [MonthlyReport], balanceSheet: [ReportLine], cashFlow: [ReportLine], agedReceivables: [AgingLine], accountTypes: [String: LedgerAccountType], findings: [Finding], coverage: Coverage) {
         self.clientName = clientName
@@ -279,7 +329,7 @@ public enum MonthlyReportBuilder {
         display.timeStyle = .short
         display.locale = Locale(identifier: "en_US")
 
-        return MonthlyClientReport(
+        let base = MonthlyClientReport(
             schemaVersion: 1,
             meta: .init(
                 firmName: input.firmName, clientName: input.clientName,
@@ -306,6 +356,7 @@ public enum MonthlyReportBuilder {
             checks: checks,
             notes: notes
         )
+        return MonthlyReportSections.enrich(base, input: input)
     }
 }
 

@@ -76,7 +76,7 @@ public enum ClientQuestionDrafter {
     /// `AppState.recordClientQuestionSent`/`recordClientQuestionAnswer` —
     /// this just aggregates it across every finding for one page, the same
     /// "compute in Core, display in UI" split as everything else here.
-    public struct Thread: Identifiable, Equatable {
+    public struct Thread: Identifiable, Equatable, Sendable {
         public let findingID: String
         public let findingTitle: String
         public let question: String
@@ -84,6 +84,15 @@ public enum ClientQuestionDrafter {
         public let answer: String?
         public let answeredAt: Date?
         public var id: String { findingID }
+
+        public init(findingID: String, findingTitle: String, question: String, askedAt: Date, answer: String?, answeredAt: Date?) {
+            self.findingID = findingID
+            self.findingTitle = findingTitle
+            self.question = question
+            self.askedAt = askedAt
+            self.answer = answer
+            self.answeredAt = answeredAt
+        }
     }
 
     /// Pairs each finding's MOST RECENT drafted question with its MOST

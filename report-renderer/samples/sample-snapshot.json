@@ -116,6 +116,12 @@
       "valueText" : "$1,850.00"
     },
     {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Current Assets",
+      "valueText" : "$91,893.85"
+    },
+    {
       "depth" : 3,
       "isTotal" : false,
       "label" : "Trucks & Equipment",
@@ -152,10 +158,22 @@
       "valueText" : "$1,206.44"
     },
     {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Current Liabilities",
+      "valueText" : "$15,367.54"
+    },
+    {
       "depth" : 3,
       "isTotal" : false,
       "label" : "Equipment Loan",
       "valueText" : "$48,750.00"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Liabilities",
+      "valueText" : "$64,117.54"
     },
     {
       "depth" : 3,
@@ -180,6 +198,12 @@
       "isTotal" : false,
       "label" : "Net Income",
       "valueText" : "$29,165.84"
+    },
+    {
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Equity",
+      "valueText" : "$92,876.31"
     },
     {
       "depth" : 0,
@@ -251,6 +275,38 @@
     "note" : "Cash movement comes from QuickBooks' Statement of Cash Flows for July 2026 — it differs from profit because of timing (receivables, payables) and non-operating items.",
     "totalText" : "$62,128.45"
   },
+  "cashFlowStatement" : [
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net cash provided by operating activities",
+      "valueText" : "$11,236.18"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net cash provided by investing activities",
+      "valueText" : "($4,800.00)"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net cash provided by financing activities",
+      "valueText" : "($2,625.00)"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net cash increase for period",
+      "valueText" : "$3,811.18"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Cash at end of period",
+      "valueText" : "$62,128.45"
+    }
+  ],
   "checks" : [
     {
       "detail" : "Ties exactly.",
@@ -271,6 +327,206 @@
       "detail" : "Accounts $156,993.85 vs reported $156,993.85",
       "label" : "Liability and equity accounts sum to Total Liabilities & Equity",
       "passed" : true
+    }
+  ],
+  "comparativeProfitAndLoss" : [
+    {
+      "currentText" : "$61,053.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Landscaping Services",
+      "priorText" : "$59,231.00"
+    },
+    {
+      "currentText" : "$14,022.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Materials Sales",
+      "priorText" : "$13,603.00"
+    },
+    {
+      "currentText" : "$75,075.00",
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Income",
+      "priorText" : "$72,834.00"
+    },
+    {
+      "currentText" : "$20,954.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Cost of Goods Sold",
+      "priorText" : "$20,328.00"
+    },
+    {
+      "currentText" : "$20,954.00",
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Cost of Goods Sold",
+      "priorText" : "$20,328.00"
+    },
+    {
+      "currentText" : "$54,121.00",
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Gross Profit",
+      "priorText" : "$52,506.00"
+    },
+    {
+      "currentText" : "$15,166.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Payroll Expenses",
+      "priorText" : "$15,052.00"
+    },
+    {
+      "currentText" : "$2,881.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Vehicle Fuel",
+      "priorText" : "$2,795.00"
+    },
+    {
+      "currentText" : "$2,546.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Equipment Rental",
+      "priorText" : "$2,470.00"
+    },
+    {
+      "currentText" : "$3,200.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Rent or Lease",
+      "priorText" : "$3,200.00"
+    },
+    {
+      "currentText" : "$1,140.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Insurance",
+      "priorText" : "$1,140.00"
+    },
+    {
+      "currentText" : "$1,152.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Repairs & Maintenance",
+      "priorText" : "$1,118.00"
+    },
+    {
+      "currentText" : "$650.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Advertising & Marketing",
+      "priorText" : "$650.00"
+    },
+    {
+      "currentText" : "$540.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Utilities",
+      "priorText" : "$540.00"
+    },
+    {
+      "currentText" : "$385.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Software & Subscriptions",
+      "priorText" : "$385.00"
+    },
+    {
+      "currentText" : "$212.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Office Supplies",
+      "priorText" : "$212.00"
+    },
+    {
+      "currentText" : "$64.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Bank Fees",
+      "priorText" : "$64.00"
+    },
+    {
+      "currentText" : "$148.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Meals",
+      "priorText" : "$148.00"
+    },
+    {
+      "currentText" : "$3,750.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Professional Fees",
+      "priorText" : "$450.00"
+    },
+    {
+      "currentText" : "$31,834.00",
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Expenses",
+      "priorText" : "$28,224.00"
+    },
+    {
+      "currentText" : "$22,287.00",
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Operating Income",
+      "priorText" : "$24,282.00"
+    },
+    {
+      "currentText" : "$42.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Interest Earned",
+      "priorText" : "$42.00"
+    },
+    {
+      "currentText" : "$42.00",
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Other Income",
+      "priorText" : "$42.00"
+    },
+    {
+      "currentText" : "$310.00",
+      "depth" : 2,
+      "isTotal" : false,
+      "label" : "Depreciation",
+      "priorText" : "$310.00"
+    },
+    {
+      "currentText" : "$310.00",
+      "depth" : 1,
+      "isTotal" : true,
+      "label" : "Total Other Expenses",
+      "priorText" : "$310.00"
+    },
+    {
+      "currentText" : "($268.00)",
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Other Income",
+      "priorText" : "($268.00)"
+    },
+    {
+      "currentText" : "$22,019.00",
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Net Income",
+      "priorText" : "$24,014.00"
+    }
+  ],
+  "expenseChanges" : [
+    {
+      "changeText" : "+$3,300.00",
+      "currentText" : "$3,750.00",
+      "label" : "Professional Fees",
+      "percentText" : "+733.3%",
+      "priorText" : "$450.00"
     }
   ],
   "expenses" : {
@@ -482,6 +738,36 @@
     "reportedTotalText" : "$31,834.00",
     "totalText" : "$31,834.00"
   },
+  "healthChecks" : [
+    {
+      "area" : "Profitability",
+      "detail" : "Net profit of $22,019.00 (29% of revenue) in July.",
+      "question" : "Is the business earning more than it spends?",
+      "status" : "Stable",
+      "statusKind" : "stable"
+    },
+    {
+      "area" : "Cash & bills",
+      "detail" : "Cash of $62,128.45 against $15,367.54 in short-term obligations.",
+      "question" : "Is there cash to cover what's coming due?",
+      "status" : "Stable",
+      "statusKind" : "stable"
+    },
+    {
+      "area" : "Collections",
+      "detail" : "Customers owe $27,915.40; $3,460.00 (12%) is more than 60 days old.",
+      "question" : "Are customers paying on time?",
+      "status" : "Stable",
+      "statusKind" : "stable"
+    },
+    {
+      "area" : "Reliable books",
+      "detail" : "4 high-priority bookkeeping items still open.",
+      "question" : "Can these numbers be trusted?",
+      "status" : "Needs attention",
+      "statusKind" : "attention"
+    }
+  ],
   "kpis" : [
     {
       "comparisonText" : "+$2,241.00 vs June 2026 (+3.1%)",
@@ -609,13 +895,13 @@
     "clientName" : "Sample Landscaping Co.",
     "environment" : "sample",
     "firmName" : "Benjamin Branson Bookkeeping",
-    "generatedAt" : "2026-09-29T08:26:42Z",
-    "generatedAtLabel" : "September 29, 2026 at 3:26 AM",
+    "generatedAt" : "2026-09-29T08:45:30Z",
+    "generatedAtLabel" : "September 29, 2026 at 3:45 AM",
     "isPartialMonth" : false,
     "isSample" : true,
     "periodKey" : "2026-07",
     "periodLabel" : "July 2026",
-    "snapshotID" : "221a20ad7fe73bd69a9925a12e49485ab977245eae0d21558330d26ba08d8d07"
+    "snapshotID" : "baa3cd8be15c1491a1a60387210d67d3fcc75c28d48b9d072085fc909453348a"
   },
   "monthOverMonth" : [
     {
@@ -640,10 +926,162 @@
       "priorText" : "$24,014.00"
     }
   ],
+  "narratives" : {
+    "cash" : {
+      "happened" : "Bank balances ended at $62,128.45. Day-to-day operations brought in $11,236.18 of cash, compared with net profit of $22,019.00.",
+      "matters" : "Profit and cash differ because of timing: sales not yet collected, bills not yet paid, loan payments, equipment purchases, and owner draws.",
+      "next" : "Keep enough cash on hand for the bills on the following pages."
+    },
+    "expenses" : {
+      "happened" : "Operating expenses were $31,834.00. Payroll Expenses was the largest at $15,166.00.",
+      "matters" : "Professional Fees moved by +$3,300.00 from last month, the largest change in spending.",
+      "next" : "Confirm whether the change in Professional Fees is one-time or ongoing."
+    },
+    "payables" : {
+      "happened" : "The business owes vendors $9,842.18; $2,802.00 is past its due date.",
+      "matters" : "Late bills can bring fees and strain vendor relationships.",
+      "next" : "Schedule payment of the oldest bills."
+    },
+    "performance" : {
+      "happened" : "Revenue was $75,075.00, up $2,241.00 from June; the month ended with a net profit of $22,019.00.",
+      "matters" : "Sales grew but profit fell, so costs rose faster than revenue.",
+      "next" : "Review the expense categories that changed most (next page)."
+    },
+    "position" : {
+      "happened" : "Short-term assets exceed short-term obligations by $76,526.31.",
+      "matters" : "The business has a cushion to meet near-term obligations.",
+      "next" : "Balances are as of July 31, 2026."
+    },
+    "receivables" : {
+      "happened" : "Customers owe $27,915.40; $3,460.00 is more than 60 days old.",
+      "matters" : "The older a balance gets, the less likely it is to be collected.",
+      "next" : "Contact the customers with the oldest balances first."
+    }
+  },
   "notes" : [
     "Accounting basis: Accrual — all periods in this report use the same basis and calendar-month boundaries.",
     "Trend: All loaded months shown.",
     "Findings come from Voice Ledger's automated checks; items marked \"needs review\" are possible issues, not confirmed errors."
+  ],
+  "payables" : {
+    "buckets" : [
+      {
+        "category" : "asset",
+        "id" : "current",
+        "label" : "Current",
+        "value" : 7040.18,
+        "valueText" : "$7,040.18"
+      },
+      {
+        "category" : "asset",
+        "id" : "1-30",
+        "label" : "1–30 days",
+        "value" : 2252,
+        "valueText" : "$2,252.00"
+      },
+      {
+        "category" : "asset",
+        "id" : "31-60",
+        "label" : "31–60 days",
+        "value" : 550,
+        "valueText" : "$550.00"
+      },
+      {
+        "category" : "asset",
+        "id" : "61-90",
+        "label" : "61–90 days",
+        "value" : 0,
+        "valueText" : "$0.00"
+      },
+      {
+        "category" : "overdraft",
+        "id" : "91+",
+        "label" : "91+ days",
+        "value" : 0,
+        "valueText" : "$0.00"
+      }
+    ],
+    "note" : "Bills the business owes vendors, by how long they have been outstanding. Upcoming commitments not yet billed (payroll, loan payments, taxes) are not included.",
+    "topCustomers" : [
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Green Valley Nursery",
+        "valueText" : "$4,920.00"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Sunbelt Rentals",
+        "valueText" : "$2,450.00"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Shell Fleet",
+        "valueText" : "$1,310.18"
+      },
+      {
+        "depth" : 0,
+        "isTotal" : false,
+        "label" : "Hartman Irrigation Supply",
+        "valueText" : "$1,162.00"
+      }
+    ],
+    "totalText" : "$9,842.18"
+  },
+  "position" : [
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "What the business owns (total assets)",
+      "valueText" : "$156,993.85"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "What it owes (total liabilities)",
+      "valueText" : "$64,117.54"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Owner's stake (equity)",
+      "valueText" : "$92,876.31"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Working capital (short-term assets minus short-term obligations)",
+      "valueText" : "$76,526.31"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Current ratio (short-term assets ÷ short-term obligations)",
+      "valueText" : "5.98×"
+    }
+  ],
+  "preparedBy" : "Benjamin Branson",
+  "priorities" : [
+    {
+      "action" : "Answer 2 open bookkeeping questions",
+      "owner" : "Kris",
+      "timing" : "Before the next monthly close",
+      "why" : "These items can't be finalized without your input."
+    },
+    {
+      "action" : "Follow up with the client on the April invoices",
+      "owner" : "Benjamin",
+      "timing" : "Before the next monthly close",
+      "why" : "Payment from Cedar Park Church is 91+ days past due."
+    },
+    {
+      "action" : "Record or confirm the July 31 funding transfer",
+      "owner" : "Benjamin",
+      "timing" : "Before the next monthly close",
+      "why" : "Payroll Checking is overdrawn — ($1,284.10)."
+    }
   ],
   "profitAndLossTable" : [
     {
@@ -809,6 +1247,10 @@
       "valueText" : "$22,019.00"
     }
   ],
+  "questionsForClient" : [
+    "Amazon order on July 22 ($420.00): What was this Amazon order for, and which job (if any) should it be charged to?",
+    "Uncategorized transaction — Amazon, $420.00 — waiting on your answer."
+  ],
   "receivables" : {
     "buckets" : [
       {
@@ -885,6 +1327,7 @@
   "recommendedActions" : [
     "Follow up with the client on the April invoices ($2,310.00)",
     "Record or confirm the July 31 funding transfer ($1,284.10)",
+    "Ask the client what it was for ($420.00)",
     "Compare both bills and void the duplicate ($1,640.00)",
     "Confirm the July legal invoice is a one-time cost ($3,300.00)"
   ],
@@ -903,6 +1346,11 @@
     }
   ],
   "schemaVersion" : 1,
+  "takeaways" : [
+    "The business earned a profit of $22,019.00 in July, down $1,995.00 from June.",
+    "Professional Fees rose $3,300.00 from June — the biggest change in costs.",
+    "3 bookkeeping corrections were completed and verified in QuickBooks."
+  ],
   "trend" : {
     "note" : "All loaded months shown.",
     "points" : [
@@ -1011,6 +1459,12 @@
       "amountText" : "$1,284.10",
       "detail" : "The payroll account went negative after the July 31 payroll run posted before the funding transfer.",
       "title" : "Payroll Checking is overdrawn — ($1,284.10)"
+    },
+    {
+      "action" : "Ask the client what it was for",
+      "amountText" : "$420.00",
+      "detail" : "An Amazon charge is in Uncategorized Expense.",
+      "title" : "Uncategorized transaction — Amazon, $420.00"
     }
   ],
   "waterfall" : {
@@ -1066,6 +1520,99 @@
       }
     ]
   },
+  "workCompleted" : [
+    {
+      "action" : "Client Clarification Needed: asked Kris what the Amazon order was for.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$420.00",
+      "doneAtLabel" : "Aug 6, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s9",
+      "found" : "An Amazon charge is in Uncategorized Expense.",
+      "impact" : "Waiting on the client's answer; numbers unchanged for now.",
+      "status" : "awaitingClient",
+      "statusLabel" : "Awaiting client",
+      "title" : "Uncategorized transaction — Amazon, $420.00"
+    },
+    {
+      "action" : "Not an error: new annual contract rate starting July.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$180.00",
+      "doneAtLabel" : "Aug 6, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s8",
+      "found" : "Monthly service rose from $240 to $420.",
+      "impact" : "No change to the numbers — reviewed and confirmed as valid.",
+      "status" : "notAnError",
+      "statusLabel" : "Not an error",
+      "title" : "Vendor price increase — Waste Management"
+    },
+    {
+      "action" : "Reclassified Transaction: Moved to Materials (COGS) after Kris confirmed it was for the Hillcrest job.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$1,240.00",
+      "doneAtLabel" : "Aug 5, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s6",
+      "found" : "A Lowe's purchase was sitting in Uncategorized Expense.",
+      "impact" : "Moved $1,240.00 to the correct account; category totals are now accurate. Total profit may be unchanged.",
+      "status" : "correctedVerified",
+      "statusLabel" : "Corrected and verified",
+      "title" : "Uncategorized transaction — Lowe's, $1,240.00"
+    },
+    {
+      "action" : "Reclassified Transaction: Moved to Owner's Draw — personal groceries.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$600.00",
+      "doneAtLabel" : "Aug 5, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s7",
+      "found" : "A Costco purchase on the business card looked personal.",
+      "impact" : "Separated $600.00 of owner\/personal activity from business expenses.",
+      "status" : "correctedVerified",
+      "statusLabel" : "Corrected and verified",
+      "title" : "Possible personal expense — Costco, $600.00"
+    },
+    {
+      "action" : "Corrected in QBO: Voided the hand-entered copy; kept the bank-feed charge.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountText" : "$850.00",
+      "doneAtLabel" : "Aug 4, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s5",
+      "found" : "The same Home Depot charge was entered from the bank feed and by hand.",
+      "impact" : "Expenses were overstated by $850.00; removing the duplicate raises reported profit by that amount. No cash was recovered.",
+      "status" : "correctedVerified",
+      "statusLabel" : "Corrected and verified",
+      "title" : "Duplicate expense — Home Depot, $850.00"
+    }
+  ],
+  "workSummary" : [
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Corrected and verified",
+      "valueText" : "3"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Awaiting verification",
+      "valueText" : "0"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Awaiting client",
+      "valueText" : "1"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Not an error",
+      "valueText" : "1"
+    }
+  ],
   "yearOverYear" : [
     {
       "changeText" : "+$6,199.00",

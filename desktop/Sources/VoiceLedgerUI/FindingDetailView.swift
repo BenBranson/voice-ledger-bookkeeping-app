@@ -75,7 +75,7 @@ public struct FindingDetailView: View {
     private let isResolvingPendingWrite: Bool
     private let onResolvePendingWrite: () -> Void
     private let onRememberVendor: () -> Void
-    private let onDismiss: () -> Void
+    private let onDismiss: (String) -> Void
     /// Owner directive (2026-08-29): "a checkmark ... or a button saying
     /// finished." Same underlying verified-not-self-reported mechanism as
     /// `GuidedProcedureView`'s "I completed this in QBO" (records the
@@ -133,6 +133,9 @@ public struct FindingDetailView: View {
     /// `ResolutionType.combinedNote`'s doc comment for why this isn't a new
     /// persisted field).
     @State private var isLoggingResolution = false
+    @State private var isDismissing = false
+    @State private var dismissReasonDraft: DismissReason?
+    @State private var dismissDetailDraft = ""
     @State private var resolutionTypeDraft: ResolutionType?
     @State private var resolutionDetailDraft = ""
 
@@ -156,7 +159,7 @@ public struct FindingDetailView: View {
         isResolvingPendingWrite: Bool = false,
         onResolvePendingWrite: @escaping () -> Void = {},
         onRememberVendor: @escaping () -> Void = {},
-        onDismiss: @escaping () -> Void,
+        onDismiss: @escaping (String) -> Void,
         onMarkDone: @escaping (String?) -> Void = { _ in },
         onMarkCarriedForward: @escaping (String?) -> Void = { _ in },
         onUnmarkCarriedForward: @escaping () -> Void = {},
@@ -843,6 +846,8 @@ public struct FindingDetailView: View {
                     applyFixSection(details)
                 } else if isLoggingResolution {
                     resolutionLogSection
+                } else if isDismissing {
+                    dismissReasonSection
                 } else {
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
                         // Owner directive (2026-08-29): "I pressed mark as
@@ -875,7 +880,7 @@ public struct FindingDetailView: View {
                             Button("Verify Fixed in QBO ⟳") { isLoggingResolution = true }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
-                            Button("Dismiss (Accept as Valid)") { onDismiss() }
+                            Button("Dismiss (Accept as Valid)") { isDismissing = true }
                                 .buttonStyle(.bordered)
                                 .disabled(isFindingActionInFlight)
                         }
@@ -928,6 +933,44 @@ public struct FindingDetailView: View {
     /// Client Value Report already reads back out — no new schema, no new
     /// report payload field, just a better-filled-in version of a field
     /// that already existed and already flowed through.
+    /// Dismissing requires saying why — it becomes the "Not an error"
+    /// line in the work log and the client's monthly report.
+    private var dismissReasonSection: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.xs) {
+            Text("WHY ARE YOU DISMISSING THIS?")
+                .font(VLTypography.eyebrow())
+                .tracking(VLTypography.eyebrowTracking)
+                .foregroundStyle(VLColor.textMuted)
+            Picker("Reason", selection: $dismissReasonDraft) {
+                Text("Choose a reason…").tag(DismissReason?.none)
+                ForEach(DismissReason.allCases) { reason in
+                    Text(reason.label).tag(DismissReason?.some(reason))
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            TextField(dismissReasonDraft == .other ? "Explain (required)" : "Details (optional) — e.g. new annual contract rate", text: $dismissDetailDraft)
+                .textFieldStyle(.roundedBorder)
+            Text("Dismissed items stay in the history and appear in the client report as \"Not an error\" with this reason. The finding won't reappear on future syncs.")
+                .font(VLTypography.caption())
+                .foregroundStyle(VLColor.textMuted)
+            HStack(spacing: VLSpacing.sm) {
+                Button("Dismiss Finding") {
+                    guard let note = DismissReason.note(reason: dismissReasonDraft, detail: dismissDetailDraft) else { return }
+                    onDismiss(note)
+                    isDismissing = false
+                    dismissReasonDraft = nil
+                    dismissDetailDraft = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isFindingActionInFlight || DismissReason.note(reason: dismissReasonDraft, detail: dismissDetailDraft) == nil)
+                Button("Cancel") { isDismissing = false }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(.top, VLSpacing.xs)
+    }
+
     private var resolutionLogSection: some View {
         VStack(alignment: .leading, spacing: VLSpacing.sm) {
             // Owner directive (2026-08-29): "the finding isn't resolved
@@ -1019,12 +1062,14 @@ public struct FindingDetailView: View {
                         .buttonStyle(.bordered)
                         .disabled(isApplyingFix)
                 }
+            } else if isDismissing {
+                dismissReasonSection
             } else {
                 HStack(spacing: VLSpacing.sm) {
                     Button("Apply Fix") { isConfirmingApplyFix = true }
                         .buttonStyle(.borderedProminent)
                         .disabled(!writeAccessEnabled || pendingWriteJournalEntry != nil)
-                    Button("Dismiss (Accept as Valid)") { onDismiss() }
+                    Button("Dismiss (Accept as Valid)") { isDismissing = true }
                         .buttonStyle(.bordered)
                         .disabled(isFindingActionInFlight)
                 }

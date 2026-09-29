@@ -67,17 +67,21 @@ enum SampleMonthlyReport {
             line("Total Bank Accounts", 62_128.45, depth: 2, total: true),
             line("Accounts Receivable (A/R)", 27_915.40, depth: 3, id: "a1"),
             line("Undeposited Funds", 1_850, depth: 3, id: "a2"),
+            line("Total Current Assets", 91_893.85, depth: 1, total: true),
             line("Trucks & Equipment", 96_500, depth: 3, id: "f1"),
             line("Accumulated Depreciation", -31_400, depth: 3, id: "f2"),
             line("TOTAL ASSETS", 156_993.85, depth: 0, total: true),
             line("Accounts Payable (A/P)", 9_842.18, depth: 3, id: "l1"),
             line("Business Credit Card", 4_318.92, depth: 3, id: "l2"),
             line("Sales Tax Payable", 1_206.44, depth: 3, id: "l3"),
+            line("Total Current Liabilities", 15_367.54, depth: 1, total: true),
             line("Equipment Loan", 48_750, depth: 3, id: "l4"),
+            line("Total Liabilities", 64_117.54, depth: 1, total: true),
             line("Owner's Investment", 20_000, depth: 3, id: "q1"),
             line("Owner's Draw", -18_500, depth: 3, id: "q2"),
             line("Retained Earnings", 62_210.47, depth: 3, id: "q3"),
             line("Net Income", 29_165.84, depth: 3),
+            line("Total Equity", 92_876.31, depth: 1, total: true),
             line("TOTAL LIABILITIES AND EQUITY", 156_993.85, depth: 0, total: true)
         ]
         let types: [String: LedgerAccountType] = ["b1": .bank, "b2": .bank, "b3": .bank, "a1": .accountsReceivable, "a2": .otherCurrentAsset, "f1": .fixedAsset, "f2": .fixedAsset,
@@ -101,18 +105,42 @@ enum SampleMonthlyReport {
             aging("TOTAL", 17_625.40, 5_350, 1_480, 1_150, 2_310, total: true)
         ]
         let realm = RealmID(rawValue: "sample")
-        func finding(_ id: String, _ title: String, _ dollars: Double, _ confidence: Confidence, _ narrative: String, _ action: String) -> Finding {
+        func finding(_ id: String, _ title: String, _ dollars: Double, _ confidence: Confidence, _ narrative: String, _ action: String, rule: String = "SAMPLE", status: FindingStatus = .open, severity: Severity = .high) -> Finding {
             let procedure = GuidedProcedure(steps: ["Review in QuickBooks"], pitfalls: [], doneCriteria: "Resolved")
-            return Finding(id: id, ruleID: RuleID(rawValue: "SAMPLE"), ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0), realmID: realm, period: period,
-                           title: title, severity: .high, confidence: confidence, dollarExposure: usd(dollars), evidence: [],
+            var f = Finding(id: id, ruleID: RuleID(rawValue: rule), ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0), realmID: realm, period: period,
+                           title: title, severity: severity, confidence: confidence, dollarExposure: usd(dollars), evidence: [],
                            proposedActions: [ProposedAction(id: id, title: action, resolution: .manualQBO, guidedProcedure: procedure, consequences: [], reversal: .reversibleManually(procedure: "Undo in QBO"))],
                            provenance: [], narrative: narrative, riskIfIgnored: nil)
+            f.status = status
+            return f
         }
         let findings = [
             finding("s1", "Payroll Checking is overdrawn — ($1,284.10)", 1_284.10, .high, "The payroll account went negative after the July 31 payroll run posted before the funding transfer.", "Record or confirm the July 31 funding transfer"),
             finding("s2", "Payment from Cedar Park Church is 91+ days past due", 2_310, .high, "Two invoices from April remain unpaid.", "Follow up with the client on the April invoices"),
             finding("s3", "Possible duplicate bill — Green Valley Nursery, $1,640.00", 1_640, .medium, "Two bills for the same amount 3 days apart with slightly different vendor spellings.", "Compare both bills and void the duplicate"),
-            finding("s4", "Professional Fees up sharply vs. trailing average", 3_300, .low, "July Professional Fees were $3,750 against a 3-month average of $450.", "Confirm the July legal invoice is a one-time cost")
+            finding("s4", "Professional Fees up sharply vs. trailing average", 3_300, .low, "July Professional Fees were $3,750 against a 3-month average of $450.", "Confirm the July legal invoice is a one-time cost", severity: .low),
+            finding("s5", "Duplicate expense — Home Depot, $850.00", 850, .high, "The same Home Depot charge was entered from the bank feed and by hand.", "Void the duplicate", rule: "VL-DUP-EXP-001", status: .resolved),
+            finding("s6", "Uncategorized transaction — Lowe's, $1,240.00", 1_240, .high, "A Lowe's purchase was sitting in Uncategorized Expense.", "Assign the correct account", rule: "VL-CAT-UNCAT-001", status: .resolved),
+            finding("s7", "Possible personal expense — Costco, $600.00", 600, .medium, "A Costco purchase on the business card looked personal.", "Reclassify to Owner's Draw", rule: "VL-PERSONAL-001", status: .resolved),
+            finding("s8", "Vendor price increase — Waste Management", 180, .medium, "Monthly service rose from $240 to $420.", "Confirm the new rate", rule: "VL-VEND-PRICE-001", status: .dismissed),
+            finding("s9", "Uncategorized transaction — Amazon, $420.00", 420, .high, "An Amazon charge is in Uncategorized Expense.", "Ask the client what it was for", rule: "VL-CAT-UNCAT-001")
+        ]
+        func log(_ id: String, _ kind: ActivityKind, _ note: String, day: Int) -> ActivityLogEntry {
+            ActivityLogEntry(realmID: realm, recordedAt: ISO8601DateFormatter().date(from: String(format: "2026-08-%02dT15:00:00Z", day))!, actor: .user("Benjamin Branson"), kind: kind, findingID: id, note: note)
+        }
+        let activity = [
+            log("s5", .manualCompletionAttested, "Corrected in QBO: Voided the hand-entered copy; kept the bank-feed charge.", day: 4),
+            log("s6", .manualCompletionAttested, "Reclassified Transaction: Moved to Materials (COGS) after Kris confirmed it was for the Hillcrest job.", day: 5),
+            log("s7", .manualCompletionAttested, "Reclassified Transaction: Moved to Owner's Draw — personal groceries.", day: 5),
+            log("s8", .findingDismissed, "Not an error: new annual contract rate starting July.", day: 6),
+            log("s9", .manualCompletionAttested, "Client Clarification Needed: asked Kris what the Amazon order was for.", day: 6)
+        ]
+        let payables = [
+            aging("Green Valley Nursery", 3_280, 1_640, 0, 0, 0),
+            aging("Sunbelt Rentals", 2_450, 0, 0, 0, 0),
+            aging("Shell Fleet", 1_310.18, 0, 0, 0, 0),
+            aging("Hartman Irrigation Supply", 0, 612, 550, 0, 0),
+            aging("TOTAL", 7_040.18, 2_252, 550, 0, 0, total: true)
         ]
         var input = MonthlyReportInputs(
             clientName: "Sample Landscaping Co.", period: period, today: AccountingDate(year: 2026, month: 9, day: 29), generatedAt: generatedAt,
@@ -120,6 +148,9 @@ enum SampleMonthlyReport {
             agedReceivables: receivables, accountTypes: types, findings: findings, coverage: .complete
         )
         input.isSample = true
+        input.activityLog = activity
+        input.agedPayables = payables
+        input.clientQuestions = [ClientQuestionDrafter.Thread(findingID: "s9", findingTitle: "Amazon order on July 22 ($420.00)", question: "What was this Amazon order for, and which job (if any) should it be charged to?", askedAt: Date(), answer: nil, answeredAt: nil)]
         return MonthlyReportBuilder.build(input)
     }
 }

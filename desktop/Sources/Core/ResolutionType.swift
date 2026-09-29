@@ -49,3 +49,29 @@ public enum ResolutionType: String, CaseIterable, Codable, Sendable, Identifiabl
         }
     }
 }
+
+/// Why a finding was dismissed — required, so "not an error" is always
+/// explained in the work log and the client report.
+public enum DismissReason: String, CaseIterable, Codable, Sendable, Identifiable {
+    case legitimate, immaterial, handledOutsideQBO, duplicateFinding, other
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .legitimate: return "Not an error — legitimate transaction"
+        case .immaterial: return "Too small to be worth correcting"
+        case .handledOutsideQBO: return "Handled outside QuickBooks"
+        case .duplicateFinding: return "Already covered by another finding"
+        case .other: return "Other"
+        }
+    }
+
+    /// `nil` until the reason is complete (Other needs an explanation).
+    public static func note(reason: DismissReason?, detail: String) -> String? {
+        let trimmed = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let reason else { return nil }
+        if reason == .other { return trimmed.isEmpty ? nil : "Other: \(trimmed)" }
+        return trimmed.isEmpty ? reason.label : "\(reason.label): \(trimmed)"
+    }
+}

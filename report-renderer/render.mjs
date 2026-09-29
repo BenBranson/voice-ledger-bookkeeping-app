@@ -55,14 +55,15 @@ function svg(builder, data, width, height) {
 
 let charts;
 try {
-  const breakdownHeight = (b) => b ? Math.max(90, 26 * (b.positiveItems.length + b.negativeItems.length) + 24) : 0;
+  const breakdownHeight = (b) => b ? Math.max(80, 19 * (b.positiveItems.length + b.negativeItems.length) + 26) : 0;
   const expensesHeight = report.expenses ? Math.max(120, 30 * report.expenses.items.length + 16) : 0;
   charts = {
-    trendRevenueExpenses: report.trend ? svg("trendRevenueExpenses", report.trend, 720, 230) : null,
-    trendNetIncome: report.trend ? svg("trendNetIncome", report.trend, 720, 170) : null,
+    trendRevenueExpenses: report.trend ? svg("trendRevenueExpenses", report.trend, 720, 200) : null,
+    trendNetIncome: report.trend ? svg("trendNetIncome", report.trend, 720, 140) : null,
     waterfall: svg("waterfall", report.waterfall, 720, 250),
     expenses: svg("rankedBars", report.expenses, 720, expensesHeight),
-    aging: svg("agingBars", report.receivables, 720, 180),
+    aging: svg("agingBars", report.receivables, 720, 125),
+    payables: svg("agingBars", report.payables, 720, 125),
     assets: svg("breakdownDiverging", report.assets, 720, breakdownHeight(report.assets)),
     liabilities: svg("breakdownDiverging", report.liabilitiesAndEquity, 720, breakdownHeight(report.liabilitiesAndEquity))
   };
