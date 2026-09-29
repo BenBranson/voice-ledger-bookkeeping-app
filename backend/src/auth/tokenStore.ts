@@ -12,6 +12,8 @@
 import type Database from "better-sqlite3";
 import { encrypt, decrypt, type EncryptedPayload } from "./crypto.js";
 import type { Environment } from "../config.js";
+import { RealmCipher } from "./realmCipher.js";
+import { migrateRealmEncryption } from "../db/sqlite.js";
 
 export interface StoredConnection {
   readonly realmId: string;
@@ -34,7 +36,10 @@ interface CachedAccessToken {
 }
 
 interface ConnectionRow {
-  realm_id: string;
+  realm_key: string;
+  realm_id_iv: string;
+  realm_id_auth_tag: string;
+  realm_id_ciphertext: string;
   environment: Environment;
   company_name: string | null;
   refresh_token_iv: string;
@@ -55,10 +60,15 @@ export class TokenStore {
   // concurrent refresh attempt for the same realm.
   private readonly refreshLocks = new Map<string, Promise<unknown>>();
 
+  private readonly realmCipher: RealmCipher;
+
   constructor(
     private readonly db: Database.Database,
     private readonly encryptionKey: Buffer
-  ) {}
+  ) {
+    this.realmCipher = new RealmCipher(encryptionKey);
+    migrateRealmEncryption(db, this.realmCipher);
+  }
 
   /**
    * `refreshTokenExpiresInSeconds` — QBO's own `x_refresh_token_expires_in`
@@ -70,13 +80,14 @@ export class TokenStore {
    */
   saveRefreshToken(realmId: string, environment: Environment, companyName: string | null, refreshToken: string, refreshTokenExpiresInSeconds: number): void {
     const encrypted = encrypt(refreshToken, this.encryptionKey);
+    const sealedRealm = this.realmCipher.seal(realmId);
     const now = new Date().toISOString();
     const refreshTokenExpiresAt = new Date(Date.now() + refreshTokenExpiresInSeconds * 1000).toISOString();
     this.db
       .prepare(
-        `INSERT INTO connections (realm_id, environment, company_name, refresh_token_iv, refresh_token_auth_tag, refresh_token_ciphertext, created_at, updated_at, refresh_token_expires_at)
-         VALUES (@realmId, @environment, @companyName, @iv, @authTag, @ciphertext, @now, @now, @refreshTokenExpiresAt)
-         ON CONFLICT(realm_id) DO UPDATE SET
+        `INSERT INTO connections (realm_key, realm_id_iv, realm_id_auth_tag, realm_id_ciphertext, environment, company_name, refresh_token_iv, refresh_token_auth_tag, refresh_token_ciphertext, created_at, updated_at, refresh_token_expires_at)
+         VALUES (@realmKey, @realmIv, @realmAuthTag, @realmCiphertext, @environment, @companyName, @iv, @authTag, @ciphertext, @now, @now, @refreshTokenExpiresAt)
+         ON CONFLICT(realm_key) DO UPDATE SET
            refresh_token_iv = @iv,
            refresh_token_auth_tag = @authTag,
            refresh_token_ciphertext = @ciphertext,
@@ -84,7 +95,10 @@ export class TokenStore {
            refresh_token_expires_at = @refreshTokenExpiresAt`
       )
       .run({
-        realmId,
+        realmKey: this.realmCipher.lookupKey(realmId),
+        realmIv: sealedRealm.iv,
+        realmAuthTag: sealedRealm.authTag,
+        realmCiphertext: sealedRealm.ciphertext,
         environment,
         companyName,
         iv: encrypted.iv,
@@ -97,10 +111,10 @@ export class TokenStore {
 
   getRefreshToken(realmId: string): string | null {
     const row = this.db
-      .prepare<{ realmId: string }, ConnectionRow>(
-        "SELECT * FROM connections WHERE realm_id = @realmId"
+      .prepare<{ realmKey: string }, ConnectionRow>(
+        "SELECT * FROM connections WHERE realm_key = @realmKey"
       )
-      .get({ realmId });
+      .get({ realmKey: this.realmCipher.lookupKey(realmId) });
     if (!row) return null;
     const payload: EncryptedPayload = {
       iv: row.refresh_token_iv,
@@ -112,12 +126,12 @@ export class TokenStore {
 
   getConnection(realmId: string): StoredConnection | null {
     const row = this.db
-      .prepare<{ realmId: string }, ConnectionRow>(
-        "SELECT * FROM connections WHERE realm_id = @realmId"
+      .prepare<{ realmKey: string }, ConnectionRow>(
+        "SELECT * FROM connections WHERE realm_key = @realmKey"
       )
-      .get({ realmId });
+      .get({ realmKey: this.realmCipher.lookupKey(realmId) });
     if (!row) return null;
-    return TokenStore.toStoredConnection(row);
+    return this.toStoredConnection(row);
   }
 
   /**
@@ -130,12 +144,12 @@ export class TokenStore {
    */
   listConnections(): StoredConnection[] {
     const rows = this.db.prepare<[], ConnectionRow>("SELECT * FROM connections ORDER BY updated_at DESC").all();
-    return rows.map(TokenStore.toStoredConnection);
+    return rows.map((row) => this.toStoredConnection(row));
   }
 
-  private static toStoredConnection(row: ConnectionRow): StoredConnection {
+  private toStoredConnection(row: ConnectionRow): StoredConnection {
     return {
-      realmId: row.realm_id,
+      realmId: this.realmCipher.open({ iv: row.realm_id_iv, authTag: row.realm_id_auth_tag, ciphertext: row.realm_id_ciphertext }),
       environment: row.environment,
       companyName: row.company_name,
       createdAt: row.created_at,
@@ -157,17 +171,17 @@ export class TokenStore {
    */
   isWriteEnabled(realmId: string): boolean {
     const row = this.db
-      .prepare<{ realmId: string }, { write_enabled: number }>(
-        "SELECT write_enabled FROM connections WHERE realm_id = @realmId"
+      .prepare<{ realmKey: string }, { write_enabled: number }>(
+        "SELECT write_enabled FROM connections WHERE realm_key = @realmKey"
       )
-      .get({ realmId });
+      .get({ realmKey: this.realmCipher.lookupKey(realmId) });
     return row?.write_enabled === 1;
   }
 
   setWriteEnabled(realmId: string, enabled: boolean): void {
     this.db
-      .prepare("UPDATE connections SET write_enabled = @value, updated_at = @now WHERE realm_id = @realmId")
-      .run({ realmId, value: enabled ? 1 : 0, now: new Date().toISOString() });
+      .prepare("UPDATE connections SET write_enabled = @value, updated_at = @now WHERE realm_key = @realmKey")
+      .run({ realmKey: this.realmCipher.lookupKey(realmId), value: enabled ? 1 : 0, now: new Date().toISOString() });
   }
 
   cacheAccessToken(realmId: string, accessToken: string, expiresInSeconds: number): void {
@@ -206,17 +220,18 @@ export class TokenStore {
   /** Removes every server-side trace of a realm's authorization. */
   deleteConnection(realmId: string): void {
     this.accessTokenCache.delete(realmId);
+    const realmKey = this.realmCipher.lookupKey(realmId);
     this.db.transaction(() => {
-      this.db.prepare("DELETE FROM sessions WHERE realm_id = @realmId").run({ realmId });
-      this.db.prepare("DELETE FROM connections WHERE realm_id = @realmId").run({ realmId });
+      this.db.prepare("DELETE FROM sessions WHERE realm_key = @realmKey").run({ realmKey });
+      this.db.prepare("DELETE FROM connections WHERE realm_key = @realmKey").run({ realmKey });
     })();
   }
 
   recordHealthCheck(realmId: string, status: string, at: string): void {
     this.db
       .prepare(
-        "UPDATE connections SET last_health_check_at = @at, last_health_check_status = @status WHERE realm_id = @realmId"
+        "UPDATE connections SET last_health_check_at = @at, last_health_check_status = @status WHERE realm_key = @realmKey"
       )
-      .run({ realmId, status, at });
+      .run({ realmKey: this.realmCipher.lookupKey(realmId), status, at });
   }
 }

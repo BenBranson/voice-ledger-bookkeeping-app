@@ -24,8 +24,9 @@ describe("SessionStore", () => {
 
   beforeEach(() => {
     db = openDatabase(TEST_DB_PATH);
-    store = new SessionStore(db);
-    tokenStore = new TokenStore(db, randomBytes(32));
+    const key = randomBytes(32);
+    store = new SessionStore(db, key);
+    tokenStore = new TokenStore(db, key);
   });
 
   afterEach(() => {

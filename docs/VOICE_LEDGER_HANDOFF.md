@@ -1194,3 +1194,16 @@ Both are coherent. They are not two implementations of the same idea — they ar
 Every design decision in this document traces back to one asymmetry: **this app's user is still building the judgment that other tools assume he already has.** That is why green means verified, why the AI never computes, why nothing writes without review, why a Type C page is a legitimate page, and why Training Mode exists.
 
 Do not optimize that away in the name of automation.
+
+---
+
+## 2026-09-29 — Owner decisions on the "audit/cleanup/close engine" feature list, and QBO production checklist status
+
+The owner supplied an external feature list (Tier 1–3: sanity checks, scope scorer, close checklist + workpapers, ReCat exporter, flux/KPI alerts, stale-feed sentinel) with the instruction "don't take away from the app we have already built." Four points conflicted with earlier decisions in this file; the owner decided each explicitly:
+
+1. **Duplicates — middle ground, NOT fuzzy.** Add a lower-confidence near-duplicate tier: ±5-day window, payee names matched after normalization (case, punctuation, whitespace, Inc/LLC-style suffixes) — the same normalized-exact posture as `VL-DUP-VEND-001`. **True typo-tolerant fuzzy matching remains rejected** (false-positive risk). Existing exact duplicate rules are unchanged.
+2. **Ask My Accountant / suspense / clearing accounts — seed the SANDBOX to prove them first** (rule 6), then build. Never production.
+3. **Multi-month history — build real multi-month loading** so the scope score, 90-day uncleared items, and 3-month trailing flux use real data, not the single fixed period.
+4. **Realm IDs encrypted at rest in the backend** (Intuit assessment item). Done: `backend/src/auth/realmCipher.ts` — AES-256-GCM ciphertext + keyed-HMAC `realm_key` lookup; one-time in-place migration `migrateRealmEncryption` (live DB migrated 2026-09-29, backup in `backend/data/backups/`). Desktop per-client folders deliberately still use plain realm IDs (owner chose backend-only). Backend log lines still carry realmId.
+
+**QBO production checklist status (2026-09-29):** token rotation persisted on every refresh ✓ · refresh tokens AND realm IDs encrypted at rest ✓ · 429 exponential backoff honoring Retry-After + 10-concurrent-per-realm cap in `QBOClient.send` ✓ · realmId partitioning ✓ (pre-existing) · SyncToken checked on the one write ✓ (pre-existing) · in-app Disconnect: `POST /realms/:realmId/disconnect` revokes at Intuit, deletes tokens + sessions; Connection page button also deletes the local client store ✓ (not clicked live — would revoke the only sandbox connection).

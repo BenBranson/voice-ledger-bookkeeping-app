@@ -61,7 +61,7 @@ function main(): void {
 
   const db = openDatabase(appConfig.sqlitePath);
   const tokenStore = new TokenStore(db, appConfig.tokenEncryptionKey);
-  const sessionStore = new SessionStore(db);
+  const sessionStore = new SessionStore(db, appConfig.tokenEncryptionKey);
   const qboClient = new QBOClient(qboCredentials, tokenStore);
   const aiSettingsStore = new AISettingsStore(db);
   const limiter = new RateLimiter();

@@ -29,8 +29,9 @@ describe("QBO production checklist", () => {
 
   beforeEach(() => {
     db = openDatabase(TEST_DB_PATH);
-    tokenStore = new TokenStore(db, randomBytes(32));
-    sessionStore = new SessionStore(db);
+    const key = randomBytes(32);
+    tokenStore = new TokenStore(db, key);
+    sessionStore = new SessionStore(db, key);
     tokenStore.saveRefreshToken("realm-a", "sandbox", "A Co", "refresh-a", 8_640_000);
     tokenStore.saveRefreshToken("realm-b", "sandbox", "B Co", "refresh-b", 8_640_000);
     tokenStore.cacheAccessToken("realm-a", "access-a", 3600);

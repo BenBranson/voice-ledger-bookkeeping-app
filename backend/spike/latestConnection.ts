@@ -18,20 +18,17 @@
 import "dotenv/config";
 import { resolveAppConfig } from "../src/config.js";
 import { openDatabase } from "../src/db/sqlite.js";
+import { TokenStore } from "../src/auth/tokenStore.js";
 
 const appConfig = resolveAppConfig();
 const db = openDatabase(appConfig.sqlitePath);
 
-const row = db
-  .prepare<[], { realm_id: string; environment: string }>(
-    "SELECT realm_id, environment FROM connections ORDER BY updated_at DESC LIMIT 1"
-  )
-  .get();
+const latest = new TokenStore(db, appConfig.tokenEncryptionKey).listConnections()[0];
 
-if (!row) {
+if (!latest) {
   process.stderr.write("No connected company found.\n");
   process.exit(1);
 }
 
-process.stdout.write(`${row.realm_id}\n${row.environment}\n`);
+process.stdout.write(`${latest.realmId}\n${latest.environment}\n`);
 db.close();

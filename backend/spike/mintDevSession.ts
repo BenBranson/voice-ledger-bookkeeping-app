@@ -49,7 +49,7 @@ if (!connection) {
   process.exit(1);
 }
 
-const sessionStore = new SessionStore(db);
+const sessionStore = new SessionStore(db, appConfig.tokenEncryptionKey);
 const token = sessionStore.create(realmId);
 writeFileSync(outputPath, token, { mode: 0o600 });
 

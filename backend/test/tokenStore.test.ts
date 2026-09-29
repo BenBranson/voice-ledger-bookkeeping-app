@@ -37,7 +37,7 @@ describe("TokenStore", () => {
     store.saveRefreshToken("123456", "sandbox", null, "super-secret-refresh-token", REFRESH_TOKEN_TTL_SECONDS);
     const row = db
       .prepare<unknown[], { refresh_token_ciphertext: string }>(
-        "SELECT refresh_token_ciphertext FROM connections WHERE realm_id = '123456'"
+        "SELECT refresh_token_ciphertext FROM connections"
       )
       .get();
     expect(row?.refresh_token_ciphertext).toBeDefined();
@@ -147,5 +147,67 @@ describe("TokenStore", () => {
     const second = store.getConnection("123456")?.refreshTokenExpiresAt;
     expect(second).not.toBe(first);
     expect(new Date(second!).getTime()).toBeGreaterThan(new Date(first!).getTime());
+  });
+});
+
+describe("Realm ID encryption at rest", () => {
+  const MIGRATION_DB_PATH = "./test/.tmp/realm-migration-test.sqlite";
+  const key = randomBytes(32);
+
+  afterEach(() => {
+    for (const suffix of ["", "-wal", "-shm"]) {
+      const path = MIGRATION_DB_PATH + suffix;
+      if (existsSync(path)) unlinkSync(path);
+    }
+  });
+
+  it("never writes a plaintext realm ID into connections or sessions", async () => {
+    const db = openDatabase(MIGRATION_DB_PATH);
+    const store = new TokenStore(db, key);
+    store.saveRefreshToken("9341456442848752", "sandbox", "Co", "rt", 8_640_000);
+    const { SessionStore } = await import("../src/auth/session.js");
+    new SessionStore(db, key).create("9341456442848752");
+    const dump = JSON.stringify([
+      db.prepare("SELECT * FROM connections").all(),
+      db.prepare("SELECT * FROM sessions").all()
+    ]);
+    expect(dump).not.toContain("9341456442848752");
+    expect(store.listConnections()[0]?.realmId).toBe("9341456442848752");
+    db.close();
+  });
+
+  it("migrates a plaintext-realm database in place, keeping tokens, settings, and live sessions", async () => {
+    const Database = (await import("better-sqlite3")).default;
+    const { encrypt } = await import("../src/auth/crypto.js");
+    const { SessionStore } = await import("../src/auth/session.js");
+    const { createHash } = await import("node:crypto");
+    const legacy = new Database(MIGRATION_DB_PATH);
+    legacy.exec(`
+      CREATE TABLE connections (realm_id TEXT PRIMARY KEY, environment TEXT NOT NULL, company_name TEXT,
+        refresh_token_iv TEXT NOT NULL, refresh_token_auth_tag TEXT NOT NULL, refresh_token_ciphertext TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, last_health_check_at TEXT, last_health_check_status TEXT,
+        write_enabled INTEGER NOT NULL DEFAULT 0, refresh_token_expires_at TEXT);
+      CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, realm_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+        FOREIGN KEY (realm_id) REFERENCES connections(realm_id));
+      CREATE INDEX idx_sessions_realm ON sessions(realm_id);
+    `);
+    const rt = encrypt("legacy-refresh-token", key);
+    legacy.prepare(`INSERT INTO connections VALUES ('555', 'sandbox', 'Legacy Co', ?, ?, ?, 't0', 't1', NULL, NULL, 1, NULL)`)
+      .run(rt.iv, rt.authTag, rt.ciphertext);
+    const sessionToken = "legacy-session-token";
+    const tokenHash = createHash("sha256").update(sessionToken).digest("hex");
+    legacy.prepare("INSERT INTO sessions VALUES (?, '555', 't0', ?)").run(tokenHash, new Date(Date.now() + 3_600_000).toISOString());
+    legacy.close();
+
+    const db = openDatabase(MIGRATION_DB_PATH);
+    const store = new TokenStore(db, key);
+    expect(store.getRefreshToken("555")).toBe("legacy-refresh-token");
+    expect(store.isWriteEnabled("555")).toBe(true);
+    expect(store.getConnection("555")?.companyName).toBe("Legacy Co");
+    expect(new SessionStore(db, key).validate(sessionToken)?.realmId).toBe("555");
+    expect(JSON.stringify(db.prepare("SELECT * FROM connections").all())).not.toContain('"555"');
+    new TokenStore(db, key);
+    expect(store.listConnections()).toHaveLength(1);
+    db.close();
   });
 });

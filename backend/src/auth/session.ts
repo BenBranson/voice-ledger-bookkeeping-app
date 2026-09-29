@@ -19,6 +19,8 @@
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import type Database from "better-sqlite3";
 import { logEvent } from "../logging/logger.js";
+import { RealmCipher } from "./realmCipher.js";
+import { migrateRealmEncryption } from "../db/sqlite.js";
 
 const SESSION_TOKEN_BYTES = 32;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours — Phase 1 dev-flow value; revisit for real usage patterns
@@ -33,7 +35,15 @@ function hashToken(token: string): string {
 }
 
 export class SessionStore {
-  constructor(private readonly db: Database.Database) {}
+  private readonly realmCipher: RealmCipher;
+
+  constructor(
+    private readonly db: Database.Database,
+    encryptionKey: Buffer
+  ) {
+    this.realmCipher = new RealmCipher(encryptionKey);
+    migrateRealmEncryption(db, this.realmCipher);
+  }
 
   /**
    * Issues a session bound to exactly one realm.
@@ -48,11 +58,11 @@ export class SessionStore {
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
     this.db
       .prepare(
-        "INSERT INTO sessions (token_hash, realm_id, created_at, expires_at) VALUES (@tokenHash, @realmId, @createdAt, @expiresAt)"
+        "INSERT INTO sessions (token_hash, realm_key, created_at, expires_at) VALUES (@tokenHash, @realmKey, @createdAt, @expiresAt)"
       )
       .run({
         tokenHash: hashToken(token),
-        realmId,
+        realmKey: this.realmCipher.lookupKey(realmId),
         createdAt: now.toISOString(),
         expiresAt: expiresAt.toISOString()
       });
@@ -69,8 +79,10 @@ export class SessionStore {
   validate(token: string): Session | null {
     const tokenHash = hashToken(token);
     const row = this.db
-      .prepare<{ tokenHash: string }, { realm_id: string; expires_at: string }>(
-        "SELECT realm_id, expires_at FROM sessions WHERE token_hash = @tokenHash"
+      .prepare<{ tokenHash: string }, { realm_id_iv: string; realm_id_auth_tag: string; realm_id_ciphertext: string; expires_at: string }>(
+        `SELECT c.realm_id_iv, c.realm_id_auth_tag, c.realm_id_ciphertext, s.expires_at
+         FROM sessions s JOIN connections c ON c.realm_key = s.realm_key
+         WHERE s.token_hash = @tokenHash`
       )
       .get({ tokenHash });
 
@@ -79,13 +91,14 @@ export class SessionStore {
       return null;
     }
 
+    const realmId = this.realmCipher.open({ iv: row.realm_id_iv, authTag: row.realm_id_auth_tag, ciphertext: row.realm_id_ciphertext });
     const expiresAt = new Date(row.expires_at);
     if (expiresAt.getTime() <= Date.now()) {
-      logEvent("session_rejected", { realmId: row.realm_id });
+      logEvent("session_rejected", { realmId });
       return null;
     }
 
-    return { realmId: row.realm_id, expiresAt };
+    return { realmId, expiresAt };
   }
 }
 
