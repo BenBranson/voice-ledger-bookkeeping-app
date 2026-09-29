@@ -46,11 +46,13 @@ public enum CleanupCategory: String, CaseIterable, Sendable {
         "VL-REPORT-TIE-001": .balanceSheetIntegrity,
         "VL-CLOSED-PERIOD-DRIFT-001": .balanceSheetIntegrity,
         "VL-BS-DRCR-001": .balanceSheetIntegrity,
+        "VL-BS-EQUITY-DR-001": .balanceSheetIntegrity,
 
         "VL-DUP-VEND-001": .duplicatesAndUnresolvedItems,
         "VL-DUP-BILL-001": .duplicatesAndUnresolvedItems,
         "VL-DUP-INV-001": .duplicatesAndUnresolvedItems,
         "VL-DUP-PAY-001": .duplicatesAndUnresolvedItems,
+        "VL-DUP-NEAR-001": .duplicatesAndUnresolvedItems,
         "VL-VENDCREDIT-UNAPPLIED-001": .duplicatesAndUnresolvedItems,
         "VL-PERIOD-CLOSED-001": .duplicatesAndUnresolvedItems,
         "VL-TRANSPOSITION-001": .duplicatesAndUnresolvedItems,

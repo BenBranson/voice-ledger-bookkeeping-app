@@ -156,7 +156,7 @@ public enum ReportTieOutRule: Rule {
             )],
             proposedActions: [action],
             provenance: [.qboAPI(readAt: Date())],
-            narrative: "The Balance Sheet's \(accountLabel) balance (\(balanceSheetTotal)) is off by \(exposure) from \(reportLabel)'s total (\(agingGrandTotal)) — something likely posted directly to \(accountLabel) outside the normal invoice/bill flow.",
+            narrative: TranspositionHint.appending(to: "The Balance Sheet's \(accountLabel) balance (\(balanceSheetTotal)) is off by \(exposure) from \(reportLabel)'s total (\(agingGrandTotal)) — something likely posted directly to \(accountLabel) outside the normal invoice/bill flow.", difference: exposure),
             riskIfIgnored: "This \(exposure) stays unexplained by any open invoice or bill on \(reportLabel) until the direct posting is found and reclassified."
         )
     }

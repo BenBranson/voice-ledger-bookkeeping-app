@@ -104,7 +104,7 @@ public enum ForcedReconciliationRule: Rule {
             evidence: [EvidenceItem(transactionID: discrepancyLineLabel, highlightedFields: ["amount"], fieldValues: ["amount": exposure.description])],
             proposedActions: [action],
             provenance: [.qboAPI(readAt: Date())],
-            narrative: "The Profit & Loss report shows \(exposure) in Reconciliation Discrepancies — a reconciliation was finished with a difference that QBO papered over with an adjustment rather than the underlying cause being found.",
+            narrative: TranspositionHint.appending(to: "The Profit & Loss report shows \(exposure) in Reconciliation Discrepancies — a reconciliation was finished with a difference that QBO papered over with an adjustment rather than the underlying cause being found.", difference: exposure),
             riskIfIgnored: "This \(exposure) will keep sitting in Reconciliation Discrepancies (Other Expenses) instead of wherever it actually belongs until the real cause is found and corrected."
         )
         return .findings([finding])

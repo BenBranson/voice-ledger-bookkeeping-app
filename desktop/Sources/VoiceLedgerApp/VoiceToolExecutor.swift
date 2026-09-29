@@ -372,7 +372,7 @@ extension VoiceEngine {
 
     private static func ruleIDs(for category: String) -> Set<String>? {
         switch category {
-        case "duplicates": return ["VL-DUP-EXP-001", "VL-DUP-EXP-002", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001"]
+        case "duplicates": return ["VL-DUP-NEAR-001", "VL-DUP-EXP-001", "VL-DUP-EXP-002", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001"]
         case "miscategorized_or_uncategorized": return ["VL-CAT-MISCODE-001", "VL-CAT-UNCAT-001"]
         case "personal_expense": return ["VL-PERSONAL-001"]
         case "negative_balance": return ["VL-BS-NEGBAL-001"]

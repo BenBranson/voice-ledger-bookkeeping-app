@@ -168,7 +168,9 @@ public enum RuleRegistry {
         BankTransferMiscodedRule.self,
         LoanPaymentLumpSumRule.self,
         MissingPayeeRule.self,
-        TransactionAmountTranspositionRule.self
+        TransactionAmountTranspositionRule.self,
+        NearDuplicateTransactionRule.self,
+        EquityDebitBalanceRule.self
     ]
 
     public static func rules(for page: WorkflowPage) -> [any Rule.Type] {

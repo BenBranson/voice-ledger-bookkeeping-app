@@ -134,7 +134,7 @@ public enum BankReconciliationDriftRule: Rule {
                 )],
                 proposedActions: [action],
                 provenance: [.importedFile(documentID: "bank-statement-\(snapshot.accountID)", importedAt: snapshot.importedAt, extractionMethod: .deterministicParse, coverage: .complete)],
-                narrative: "\(account.name)'s current QBO balance (\(account.currentBalance)) is off by \(exposure) from the \(snapshot.statedEndingBalance) ending balance stated on the bank statement imported for \(asOfText).",
+                narrative: TranspositionHint.appending(to: "\(account.name)'s current QBO balance (\(account.currentBalance)) is off by \(exposure) from the \(snapshot.statedEndingBalance) ending balance stated on the bank statement imported for \(asOfText).", difference: exposure),
                 riskIfIgnored: "This gap stays unexplained — either as genuine later activity or as a real missing/duplicate/miscoded transaction — until someone runs QBO's own Reconcile tool against the same statement."
             ))
         }
