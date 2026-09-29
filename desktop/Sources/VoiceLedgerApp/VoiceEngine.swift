@@ -485,6 +485,7 @@ public final class VoiceEngine: NSObject {
     }
 
     private func processCommand(_ text: String) async {
+        syncCurrentEntityWithScreen()
         let intent = VoiceIntentRouter.match(text: text, context: context)
         let turn = await resolveTurn(for: intent, rawText: text)
 
@@ -708,7 +709,7 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: "We haven't looked at anything specific yet this session.")
 
         case .explainCurrent:
-            return await explainCurrentEntity()
+            return await explainCurrentEntity(rawText: rawText)
 
         case .confirmPending:
             return await resolvePendingAction(approved: true)
@@ -782,10 +783,24 @@ public final class VoiceEngine: NSObject {
     /// finding's own already-computed fields via `AskAIContext.compose`,
     /// the exact same call `FindingDetailView`'s on-screen Ask AI panel
     /// makes. No new reasoning path, no new prompt.
-    private func explainCurrentEntity() async -> VoiceTurn {
+    /// The screen is the source of truth for "this": a finding the user
+    /// clicked open themselves must count, and one voice opened earlier
+    /// must stop counting once they've navigated away.
+    private func syncCurrentEntityWithScreen() {
+        switch appState.screen {
+        case .detail(let findingID), .procedure(let findingID, _):
+            if context.currentEntity?.id != findingID, let finding = appState.finding(id: findingID) {
+                context = context.viewingEntity(VoiceEntityRef(type: .finding, id: finding.id, label: finding.title))
+            }
+        default:
+            context.currentEntity = nil
+        }
+    }
+
+    private func explainCurrentEntity(rawText: String) async -> VoiceTurn {
         guard let entityRef = context.currentEntity, entityRef.type == .finding,
               let finding = appState.finding(id: entityRef.id) else {
-            return VoiceTurn(speech: "I don't have a specific finding open right now. Open one first, or ask me to start a review.")
+            return await handleWithTools(rawText: rawText)
         }
         let contextText = AskAIContext.compose(finding: finding)
         // Asks for the reason AND a recommendation together (real,
