@@ -171,6 +171,16 @@ public struct FirmCockpitView: View {
                     metric(label: "Urgent", value: "\(summary.urgentFindingsCount)", emphasize: summary.urgentFindingsCount > 0)
                     metric(label: "Checklist", value: "\(summary.checklistCompleted)/\(summary.checklistTotal)", emphasize: false)
                     metric(label: "Statement lines imported", value: "\(summary.importedStatementLineCount)", emphasize: false)
+                    metric(label: "Stale bank feeds", value: summary.staleBankFeeds.map { "\($0.count)" } ?? "—", emphasize: (summary.staleBankFeeds?.count ?? 0) > 0)
+                }
+                if let stale = summary.staleBankFeeds, !stale.isEmpty, let asOf = summary.staleBankFeedsAsOf {
+                    Text("No postings in 5+ days as of \(asOf.formatted): \(stale.joined(separator: ", ")) — check the bank feed connection in QBO.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.orange)
+                } else if summary.staleBankFeeds == nil {
+                    Text("Stale-feed check needs this client's history — load it on Client Diagnostics.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
                 }
 
                 HStack {

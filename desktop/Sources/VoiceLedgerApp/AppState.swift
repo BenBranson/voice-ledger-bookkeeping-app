@@ -1061,14 +1061,16 @@ public final class AppState {
                 async let checklistResult = try? clientStore.loadChecklistCompletions()
                 async let importedResult = try? clientStore.loadImportedStatementLines()
                 async let activityResult = try? clientStore.loadActivityLog()
-                let (f, c, imported, activity) = await (findingsResult, checklistResult, importedResult, activityResult)
+                async let historyResult = try? clientStore.loadHistorySnapshot()
+                let (f, c, imported, activity, history) = await (findingsResult, checklistResult, importedResult, activityResult, historyResult)
                 summaries.append(FirmCockpit.summarize(
                     client: connection,
                     findings: f ?? [],
                     checklistCompletions: c ?? [],
                     period: period,
                     importedStatementLineCount: (imported ?? []).count,
-                    activityLog: activity ?? []
+                    activityLog: activity ?? [],
+                    history: history ?? nil
                 ))
             }
             firmCockpitSummaries = summaries

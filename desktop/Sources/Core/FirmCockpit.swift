@@ -56,10 +56,16 @@ public struct ClientCockpitSummary: Identifiable, Sendable {
     public let checklistTotal: Int
     public let importedStatementLineCount: Int
     public let lastLocalActivityAt: Date?
+    /// Bank/card accounts with no posting in 5+ days as of the client's
+    /// last history load; `nil` when no history has been loaded.
+    public let staleBankFeeds: [String]?
+    public let staleBankFeedsAsOf: AccountingDate?
 
     public var id: String { client.id }
 
-    public init(client: ConnectedClient, openFindingsCount: Int, urgentFindingsCount: Int, checklistCompleted: Int, checklistTotal: Int, importedStatementLineCount: Int, lastLocalActivityAt: Date?) {
+    public init(client: ConnectedClient, openFindingsCount: Int, urgentFindingsCount: Int, checklistCompleted: Int, checklistTotal: Int, importedStatementLineCount: Int, lastLocalActivityAt: Date?, staleBankFeeds: [String]? = nil, staleBankFeedsAsOf: AccountingDate? = nil) {
+        self.staleBankFeeds = staleBankFeeds
+        self.staleBankFeedsAsOf = staleBankFeedsAsOf
         self.client = client
         self.openFindingsCount = openFindingsCount
         self.urgentFindingsCount = urgentFindingsCount
@@ -83,7 +89,8 @@ public enum FirmCockpit {
         checklistCompletions: [ChecklistItemCompletion],
         period: AccountingPeriod,
         importedStatementLineCount: Int,
-        activityLog: [ActivityLogEntry]
+        activityLog: [ActivityLogEntry],
+        history: HistorySnapshot? = nil
     ) -> ClientCockpitSummary {
         let openFindings = findings.filter { $0.status == .open }
         let urgentCount = openFindings.filter { $0.severity == .high }.count
@@ -96,7 +103,9 @@ public enum FirmCockpit {
             checklistCompleted: checklistStatus.completed,
             checklistTotal: checklistStatus.total,
             importedStatementLineCount: importedStatementLineCount,
-            lastLocalActivityAt: lastActivity
+            lastLocalActivityAt: lastActivity,
+            staleBankFeeds: history.map { ClientDiagnostics.bankFeedActivity(history: $0, asOf: $0.through).filter(\.isStale).map(\.accountName) },
+            staleBankFeedsAsOf: history?.through
         )
     }
 }
