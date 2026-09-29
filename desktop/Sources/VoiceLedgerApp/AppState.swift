@@ -231,7 +231,41 @@ public final class AppState {
     // codebase (confirmed by search — the bookkeeper always navigated away
     // manually via the sidebar). `.connection` is still one click away in
     // the sidebar's SETUP section, unchanged.
-    public var screen: Screen = .clientDashboard
+    public var screen: Screen = .clientDashboard {
+        didSet {
+            // Remember the page a finding was opened from, so Back returns
+            // there instead of always to Findings (owner bug report 2026-09-29).
+            switch screen {
+            case .detail, .procedure:
+                switch oldValue {
+                case .detail, .procedure: break
+                default: findingReturnScreen = oldValue
+                }
+            default: break
+            }
+        }
+    }
+    /// Where "Back" from a finding goes.
+    public private(set) var findingReturnScreen: Screen = .list
+
+    public func leaveFinding() { screen = findingReturnScreen }
+
+    public var findingReturnLabel: String {
+        switch findingReturnScreen {
+        case .clientDashboard: return "Back to Dashboard"
+        case .cleanupAssessment: return "Back to Cleanup Assessment"
+        case .balanceSheetIntegrity: return "Back to Balance Sheet Integrity"
+        case .chartOfAccountsCleanup: return "Back to Chart of Accounts"
+        case .batchFixes: return "Back to Batch Fixes"
+        case .salesTaxReview: return "Back to Sales Tax Review"
+        case .bankFeedCleanup: return "Back to Bank Feed Cleanup"
+        case .firmCockpit: return "Back to Firm Cockpit"
+        case .closePackage: return "Back to Close Package"
+        case .monthEndClose: return "Back to Month-End Close"
+        case .amountSearch: return "Back to Search"
+        default: return "Back to Findings"
+        }
+    }
     /// Owner directive (2026-09-27): the Intake Questions page's live
     /// draft — bound directly into every text field/toggle on that page,
     /// the same way `PricingCalculatorView` owns its inputs as private
@@ -2194,7 +2228,7 @@ public final class AppState {
             try await work()
             findingActionInFlightIDs.remove(findingID)
             if let screenMatches, screenMatches(screen) {
-                screen = .list
+                screen = findingReturnScreen
             }
         } catch {
             findingActionInFlightIDs.remove(findingID)
@@ -2958,7 +2992,7 @@ public final class AppState {
             // bookkeeper who navigated elsewhere while this awaited would
             // otherwise get yanked back to `.list` with no warning.
             if case .detail(let currentFindingID) = screen, currentFindingID == findingID {
-                screen = .list
+                screen = findingReturnScreen
             }
         } catch {
             // Phase 2 — UNKNOWN. The call threw before any

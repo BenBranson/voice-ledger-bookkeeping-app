@@ -118,6 +118,7 @@ public struct FindingDetailView: View {
     /// "there needs to be a back button in findings especially when
     /// looking at the individual finding screens."
     private let onBack: () -> Void
+    private let backLabel: String
 
     @State private var isConfirmingApplyFix = false
     @State private var isDraftingClientQuestion = false
@@ -178,6 +179,7 @@ public struct FindingDetailView: View {
         clientMessageError: String? = nil,
         onDraftClientMessage: @escaping (String) -> Void = { _ in },
         onBack: @escaping () -> Void = {},
+        backLabel: String = "Back to Findings",
         qboURL: URL? = nil,
         ledgerRows: [GeneralLedgerLine]? = nil,
         isLoadingLedgerRows: Bool = false,
@@ -225,6 +227,7 @@ public struct FindingDetailView: View {
         self.clientMessageError = clientMessageError
         self.onDraftClientMessage = onDraftClientMessage
         self.onBack = onBack
+        self.backLabel = backLabel
     }
 
     public var body: some View {
@@ -233,7 +236,7 @@ public struct FindingDetailView: View {
                 Button(action: onBack) {
                     HStack(spacing: VLSpacing.xxs) {
                         Image(systemName: "chevron.left")
-                        Text("Back to Findings")
+                        Text(backLabel)
                     }
                     .font(VLTypography.label())
                 }
@@ -702,7 +705,7 @@ public struct FindingDetailView: View {
                     .foregroundStyle(VLColor.textMuted)
                 ForEach(finding.evidence, id: \.transactionID) { item in
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                        Text("Transaction \(item.transactionID)")
+                        Text(item.fieldValues["account"].map { "Account: \($0)" } ?? "Transaction \(item.transactionID)")
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
                         // Gauntlet Loop, Gauntlet B (2026-08-23): show the
@@ -756,7 +759,12 @@ public struct FindingDetailView: View {
         switch field {
         case "paymentAccount": return "Payment account"
         case "docNumber": return "Reference number"
-        default: return field.capitalized
+        case "currentBalance": return "Current balance"
+        case "qboCurrentBalance": return "QuickBooks balance"
+        default:
+            // camelCase → "Words like this"
+            let spaced = field.replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression)
+            return spaced.prefix(1).uppercased() + spaced.dropFirst().lowercased()
         }
     }
 
