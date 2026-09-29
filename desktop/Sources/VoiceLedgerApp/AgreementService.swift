@@ -230,26 +230,40 @@ enum AgreementService {
     static func recordReturnedCopy(_ record: AgreementRecord, file: URL) throws -> (AgreementRecord, String) {
         let ext = file.pathExtension.lowercased()
         guard ["pdf", "png", "jpg", "jpeg", "heic"].contains(ext) else { throw Failure(message: "Choose the signed PDF or a photo/scan of the signed agreement.") }
+        var target = record
         var check: String
         if ext == "pdf" {
             guard let doc = PDFDocument(url: file) else { throw Failure(message: "That PDF couldn't be opened.") }
             let text = (doc.string ?? "").uppercased()
-            check = text.contains(record.documentID)
-                ? "Document ID \(record.documentID) found in the returned PDF — it is this version of the agreement."
-                : "Document ID \(record.documentID) was NOT found in the returned PDF. Check that the client signed this version before relying on it."
+            if text.contains(record.documentID) {
+                check = "Document ID \(record.documentID) found in the returned PDF — it is this version of the agreement."
+            } else if let other = loadAll().first(where: { $0.id != record.id && text.contains($0.documentID) }) {
+                // The client signed a different prepared version: file it there.
+                target = other
+                check = "This PDF is Document ID \(other.documentID) (prepared \(other.createdAt.formatted(date: .abbreviated, time: .shortened))), not \(record.documentID), so it was saved to that agreement instead."
+            } else {
+                throw Failure(message: "Not saved. This PDF doesn't contain Document ID \(record.documentID) or any other agreement prepared in Voice Ledger, so it may be a different or edited version. Ask the client to sign the copy you sent.")
+            }
         } else {
             check = "Image received — the document ID can't be checked automatically. Confirm it shows Document ID \(record.documentID)."
         }
-        let fileName = "\(baseName(record.agreement)) (signed by client).\(ext)"
-        let target = folder(record).appending(path: fileName)
-        try? FileManager.default.removeItem(at: target)
-        try FileManager.default.copyItem(at: file, to: target)
-        var updated = record
-        updated.signedFileName = fileName
-        updated.status = .signedCopyReceived
-        updated.events.append(.init(at: Date(), text: "Signed copy received and saved. \(check)"))
-        try upsert(updated)
-        return (updated, check)
+        let fileName = "\(baseName(target.agreement)) (signed by client).\(ext)"
+        let destination = folder(target).appending(path: fileName)
+        try? FileManager.default.removeItem(at: destination)
+        try FileManager.default.copyItem(at: file, to: destination)
+        target.signedFileName = fileName
+        target.status = .signedCopyReceived
+        target.events.append(.init(at: Date(), text: "Signed copy received and saved. \(check)"))
+        try upsert(target)
+        return (target, check)
+    }
+
+    /// Removes an agreement that was never signed (e.g. a draft that was
+    /// never sent). Signed agreements are kept permanently.
+    static func removeUnsigned(_ record: AgreementRecord) throws {
+        guard record.status == .prepared else { throw Failure(message: "Signed agreements are kept and can't be removed.") }
+        try? FileManager.default.removeItem(at: folder(record))
+        try saveAll(loadAll().filter { $0.id != record.id })
     }
 
     // MARK: Email

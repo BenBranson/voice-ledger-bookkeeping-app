@@ -230,6 +230,8 @@ struct EngagementAgreementSheet: View {
                         if let url = AgreementService.signedURL(r) { Button("Open Signed Copy") { NSWorkspace.shared.open(url) } }
                         if r.status == .prepared {
                             Button("Record Signed Copy…") { recordReturned(r) }
+                            Button("Remove") { removeRecord(r) }
+                                .help("Delete this unsigned version (for example, one that was never sent)")
                         } else {
                             Button("Send Signed Copy to Client…") { sendExecuted(r) }
                         }
@@ -294,6 +296,21 @@ struct EngagementAgreementSheet: View {
             let (_, composed) = try AgreementService.sendExecutedCopy(r)
             records = AgreementService.loadAll()
             if !composed { message = "Mail isn't set up on this Mac, so I opened a new email to the client, copied the message text (paste it in), and showed the signed PDF to attach in Finder." }
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func removeRecord(_ r: AgreementRecord) {
+        let alert = NSAlert()
+        alert.messageText = "Remove this unsigned agreement?"
+        alert.informativeText = "Document ID \(r.documentID), prepared \(r.createdAt.formatted(date: .abbreviated, time: .shortened)). Only do this if it was never sent to the client."
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            try AgreementService.removeUnsigned(r)
+            records = AgreementService.loadAll()
         } catch {
             self.error = error.localizedDescription
         }
