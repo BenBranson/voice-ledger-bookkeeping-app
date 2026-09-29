@@ -605,7 +605,13 @@ public final class AppState {
             let newLastReportGeneratedAt = try await store.loadLastReportGeneratedAt()
             let newConversationHistory = try await store.loadAskAIConversationHistory()
             let newHistorySnapshot = try? await store.loadHistorySnapshot()
-            let newCachedSyncedAt = (try? await store.loadFinancialSnapshot())??.syncedAt
+            // Stores written before last-synced-at existed fall back to the
+            // newest QBO read time recorded on the saved findings.
+            let newestFindingRead = newFindings.flatMap(\.provenance).compactMap { provenance -> Date? in
+                if case .qboAPI(let readAt) = provenance { return readAt }
+                return nil
+            }.max()
+            let newCachedSyncedAt = ((try? await store.loadLastSyncedAt()) ?? nil) ?? newestFindingRead
             let newUnreconciledMonths = (try? await store.loadUnreconciledMonths()) ?? 0
             findings = newFindings
             activityLog = newActivityLog
@@ -1806,8 +1812,11 @@ public final class AppState {
             findings = newFindings
             activityLog = newActivityLog
             importedStatementLineCount = importedLines.count
-            lastSyncedAt = Date()
+            let syncedAt = Date()
+            lastSyncedAt = syncedAt
+            cachedSyncedAt = syncedAt
             loadState = .loaded
+            try? await store.saveLastSyncedAt(syncedAt)
         } catch {
             loadState = .failed(error.localizedDescription)
         }

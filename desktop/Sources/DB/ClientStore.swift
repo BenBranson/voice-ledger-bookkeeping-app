@@ -100,6 +100,7 @@ public actor ClientStore {
     /// financial-summary questions without a live backend connection.
     private let financialSnapshotKey = "financial-snapshot"
     private let historySnapshotKey = "history-snapshot"
+    private let lastSyncedAtKey = "last-synced-at"
     private let unreconciledMonthsKey = "diagnostics-unreconciled-months"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
@@ -379,6 +380,14 @@ public actor ClientStore {
 
     public func saveHistorySnapshot(_ snapshot: HistorySnapshot) throws {
         try save(snapshot, key: historySnapshotKey)
+    }
+
+    public func loadLastSyncedAt() throws -> Date? {
+        try load(Date?.self, key: lastSyncedAtKey, default: nil)
+    }
+
+    public func saveLastSyncedAt(_ date: Date) throws {
+        try save(date, key: lastSyncedAtKey)
     }
 
     public func loadUnreconciledMonths() throws -> Int {
