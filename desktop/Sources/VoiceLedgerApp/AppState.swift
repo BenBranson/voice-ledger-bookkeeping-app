@@ -2746,8 +2746,27 @@ public final class AppState {
         }
         isGeneratingMonthlyReport = true
         monthlyReportError = nil
-        monthlyReportStage = "Reading 13 months of reports from QuickBooks…"
         defer { isGeneratingMonthlyReport = false; monthlyReportStage = nil }
+        // A report is only as current as its findings: sync first unless
+        // this session synced in the last 15 minutes (owner request 2026-09-29).
+        if lastSyncedAt.map({ Date().timeIntervalSince($0) > 15 * 60 }) ?? true {
+            monthlyReportStage = "Syncing with QuickBooks first…"
+            let before = lastSyncedAt
+            if isSyncInFlight {
+                for _ in 0..<240 where isSyncInFlight { try? await Task.sleep(for: .milliseconds(500)) }
+            } else {
+                await syncAndEvaluate()
+            }
+            guard let after = lastSyncedAt, after != before else {
+                if case .failed(let reason) = loadState {
+                    monthlyReportError = "Report not generated: the sync with QuickBooks failed (\(reason)). Try Sync on the Dashboard, then generate again."
+                } else {
+                    monthlyReportError = "Report not generated: the sync with QuickBooks didn't finish. Try Sync on the Dashboard, then generate again."
+                }
+                return
+            }
+        }
+        monthlyReportStage = "Reading 13 months of reports from QuickBooks…"
         do {
             let inputs = try await syncClient.loadMonthlyReportInputs(
                 realmID: realmID, period: period,
