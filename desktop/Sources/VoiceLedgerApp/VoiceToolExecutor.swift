@@ -32,9 +32,10 @@ extension VoiceEngine {
             var matchedIDs: [String] = []
             var lines: [String] = []
             for query in queries {
-                if let match = Self.bestMatch(for: query, in: openFindings) {
+                let trimmed = query.trimmingCharacters(in: .whitespaces)
+                if let match = openFindings.first(where: { $0.id == trimmed }) ?? Self.bestMatch(for: query, in: openFindings) {
                     matchedIDs.append(match.id)
-                    lines.append("Found \"\(match.title)\" (severity \(match.severity.rawValue), \(match.dollarExposure.description)) for \"\(query)\".")
+                    lines.append("Found \"\(match.title)\" for \"\(query)\". Full record:\n" + AskAIContext.compose(finding: match))
                 } else {
                     lines.append("No open finding matched \"\(query)\".")
                 }

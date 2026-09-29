@@ -56,28 +56,21 @@ extension VoiceEngine {
         if let activeCompanyName = appState.companyInfo?.companyName {
             context += "\n\nThe ACTIVE client right now is \"\(activeCompanyName)\" — every tool already operates on this client. Mentioning this same name in a question (e.g. \"what's \(activeCompanyName)'s revenue\") is just identifying which client the question is about, NOT a request to switch — do not call switch_client unless the person is clearly asking to change to a DIFFERENT client (e.g. \"switch to X,\" \"the other client,\" \"pull up Y instead\")."
         }
-        var currentFindingIsOpen = false
-        if let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
-            context += "\n\n🔴 THE PERSON CURRENTLY HAS THIS FINDING OPEN ON SCREEN — ANSWER ALL QUESTIONS ABOUT THIS FINDING ONLY:\n" + AskAIContext.compose(finding: finding)
-            currentFindingIsOpen = true
-        }
-        // Owner-reported problem (2026-09-28), continued feedback (2026-09-28):
-        // when a specific finding is open, Moneypenny was still mentioning OTHER
-        // findings and getting confused. When on a finding detail page, ONLY talk
-        // about that finding. When on a list or other page, include all findings
-        // so she can disambiguate by dollar amount/title.
-        if !currentFindingIsOpen {
-            let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
-            if !allOpenFindings.isEmpty {
-                var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS (reference for questions about specific issues):"]
-                for finding in allOpenFindings.prefix(50) {
-                    lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description))")
-                }
-                if allOpenFindings.count > 50 {
-                    lines.append("...and \(allOpenFindings.count - 50) more not listed here")
-                }
-                context += "\n" + lines.joined(separator: "\n")
+        let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
+        if !allOpenFindings.isEmpty {
+            var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS (reference for questions about specific issues):"]
+            for finding in allOpenFindings.prefix(50) {
+                lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description)) [ID: \(finding.id)]")
             }
+            if allOpenFindings.count > 50 {
+                lines.append("...and \(allOpenFindings.count - 50) more not listed here")
+            }
+            context += "\n" + lines.joined(separator: "\n")
+        }
+        // Stated last so it is the most salient: bare "this"/"it" means the
+        // open finding, but a named amount/vendor/title overrides it.
+        if let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
+            context += "\n\n🔴 THE PERSON HAS THIS FINDING OPEN ON SCREEN. \"This,\" \"it,\" and \"this one\" mean THIS finding. If they name a DIFFERENT amount, vendor, or title, that named finding wins — call open_findings with its ID.\n" + AskAIContext.compose(finding: finding)
         }
 
         let decision: (answer: String, toolCalls: [AIToolCall])

@@ -19,7 +19,7 @@ extension VoiceEngine {
 
     Rules:
     - Call a tool whenever the person's request needs one. Do not just describe what you would do — call the tool.
-    - When the person asks about a SPECIFIC finding or transaction by dollar amount, description, or name ("tell me about this $500," "explain the duplicate invoice," "what's the Cool Cars payment"), IMMEDIATELY call `open_findings` with that description. Do not ask for clarification — match against what's on the current page. If only one item matches (e.g., only one $500 finding visible), that's the answer.
+    - When the person asks about a SPECIFIC finding or transaction by dollar amount, description, or name ("tell me about this $500," "explain the duplicate invoice," "what's the Cool Cars payment"), IMMEDIATELY call `open_findings`, passing the exact [ID: ...] of the matching finding from the lists above (match on dollar amount, age, vendor, or title). Only pass a text description if no listed ID fits. Do not ask for clarification — match against what's on the current page. If only one item matches (e.g., only one $500 finding visible), that's the answer.
     - After calling `open_findings`, explain the finding they asked about using the full context that gets injected into your next turn.
     - If a request is genuinely ambiguous with MULTIPLE matches on screen (e.g., "the $500 one" when there are three $500 findings), ask which one. But almost never — be specific and search.
     - Use `search_transactions`, `get_account_balance`, `get_vendor_details`, `get_chart_of_accounts`, and `get_report_summary` to fetch live QuickBooks data on demand — the person might ask about any account, vendor, or report detail you don't have in memory.
@@ -48,7 +48,7 @@ extension VoiceEngine {
                 "queries": .object([
                     "type": .string("array"),
                     "items": .object(["type": .string("string")]),
-                    "description": .string("One description per finding/transaction to open.")
+                    "description": .string("One entry per finding to open: preferably its exact ID from the [ID: ...] tags in context; otherwise a short description.")
                 ])
             ],
             required: ["queries"]
