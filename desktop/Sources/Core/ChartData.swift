@@ -173,10 +173,20 @@ public extension ChartData {
             steps.append(WaterfallStep(id: id, label: label, kind: delta.minorUnits < 0 ? "decrease" : "increase", from: running.majorUnitsDouble, to: next.majorUnitsDouble, valueText: shown.accountingDescription))
             running = next
         }
+        // A reconciliation adjustment is a bookkeeping entry, not spending;
+        // it gets its own step so it isn't read as operating cost.
+        let adjustment = PerformanceAnalysis.adjustments(lines)
+        var operating = summary("Total Expenses", in: lines)
+        var other = summary("Total Other Expenses", in: lines)
+        if adjustment.minorUnits != 0 {
+            if let o = other, o >= adjustment { other = o - adjustment }
+            else if let e = operating { operating = e - adjustment }
+        }
         apply("cogs", "Cost of Goods Sold", summary("Total Cost of Goods Sold", in: lines), sign: -1)
-        apply("expenses", "Operating Expenses", summary("Total Expenses", in: lines), sign: -1)
+        apply("expenses", "Operating Expenses", operating, sign: -1)
         apply("other-income", "Other Income", summary("Total Other Income", in: lines), sign: 1)
-        apply("other-expenses", "Other Expenses", summary("Total Other Expenses", in: lines), sign: -1)
+        apply("other-expenses", "Other Expenses", other, sign: -1)
+        apply("adjustment", "Reconciliation Adjustment", adjustment.minorUnits != 0 ? adjustment : nil, sign: -1)
 
         steps.append(WaterfallStep(id: "net", label: netIncome.minorUnits < 0 ? "Net Loss" : "Net Income", kind: "total", from: 0, to: netIncome.majorUnitsDouble, valueText: netIncome.accountingDescription))
         let reconciles = abs(running.minorUnits - netIncome.minorUnits) <= 1

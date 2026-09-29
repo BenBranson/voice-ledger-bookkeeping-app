@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -312,12 +312,41 @@ case "monthly-report":
     do {
         let client = QBOSyncClient(backend: BackendClient(configuration: try BackendConfiguration.fromEnvironment()))
         let company = try await client.fetchCompanyInfo(realmID: realmID)
-        let inputs = try await client.loadMonthlyReportInputs(realmID: realmID, period: AccountingPeriod(year: year, month: month), clientName: company.companyName, environment: "sandbox", findings: [], coverage: .complete, today: AccountingDate(date: Date()))
+        // Optional 5th argument: a COPY of a client store root (never the
+        // live one), to include its saved findings and activity log.
+        var findings: [Finding] = []
+        var activity: [ActivityLogEntry] = []
+        if arguments.count >= 6 {
+            let store = try ClientStore(realmID: realmID, rootDirectory: URL(fileURLWithPath: arguments[5]))
+            findings = try await store.loadFindings()
+            activity = try await store.loadActivityLog()
+        }
+        var inputs = try await client.loadMonthlyReportInputs(realmID: realmID, period: AccountingPeriod(year: year, month: month), clientName: company.companyName, environment: "sandbox", findings: findings, coverage: .complete, today: AccountingDate(date: Date()))
+        inputs.activityLog = activity
+        inputs.clientQuestions = ClientQuestionDrafter.threads(from: activity)
         let sealed = try MonthlyReportBuilder.build(inputs).sealedJSON()
         try sealed.json.write(to: URL(fileURLWithPath: arguments[4]))
         print("Snapshot \(sealed.snapshotID.prefix(12)) written to \(arguments[4])")
     } catch {
         FileHandle.standardError.write("monthly-report failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
+    }
+
+case "balances-check":
+    // Read-only: each asset/liability account's live CurrentBalance next
+    // to its period-end Balance Sheet amount (sign-convention check).
+    guard arguments.count >= 4, let year = Int(arguments[2]), let month = Int(arguments[3]) else { exit(64) }
+    do {
+        let client = QBOSyncClient(backend: BackendClient(configuration: try BackendConfiguration.fromEnvironment()))
+        let period = AccountingPeriod(year: year, month: month)
+        let data = try await client.sync(realmID: realmID, period: period)
+        let bs = try await client.fetchBalanceSheet(realmID: realmID, period: period)
+        for account in data.accounts where account.accountType.isAssetOrLiability || account.accountType == .equity {
+            let line = bs.first { $0.accountID == account.id && !$0.isSummary }
+            print("\(account.accountType.rawValue.padding(toLength: 22, withPad: " ", startingAt: 0)) \(account.name.padding(toLength: 36, withPad: " ", startingAt: 0)) current=\(account.currentBalance.accountingDescription)  bs=\(line?.amount?.accountingDescription ?? "-")")
+        }
+    } catch {
+        FileHandle.standardError.write("balances-check failed: \(error)\n".data(using: .utf8)!)
         exit(1)
     }
 

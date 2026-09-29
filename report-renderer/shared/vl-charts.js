@@ -379,7 +379,7 @@
         type: "bar",
         barMaxWidth: 34,
         data: b.map(function (x, i) {
-          return { value: x.value, itemStyle: { color: x.category === "overdraft" ? theme.negative : theme.positive, borderRadius: [2, 2, 0, 0] },
+          return { value: x.value, itemStyle: { color: x.category === "overdraft" ? theme.negative : x.category === "credit" ? theme.other : theme.positive, borderRadius: [2, 2, 0, 0] },
                    label: { show: true, position: "top", formatter: x.valueText, color: theme.text, fontSize: 10 } };
         })
       }]
@@ -448,7 +448,7 @@
   function sparklines(data, theme, opts) {
     opts = opts || {};
     const rows = data.rows;
-    const rowH = theme.interactive ? 46 : 34;
+    const rowH = theme.interactive ? 46 : 30;
     const option = Object.assign(base(theme, opts.reducedMotion), {
       grid: [], xAxis: [], yAxis: [], series: [], graphic: [],
       tooltip: tooltip(theme, function (p) {
@@ -473,7 +473,7 @@
       });
       option.graphic.push({ type: "text", left: 4, top: top + (rowH - 16) / 2 - 8, style: { text: r.label, fill: theme.text, fontFamily: theme.font, fontSize: 12, fontWeight: 600 } });
       option.graphic.push({ type: "text", right: 8, top: top + 2, style: { text: r.latestText, fill: theme.text, fontFamily: theme.font, fontSize: 13, fontWeight: 700, textAlign: "right" } });
-      option.graphic.push({ type: "text", right: 8, top: top + (theme.interactive ? 20 : 17), style: { text: r.changeText, fill: color, fontFamily: theme.font, fontSize: 10, textAlign: "right" } });
+      option.graphic.push({ type: "text", right: 8, top: top + (theme.interactive ? 20 : 15), style: { text: r.changeText, fill: color, fontFamily: theme.font, fontSize: 10, textAlign: "right" } });
     });
     return option;
   }

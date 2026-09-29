@@ -91,7 +91,7 @@ enum SampleMonthlyReport {
             line("Net cash provided by investing activities", -4_800, depth: 0, total: true),
             line("Net cash provided by financing activities", -2_625, depth: 0, total: true),
             line("Net cash increase for period", 3_811.18, depth: 0, total: true),
-            line("Cash at end of period", 62_128.45, depth: 0, total: true)
+            line("Cash at end of period", 63_978.45, depth: 0, total: true)
         ]
         func aging(_ label: String, _ c: Double, _ a: Double, _ b: Double, _ d: Double, _ e: Double, total: Bool = false) -> AgingLine {
             AgingLine(label: label, current: usd(c), days1to30: usd(a), days31to60: usd(b), days61to90: usd(d), days91AndOver: usd(e), total: usd(c + a + b + d + e), depth: total ? 0 : 1, isSummary: total)

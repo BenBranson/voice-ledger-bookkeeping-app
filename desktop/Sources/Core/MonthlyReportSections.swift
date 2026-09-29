@@ -43,8 +43,42 @@ public enum MonthlyReportSections {
         report.preparedBy = input.preparedBy
         report.workCompleted = WorkLog.items(activityLog: input.activityLog, findings: input.findings, period: period)
         let workCounts = Dictionary(grouping: report.workCompleted, by: \.status).mapValues(\.count)
-        report.workSummary = [WorkItem.Status.correctedVerified, .awaitingVerification, .awaitingClient, .notAnError].map {
-            R.Row(label: WorkLog.label($0), valueText: "\(workCounts[$0] ?? 0)", depth: 0, isTotal: false)
+        report.autoClearedCount = WorkLog.autoClearedCount(activityLog: input.activityLog, findings: input.findings, period: period)
+        report.workImpact = WorkLog.impactSummary(report.workCompleted)
+
+        // One authoritative set of open items and one status count.
+        let periodEndLabel = report.meta.balanceDateLabel.replacingOccurrences(of: "Balances as of ", with: "")
+        let openResult = ReportStatus.openItems(findings: input.findings, workItems: report.workCompleted, clientQuestions: input.clientQuestions, balanceSheet: bs, periodEndLabel: periodEndLabel)
+        report.openItems = openResult.items
+        report.droppedAfterPeriod = openResult.droppedAfterPeriod
+        report.statusSummary = ReportStatus.summary(workItems: report.workCompleted, openItems: report.openItems)
+        report.workSummary = report.statusSummary
+        func findingRow(_ item: ReportOpenItem) -> R.FindingRow {
+            R.FindingRow(title: item.title, amountText: item.amountText, detail: item.detail, action: item.action)
+        }
+        report.verifiedFindings = report.openItems.filter { $0.kind == .confirmed }.map(findingRow)
+        report.reviewFindings = report.openItems.filter { $0.kind == .possible }.map(findingRow)
+        let confirmedCount = report.openItems.filter { $0.kind == .confirmed }.count
+        let possibleCount = report.openItems.filter { $0.kind == .possible }.count
+        if report.droppedAfterPeriod > 0 {
+            report.notes.append("\(report.droppedAfterPeriod) balance flag\(report.droppedAfterPeriod == 1 ? "" : "s") from the latest sync \(report.droppedAfterPeriod == 1 ? "is" : "are") left out: the balance was normal at \(periodEndLabel) and only changed afterwards.")
+        }
+        if report.autoClearedCount > 0 {
+            report.notes.append("\(report.autoClearedCount) earlier flag\(report.autoClearedCount == 1 ? "" : "s") stopped appearing on a later sync without a recorded correction; \(report.autoClearedCount == 1 ? "it is" : "they are") not counted as work or as verified corrections.")
+        }
+
+        // Operating result vs the reported result, year to date, cash tie-out.
+        report.performanceBridge = PerformanceAnalysis.bridge(current)
+        let adjustments = PerformanceAnalysis.adjustments(current)
+        let beforeAdjustments = net.map { $0 + adjustments }
+        if let ytd = YearToDate.rows(months: input.monthlyProfitAndLoss, period: period) {
+            report.ytd = ytd.rows
+            report.ytdLabel = ytd.label
+        }
+        report.cashTie = CashTie.rows(balanceSheet: bs, cashFlow: input.cashFlow)?.rows ?? []
+        if adjustments.minorUnits != 0, let before = beforeAdjustments, let i = report.kpis.firstIndex(where: { $0.id == "net" }) {
+            let k = report.kpis[i]
+            report.kpis[i] = R.KPI(id: k.id, label: k.label, valueText: k.valueText, comparisonText: k.comparisonText, detail: "Before the \(adjustments.accountingDescription) reconciliation adjustment: \(before.accountingDescription)", isNegative: k.isNegative)
         }
 
         // Expense changes vs last month, matched by account ID.
@@ -102,22 +136,28 @@ public enum MonthlyReportSections {
         // Health check.
         var health: [R.HealthCheck] = []
         func check(_ area: String, _ question: String, _ kind: String, _ detail: String) {
-            let status = kind == "stable" ? "Stable" : kind == "attention" ? "Needs attention" : "Insufficient information"
+            let status = kind == "stable" ? "Stable" : kind == "attention" ? "Needs attention" : kind == "low" ? "Needs attention" : "Insufficient information"
             health.append(R.HealthCheck(area: area, question: question, status: status, statusKind: kind, detail: detail))
         }
         let completeMonths = input.monthlyProfitAndLoss.filter { $0.period != period }.suffix(3)
         let trailingNet = completeMonths.map { TaxEstimate.netIncome(from: $0.lines) ?? .zero }.reduce(Money.zero, +)
-        if let net {
+        if let net, adjustments.minorUnits != 0, let before = beforeAdjustments {
+            let nearBreakEven = revenue.map { abs(before.minorUnits) * 20 < $0.minorUnits } ?? false
+            let kind = before.minorUnits < 0 || nearBreakEven ? "attention" : "stable"
+            let describe = before.minorUnits < 0 ? "a loss of \(before.accountingDescription)" : nearBreakEven ? "about break-even (\(before.accountingDescription))" : "a profit of \(before.accountingDescription)"
+            check("Operating result", "Before bookkeeping adjustments, did the business earn more than it spent?", kind,
+                  "\(describe.prefix(1).uppercased() + describe.dropFirst()) in \(month(period)). QuickBooks reports a \(net.minorUnits < 0 ? "net loss" : "net profit") of \(Money(minorUnits: abs(net.minorUnits), currency: .usd).accountingDescription) after a \(adjustments.accountingDescription) reconciliation adjustment still under review.")
+        } else if let net {
             if net.minorUnits < 0 {
-                check("Profitability", "Is the business earning more than it spends?", "attention", "Net loss of \(Money(minorUnits: -net.minorUnits, currency: .usd).accountingDescription) in \(month(period)).")
+                check("Operating result", "Is the business earning more than it spends?", "attention", "Net loss of \(Money(minorUnits: -net.minorUnits, currency: .usd).accountingDescription) in \(month(period)).")
             } else if !completeMonths.isEmpty && trailingNet.minorUnits < 0 {
-                check("Profitability", "Is the business earning more than it spends?", "attention", "Profit of \(net.accountingDescription) this month, but a combined loss of \(trailingNet.accountingDescription) over the prior \(completeMonths.count) months.")
+                check("Operating result", "Is the business earning more than it spends?", "attention", "Profit of \(net.accountingDescription) this month, but a combined loss of \(trailingNet.accountingDescription) over the prior \(completeMonths.count) months.")
             } else {
                 let margin = revenue.map { $0.minorUnits > 0 ? " (\(pct(net, of: $0)) of revenue)" : "" } ?? ""
-                check("Profitability", "Is the business earning more than it spends?", "stable", "Net profit of \(net.accountingDescription)\(margin) in \(month(period)).")
+                check("Operating result", "Is the business earning more than it spends?", "stable", "Net profit of \(net.accountingDescription)\(margin) in \(month(period)).")
             }
         } else {
-            check("Profitability", "Is the business earning more than it spends?", "insufficient", "No Profit & Loss data for \(month(period)).")
+            check("Operating result", "Is the business earning more than it spends?", "insufficient", "No Profit & Loss data for \(month(period)).")
         }
         if let cash {
             if cash.minorUnits < 0 {
@@ -134,29 +174,49 @@ public enum MonthlyReportSections {
         if !input.receivablesLoaded {
             check("Collections", "Are customers paying on time?", "insufficient", "The receivables aging report could not be loaded.")
         } else if let arTotal, let total = arTotal.total, total.minorUnits > 0 {
-            let over60 = (arTotal.days61to90 ?? .zero) + (arTotal.days91AndOver ?? .zero)
-            let over90 = arTotal.days91AndOver ?? .zero
-            let attention = Double(over90.minorUnits) > Double(total.minorUnits) * 0.10 || Double(over60.minorUnits) > Double(total.minorUnits) * 0.20
+            let split = AgingSplit(arTotal)
+            let over90 = max(arTotal.days91AndOver ?? .zero, .zero)
+            let attention = Double(over90.minorUnits) > Double(split.owed.minorUnits) * 0.10 || Double(split.over60Owed.minorUnits) > Double(split.owed.minorUnits) * 0.20
+            let credits = split.credits.minorUnits < 0 ? " (plus \(split.credits.accountingDescription) in customer credits to apply)" : ""
             check("Collections", "Are customers paying on time?", attention ? "attention" : "stable",
-                  "Customers owe \(total.accountingDescription); \(over60.accountingDescription) (\(pct(over60, of: total))) is more than 60 days old.")
+                  "Customers owe \(split.owed.accountingDescription)\(credits); \(split.over60Owed.accountingDescription) (\(pct(split.over60Owed, of: split.owed))) is more than 60 days old.")
         } else {
             check("Collections", "Are customers paying on time?", "stable", "No customer balances are outstanding.")
         }
+        // Reporting confidence: a fixed rule, not a judgment.
+        //   Low     — a tie-out check failed, data is incomplete, or bookkeeping
+        //             adjustments exceed 25% of the month's costs.
+        //   Limited — any confirmed issue, unclassified spending, or adjustment.
+        //   Good    — none of the above.
         let failedChecks = report.checks.filter { !$0.passed }.count
-        let highOpen = open.filter { $0.severity == .high }.count
+        let costs = MonthlyReportBuilder.totalCosts(current) ?? .zero
+        let parked = PerformanceAnalysis.unclassified(current)
+        var reasons: [String] = []
+        if adjustments.minorUnits != 0 { reasons.append("a \(adjustments.accountingDescription) reconciliation adjustment is unexplained") }
+        if confirmedCount > 0 { reasons.append("\(confirmedCount) confirmed issue\(confirmedCount == 1 ? " is" : "s are") open") }
+        if parked.minorUnits != 0 { reasons.append("\(parked.accountingDescription) of spending isn't classified yet") }
+        if failedChecks > 0 { reasons.append("\(failedChecks) tie-out check\(failedChecks == 1 ? "" : "s") failed") }
+        let lowAdjustments = costs.minorUnits > 0 && abs(adjustments.minorUnits) * 4 > costs.minorUnits
         if case .partial = input.coverage {
-            check("Reliable books", "Can these numbers be trusted?", "insufficient", "Some data could not be fully loaded this month; see notes.")
-        } else if failedChecks > 0 || highOpen > 0 {
-            check("Reliable books", "Can these numbers be trusted?", "attention",
-                  [highOpen > 0 ? "\(highOpen) high-priority bookkeeping item\(highOpen == 1 ? "" : "s") still open" : nil, failedChecks > 0 ? "\(failedChecks) reconciliation check\(failedChecks == 1 ? "" : "s") not passed" : nil].compactMap { $0 }.joined(separator: "; ") + ".")
+            report.reportingConfidence = "Insufficient information"
+            check("Reporting confidence", "How far can these numbers be relied on?", "insufficient", "Some data could not be fully loaded this month; see notes.")
+        } else if failedChecks > 0 || lowAdjustments {
+            report.reportingConfidence = "Low"
+            check("Reporting confidence", "How far can these numbers be relied on?", "low", "Low: " + reasons.joined(separator: "; ") + ".")
+        } else if !reasons.isEmpty {
+            report.reportingConfidence = "Limited"
+            check("Reporting confidence", "How far can these numbers be relied on?", "attention", "Limited: " + reasons.joined(separator: "; ") + ".")
         } else {
-            check("Reliable books", "Can these numbers be trusted?", "stable", open.isEmpty ? "All automated checks passed with no open items." : "\(open.count) minor item\(open.count == 1 ? "" : "s") open; totals tie to QuickBooks.")
+            report.reportingConfidence = "Good"
+            check("Reporting confidence", "How far can these numbers be relied on?", "stable", "Good: totals tie to QuickBooks and no confirmed issues are open\(possibleCount > 0 ? " (\(possibleCount) possible issue\(possibleCount == 1 ? "" : "s") to review)" : "").")
         }
         report.healthChecks = health
 
         // Takeaways.
         var takeaways: [String] = []
-        if let net {
+        if let net, adjustments.minorUnits != 0, let before = beforeAdjustments {
+            takeaways.append("QuickBooks shows a \(net.minorUnits < 0 ? "net loss" : "net profit") of \(Money(minorUnits: abs(net.minorUnits), currency: .usd).accountingDescription), but \(adjustments.accountingDescription) of that is a reconciliation adjustment under review — before it, \(month(period)) came out at \(before.accountingDescription).")
+        } else if let net {
             let verb = net.minorUnits < 0 ? "lost \(Money(minorUnits: -net.minorUnits, currency: .usd).accountingDescription)" : "earned a profit of \(net.accountingDescription)"
             let vs = priorNet.map { p -> String in
                 let d = net - p
@@ -174,6 +234,7 @@ public enum MonthlyReportSections {
         if let flagged = health.first(where: { $0.statusKind == "attention" && ($0.area == "Cash & bills" || $0.area == "Collections") }) {
             takeaways.append(flagged.detail)
         } else if (workCounts[.correctedVerified] ?? 0) > 0 {
+            // Only corrections a person made and QuickBooks then confirmed.
             takeaways.append("\(workCounts[.correctedVerified]!) bookkeeping correction\(workCounts[.correctedVerified]! == 1 ? " was" : "s were") completed and verified in QuickBooks.")
         } else if let cash {
             takeaways.append("Bank balances ended the month at \(cash.accountingDescription).")
@@ -188,20 +249,39 @@ public enum MonthlyReportSections {
         // Priorities.
         var priorities: [R.Priority] = []
         let timing = "Before the next monthly close"
+        let dueFormatter = DateFormatter()
+        dueFormatter.locale = Locale(identifier: "en_US")
+        dueFormatter.dateFormat = "MMM d"
+        let thisWeek = "This week (by \(dueFormatter.string(from: input.generatedAt.addingTimeInterval(7 * 86_400))))"
+        if adjustments.minorUnits != 0 {
+            var p = R.Priority(action: "Trace the reconciliation adjustment to the bank statement", owner: "Benjamin", why: "\(adjustments.accountingDescription) of this month's result is an unexplained reconciliation adjustment.", timing: timing)
+            p.impact = "Shows whether the \(net.map { $0.minorUnits < 0 ? "reported loss" : "reported result" } ?? "result") is real"
+            priorities.append(p)
+        }
         if let cashCheck = health.first(where: { $0.area == "Cash & bills" && $0.statusKind == "attention" }) {
-            priorities.append(R.Priority(action: "Plan cash for upcoming bills and payroll", owner: "Kris, with Benjamin", why: cashCheck.detail, timing: "This week"))
+            var p = R.Priority(action: "Plan cash for upcoming bills and payroll", owner: "Kris, with Benjamin", why: cashCheck.detail, timing: thisWeek)
+            p.impact = "Avoid returned payments and overdraft fees"
+            priorities.append(p)
         }
         if health.contains(where: { $0.area == "Collections" && $0.statusKind == "attention" }),
            let oldest = input.agedReceivables.filter({ !$0.isSummary }).max(by: { (($0.days61to90 ?? .zero) + ($0.days91AndOver ?? .zero)).minorUnits < (($1.days61to90 ?? .zero) + ($1.days91AndOver ?? .zero)).minorUnits }) {
             let overdue = (oldest.days61to90 ?? .zero) + (oldest.days91AndOver ?? .zero)
-            priorities.append(R.Priority(action: "Follow up on overdue customer balances, starting with \(oldest.label)", owner: "Kris", why: "\(overdue.accountingDescription) from \(oldest.label) is more than 60 days old.", timing: "This week"))
+            var p = R.Priority(action: "Follow up on overdue customer balances, starting with \(oldest.label)", owner: "Kris", why: "\(overdue.accountingDescription) from \(oldest.label) is more than 60 days old.", timing: thisWeek)
+            p.impact = "Collect up to \(overdue.accountingDescription)"
+            priorities.append(p)
         }
         if !report.questionsForClient.isEmpty {
-            priorities.append(R.Priority(action: "Answer \(report.questionsForClient.count) open bookkeeping question\(report.questionsForClient.count == 1 ? "" : "s")", owner: "Kris", why: "These items can't be finalized without your input.", timing: timing))
+            var p = R.Priority(action: "Answer \(report.questionsForClient.count) open bookkeeping question\(report.questionsForClient.count == 1 ? "" : "s")", owner: "Kris", why: "These items can't be finalized without your input.", timing: timing)
+            p.impact = "Lets these items be finalized"
+            priorities.append(p)
         }
-        for finding in FindingTriage.sorted(open) where priorities.count < 3 {
-            guard let action = finding.proposedActions.first?.title else { continue }
-            priorities.append(R.Priority(action: action, owner: "Benjamin", why: "\(finding.title).", timing: timing))
+        for item in report.openItems where item.kind == .confirmed && priorities.count < 3 {
+            guard let action = item.action, !priorities.contains(where: { $0.action == action }) else { continue }
+            // The adjustment priority above already covers this one.
+            if adjustments.minorUnits != 0 && item.amountText == adjustments.accountingDescription { continue }
+            var p = R.Priority(action: action, owner: "Benjamin", why: "\(item.title).", timing: timing)
+            p.impact = "Makes \(item.amountText) in the books reliable"
+            priorities.append(p)
         }
         report.priorities = Array(priorities.prefix(3))
 
@@ -221,7 +301,14 @@ public enum MonthlyReportSections {
             case (false?, false?): matters = "Both sales and profit were lower than last month."
             default: matters = net.minorUnits < 0 ? "The business spent more than it brought in this month." : "The business covered its costs this month."
             }
-            n["performance"] = R.Narrative(happened: happened, matters: matters, next: report.expenseChanges.isEmpty ? "No single expense category moved enough to single out; keep watching the trend." : "Review the expense categories that changed most (next page).")
+            if adjustments.minorUnits != 0, let before = beforeAdjustments {
+                n["performance"] = R.Narrative(
+                    happened: "Revenue was \(revenue.accountingDescription)\(revChange). Before a \(adjustments.accountingDescription) reconciliation adjustment the month came out at \(before.accountingDescription); after it, QuickBooks reports \(net.accountingDescription).",
+                    matters: "The adjustment is a bookkeeping entry made when a bank reconciliation was closed with a difference, not day-to-day spending. Don't read the reported \(net.minorUnits < 0 ? "loss" : "result") as operating performance until it is traced.",
+                    next: "Benjamin traces the adjustment to the bank statement before the next close; the result is restated if it turns out to be an error.")
+            } else {
+                n["performance"] = R.Narrative(happened: happened, matters: matters, next: report.expenseChanges.isEmpty ? "No single expense category moved enough to single out; keep watching the trend." : "Review the expense categories that changed most (below).")
+            }
         }
         if let exp = report.expenses, let top = exp.allItems.first {
             let change = report.expenseChanges.first
@@ -233,17 +320,18 @@ public enum MonthlyReportSections {
         }
         if let cash {
             let ops = anyLine("Net cash provided by operating activities", input.cashFlow)
-            let happened = "Bank balances ended at \(cash.accountingDescription)." + (ops.map { " Day-to-day operations \($0.minorUnits < 0 ? "used" : "brought in") \(Money(minorUnits: abs($0.minorUnits), currency: .usd).accountingDescription) of cash" + (net.map { ", compared with net \($0.minorUnits < 0 ? "loss" : "profit") of \($0.accountingDescription)." } ?? ".") } ?? "")
+            let happened = "Bank balances ended at \(cash.accountingDescription)." + (ops.map { " Day-to-day operations \($0.minorUnits < 0 ? "used" : "brought in") \(Money(minorUnits: abs($0.minorUnits), currency: .usd).accountingDescription) of cash" + (net.map { ", compared with a net \($0.minorUnits < 0 ? "loss" : "profit") of \(Money(minorUnits: abs($0.minorUnits), currency: .usd).accountingDescription)." } ?? ".") } ?? "")
             n["cash"] = R.Narrative(
                 happened: happened,
                 matters: "Profit and cash differ because of timing: sales not yet collected, bills not yet paid, loan payments, equipment purchases, and owner draws.",
                 next: cash.minorUnits < 0 ? "Bring the overdrawn account back above zero and confirm any transfers that haven't posted." : "Keep enough cash on hand for the bills on the following pages."
             )
         }
-        if let ar = report.receivables, let arTotal {
-            let over60 = (arTotal.days61to90 ?? .zero) + (arTotal.days91AndOver ?? .zero)
+        if report.receivables != nil, let arTotal {
+            let split = AgingSplit(arTotal)
+            let over60 = split.over60Owed
             n["receivables"] = R.Narrative(
-                happened: "Customers owe \(ar.totalText); \(over60.accountingDescription) is more than 60 days old.",
+                happened: "Customers owe \(split.owed.accountingDescription); \(over60.accountingDescription) is more than 60 days old." + (split.credits.minorUnits < 0 ? " Another \(split.credits.accountingDescription) is customer credits or unapplied payments, which lower the net balance to \(split.net.accountingDescription)." : ""),
                 matters: "The older a balance gets, the less likely it is to be collected.",
                 next: over60.minorUnits > 0 ? "Contact the customers with the oldest balances first." : "Collections are current; no follow-up needed."
             )
@@ -257,14 +345,41 @@ public enum MonthlyReportSections {
             )
         }
         if let wc = FinancialKPIs.workingCapital(from: bs) {
+            let equity = summary("Total Equity", bs)
+            let assets = summary("TOTAL ASSETS", bs) ?? summary("Total Assets", bs)
+            let liabilities = summary("Total Liabilities", bs)
+            // Current-asset balances still being investigated.
+            let unsettled = bs.filter { !$0.isSummary && ["suspense", "clearing"].contains(where: $0.label.lowercased().contains) }.compactMap(\.amount).filter { $0.minorUnits > 0 }.reduce(Money.zero, +)
+            var happened = ""
+            if let equity, let assets, let liabilities, equity.minorUnits < 0 {
+                happened = "The business owns \(assets.accountingDescription) and owes \(liabilities.accountingDescription), so owner's equity is negative: \(equity.accountingDescription). "
+            }
+            happened += wc.minorUnits < 0
+                ? "Short-term obligations exceed short-term assets by \(Money(minorUnits: -wc.minorUnits, currency: .usd).accountingDescription)."
+                : "On paper, short-term assets exceed short-term obligations by \(wc.accountingDescription)."
+            var matters: [String] = []
+            if let equity, equity.minorUnits < 0 { matters.append("Negative equity means more has been lost or taken out than was put in; lenders treat it as a warning sign.") }
+            if wc.minorUnits >= 0 && (unsettled.minorUnits > 0 || (cash?.minorUnits ?? 0) < 0) {
+                let parts = [unsettled.minorUnits > 0 ? "counts \(unsettled.accountingDescription) in suspense and clearing balances still under review" : nil, (cash?.minorUnits ?? 0) < 0 ? "the bank accounts are overdrawn" : nil].compactMap { $0 }
+                matters.append((wc - unsettled).minorUnits < 0
+                    ? "The positive working capital depends on balances that aren't settled: it \(parts.joined(separator: ", and ")). It shouldn't be relied on as a cushion yet."
+                    : "Working capital \(parts.joined(separator: ", and ")), so the cushion is thinner than it looks.")
+            } else if wc.minorUnits < 0 {
+                matters.append("The business may need cash from sales, savings, or financing to meet near-term obligations.")
+            } else if matters.isEmpty {
+                matters.append("The business has a cushion to meet near-term obligations.")
+            }
+            let hasBalanceItems = report.openItems.contains { $0.kind == .confirmed }
             n["position"] = R.Narrative(
-                happened: "Short-term assets exceed short-term obligations by \(wc.accountingDescription).".replacingOccurrences(of: "exceed short-term obligations by (", with: "fall short of short-term obligations by ("),
-                matters: wc.minorUnits < 0 ? "The business may need cash from sales, savings, or financing to meet near-term obligations." : "The business has a cushion to meet near-term obligations.",
-                next: "Balances are as of \(report.meta.balanceDateLabel.replacingOccurrences(of: "Balances as of ", with: ""))."
+                happened: happened,
+                matters: matters.joined(separator: " "),
+                next: hasBalanceItems ? "Resolve the confirmed balance-sheet items under Open items so this position can be relied on." : "No action needed; balances are as of \(periodEndLabel)."
             )
         }
         report.narratives = n
-        report.moneyFlow = ChartData.moneyFlow(from: current, hubLabel: "\(month(period)) \(period.year)", topExpenses: 6)
+        // In a loss month the Sankey has to draw the loss as an inflow, which
+        // reads badly; the waterfall tells that story instead.
+        report.moneyFlow = (net?.minorUnits ?? -1) >= 0 ? ChartData.moneyFlow(from: current, hubLabel: "\(month(period)) \(period.year)", topExpenses: 6) : nil
         report.sparklines = ChartData.sparklines(months: input.monthlyProfitAndLoss, monthEndCash: input.monthEndCash)
         if input.agedPayables.isEmpty && !input.payablesLoaded { report.notes.append("The payables aging report could not be loaded, so bills coming due are not shown.") }
         return report

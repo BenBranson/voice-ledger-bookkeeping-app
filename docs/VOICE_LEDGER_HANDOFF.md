@@ -1237,3 +1237,18 @@ The owner supplied an external feature list (Tier 1–3: sanity checks, scope sc
 - **Expense treemap** — `expenseTreemap`. P&L. Sub-accounts nest under parent header rows (these now carry `accountID` from `QBOSyncClient.flatten`). Credits are listed separately, never drawn as area.
 Verified: all five render against real sandbox data (`voiceledger-devtool chart-samples out.json`) with no JS errors; 12-page sample PDF regenerated.
 **Testing hazard:** synthetic clicks from a scratch script land in whatever app is frontmost. Guard every click on `frontmostApplication.bundleIdentifier == "com.voiceledger.app"`.
+
+## 2026-09-29 — Monthly report integrity overhaul (v1.16), from the owner's review of the July sandbox PDF
+
+The review found the report **contradicted itself**, and some of that came from the engine, not the layout:
+- **`VL-BS-NEGBAL-001` had the liability sign backwards** (see 08_RULE_ENGINE.md). QBO `Account.CurrentBalance` reports money owed on liability and credit-card accounts as *negative*. v1.0 flagged every normal loan as "negative liability balance"; the report then listed "Notes Payable negative $25,000" next to a Balance Sheet showing +$25,000. Fixed in v1.1 (the rule version changed, so finding IDs changed).
+- **Balance findings are read "as of the latest sync", but the report is as of period end.** `ReportStatus.openItems` re-checks NEGBAL / OBE / SUSPENSE findings against the period-end Balance Sheet: it drops a finding that wasn't true then (and notes how many it dropped), and restates the amount when it differs (OBE $9,247.50 live vs ($8,337.50) at Jul 31).
+- **"Corrected and verified" was claimed for findings that merely disappeared.** `WorkLog.items` now includes only findings a person acted on. A finding resolved with no human action is only counted (`autoClearedCount`), never treated as work.
+- **One status count used everywhere** (`ReportStatus.summary`): corrected and verified, awaiting verification, awaiting client, confirmed, possible, not an error. "Possible" comes from a fixed list of suspicion rules (duplicates, anomalies, etc.) or from confidence < high. Open items with an identical dollar amount are cross-listed as "likely the same problem".
+- **Operating vs reported result** (`PerformanceAnalysis`): "Reconciliation Discrepancies" is a bookkeeping adjustment and gets its own row and its own waterfall step. "Ask My Accountant" / "Uncategorized Expense" are disclosed as unclassified but kept in costs. The takeaway, health card, KPI detail and page story all lead with the before-adjustment result.
+- **Reporting confidence** is a fixed rule: Low if a tie-out check fails, data is partial, or adjustments exceed 25% of costs; Limited if any confirmed issue, unclassified spending, or adjustment exists; otherwise Good.
+- **Cash tie-out:** bank + Undeposited Funds = the cash-flow statement's ending cash. Verified true in the sandbox ((4,556.78) + 2,862.52 = (1,694.26)). It is also a tie-out check; it caught the fictional sample being inconsistent.
+- **A/R credits:** negative aging buckets are labeled as credits and excluded from "owed" and "over 60 days".
+- **No Sankey chart in loss months**, because it had to draw the loss as an inflow.
+- **Layout:** a 7-page client summary, then an appendix: A work log, B open items, C checks and notes, D statements. Engine text is polished for clients (`ClientText.polish`: `USD 1234.00` → `$1,234.00`, `2026-7-31` → `Jul 31, 2026`). The rules themselves keep the `USD` form because amount search matches it.
+- **Dev tool:** `monthly-report <y> <m> <out> <store-copy-dir>` builds from a COPY of a client store; never point it at the live store. `balances-check <y> <m>` prints live vs period-end balances.

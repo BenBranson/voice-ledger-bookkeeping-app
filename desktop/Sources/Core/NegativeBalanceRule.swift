@@ -5,17 +5,24 @@ import Foundation
 /// docs/backlog/CLEANUP_MODE.md §1 as one of the Cleanup Assessment's own
 /// checks ("Balance sheet: does it balance, are there negative assets").
 ///
-/// A negative balance on an asset or liability account is structurally
-/// abnormal: QBO's `CurrentBalance` shows liabilities as positive-when-owed,
-/// so a negative liability balance means it's been overpaid, and a negative
-/// asset balance means the account is overdrawn. Both are worth a human
+/// A balance on the wrong side of an asset or liability account is
+/// structurally abnormal: a negative asset balance means the account is
+/// overdrawn; a liability that shows a debit balance has been overpaid.
+///
+/// **Sign convention, verified against the sandbox 2026-09-29**
+/// (`voiceledger-devtool balances-check 2026 7`): QBO's `Account.CurrentBalance`
+/// reports liability and credit-card accounts as NEGATIVE when money is
+/// owed (Notes Payable -25,000.00, Loan Payable -4,000.00, Mastercard
+/// -157.72 — all shown positive on the Balance Sheet report). v1.0 assumed
+/// the opposite and flagged every normal liability; v1.1 flags a liability
+/// only when `CurrentBalance > 0`. Both are worth a human
 /// look. Deliberately excludes Equity/Income/Expense — a negative balance
 /// there is unremarkable (an owner's draw can legitimately exceed
 /// contributions) and flagging it would just be noise.
 public enum NegativeBalanceRule: Rule {
     public static let identity = RuleIdentity(
         id: RuleID(rawValue: "VL-BS-NEGBAL-001"),
-        version: RuleVersion(major: 1, minor: 0, patch: 0),
+        version: RuleVersion(major: 1, minor: 1, patch: 0),
         title: "Negative asset or liability balance",
         category: .negativeAssetOrLiabilityBalance,
         ruleClass: .categorization,
@@ -34,7 +41,7 @@ public enum NegativeBalanceRule: Rule {
         var findings: [Finding] = []
 
         for account in candidates {
-            guard account.currentBalance.minorUnits < 0 else { continue }
+            guard isAbnormal(account) else { continue }
             let exposure = Money(minorUnits: abs(account.currentBalance.minorUnits), currency: account.currentBalance.currency)
             guard exposure >= context.materiality.absoluteFloor else { continue }
 
@@ -47,8 +54,7 @@ public enum NegativeBalanceRule: Rule {
             )
             if context.dismissedFindingIDs.contains(findingID) { continue }
 
-            let kind = [.bank, .accountsReceivable, .otherCurrentAsset, .fixedAsset, .otherAsset].contains(account.accountType)
-                ? "asset" : "liability"
+            let kind = isAsset(account.accountType) ? "asset" : "liability"
 
             let procedure = GuidedProcedure(
                 steps: [
@@ -83,18 +89,20 @@ public enum NegativeBalanceRule: Rule {
                 ruleVersion: identity.version,
                 realmID: input.realmID,
                 period: input.period,
-                title: "\(account.name) has a negative \(kind) balance — \(exposure)",
+                title: kind == "asset" ? "\(account.name) is overdrawn — \(exposure)" : "\(account.name) shows more paid than owed — \(exposure)",
                 severity: Severity.derive(dollarExposure: exposure, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: exposure,
                 evidence: [EvidenceItem(
                     transactionID: account.id,
                     highlightedFields: ["currentBalance"],
-                    fieldValues: ["currentBalance": "-\(exposure)", "account": account.name]
+                    fieldValues: ["currentBalance": account.currentBalance.description, "account": account.name]
                 )],
                 proposedActions: [action],
                 provenance: [],
-                narrative: "\(account.name) (a \(kind) account) shows a balance of -\(exposure) — \(kind) balances shouldn't normally go negative in QBO's sign convention.",
+                narrative: kind == "asset"
+                    ? "\(account.name) is below zero by \(exposure) as of the latest sync. An asset account normally can't go below zero; this is usually a real overdraft or a payment recorded before its deposit, and needs review."
+                    : "\(account.name) shows \(exposure) more paid than owed as of the latest sync. This is unusual and needs review — it can be an overpayment, a credit, a misclassified payment, or a missing bill.",
                 riskIfIgnored: "The underlying cause stays uncorrected and \(account.name)'s balance stays wrong until this is investigated — this could be masking a real overdraft, overpayment, or miscoded transaction."
             ))
         }
@@ -109,5 +117,15 @@ public enum NegativeBalanceRule: Rule {
             return .pass(coverage: input.coverage, checkedCount: candidates.count)
         }
         return .findings(findings)
+    }
+
+    static func isAsset(_ type: LedgerAccountType) -> Bool {
+        [.bank, .accountsReceivable, .otherCurrentAsset, .fixedAsset, .otherAsset].contains(type)
+    }
+
+    /// Assets: below zero. Liabilities: above zero in QBO's CurrentBalance
+    /// (which reports money owed as negative — see the type comment).
+    static func isAbnormal(_ account: LedgerAccount) -> Bool {
+        isAsset(account.accountType) ? account.currentBalance.minorUnits < 0 : account.currentBalance.minorUnits > 0
     }
 }

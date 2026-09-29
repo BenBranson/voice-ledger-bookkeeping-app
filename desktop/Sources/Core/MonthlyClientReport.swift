@@ -58,6 +58,9 @@ public struct MonthlyClientReport: Codable, Sendable {
         public let totalText: String
         public let topCustomers: [Row]
         public let note: String
+        /// Credits and unapplied payments (negative buckets), kept apart
+        /// from money owed.
+        public var creditsText: String? = nil
     }
 
     public struct FindingRow: Codable, Sendable {
@@ -75,7 +78,7 @@ public struct MonthlyClientReport: Codable, Sendable {
 
     public let schemaVersion: Int
     public var meta: Meta
-    public let kpis: [KPI]
+    public var kpis: [KPI]
     public let monthOverMonth: [ComparisonRow]
     public let yearOverYear: [ComparisonRow]?
     public let trend: TrendData?
@@ -85,8 +88,8 @@ public struct MonthlyClientReport: Codable, Sendable {
     public let liabilitiesAndEquity: SignedBreakdown?
     public let cash: Cash?
     public let receivables: Receivables?
-    public let verifiedFindings: [FindingRow]
-    public let reviewFindings: [FindingRow]
+    public var verifiedFindings: [FindingRow]
+    public var reviewFindings: [FindingRow]
     public let recommendedActions: [String]
     public let profitAndLossTable: [Row]
     public let balanceSheetTable: [Row]
@@ -107,6 +110,8 @@ public struct MonthlyClientReport: Codable, Sendable {
         public let owner: String
         public let why: String
         public let timing: String
+        public var status = "Open"
+        public var impact = ""
     }
 
     public struct Narrative: Codable, Sendable {
@@ -138,6 +143,19 @@ public struct MonthlyClientReport: Codable, Sendable {
     public var cashFlowStatement: [Row] = []
     public var moneyFlow: MoneyFlowData?
     public var sparklines: SparklineData?
+
+    // Integrity additions (owner review 2026-09-29; MonthlyReportIntegrity.swift).
+    public var openItems: [ReportOpenItem] = []
+    /// The one status count every page uses.
+    public var statusSummary: [Row] = []
+    public var droppedAfterPeriod = 0
+    public var autoClearedCount = 0
+    public var performanceBridge: PerformanceBridge?
+    public var ytd: [ComparativeRow] = []
+    public var ytdLabel: String?
+    public var cashTie: [Row] = []
+    public var workImpact: [WorkImpactRow] = []
+    public var reportingConfidence: String?
 }
 
 public struct MonthlyReportInputs: Sendable {
@@ -276,15 +294,23 @@ public enum MonthlyReportBuilder {
         let arTotal = input.agedReceivables.last { $0.isSummary }
         let receivables: MonthlyClientReport.Receivables? = arTotal.flatMap { total in
             guard let grand = total.total, grand.minorUnits != 0 else { return nil }
+            let split = AgingSplit(total)
             let buckets: [(String, String, Money?)] = [("current", "Current", total.current), ("1-30", "1–30 days", total.days1to30), ("31-60", "31–60 days", total.days31to60), ("61-90", "61–90 days", total.days61to90), ("91+", "91+ days", total.days91AndOver)]
             let customers = input.agedReceivables.filter { !$0.isSummary && ($0.total?.minorUnits ?? 0) != 0 }
                 .sorted { ($0.total?.minorUnits ?? 0) > ($1.total?.minorUnits ?? 0) }.prefix(8)
                 .map { MonthlyClientReport.Row(label: $0.label, valueText: $0.total!.accountingDescription, depth: 0, isTotal: false) }
             return MonthlyClientReport.Receivables(
-                buckets: buckets.map { ChartItem(id: $0.0, accountID: nil, label: $0.1, value: ($0.2 ?? .zero).majorUnitsDouble, valueText: ($0.2 ?? .zero).accountingDescription, category: $0.0 == "91+" ? "overdraft" : "asset") },
+                buckets: buckets.map { id, name, amount in
+                    let value = amount ?? .zero
+                    let isCredit = value.minorUnits < 0
+                    return ChartItem(id: id, accountID: nil, label: isCredit ? "\(name) (credits)" : name, value: value.majorUnitsDouble, valueText: value.accountingDescription, category: isCredit ? "credit" : id == "91+" ? "overdraft" : "asset")
+                },
                 totalText: grand.accountingDescription,
                 topCustomers: Array(customers),
-                note: "Accounts receivable aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected."
+                note: split.credits.minorUnits < 0
+                    ? "Aging as of the report date QuickBooks returned. \(split.credits.accountingDescription) is customer credits or payments not yet applied to an invoice — not money owed. It is netted into the total but excluded from the \"older than 60 days\" figures; it should be applied to an open invoice or refunded. 91+ days is at risk of not being collected."
+                    : "Aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected.",
+                creditsText: split.credits.minorUnits < 0 ? split.credits.accountingDescription : nil
             )
         }
 
@@ -312,6 +338,10 @@ public enum MonthlyReportBuilder {
         if let assets { checks.append(.init(label: "Asset accounts sum to Total Assets", passed: assets.reconciles, detail: "Accounts \(assets.netText) vs reported \(assets.reportedTotalText ?? "not reported")")) }
         if let liabilities { checks.append(.init(label: "Liability and equity accounts sum to Total Liabilities & Equity", passed: liabilities.reconciles, detail: "Accounts \(liabilities.netText) vs reported \(liabilities.reportedTotalText ?? "not reported")")) }
 
+        if let tie = CashTie.rows(balanceSheet: input.balanceSheet, cashFlow: input.cashFlow) {
+            checks.append(.init(label: "Bank balances plus undeposited funds equal the cash-flow statement's ending cash", passed: tie.ties, detail: tie.detail))
+        }
+
         var notes: [String] = []
         notes.append("Accounting basis: \(input.accountingBasis ?? "not stated by QuickBooks") — all periods in this report use the same basis and calendar-month boundaries.")
         if isPartial { notes.append("\(label(input.period)) is still in progress: figures run through \(balanceDate) and will change.") }
@@ -321,7 +351,7 @@ public enum MonthlyReportBuilder {
         if let trend = Optional(ChartData.trend(from: monthly)), !trend.points.isEmpty { notes.append("Trend: \(trend.note)") }
         for check in checks where !check.passed { notes.append("Check not passed — \(check.label): \(check.detail)") }
         if input.environment == "sandbox" { notes.append("Generated from a QuickBooks SANDBOX company, not a real client's books.") }
-        notes.append("Findings come from Voice Ledger's automated checks; items marked \"needs review\" are possible issues, not confirmed errors.")
+        notes.append("Status labels: \"Confirmed issue\" is established directly from the QuickBooks data; \"Possible issue\" is a pattern that often signals an error but isn't established; \"Corrected and verified\" means a person made the correction and a later QuickBooks sync confirms it.")
 
         let pnlTable = pnl.filter { $0.amount != nil }.map { MonthlyClientReport.Row(label: $0.label, valueText: $0.amount!.accountingDescription, depth: $0.depth, isTotal: $0.isSummary) }
         let bsTable = input.balanceSheet.filter { $0.amount != nil }.map { MonthlyClientReport.Row(label: $0.label, valueText: $0.amount!.accountingDescription, depth: $0.depth, isTotal: $0.isSummary) }

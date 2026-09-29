@@ -59,7 +59,7 @@ struct WorkLogAndSectionsTests {
         input.receivablesLoaded = false
         let report = MonthlyReportBuilder.build(input)
         let status = Dictionary(uniqueKeysWithValues: report.healthChecks.map { ($0.area, $0.statusKind) })
-        #expect(status["Profitability"] == "attention")
+        #expect(status["Operating result"] == "attention")
         #expect(status["Cash & bills"] == "attention")
         #expect(status["Collections"] == "insufficient")
         #expect(report.priorities.first?.action == "Plan cash for upcoming bills and payroll")

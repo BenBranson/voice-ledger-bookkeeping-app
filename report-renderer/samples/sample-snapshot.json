@@ -78,6 +78,7 @@
     "reportedTotalText" : "$156,993.85",
     "title" : "Assets"
   },
+  "autoClearedCount" : 0,
   "balanceSheetTable" : [
     {
       "depth" : 3,
@@ -269,7 +270,7 @@
         "depth" : 0,
         "isTotal" : true,
         "label" : "Cash at end of period",
-        "valueText" : "$62,128.45"
+        "valueText" : "$63,978.45"
       }
     ],
     "note" : "Cash movement comes from QuickBooks' Statement of Cash Flows for July 2026 — it differs from profit because of timing (receivables, payables) and non-operating items.",
@@ -304,7 +305,27 @@
       "depth" : 0,
       "isTotal" : true,
       "label" : "Cash at end of period",
+      "valueText" : "$63,978.45"
+    }
+  ],
+  "cashTie" : [
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Bank accounts (Balance Sheet)",
       "valueText" : "$62,128.45"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Undeposited funds (received, not yet deposited)",
+      "valueText" : "$1,850.00"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Cash used in the Statement of Cash Flows",
+      "valueText" : "$63,978.45"
     }
   ],
   "checks" : [
@@ -326,6 +347,11 @@
     {
       "detail" : "Accounts $156,993.85 vs reported $156,993.85",
       "label" : "Liability and equity accounts sum to Total Liabilities & Equity",
+      "passed" : true
+    },
+    {
+      "detail" : "Bank $62,128.45 + undeposited $1,850.00 = cash-flow ending cash $63,978.45",
+      "label" : "Bank balances plus undeposited funds equal the cash-flow statement's ending cash",
       "passed" : true
     }
   ],
@@ -520,6 +546,7 @@
       "priorText" : "$24,014.00"
     }
   ],
+  "droppedAfterPeriod" : 0,
   "expenseChanges" : [
     {
       "changeText" : "+$3,300.00",
@@ -740,7 +767,7 @@
   },
   "healthChecks" : [
     {
-      "area" : "Profitability",
+      "area" : "Operating result",
       "detail" : "Net profit of $22,019.00 (29% of revenue) in July.",
       "question" : "Is the business earning more than it spends?",
       "status" : "Stable",
@@ -761,9 +788,9 @@
       "statusKind" : "stable"
     },
     {
-      "area" : "Reliable books",
-      "detail" : "4 high-priority bookkeeping items still open.",
-      "question" : "Can these numbers be trusted?",
+      "area" : "Reporting confidence",
+      "detail" : "Limited: 2 confirmed issues are open.",
+      "question" : "How far can these numbers be relied on?",
       "status" : "Needs attention",
       "statusKind" : "attention"
     }
@@ -895,13 +922,13 @@
     "clientName" : "Sample Landscaping Co.",
     "environment" : "sample",
     "firmName" : "Benjamin Branson Bookkeeping",
-    "generatedAt" : "2026-09-29T12:17:10Z",
-    "generatedAtLabel" : "September 29, 2026 at 7:17 AM",
+    "generatedAt" : "2026-09-29T13:26:25Z",
+    "generatedAtLabel" : "September 29, 2026 at 8:26 AM",
     "isPartialMonth" : false,
     "isSample" : true,
     "periodKey" : "2026-07",
     "periodLabel" : "July 2026",
-    "snapshotID" : "c7bdcd99a8ee406992ef7362bde46dfc37aaaae61e0619411a03a55d8547f3fb"
+    "snapshotID" : "6e0695327c2594c1d3d10d31908712c7dd12b38028efde0b27ba18954a013306"
   },
   "moneyFlow" : {
     "links" : [
@@ -1106,7 +1133,7 @@
   ],
   "narratives" : {
     "cash" : {
-      "happened" : "Bank balances ended at $62,128.45. Day-to-day operations brought in $11,236.18 of cash, compared with net profit of $22,019.00.",
+      "happened" : "Bank balances ended at $62,128.45. Day-to-day operations brought in $11,236.18 of cash, compared with a net profit of $22,019.00.",
       "matters" : "Profit and cash differ because of timing: sales not yet collected, bills not yet paid, loan payments, equipment purchases, and owner draws.",
       "next" : "Keep enough cash on hand for the bills on the following pages."
     },
@@ -1123,12 +1150,12 @@
     "performance" : {
       "happened" : "Revenue was $75,075.00, up $2,241.00 from June; the month ended with a net profit of $22,019.00.",
       "matters" : "Sales grew but profit fell, so costs rose faster than revenue.",
-      "next" : "Review the expense categories that changed most (next page)."
+      "next" : "Review the expense categories that changed most (below)."
     },
     "position" : {
-      "happened" : "Short-term assets exceed short-term obligations by $76,526.31.",
+      "happened" : "On paper, short-term assets exceed short-term obligations by $76,526.31.",
       "matters" : "The business has a cushion to meet near-term obligations.",
-      "next" : "Balances are as of July 31, 2026."
+      "next" : "Resolve the confirmed balance-sheet items under Open items so this position can be relied on."
     },
     "receivables" : {
       "happened" : "Customers owe $27,915.40; $3,460.00 is more than 60 days old.",
@@ -1139,7 +1166,69 @@
   "notes" : [
     "Accounting basis: Accrual — all periods in this report use the same basis and calendar-month boundaries.",
     "Trend: All loaded months shown.",
-    "Findings come from Voice Ledger's automated checks; items marked \"needs review\" are possible issues, not confirmed errors."
+    "Status labels: \"Confirmed issue\" is established directly from the QuickBooks data; \"Possible issue\" is a pattern that often signals an error but isn't established; \"Corrected and verified\" means a person made the correction and a later QuickBooks sync confirms it."
+  ],
+  "openItems" : [
+    {
+      "action" : "Follow up with the client on the April invoices",
+      "amountText" : "$2,310.00",
+      "detail" : "Two invoices from April remain unpaid.",
+      "findingID" : "s2",
+      "kind" : "confirmed",
+      "related" : [
+
+      ],
+      "tag" : "Confirmed issue",
+      "title" : "Payment from Cedar Park Church is 91+ days past due"
+    },
+    {
+      "action" : "Record or confirm the July 31 funding transfer",
+      "amountText" : "$1,284.10",
+      "detail" : "The payroll account went negative after the July 31 payroll run posted before the funding transfer.",
+      "findingID" : "s1",
+      "kind" : "confirmed",
+      "related" : [
+
+      ],
+      "tag" : "Confirmed issue",
+      "title" : "Payroll Checking is overdrawn — ($1,284.10)"
+    },
+    {
+      "action" : "Ask the client what it was for",
+      "amountText" : "$420.00",
+      "detail" : "An Amazon charge is in Uncategorized Expense.",
+      "findingID" : "s9",
+      "kind" : "awaitingClient",
+      "related" : [
+
+      ],
+      "tag" : "Awaiting client",
+      "title" : "Uncategorized transaction — Amazon, $420.00"
+    },
+    {
+      "action" : "Compare both bills and void the duplicate",
+      "amountText" : "$1,640.00",
+      "detail" : "Two bills for the same amount 3 days apart with slightly different vendor spellings.",
+      "findingID" : "s3",
+      "kind" : "possible",
+      "related" : [
+
+      ],
+      "tag" : "Possible issue",
+      "title" : "Possible duplicate bill — Green Valley Nursery, $1,640.00"
+    },
+    {
+      "action" : "Confirm the July legal invoice is a one-time cost",
+      "amountText" : "$3,300.00",
+      "detail" : "July Professional Fees were $3,750 against a 3-month average of $450.",
+      "findingID" : "s4",
+      "kind" : "possible",
+      "related" : [
+
+      ],
+      "tag" : "Possible issue",
+      "title" : "Professional Fees up sharply vs. trailing average"
+    }
   ],
   "payables" : {
     "buckets" : [
@@ -1244,19 +1333,25 @@
   "priorities" : [
     {
       "action" : "Answer 2 open bookkeeping questions",
+      "impact" : "Lets these items be finalized",
       "owner" : "Kris",
+      "status" : "Open",
       "timing" : "Before the next monthly close",
       "why" : "These items can't be finalized without your input."
     },
     {
       "action" : "Follow up with the client on the April invoices",
+      "impact" : "Makes $2,310.00 in the books reliable",
       "owner" : "Benjamin",
+      "status" : "Open",
       "timing" : "Before the next monthly close",
       "why" : "Payment from Cedar Park Church is 91+ days past due."
     },
     {
       "action" : "Record or confirm the July 31 funding transfer",
+      "impact" : "Makes $1,284.10 in the books reliable",
       "owner" : "Benjamin",
+      "status" : "Open",
       "timing" : "Before the next monthly close",
       "why" : "Payroll Checking is overdrawn — ($1,284.10)."
     }
@@ -1467,7 +1562,7 @@
         "valueText" : "$2,310.00"
       }
     ],
-    "note" : "Accounts receivable aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected.",
+    "note" : "Aging as of the report date QuickBooks returned; 91+ days is at risk of not being collected.",
     "topCustomers" : [
       {
         "depth" : 0,
@@ -1509,6 +1604,7 @@
     "Compare both bills and void the duplicate ($1,640.00)",
     "Confirm the July legal invoice is a one-time cost ($3,300.00)"
   ],
+  "reportingConfidence" : "Limited",
   "reviewFindings" : [
     {
       "action" : "Compare both bills and void the duplicate",
@@ -1669,6 +1765,44 @@
       }
     ]
   },
+  "statusSummary" : [
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Corrected and verified",
+      "valueText" : "3"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Awaiting verification",
+      "valueText" : "0"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Awaiting client",
+      "valueText" : "1"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Confirmed issues open",
+      "valueText" : "2"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Possible issues to review",
+      "valueText" : "2"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Reviewed — not an error",
+      "valueText" : "1"
+    }
+  ],
   "takeaways" : [
     "The business earned a profit of $22,019.00 in July, down $1,995.00 from June.",
     "Professional Fees rose $3,300.00 from June — the biggest change in costs.",
@@ -1795,12 +1929,6 @@
       "amountText" : "$1,284.10",
       "detail" : "The payroll account went negative after the July 31 payroll run posted before the funding transfer.",
       "title" : "Payroll Checking is overdrawn — ($1,284.10)"
-    },
-    {
-      "action" : "Ask the client what it was for",
-      "amountText" : "$420.00",
-      "detail" : "An Amazon charge is in Uncategorized Expense.",
-      "title" : "Uncategorized transaction — Amazon, $420.00"
     }
   ],
   "waterfall" : {
@@ -1860,12 +1988,14 @@
     {
       "action" : "Not an error: new annual contract rate starting July.",
       "affectedPeriodLabel" : "July 2026",
+      "amountMinorUnits" : 18000,
       "amountText" : "$180.00",
       "doneAtLabel" : "Aug 6, 2026",
       "doneBy" : "Benjamin Branson",
       "findingID" : "s8",
       "found" : "Monthly service rose from $240 to $420.",
       "impact" : "No change to the numbers — reviewed and confirmed as valid.",
+      "ruleID" : "VL-VEND-PRICE-001",
       "status" : "notAnError",
       "statusLabel" : "Not an error",
       "title" : "Vendor price increase — Waste Management"
@@ -1873,54 +2003,79 @@
     {
       "action" : "Client Clarification Needed: asked Kris what the Amazon order was for.",
       "affectedPeriodLabel" : "July 2026",
+      "amountMinorUnits" : 42000,
       "amountText" : "$420.00",
       "doneAtLabel" : "Aug 6, 2026",
       "doneBy" : "Benjamin Branson",
       "findingID" : "s9",
       "found" : "An Amazon charge is in Uncategorized Expense.",
       "impact" : "Waiting on the client's answer; numbers unchanged for now.",
+      "ruleID" : "VL-CAT-UNCAT-001",
       "status" : "awaitingClient",
       "statusLabel" : "Awaiting client",
       "title" : "Uncategorized transaction — Amazon, $420.00"
     },
     {
-      "action" : "Reclassified Transaction: Moved to Owner's Draw — personal groceries.",
-      "affectedPeriodLabel" : "July 2026",
-      "amountText" : "$600.00",
-      "doneAtLabel" : "Aug 5, 2026",
-      "doneBy" : "Benjamin Branson",
-      "findingID" : "s7",
-      "found" : "A Costco purchase on the business card looked personal.",
-      "impact" : "Separated $600.00 of owner\/personal activity from business expenses.",
-      "status" : "correctedVerified",
-      "statusLabel" : "Corrected and verified",
-      "title" : "Possible personal expense — Costco, $600.00"
-    },
-    {
       "action" : "Reclassified Transaction: Moved to Materials (COGS) after Kris confirmed it was for the Hillcrest job.",
       "affectedPeriodLabel" : "July 2026",
+      "amountMinorUnits" : 124000,
       "amountText" : "$1,240.00",
       "doneAtLabel" : "Aug 5, 2026",
       "doneBy" : "Benjamin Branson",
       "findingID" : "s6",
       "found" : "A Lowe's purchase was sitting in Uncategorized Expense.",
       "impact" : "Moved $1,240.00 to the correct account; category totals are now accurate. Total profit may be unchanged.",
+      "ruleID" : "VL-CAT-UNCAT-001",
       "status" : "correctedVerified",
       "statusLabel" : "Corrected and verified",
       "title" : "Uncategorized transaction — Lowe's, $1,240.00"
     },
     {
+      "action" : "Reclassified Transaction: Moved to Owner's Draw — personal groceries.",
+      "affectedPeriodLabel" : "July 2026",
+      "amountMinorUnits" : 60000,
+      "amountText" : "$600.00",
+      "doneAtLabel" : "Aug 5, 2026",
+      "doneBy" : "Benjamin Branson",
+      "findingID" : "s7",
+      "found" : "A Costco purchase on the business card looked personal.",
+      "impact" : "Separated $600.00 of owner\/personal activity from business expenses.",
+      "ruleID" : "VL-PERSONAL-001",
+      "status" : "correctedVerified",
+      "statusLabel" : "Corrected and verified",
+      "title" : "Possible personal expense — Costco, $600.00"
+    },
+    {
       "action" : "Corrected in QBO: Voided the hand-entered copy; kept the bank-feed charge.",
       "affectedPeriodLabel" : "July 2026",
+      "amountMinorUnits" : 85000,
       "amountText" : "$850.00",
       "doneAtLabel" : "Aug 4, 2026",
       "doneBy" : "Benjamin Branson",
       "findingID" : "s5",
       "found" : "The same Home Depot charge was entered from the bank feed and by hand.",
       "impact" : "Expenses were overstated by $850.00; removing the duplicate raises reported profit by that amount. No cash was recovered.",
+      "ruleID" : "VL-DUP-EXP-001",
       "status" : "correctedVerified",
       "statusLabel" : "Corrected and verified",
       "title" : "Duplicate expense — Home Depot, $850.00"
+    }
+  ],
+  "workImpact" : [
+    {
+      "activity" : "Duplicate expenses removed",
+      "count" : 1,
+      "effect" : "Reported profit up $850.00; no cash recovered"
+    },
+    {
+      "activity" : "Personal spending separated",
+      "count" : 1,
+      "effect" : "Business expenses down $600.00"
+    },
+    {
+      "activity" : "Transactions moved to the right category",
+      "count" : 1,
+      "effect" : "Category totals accurate; total profit unchanged"
     }
   ],
   "workSummary" : [
@@ -1945,7 +2100,19 @@
     {
       "depth" : 0,
       "isTotal" : false,
-      "label" : "Not an error",
+      "label" : "Confirmed issues open",
+      "valueText" : "2"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Possible issues to review",
+      "valueText" : "2"
+    },
+    {
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Reviewed — not an error",
       "valueText" : "1"
     }
   ],
@@ -1971,5 +2138,36 @@
       "percentText" : "+5.6%",
       "priorText" : "$20,850.00"
     }
-  ]
+  ],
+  "ytd" : [
+    {
+      "currentText" : "$75,075.00",
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Revenue",
+      "priorText" : "$393,863.00"
+    },
+    {
+      "currentText" : "$53,098.00",
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Costs of running the business",
+      "priorText" : "$300,424.00"
+    },
+    {
+      "currentText" : "$0.00",
+      "depth" : 0,
+      "isTotal" : false,
+      "label" : "Bookkeeping adjustments",
+      "priorText" : "$0.00"
+    },
+    {
+      "currentText" : "$22,019.00",
+      "depth" : 0,
+      "isTotal" : true,
+      "label" : "Reported net income",
+      "priorText" : "$93,733.00"
+    }
+  ],
+  "ytdLabel" : "January–July 2026 · 7 of 7 months with recorded activity"
 }

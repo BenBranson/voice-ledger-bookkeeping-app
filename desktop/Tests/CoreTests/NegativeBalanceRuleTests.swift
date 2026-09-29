@@ -28,19 +28,29 @@ struct NegativeBalanceRuleTests {
             return
         }
         #expect(findings[0].confidence == .high)
-        #expect(findings[0].title.contains("asset"))
+        #expect(findings[0].title.contains("overdrawn"))
     }
 
-    @Test("A negative accounts-payable (liability) balance produces a finding")
+    @Test("A normal liability (QBO reports money owed as NEGATIVE CurrentBalance) produces no finding — sandbox-verified 2026-09-29")
+    func normalLiabilityIsNotFlagged() {
+        let notes = LedgerAccount(id: "90", name: "Notes Payable", accountType: .longTermLiability, currentBalance: Money(minorUnits: -2_500_000, currency: .usd))
+        let card = LedgerAccount(id: "41", name: "Mastercard", accountType: .creditCard, currentBalance: Money(minorUnits: -15_772, currency: .usd))
+        guard case .pass = NegativeBalanceRule.evaluate(dataSet([notes, card]), context: context()) else {
+            Issue.record("a liability with money owed is normal and must not be flagged")
+            return
+        }
+    }
+
+    @Test("An overpaid accounts-payable (positive CurrentBalance) produces a finding")
     func negativeLiabilityBalanceProducesFinding() {
-        let ap = LedgerAccount(id: "33", name: "Accounts Payable (A/P)", accountType: .accountsPayable, currentBalance: Money(minorUnits: -171_267, currency: .usd))
+        let ap = LedgerAccount(id: "33", name: "Accounts Payable (A/P)", accountType: .accountsPayable, currentBalance: Money(minorUnits: 171_267, currency: .usd))
         let outcome = NegativeBalanceRule.evaluate(dataSet([ap]), context: context())
 
         guard case .findings(let findings) = outcome, findings.count == 1 else {
             Issue.record("expected one finding")
             return
         }
-        #expect(findings[0].title.contains("liability"))
+        #expect(findings[0].title.contains("more paid than owed"))
     }
 
     @Test("A negative equity balance produces no finding — this rule is scoped to asset/liability only")
