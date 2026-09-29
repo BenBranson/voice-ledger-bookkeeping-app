@@ -1387,6 +1387,8 @@ struct RootView: View {
                     case "resolve-cleanup-assessment": state.screen = .cleanupAssessment
                     case "review-balance-sheet-integrity": state.screen = .balanceSheetIntegrity
                     case "review-bank-feed": state.screen = .bankFeedCleanup
+                    case "clearing-accounts-zeroed", "balance-sheet-tie-out": state.screen = .balanceSheetIntegrity
+                    case "pnl-variance-review": state.screen = .diagnostics
                     default: break
                     }
                 },
@@ -1429,7 +1431,14 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(monthEndCloseAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(monthEndCloseAskAIKey)-claude", contextText: monthEndCloseContext, question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                onExportWorkpaper: { format in
+                    state.exportTable(
+                        MonthEndChecklist.workpaper(completions: state.checklistCompletions, period: state.currentPeriod, currentWatermark: AppState.currentEvidenceWatermark(), companyName: state.companyInfo?.companyName),
+                        format: format,
+                        suggestedFilename: "Close Workpaper \(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))"
+                    )
+                }
             )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1983,7 +1992,8 @@ struct RootView: View {
                         clientQuestionThreads: ClientQuestionDrafter.threads(from: state.activityLog),
                         conversationHistory: state.conversationHistory.sorted { $0.askedAt > $1.askedAt },
                         recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
-                        executiveSummary: executiveSummary
+                        executiveSummary: executiveSummary,
+                        checklistSignOffs: MonthEndChecklist.workpaper(completions: state.checklistCompletions, period: state.currentPeriod, currentWatermark: AppState.currentEvidenceWatermark(), companyName: state.companyInfo?.companyName)
                     )
                     state.exportClosePackagePDF(input)
                 },
@@ -2363,6 +2373,23 @@ struct RootView: View {
                 let c = count(for: ["VL-RECON-MISSING-001", "VL-RECON-AMBIGUOUS-001", "VL-VENDOR-MISMATCH-001"])
                 readyDetail = detail(for: c)
                 openFindingsCount = c
+            case "clearing-accounts-zeroed":
+                let c = count(for: ["VL-BS-SUSPENSE-001", "VL-BS-UNDEP-001"])
+                readyDetail = detail(for: c)
+                openFindingsCount = c
+            case "balance-sheet-tie-out":
+                let c = count(for: ["VL-REPORT-TIE-001", "VL-FORCED-RECON-001"])
+                readyDetail = detail(for: c)
+                openFindingsCount = c
+            case "pnl-variance-review":
+                if state.historySnapshot == nil {
+                    readyDetail = "Load history on Client Diagnostics to see flux alerts."
+                    openFindingsCount = nil
+                } else {
+                    let c = state.fluxAlerts.count
+                    readyDetail = c == 0 ? "No P&L line swung >20% and >$500." : "\(c) flux alert\(c == 1 ? "" : "s") to explain."
+                    openFindingsCount = c
+                }
             default:
                 readyDetail = nil
                 openFindingsCount = nil

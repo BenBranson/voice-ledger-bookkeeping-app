@@ -54,6 +54,8 @@ public enum ClosePackagePDFExporter {
         /// The exporter itself never calls AI or computes anything about
         /// this text; it only lays out whatever string it's handed.
         public let executiveSummary: String?
+        /// Per-step sign-offs (who, when) — the workpaper half of the close.
+        public let checklistSignOffs: ExportTable?
 
         public init(
             companyName: String?,
@@ -75,8 +77,10 @@ public enum ClosePackagePDFExporter {
             clientQuestionThreads: [ClientQuestionDrafter.Thread] = [],
             conversationHistory: [AskAIConversationEntry] = [],
             recentActivity: [ActivityLogEntry],
-            executiveSummary: String? = nil
+            executiveSummary: String? = nil,
+            checklistSignOffs: ExportTable? = nil
         ) {
+            self.checklistSignOffs = checklistSignOffs
             self.companyName = companyName
             self.environment = environment
             self.period = period
@@ -232,6 +236,10 @@ public enum ClosePackagePDFExporter {
 
         sectionHeader("Month-End Checklist")
         bodyLine("\(input.checklistCompleted) of \(input.checklistTotal) steps completed")
+        for row in input.checklistSignOffs?.rows ?? [] where row.count >= 6 {
+            let who = row[3].text.isEmpty ? "" : " — \(row[3].text), \(row[4].text)"
+            bodyLine("\(row[0].text). \(row[1].text): \(row[2].text)\(who)", muted: row[2].text == "Open")
+        }
 
         sectionHeader("Cleanup Assessment")
         bodyLine("\(input.openCleanupCount) open finding\(input.openCleanupCount == 1 ? "" : "s"), \(input.resolvedCleanupCount) resolved this period")

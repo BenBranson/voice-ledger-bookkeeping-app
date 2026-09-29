@@ -89,9 +89,29 @@ public enum MonthEndChecklist {
         ),
         ChecklistItem(
             id: ChecklistItemID(rawValue: "reconcile-bank-accounts"),
-            title: "Reconcile bank and credit card accounts",
+            title: "Bank reconciliation verified",
             description: "Complete reconciliation for every bank and credit card account in QBO — Voice Ledger cannot verify this itself (no reconciliation-completion API); this step is your own attestation.",
             prerequisiteIDs: [ChecklistItemID(rawValue: "review-bank-feed")]
+        ),
+        // Owner-requested close sequence (2026-09-29): bank rec → clearing
+        // zeroed → balance sheet tie-out → P&L variance review.
+        ChecklistItem(
+            id: ChecklistItemID(rawValue: "clearing-accounts-zeroed"),
+            title: "Clearing and suspense accounts zeroed",
+            description: "Every suspense and clearing account (payroll clearing, merchant clearing, suspense) nets to zero, and Undeposited Funds holds only this period's undeposited payments. Voice Ledger flags any that don't (VL-BS-SUSPENSE-001).",
+            prerequisiteIDs: [ChecklistItemID(rawValue: "reconcile-bank-accounts")]
+        ),
+        ChecklistItem(
+            id: ChecklistItemID(rawValue: "balance-sheet-tie-out"),
+            title: "Balance Sheet tie-out",
+            description: "Accounts Receivable and Accounts Payable on the Balance Sheet match their aging report totals, and the Trial Balance is in balance. Voice Ledger flags tie-out differences (VL-REPORT-TIE-001).",
+            prerequisiteIDs: [ChecklistItemID(rawValue: "clearing-accounts-zeroed")]
+        ),
+        ChecklistItem(
+            id: ChecklistItemID(rawValue: "pnl-variance-review"),
+            title: "P&L variance review",
+            description: "Every P&L line that moved more than 20% and $500 against its 3-month trailing average (Client Diagnostics → Flux) is explained or corrected.",
+            prerequisiteIDs: [ChecklistItemID(rawValue: "balance-sheet-tie-out")]
         ),
         ChecklistItem(
             id: ChecklistItemID(rawValue: "set-qbo-closing-date"),
@@ -100,10 +120,31 @@ public enum MonthEndChecklist {
             prerequisiteIDs: [
                 ChecklistItemID(rawValue: "resolve-cleanup-assessment"),
                 ChecklistItemID(rawValue: "review-balance-sheet-integrity"),
-                ChecklistItemID(rawValue: "reconcile-bank-accounts")
+                ChecklistItemID(rawValue: "reconcile-bank-accounts"),
+                ChecklistItemID(rawValue: "pnl-variance-review")
             ]
         )
     ]
+
+    /// The close workpaper (owner request 2026-09-29): every step, who
+    /// signed it off and when, and whether evidence changed since.
+    public static func workpaper(completions: [ChecklistItemCompletion], period: AccountingPeriod, currentWatermark: EvidenceWatermark?, companyName: String?) -> ExportTable {
+        let forPeriod = completions.filter { $0.period == period }
+        let rows: [[ExportCell]] = defaultItems.enumerated().map { index, item in
+            let completion = forPeriod.first { $0.itemID == item.id }
+            let stale = completion.flatMap { c in currentWatermark.map { isStale(c, currentWatermark: $0) } } ?? false
+            return [
+                ExportCell(text: "\(index + 1)"),
+                ExportCell(text: item.title),
+                ExportCell(text: completion == nil ? "Open" : (stale ? "Signed off — evidence changed since" : "Signed off")),
+                ExportCell(text: completion?.completedBy ?? ""),
+                ExportCell(text: completion.map { ISO8601DateFormatter().string(from: $0.completedAt) } ?? ""),
+                ExportCell(text: completion?.note ?? "")
+            ]
+        }
+        let title = "Month-End Close Workpaper — \(companyName ?? "Client") — \(period.year)-\(String(format: "%02d", period.month))"
+        return ExportTable(title: title, columns: ["Step", "Checklist item", "Status", "Signed off by", "Signed off at", "Note"], rows: rows)
+    }
 
     /// An item is unlocked (may be marked complete) once every prerequisite
     /// is present in `completedItemIDs`. The final item's prerequisites are

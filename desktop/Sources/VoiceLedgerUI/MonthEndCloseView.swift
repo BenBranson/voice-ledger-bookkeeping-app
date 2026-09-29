@@ -36,6 +36,7 @@ public struct MonthEndCloseView: View {
         }
     }
 
+    private let onExportWorkpaper: ((ReportExportFormat) -> Void)?
     private let environment: VLEnvironmentTone
     private let items: [ItemState]
     private let onComplete: (ChecklistItemID, _ note: String?) -> Void
@@ -93,8 +94,10 @@ public struct MonthEndCloseView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        onExportWorkpaper: ((ReportExportFormat) -> Void)? = nil
     ) {
+        self.onExportWorkpaper = onExportWorkpaper
         self.environment = environment
         self.items = items
         self.onComplete = onComplete
@@ -157,6 +160,10 @@ public struct MonthEndCloseView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    if let onExportWorkpaper {
+                        ExportMenuButton(onExport: onExportWorkpaper)
+                            .help("Export the close workpaper: every step, who signed it off, and when")
+                    }
                     SyncButton(isSyncing: isSyncing, onSync: onSync)
                     VLEnvironmentBadge(environment)
                 }

@@ -22,10 +22,10 @@ struct MonthEndChecklistTests {
         #expect(MonthEndChecklist.isUnlocked(item, completedItemIDs: [ChecklistItemID(rawValue: "a"), ChecklistItemID(rawValue: "b")]))
     }
 
-    @Test("The default checklist's final item requires all three of its named prerequisites, not just one")
+    @Test("The default checklist's final item requires all four of its named prerequisites, not just one")
     func finalItemRequiresAllPrerequisites() {
         let closingItem = MonthEndChecklist.defaultItems.first { $0.id.rawValue == "set-qbo-closing-date" }!
-        #expect(closingItem.prerequisiteIDs.count == 3)
+        #expect(closingItem.prerequisiteIDs.count == 4)
         let onlyOne: Set<ChecklistItemID> = [ChecklistItemID(rawValue: "resolve-cleanup-assessment")]
         #expect(!MonthEndChecklist.isUnlocked(closingItem, completedItemIDs: onlyOne))
         let allThree = Set(closingItem.prerequisiteIDs)
