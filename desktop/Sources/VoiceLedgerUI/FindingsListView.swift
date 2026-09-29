@@ -139,6 +139,10 @@ public struct FindingsListView: View {
         }
     }
 
+    private let reCatCount: Int
+    private let onExportReCat: ((ReportExportFormat) -> Void)?
+    private let onImportReCat: (() -> Void)?
+    private let reCatImportMessage: String?
     private let qboURL: (Finding) -> URL?
     private let state: ViewState
     private let onSelect: (Finding) -> Void
@@ -223,9 +227,17 @@ public struct FindingsListView: View {
         onAskHealthReportFollowUpClaude: @escaping (String) -> Void = { _ in },
         onAskValueSummaryFollowUpClaude: @escaping (String) -> Void = { _ in },
         onCompareSelected: @escaping ([String]) -> Void = { _ in },
-        qboURL: @escaping (Finding) -> URL? = { _ in nil }
+        qboURL: @escaping (Finding) -> URL? = { _ in nil },
+        reCatCount: Int = 0,
+        onExportReCat: ((ReportExportFormat) -> Void)? = nil,
+        onImportReCat: (() -> Void)? = nil,
+        reCatImportMessage: String? = nil
     ) {
         self.qboURL = qboURL
+        self.reCatCount = reCatCount
+        self.onExportReCat = onExportReCat
+        self.onImportReCat = onImportReCat
+        self.reCatImportMessage = reCatImportMessage
         self.state = state
         self.onSelect = onSelect
         self.onNavigateNextBestAction = onNavigateNextBestAction
@@ -271,6 +283,24 @@ public struct FindingsListView: View {
                         .font(VLTypography.pageTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
+                    if let onExportReCat, reCatCount > 0 {
+                        Menu("Client ReCat Sheet (\(reCatCount))") {
+                            Button("Export CSV for the client") { onExportReCat(.csv) }
+                            Button("Export Excel for the client") { onExportReCat(.xlsx) }
+                            if let onImportReCat {
+                                Button("Import the client's answers…") { onImportReCat() }
+                            }
+                        }
+                        .fixedSize()
+                        .help("Every uncategorized / Ask My Accountant item in one sheet the client fills in; their answers come back onto each finding. Nothing is written to QBO.")
+                    }
+                    if let reCatImportMessage {
+                        Text(reCatImportMessage)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                            .lineLimit(2)
+                            .frame(maxWidth: 260, alignment: .trailing)
+                    }
                     Button(action: onRefresh) {
                         HStack(spacing: VLSpacing.xxs) {
                             Image(systemName: "arrow.triangle.2.circlepath")

@@ -2672,6 +2672,26 @@ public final class AppState {
     /// the client said). Attached to the finding the same way
     /// `recordClientQuestionSent` attaches the question itself: a new
     /// `ActivityLogEntry` keyed by `findingID`, not a separate record.
+    public private(set) var reCatImportMessage: String?
+
+    /// Reads a client-filled ReCat sheet and records each explanation as
+    /// that finding's client answer. Never writes to QBO.
+    public func importReCatAnswers(from url: URL, actorName: String) async {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            reCatImportMessage = "Couldn't read that file. Save the sheet as CSV and try again."
+            return
+        }
+        let answers = ReCatSheet.answers(fromRows: CSVParser.parse(text), openFindings: findings)
+        for answer in answers {
+            await recordClientQuestionAnswer(findingID: answer.findingID, actorName: "\(actorName) (from client ReCat sheet)", answerText: answer.text)
+        }
+        reCatImportMessage = answers.isEmpty
+            ? "No filled-in answers found. Make sure the client typed in the \"\(ReCatSheet.explanationColumn)\" column and kept the ID column."
+            : "Recorded \(answers.count) client answer\(answers.count == 1 ? "" : "s") onto their findings."
+    }
+
     public func recordClientQuestionAnswer(findingID: String, actorName: String, answerText: String) async {
         guard let finding = finding(id: findingID) else { return }
         let entry = ActivityLogEntry(

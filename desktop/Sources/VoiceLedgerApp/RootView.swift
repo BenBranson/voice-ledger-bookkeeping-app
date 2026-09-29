@@ -11,6 +11,7 @@ struct RootView: View {
     @Bindable var state: AppState
     @State private var actorName = NSFullUserName()
     @State private var isImportingStatement = false
+    @State private var isImportingReCat = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     /// A live handle onto the actual, already-rendered NSView backing the
     /// detail column — see `HostViewCaptureAnchor`'s doc comment for why
@@ -933,8 +934,19 @@ struct RootView: View {
                     onAskHealthReportFollowUpClaude: { question in Task { await state.askHealthReportFollowUpClaude(question) } },
                     onAskValueSummaryFollowUpClaude: { question in Task { await state.askValueSummaryFollowUpClaude(question) } },
                     onCompareSelected: { ids in state.comparedFindingIDs = ids },
-                qboURL: { state.qboWebURL(for: $0) }
+                qboURL: { state.qboWebURL(for: $0) },
+                    reCatCount: ReCatSheet.items(from: state.findings).count,
+                    onExportReCat: { format in
+                        state.exportTable(ReCatSheet.export(findings: state.findings, companyName: state.companyInfo?.companyName), format: format, suggestedFilename: "Client ReCat Sheet")
+                    },
+                    onImportReCat: { isImportingReCat = true },
+                    reCatImportMessage: state.reCatImportMessage
                 )
+                .fileImporter(isPresented: $isImportingReCat, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+                    if case .success(let url) = result {
+                        Task { await state.importReCatAnswers(from: url, actorName: actorName) }
+                    }
+                }
             }
 
         case .detail(let findingID):
