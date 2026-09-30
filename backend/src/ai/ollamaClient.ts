@@ -85,7 +85,13 @@ export class OllamaClient implements AICompletionClient {
           // Same deterministic-leaning reasoning as OpenAIClient's own
           // temperature: this explains an already-computed finding, it
           // doesn't draft creative copy.
-          temperature: 0.2
+          temperature: 0.2,
+          // Ollama's default window is ~4k tokens on this hardware and it
+          // silently drops the START of a longer prompt — which is where
+          // the tool definitions and system prompt live. 16k holds the
+          // voice tool loop's full prompt (owner directive 2026-09-30: best
+          // answers from gemma4:12b even if slower).
+          num_ctx: 16384
         }
       }),
       // Local inference on consumer hardware is genuinely slower than a

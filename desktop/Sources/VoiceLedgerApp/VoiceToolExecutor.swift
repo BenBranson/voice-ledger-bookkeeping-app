@@ -45,22 +45,14 @@ extension VoiceEngine {
 
         case "find_findings":
             let category = call.arguments["category"]?.stringValue ?? "all_open"
-            let ruleIDs = Self.ruleIDs(for: category)
-            let matches = appState.findings.filter { finding in
-                finding.status == .open && (ruleIDs == nil || ruleIDs!.contains(finding.ruleID.rawValue))
-            }
+            let group = FactFindingGroup(rawValue: category) ?? .allOpen
+            let fact = ClientFacts.findings(appState.clientData, category: group)
+            let matches = fact.value ?? []
             guard !matches.isEmpty else { return ("No open findings matched category \"\(category)\".", nil) }
-            // Owner-reported problem (2026-09-28): asked which finding was
-            // LEAST important and got no answer — reproduced: at a cap of
-            // 8, a real client with more than 8 open findings had its
-            // tail (exactly where the smallest/lowest-severity ones tend
-            // to sort) silently cut off before the model ever saw them.
-            // Raised to 50 — real finding counts seen this session (13-23)
-            // fit comfortably, and each line is short.
-            let lines = matches.prefix(50).map { "\($0.title) (\($0.severity.rawValue), \($0.dollarExposure.description))" }
+            let lines = matches.prefix(50).map { "\(ClientText.polish($0.title)) (\($0.severity.rawValue), \($0.dollarExposure.accountingDescription))" }
             var text = "\(matches.count) matching finding(s): " + lines.joined(separator: "; ")
             if matches.count > 50 { text += "; and \(matches.count - 50) more" }
-            return (text, nil)
+            return (text + " " + fact.scope.sentence(), nil)
 
         case "get_financial_summary":
             return await getFinancialSummary(
@@ -70,10 +62,10 @@ extension VoiceEngine {
 
         case "list_vendors_by_spend":
             let limit = Self.intArgument(call.arguments["limit"], default: 5)
-            let top = VendorSpendSummary.top(limit, from: appState.transactions)
-            guard !top.isEmpty else { return ("No vendor spend data available for the currently loaded period.", nil) }
-            let lines = top.map { "\($0.vendorName): \($0.total.description) across \($0.transactionCount) transaction(s)" }
-            return ("Top vendors by spend, this loaded period only: " + lines.joined(separator: "; "), nil)
+            let fact = ClientFacts.vendorsBySpend(appState.clientData, limit: limit)
+            guard let top = fact.value, !top.isEmpty else { return ("No vendor spend data available for the currently loaded period.", nil) }
+            let lines = top.map { "\($0.vendorName): \($0.total.accountingDescription) across \($0.transactionCount) transaction(s)" }
+            return ("Top vendors by spend: " + lines.joined(separator: "; ") + ". " + fact.scope.sentence(), nil)
 
         case "generate_chart":
             return await generateChart(kind: call.arguments["kind"]?.stringValue ?? "")
@@ -84,10 +76,7 @@ extension VoiceEngine {
             return ("Refreshed from QuickBooks. \(openCount) open finding(s) now.", nil)
 
         case "get_sync_status":
-            guard let lastSyncedAt = appState.lastSyncedAt else {
-                return ("This client hasn't been synced yet this session.", nil)
-            }
-            return ("Last synced \(lastSyncedAt.formatted(date: .abbreviated, time: .shortened)).", nil)
+            return (ClientFacts.freshnessSentence(appState.clientData), nil)
 
         case "list_clients_needing_attention":
             if appState.firmCockpitSummaries.isEmpty { await appState.loadFirmCockpit() }
@@ -142,117 +131,79 @@ extension VoiceEngine {
 
         case "get_chart_of_accounts":
             let typeFilter = call.arguments["type_filter"]?.stringValue ?? "all"
-            let filtered: [LedgerAccount]
+            let types: Set<LedgerAccountType>?
             switch typeFilter {
-            case "income":
-                filtered = appState.accounts.filter { $0.accountType == .income || $0.accountType == .otherIncome }
-            case "expenses":
-                filtered = appState.accounts.filter { $0.accountType == .expense || $0.accountType == .otherExpense || $0.accountType == .costOfGoodsSold }
-            case "equity":
-                filtered = appState.accounts.filter { $0.accountType == .equity }
-            default:
-                filtered = appState.accounts
+            case "income": types = [.income, .otherIncome]
+            case "expenses": types = [.expense, .otherExpense, .costOfGoodsSold]
+            case "equity": types = [.equity]
+            default: types = nil
             }
-            if filtered.isEmpty {
-                return ("No accounts found for filter '\(typeFilter)'.", nil)
-            }
-            var lines: [String] = ["Chart of Accounts (\(typeFilter)): \(filtered.count) accounts"]
-            for account in filtered.prefix(30) {
-                lines.append("- \(account.name) (\(account.accountType.rawValue))")
-            }
-            if filtered.count > 30 {
-                lines.append("...and \(filtered.count - 30) more accounts")
-            }
-            return (lines.joined(separator: "\n"), nil)
+            let fact = ClientFacts.chartOfAccounts(appState.clientData, types: types)
+            guard let filtered = fact.value, !filtered.isEmpty else { return ("No accounts found for filter '\(typeFilter)'.", nil) }
+            var lines = ["Chart of Accounts (\(typeFilter)): \(filtered.count) accounts"]
+            for account in filtered.prefix(40) { lines.append("- \(account.name) (\(account.type.rawValue)): \(account.balance.accountingDescription)") }
+            if filtered.count > 40 { lines.append("...and \(filtered.count - 40) more accounts") }
+            return (lines.joined(separator: "\n") + "\n" + fact.scope.sentence(), nil)
 
         case "search_transactions":
-            let query = call.arguments["query"]?.stringValue ?? ""
-            guard !query.isEmpty else {
-                return ("Please provide a search query (vendor name, amount, date, or account).", nil)
+            let query = (call.arguments["query"]?.stringValue ?? "").trimmingCharacters(in: .whitespaces)
+            guard !query.isEmpty else { return ("Please provide a search query (vendor name or an exact dollar amount).", nil) }
+            let data = appState.clientData
+            // An amount goes through the SAME search the Search by Amount page uses.
+            if AmountSearch.parseAmount(query) != nil, query.contains(where: \.isNumber) {
+                let fact = ClientFacts.searchAmount(data, text: query)
+                guard let result = fact.value else { return (fact.note ?? "Couldn't read that amount.", nil) }
+                var lines: [String] = []
+                if !result.exact.isEmpty {
+                    lines.append("\(result.exact.count) transaction(s) for exactly \(result.amount.accountingDescription):")
+                    lines += result.exact.prefix(20).map { Self.transactionLine($0) }
+                }
+                for entry in result.balanceAccounts {
+                    lines.append("\(result.amount.accountingDescription) is the current balance of \(entry.account.name) — the total of \(entry.postings.count) posting(s), not a single transaction.")
+                }
+                if let combo = result.combination {
+                    lines.append("No single transaction matches, but these \(combo.count) add up to \(result.amount.accountingDescription): " + combo.map { Self.transactionLine($0) }.joined(separator: " "))
+                }
+                if lines.isEmpty { lines.append("No transaction or account balance is exactly \(result.amount.accountingDescription).") }
+                if let note = fact.note { lines.append(note) }
+                return (lines.joined(separator: "\n") + "\n" + fact.scope.sentence(), nil)
             }
-            let matching = appState.transactions.filter { t in
-                let queryLower = query.lowercased()
-                return (t.vendorName?.lowercased().contains(queryLower) ?? false) ||
-                       (t.memo?.lowercased().contains(queryLower) ?? false) ||
-                       (t.totalAmount.description.contains(query))
-            }
-            guard !matching.isEmpty else {
-                return ("No transactions found matching '\(query)'.", nil)
-            }
-            var lines: [String] = ["Found \(matching.count) matching transactions:"]
-            for t in matching.prefix(20) {
-                let date = "\(t.txnDate.year)-\(String(format: "%02d", t.txnDate.month))-\(String(format: "%02d", t.txnDate.day))"
-                lines.append("- \(date): \(t.vendorName ?? "Unknown") \(t.totalAmount.description)")
-            }
-            if matching.count > 20 {
-                lines.append("...and \(matching.count - 20) more")
-            }
-            return (lines.joined(separator: "\n"), nil)
+            let fact = ClientFacts.searchText(data, query: query)
+            let hits = fact.value ?? []
+            guard !hits.isEmpty else { return ("No transactions found matching '\(query)'. " + fact.scope.sentence(), nil) }
+            var lines = ["Found \(hits.count) matching transactions:"] + hits.prefix(20).map { Self.transactionLine($0) }
+            if hits.count > 20 { lines.append("...and \(hits.count - 20) more") }
+            if let note = fact.note { lines.append(note) }
+            return (lines.joined(separator: "\n") + "\n" + fact.scope.sentence(), nil)
 
         case "get_account_balance":
             let accountName = call.arguments["account_name"]?.stringValue ?? ""
-            guard !accountName.isEmpty else {
-                return ("Please provide an account name.", nil)
-            }
-            let account = appState.accounts.first { $0.name.localizedCaseInsensitiveContains(accountName) }
-            guard let account else {
-                return ("Account '\(accountName)' not found in chart of accounts.", nil)
-            }
-            return ("\(account.name) (Type: \(account.accountType.rawValue)). Sync dashboard for real-time balance details.", nil)
+            guard !accountName.isEmpty else { return ("Please provide an account name.", nil) }
+            let fact = ClientFacts.accountBalance(appState.clientData, name: accountName)
+            guard let account = fact.value else { return (fact.note ?? "Account not found.", nil) }
+            return ("\(account.name) (\(account.type.rawValue)) currently shows \(account.balance.accountingDescription). \(fact.note ?? "") \(fact.scope.sentence())", nil)
 
         case "get_vendor_details":
             let vendorName = call.arguments["vendor_name"]?.stringValue ?? ""
-            guard !vendorName.isEmpty else {
-                return ("Please provide a vendor name.", nil)
-            }
-            let matching = appState.transactions.filter { t in
-                (t.vendorName ?? "").localizedCaseInsensitiveContains(vendorName)
-            }
-            guard !matching.isEmpty else {
-                return ("No transactions found for vendor '\(vendorName)'.", nil)
-            }
-            let displayName = matching.first?.vendorName ?? vendorName
-            let lastDate = matching.max(by: { $0.txnDate < $1.txnDate })?.txnDate
-            let dateStr = lastDate.map { "\($0.year)-\(String(format: "%02d", $0.month))-\(String(format: "%02d", $0.day))" } ?? "Unknown"
-            return ("Vendor: \(displayName)\nTransaction count: \(matching.count)\nLast transaction: \(dateStr)", nil)
+            guard !vendorName.isEmpty else { return ("Please provide a vendor name.", nil) }
+            let fact = ClientFacts.vendor(appState.clientData, name: vendorName)
+            guard let vendor = fact.value else { return ((fact.note ?? "No transactions found for that vendor.") + " " + fact.scope.sentence(), nil) }
+            let last = vendor.lastDate.map { ClientText.polish($0.formatted) } ?? "unknown"
+            return ("Vendor: \(vendor.name). \(vendor.transactionCount) transaction(s) totaling \(vendor.total.accountingDescription); last on \(last). \(fact.scope.sentence())", nil)
 
         case "get_report_summary":
             let reportType = call.arguments["report_type"]?.stringValue ?? ""
-            switch reportType {
-            case "balance_sheet":
-                if appState.balanceSheetLines.isEmpty {
-                    return ("Balance sheet data not loaded yet. Please sync the dashboard first.", nil)
-                }
-                var lines: [String] = ["Balance Sheet Summary:"]
-                for line in appState.balanceSheetLines.prefix(30) {
-                    if let amount = line.amount {
-                        lines.append("- \(line.label): \(amount.description)")
-                    } else {
-                        lines.append("- \(line.label)")
-                    }
-                }
-                return (lines.joined(separator: "\n"), nil)
-
-            case "income_statement":
-                if appState.profitAndLossLines.isEmpty {
-                    return ("Income statement data not loaded yet. Please sync the dashboard first.", nil)
-                }
-                var lines: [String] = ["Income Statement Summary:"]
-                for line in appState.profitAndLossLines.prefix(30) {
-                    if let amount = line.amount {
-                        lines.append("- \(line.label): \(amount.description)")
-                    } else {
-                        lines.append("- \(line.label)")
-                    }
-                }
-                return (lines.joined(separator: "\n"), nil)
-
-            case "cash_flow":
-                return ("Cash flow summary: \(appState.transactions.count) transactions loaded for the current period. Pull a Cash Flow report page for detailed cash flow analysis.", nil)
-
-            default:
-                return ("Report type '\(reportType)' not yet fully implemented. Try 'balance_sheet' or 'income_statement'.", nil)
+            guard let kind = ReportKind(rawValue: reportType) else {
+                return ("Report type '\(reportType)' isn't available. Use balance_sheet, income_statement, or cash_flow.", nil)
             }
+            if kind == .balanceSheet, appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+            if kind == .incomeStatement, appState.profitAndLossLines.isEmpty { await appState.loadProfitAndLoss() }
+            if kind == .cashFlow, appState.cashFlowLines.isEmpty { await appState.loadCashFlow() }
+            let fact = ClientFacts.reportLines(appState.clientData, kind: kind)
+            guard let lines = fact.value else { return ((fact.note ?? "That report isn't loaded.") + " " + fact.scope.sentence(), nil) }
+            // Section headings without an amount are noise; totals and account lines carry the figures.
+            let rows = lines.compactMap { line -> String? in line.amount.map { "\(String(repeating: "  ", count: min(line.depth, 3)))\(line.label): \($0.accountingDescription)" } }
+            return ("\(reportType.replacingOccurrences(of: "_", with: " ").capitalized):\n" + rows.prefix(60).joined(separator: "\n") + (rows.count > 60 ? "\n…and \(rows.count - 60) more lines" : "") + "\n" + fact.scope.sentence(), nil)
 
         case "get_finding_recommendation":
             guard let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) else {
@@ -370,45 +321,33 @@ extension VoiceEngine {
         return Int(doubleValue)
     }
 
-    private static func ruleIDs(for category: String) -> Set<String>? {
-        switch category {
-        case "duplicates": return ["VL-DUP-NEAR-001", "VL-DUP-EXP-001", "VL-DUP-EXP-002", "VL-DUP-VEND-001", "VL-DUP-BILL-001", "VL-DUP-INV-001", "VL-DUP-PAY-001"]
-        case "miscategorized_or_uncategorized": return ["VL-CAT-MISCODE-001", "VL-CAT-UNCAT-001"]
-        case "personal_expense": return ["VL-PERSONAL-001"]
-        case "negative_balance": return ["VL-BS-NEGBAL-001"]
-        case "late_fees_or_overdrafts": return ["VL-FEE-AVOIDABLE-001"]
-        case "vendor_price_increase": return ["VL-VEND-PRICE-001"]
-        default: return nil // "all_open" — every open finding, no rule filter
+
+    private func getFinancialSummary(metric: String, period: String) async -> (resultText: String, uiAction: VoiceUIAction?) {
+        let choice: PeriodChoice = period == "prior_month" ? .priorMonth : .current
+        if choice == .priorMonth, appState.priorPeriodProfitAndLossLines.isEmpty || appState.priorPeriodBalanceSheetLines.isEmpty {
+            await appState.loadVarianceAnalysis()
+        }
+        if choice == .current, appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+        if choice == .current, appState.profitAndLossLines.isEmpty { await appState.loadProfitAndLoss() }
+        let data = appState.clientData
+        func say(_ label: String, _ fact: Fact<Money>) -> (resultText: String, uiAction: VoiceUIAction?) {
+            guard let value = fact.value else { return ("\(label) isn't available. \(fact.note ?? "") \(fact.scope.sentence())", nil) }
+            return ("\(label): \(value.accountingDescription). \(fact.scope.sentence())", nil)
+        }
+        switch metric {
+        case "net_income": return say("Net income", ClientFacts.netIncome(data, choice))
+        case "revenue": return say("Revenue", ClientFacts.revenue(data, choice))
+        case "cash_balance": return say("Cash balance (total bank accounts)", ClientFacts.cashBalance(data, choice))
+        case "uncategorized_count":
+            let count = ClientFacts.findings(data, category: .miscategorizedOrUncategorized).value?.filter { $0.ruleID.rawValue == "VL-CAT-UNCAT-001" }.count ?? 0
+            return ("\(count) transaction(s) still uncategorized. \(ClientFacts.freshnessSentence(data))", nil)
+        default: return ("Unknown financial metric: \(metric).", nil)
         }
     }
 
-    private func getFinancialSummary(metric: String, period: String) async -> (resultText: String, uiAction: VoiceUIAction?) {
-        if period == "prior_month", appState.priorPeriodProfitAndLossLines.isEmpty || appState.priorPeriodBalanceSheetLines.isEmpty {
-            await appState.loadVarianceAnalysis()
-        }
-        if period == "current", appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
-        if period == "current", appState.profitAndLossLines.isEmpty { await appState.loadProfitAndLoss() }
-
-        let balanceSheetLines = period == "prior_month" ? appState.priorPeriodBalanceSheetLines : appState.balanceSheetLines
-        let profitAndLossLines = period == "prior_month" ? appState.priorPeriodProfitAndLossLines : appState.profitAndLossLines
-        let periodLabel = period == "prior_month" ? "the prior month" : "the currently loaded period"
-
-        switch metric {
-        case "net_income":
-            guard let value = TaxEstimate.netIncome(from: profitAndLossLines) else { return ("Net income isn't available for \(periodLabel).", nil) }
-            return ("Net income for \(periodLabel): \(value.description).", nil)
-        case "revenue":
-            guard let value = FinancialKPIs.totalIncome(from: profitAndLossLines) else { return ("Revenue isn't available for \(periodLabel).", nil) }
-            return ("Revenue for \(periodLabel): \(value.description).", nil)
-        case "cash_balance":
-            guard let value = FinancialKPIs.cashBalance(from: balanceSheetLines) else { return ("Cash balance isn't available for \(periodLabel).", nil) }
-            return ("Cash balance as of \(periodLabel): \(value.description).", nil)
-        case "uncategorized_count":
-            let count = appState.findings.filter { $0.status == .open && $0.ruleID.rawValue == "VL-CAT-UNCAT-001" }.count
-            return ("\(count) transaction(s) still uncategorized.", nil)
-        default:
-            return ("Unknown financial metric: \(metric).", nil)
-        }
+    /// One transaction, spoken the same way the pages show it.
+    static func transactionLine(_ t: LedgerTransaction) -> String {
+        "- \(ClientText.polish(t.txnDate.formatted)): \(t.vendorName ?? "Unknown") \(t.totalAmount.accountingDescription)"
     }
 
     private func generateChart(kind: String) async -> (resultText: String, uiAction: VoiceUIAction?) {

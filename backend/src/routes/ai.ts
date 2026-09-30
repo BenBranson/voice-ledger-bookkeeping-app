@@ -98,7 +98,8 @@ function systemPrompt(format: "concise" | "report" | "client_message"): string {
 }
 
 const MAX_QUESTION_LENGTH = 2000;
-const MAX_CONTEXT_LENGTH = 8000;
+// Raised 8000 -> 24000 (2026-09-30): the voice tool loop sends the system prompt (~3k chars), the page context and every open finding (~4k each); 20 findings pushed it past 8000 and the request was rejected before reaching the model.
+const MAX_CONTEXT_LENGTH = 24000;
 /// Prior-turn replay for voice follow-ups (added 2026-08-29 — see
 /// `AIChatTurn`'s doc comment). Budgeted the same way as question/context
 /// above: hard caps enforced server-side regardless of what the client

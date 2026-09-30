@@ -9,6 +9,7 @@ import Foundation
 /// `.detail`/`.procedure` (need a finding id, not a bare destination) and
 /// `.connection` (not a page a bookkeeper "navigates to" mid-session).
 public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
+    case dashboard
     case findingsList
     case cleanupAssessment
     case balanceSheetIntegrity
@@ -31,6 +32,10 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case generalLedgerReport
     case cashFlowForecast
     case recurringVendors
+    case amountSearch
+    case clientDiagnostics
+    case pricingCalculator
+    case intakeQuestions
 }
 
 /// A closed set of what a voice command can ever mean. Deliberately has NO

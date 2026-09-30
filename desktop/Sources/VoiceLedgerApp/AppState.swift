@@ -3143,7 +3143,58 @@ public final class AppState {
 
     /// Builds Ask AI context for the currently displayed page.
     /// Used by VoiceToolLoop to ground questions in the active screen's data.
+    /// Moneypenny's picture of the current page. Every page — no exceptions —
+    /// gets the same freshness sentence first and the same money formatting
+    /// as the pages themselves (docs/MONEYPENNY_CONSISTENCY_DESIGN.md).
     public func currentPageAskAIContext() -> String {
+        let data = clientData
+        return "Data status: \(ClientFacts.freshnessSentence(data)) Period: \(ClientFacts.periodLabel(period)).\n"
+            + ClientText.polish(pageBodyAskAIContext(data))
+    }
+
+    private func findingsPageContext(_ title: String, _ group: FactFindingGroup, _ data: ClientData) -> String {
+        let list = ClientFacts.findings(data, category: group).value ?? []
+        var lines = ["Page: \(title)."]
+        if let exposure = ClientFacts.totalExposure(data, category: group).value { lines.append("Open findings on this page: \(list.count); total dollar exposure \(exposure.accountingDescription).") }
+        for finding in list.prefix(25) { lines.append("- [ID: \(finding.id)] \(finding.title) (\(finding.severity.rawValue), \(finding.dollarExposure.accountingDescription))") }
+        if list.count > 25 { lines.append("...and \(list.count - 25) more on the page.") }
+        return lines.joined(separator: "\n")
+    }
+
+    private func reportPageContext(_ title: String, _ kind: ReportKind, _ data: ClientData) -> String {
+        let fact = ClientFacts.reportLines(data, kind: kind)
+        guard let lines = fact.value else { return "Page: \(title). \(fact.note ?? "Not loaded yet.")" }
+        let totals = lines.filter(\.isSummary).compactMap { l in l.amount.map { "\(l.label): \($0.accountingDescription)" } }
+        return "Page: \(title) (\(lines.count) lines on screen).\n" + totals.prefix(40).joined(separator: "\n")
+    }
+
+    private func pageBodyAskAIContext(_ data: ClientData) -> String {
+        switch screen {
+        case .cleanupAssessment: return findingsPageContext("Cleanup Assessment", .cleanupAssessment, data)
+        case .balanceSheetIntegrity: return findingsPageContext("Balance Sheet Integrity", .balanceSheetIntegrity, data)
+        case .bankFeedCleanup: return findingsPageContext("Bank Feed Cleanup", .cleanupAssessment, data)
+        case .cashFlowReport: return reportPageContext("Cash Flow (Statement of Cash Flows)", .cashFlow, data)
+        case .closePackage:
+            return "Page: Close Package (monthly client report, balance sheet summary, month-end checklist for \(ClientFacts.periodLabel(period))). Open findings: \(ClientFacts.openFindingCount(data))."
+        case .monthEndClose:
+            return "Page: Month-End Close checklist for \(ClientFacts.periodLabel(period)). Open findings: \(ClientFacts.openFindingCount(data))."
+        case .firmCockpit: return "Page: Firm Cockpit (all connected clients ranked by urgent findings)."
+        case .taxes: return "Page: Taxes (tax estimate from net income)."
+        case .salesTaxReview: return "Page: Sales Tax Review."
+        case .batchFixes: return "Page: Batch Fixes (staged corrections awaiting approval)."
+        case .activityLog: return "Page: Activity & Correction Log."
+        case .clientMemory: return "Page: Client Memory (rules learned from this client's answers)."
+        case .connection: return "Page: Connection (QuickBooks connection and AI settings)."
+        case .scopeAndPeriodLock: return "Page: Scope & Period Lock."
+        case .voiceHistory: return "Page: Voice history."
+        case .audioSettings: return "Page: Audio Settings."
+        case .trialBalanceReport: return "Page: Trial Balance (\(trialBalanceLines.count) lines on screen)."
+        case .procedure: return "Page: guided fix procedure for the open finding."
+        default: return legacyPageAskAIContext()
+        }
+    }
+
+    private func legacyPageAskAIContext() -> String {
         switch screen {
         case .clientDashboard:
             var lines = ["Page: Client Dashboard (KPI dashboard with top findings, financial summary, working capital, and recurring vendor issues)."]

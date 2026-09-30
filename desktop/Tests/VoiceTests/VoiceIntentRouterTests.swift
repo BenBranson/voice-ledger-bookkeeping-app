@@ -6,6 +6,14 @@ import Core
 struct VoiceIntentRouterTests {
     // MARK: Phase 2 — state coverage (2026-08-29)
 
+    @Test("'Dashboard' goes to the Dashboard, not the Findings list; Search/Diagnostics/Pricing/Intake are reachable")
+    func dashboardAndNewDestinations() {
+        #expect(VoiceIntentRouter.match(text: "go to the dashboard", context: .empty) == .navigate(.dashboard))
+        #expect(VoiceIntentRouter.match(text: "show me findings", context: .empty) == .navigate(.findingsList))
+        #expect(VoiceIntentRouter.match(text: "open search by amount", context: .empty) == .navigate(.amountSearch))
+        #expect(VoiceIntentRouter.match(text: "pull up client diagnostics", context: .empty) == .navigate(.clientDiagnostics))
+    }
+
     @Test("'Hi'/'status update' matches statusOverview")
     func statusOverviewPhrasesMatch() {
         #expect(VoiceIntentRouter.match(text: "hi", context: .empty) == .statusOverview)

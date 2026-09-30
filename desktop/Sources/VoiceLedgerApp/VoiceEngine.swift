@@ -125,7 +125,7 @@ public final class VoiceEngine: NSObject {
     /// listening to. `AppState.askAI`'s `model` param overrides just
     /// these two call sites; every on-screen Ask AI panel elsewhere in
     /// the app is untouched and keeps using the configured default.
-    private static let voiceModel = "gemma4:e4b"
+    private static let voiceModel = "gemma4:12b"   // owner directive 2026-09-30: best answers over speed
 
     public init(appState: AppState, voiceService: VoiceServiceClient = VoiceServiceClient(), actorName: String = NSFullUserName()) {
         self.appState = appState
@@ -566,6 +566,7 @@ public final class VoiceEngine: NSObject {
     /// silently diverge from what `VoiceIntentRouter`'s own matches do.
     static func screen(for destination: VoiceDestination) -> AppState.Screen {
         switch destination {
+        case .dashboard: return .clientDashboard
         case .findingsList: return .list
         case .cleanupAssessment: return .cleanupAssessment
         case .balanceSheetIntegrity: return .balanceSheetIntegrity
@@ -588,6 +589,10 @@ public final class VoiceEngine: NSObject {
         case .generalLedgerReport: return .generalLedgerReport
         case .cashFlowForecast: return .cashFlowForecast
         case .recurringVendors: return .recurringVendors
+        case .amountSearch: return .amountSearch
+        case .clientDiagnostics: return .diagnostics
+        case .pricingCalculator: return .pricingCalculator
+        case .intakeQuestions: return .intakeQuestions
         }
     }
 
@@ -732,6 +737,7 @@ public final class VoiceEngine: NSObject {
 
     private static func speech(for destination: VoiceDestination) -> String {
         switch destination {
+        case .dashboard: return "Dashboard."
         case .findingsList: return "Findings."
         case .cleanupAssessment: return "Cleanup Assessment."
         case .balanceSheetIntegrity: return "Balance Sheet Integrity."
@@ -754,6 +760,10 @@ public final class VoiceEngine: NSObject {
         case .generalLedgerReport: return "General Ledger."
         case .cashFlowForecast: return "Cash Flow Forecast."
         case .recurringVendors: return "Recurring Vendors."
+        case .amountSearch: return "Search by Amount."
+        case .clientDiagnostics: return "Client Diagnostics."
+        case .pricingCalculator: return "Pricing Calculator."
+        case .intakeQuestions: return "Intake Questions."
         }
     }
 

@@ -832,7 +832,7 @@ public struct FindingDetailView: View {
                 }
 
                 ForEach(consequenceLines(action.consequences), id: \.self) { line in
-                    Text("• \(line)")
+                    Text("• \(ClientText.polish(line))")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
                 }

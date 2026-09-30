@@ -278,6 +278,7 @@ public actor BackendClient {
         url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 300   // local 12B models can take minutes; the backend allows 180s per model call
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = configuration.sessionToken {
@@ -323,6 +324,7 @@ public actor BackendClient {
         url.append(path: "/realms/\(realmID.rawValue)/ask-ai")
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 300   // local 12B models can take minutes; the backend allows 180s per model call
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = configuration.sessionToken {

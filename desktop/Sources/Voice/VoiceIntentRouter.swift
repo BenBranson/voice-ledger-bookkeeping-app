@@ -38,7 +38,8 @@ public enum VoiceIntentRouter {
     /// safer than pattern cleverness; a false-positive match here is worse
     /// than falling through to the reasoning path.
     private static let destinationAliases: [(VoiceDestination, Set<String>)] = [
-        (.findingsList, ["dashboard", "findings", "findings list", "home", "list"]),
+        (.dashboard, ["dashboard", "home", "client dashboard"]),
+        (.findingsList, ["findings", "findings list", "list"]),
         (.cleanupAssessment, ["cleanup assessment", "cleanup", "clean up assessment", "clean up"]),
         (.balanceSheetIntegrity, ["balance sheet integrity"]),
         (.bankFeedCleanup, ["bank feed cleanup", "bank feed", "bank", "check bank feeds", "bank feeds"]),
@@ -57,7 +58,13 @@ public enum VoiceIntentRouter {
         (.trialBalanceReport, ["trial balance", "trial balance report"]),
         (.agedReceivablesReport, ["aged receivables", "receivables", "accounts receivable"]),
         (.agedPayablesReport, ["aged payables", "payables", "accounts payable"]),
-        (.generalLedgerReport, ["general ledger"])
+        (.generalLedgerReport, ["general ledger"]),
+        (.cashFlowForecast, ["cash flow forecast", "forecast"]),
+        (.recurringVendors, ["recurring vendors", "recurring"]),
+        (.amountSearch, ["search by amount", "amount search", "search"]),
+        (.clientDiagnostics, ["client diagnostics", "diagnostics"]),
+        (.pricingCalculator, ["pricing calculator", "pricing"]),
+        (.intakeQuestions, ["intake questions", "intake"])
     ]
 
     private static let confirmWords = ["yes", "yeah", "yep", "yup", "confirm", "do it", "go ahead", "sounds good", "sure", "okay", "ok"]

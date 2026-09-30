@@ -15,14 +15,14 @@ extension VoiceEngine {
     /// SEPARATELY once a tool actually runs; this is just the model's
     /// standing instructions for the tool-decision step itself.
     static let toolLoopSystemContext = """
-    You are Voice Ledger's own in-app voice assistant. You always have the current page's context and can talk about anything displayed on screen or any of this client's financial data. You have tools that can navigate the app, fetch accounts and transactions from QuickBooks on demand, generate reports, look up specific vendors or accounts, find flagged issues, generate charts, refresh data, and switch to a different connected client.
+    You are Voice Ledger's own in-app voice assistant. You always have the current page's context and can talk about anything displayed on screen or any of this client's financial data. You have tools that can navigate the app, look up accounts, balances, transactions and reports from the client's loaded data,  look up specific vendors or accounts, find flagged issues, generate charts, refresh data, and switch to a different connected client.
 
     Rules:
     - Call a tool whenever the person's request needs one. Do not just describe what you would do — call the tool.
     - When the person asks about a SPECIFIC finding or transaction by dollar amount, description, or name ("tell me about this $500," "explain the duplicate invoice," "what's the Cool Cars payment"), IMMEDIATELY call `open_findings`, passing the exact [ID: ...] of the matching finding from the lists above (match on dollar amount, age, vendor, or title). Only pass a text description if no listed ID fits. Do not ask for clarification — match against what's on the current page. If only one item matches (e.g., only one $500 finding visible), that's the answer.
     - After calling `open_findings`, explain the finding they asked about using the full context that gets injected into your next turn.
     - If a request is genuinely ambiguous with MULTIPLE matches on screen (e.g., "the $500 one" when there are three $500 findings), ask which one. But almost never — be specific and search.
-    - Use `search_transactions`, `get_account_balance`, `get_vendor_details`, `get_chart_of_accounts`, and `get_report_summary` to fetch live QuickBooks data on demand — the person might ask about any account, vendor, or report detail you don't have in memory.
+    - Use `search_transactions` (an exact dollar amount like "$1,420" or a vendor/memo word), `get_account_balance`, `get_vendor_details`, `get_chart_of_accounts`, and `get_report_summary` to answer from the client's loaded data. These use the SAME calculations as the app's pages, so their figures match what the person sees on screen. Each result ends with a data-status sentence (which month, how fresh, current sync vs. 24-month history) — repeat it briefly when the person might otherwise assume more than was searched, and if it says the data is saved or not yet synced, offer to call `refresh_client_data`.
     - This app computes a cash flow forecast (`get_cash_flow_forecast`) and recurring-vendor detection (`get_recurring_vendors`) — use those tools rather than declining. It still does NOT compute: missing-receipt detection, or anything about a client not already connected. If asked about those, say plainly that Voice Ledger doesn't compute that yet, rather than guessing or calling an unrelated tool.
     - Financial totals (spend by vendor, revenue, cash balance) reflect only the client's CURRENTLY LOADED accounting period, not necessarily a full year or quarter — say so plainly if the person asked for a longer range than that.
     - Never invent a dollar figure, date, or vendor name that wasn't in a tool's own result.
@@ -31,7 +31,7 @@ extension VoiceEngine {
     static let toolDefinitions: [[String: JSONValue]] = [
         tool(
             name: "navigate",
-            description: "Navigate to a page in the app.",
+            description: "Navigate to any page in the app: dashboard, findings, cleanup, reports, search by amount, diagnostics, pricing calculator, intake questions, and more.",
             properties: [
                 "page": .object([
                     "type": .string("string"),
@@ -154,11 +154,11 @@ extension VoiceEngine {
         ),
         tool(
             name: "search_transactions",
-            description: "Search this client's transactions by vendor name, amount, date range, or account. Useful for \"find all transactions from [vendor],\" \"any large payments last month,\" or \"what hit this account in the past week.\" Returns matching transactions with dates and amounts.",
+            description: "Search this client's loaded transactions (current sync plus the 24-month history when loaded) by an exact dollar amount or by vendor/memo text. An amount that equals an account's balance is explained as a balance with its postings; if no single transaction matches, it also finds 2-3 that add up to it. Does NOT filter by date range or account — for those, open the relevant report or say it isn't supported.",
             properties: [
                 "query": .object([
                     "type": .string("string"),
-                    "description": .string("Search term: vendor name (e.g. 'Amazon'), amount (e.g. '$500'), date (e.g. 'January'), or account name (e.g. 'Utilities').")
+                    "description": .string("An exact dollar amount (e.g. '$500' or '1420.00') or vendor/memo text (e.g. 'Amazon').")
                 ])
             ],
             required: ["query"]
