@@ -14,7 +14,8 @@ public enum CommandGrammar {
     public static func normalize(_ text: String) -> String {
         var t = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         t = t.replacingOccurrences(of: #"[?!.,]+$"#, with: "", options: .regularExpression)
-        t = t.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "’", with: "'")
+        t = t.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "&", with: "and")
+        for tail in [" please", " thanks", " thank you", " for me", " now", " right now"] where t.hasSuffix(tail) { t = String(t.dropLast(tail.count)) }
         t = t.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
         var changed = true
         while changed {

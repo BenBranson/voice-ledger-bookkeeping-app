@@ -55,6 +55,11 @@ public final class VoiceEngine: NSObject {
     /// rather than threading it through every tool function as a parameter.
     unowned let appState: AppState
     private let voiceService: VoiceServiceClient
+    /// Which recognizer produced the last transcript ("on-device" / "whisper").
+    public private(set) var transcriptSource = ""
+    /// Audio for the rest of a reply, synthesized while the first sentence plays.
+    private var pendingSpeechAudio: Data?
+    private var pendingSpeechTask: Task<Void, Never>?
     private let actorName: String
     /// `internal`, not `private` — `VoiceToolLoop.swift` reads
     /// `currentEntity` to keep an open-ended follow-up grounded in
@@ -72,7 +77,7 @@ public final class VoiceEngine: NSObject {
     // values are always safe to read from any thread, including the audio
     // tap's realtime thread where `evaluateSilenceOffMainActor` reads them.
     private let speakThreshold: Float = 0.06
-    private let silenceSeconds: TimeInterval = 1.4
+    private let silenceSeconds: TimeInterval = 1.0
     private let maxRecordingSeconds: TimeInterval = 20
 
     // Everything below is written from inside `installTap`'s callback,
@@ -450,7 +455,15 @@ public final class VoiceEngine: NSObject {
 
         isProcessing = true
         do {
-            let text = try await voiceService.transcribe(audioData: data)
+            // On-device first (sub-second, private); Whisper only as fallback.
+            let text: String
+            if let local = await OnDeviceTranscriber.transcribe(fileAt: url), !local.trimmingCharacters(in: .whitespaces).isEmpty {
+                text = local
+                transcriptSource = "on-device"
+            } else {
+                text = try await voiceService.transcribe(audioData: data)
+                transcriptSource = "whisper"
+            }
             isProcessing = false
             guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
                 transcript = "(heard nothing)"
@@ -520,17 +533,39 @@ public final class VoiceEngine: NSObject {
             return
         }
         isSpeaking = true
+        pendingSpeechTask?.cancel()
+        pendingSpeechAudio = nil
+        // Speak the first sentence as soon as it's ready; synthesize the rest
+        // while it plays (Part 2, Layer 0).
+        let (first, rest) = Self.splitFirstSentence(text)
         do {
-            let wav = try await voiceService.synthesize(text: text)
-            let player = try AVAudioPlayer(data: wav)
-            player.delegate = self
-            audioPlayer = player
-            player.play()
+            let wav = try await voiceService.synthesize(text: first)
+            if let rest {
+                pendingSpeechTask = Task { [weak self] in
+                    guard let self, let data = try? await self.voiceService.synthesize(text: rest), !Task.isCancelled else { return }
+                    self.pendingSpeechAudio = data
+                }
+            }
+            try play(wav)
         } catch {
             isSpeaking = false
             errorMessage = "I have a reply, but couldn't play the audio: \(error)"
             resumeListeningIfConversationMode()
         }
+    }
+
+    private func play(_ wav: Data) throws {
+        let player = try AVAudioPlayer(data: wav)
+        player.delegate = self
+        audioPlayer = player
+        player.play()
+    }
+
+    static func splitFirstSentence(_ text: String) -> (String, String?) {
+        guard text.count > 80, let range = text.range(of: #"(?<=[.!?])\s+"#, options: .regularExpression) else { return (text, nil) }
+        let first = String(text[..<range.lowerBound])
+        let rest = String(text[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+        return rest.isEmpty ? (text, nil) : (first, rest)
     }
 
     // MARK: - UI actions
@@ -593,6 +628,10 @@ public final class VoiceEngine: NSObject {
         case .clientDiagnostics: return .diagnostics
         case .pricingCalculator: return .pricingCalculator
         case .intakeQuestions: return .intakeQuestions
+        case .aiConversations: return .voiceHistory
+        case .connection: return .connection
+        case .scopeAndPeriodLock: return .scopeAndPeriodLock
+        case .audioSettings: return .audioSettings
         }
     }
 
@@ -829,37 +868,7 @@ public final class VoiceEngine: NSObject {
         }
     }
 
-    private static func speech(for destination: VoiceDestination) -> String {
-        switch destination {
-        case .dashboard: return "Dashboard."
-        case .findingsList: return "Findings."
-        case .cleanupAssessment: return "Cleanup Assessment."
-        case .balanceSheetIntegrity: return "Balance Sheet Integrity."
-        case .bankFeedCleanup: return "Bank Feed Cleanup."
-        case .chartOfAccountsCleanup: return "Chart of Accounts Cleanup."
-        case .batchFixes: return "Batch Fixes."
-        case .salesTaxReview: return "Sales Tax Review."
-        case .taxes: return "Taxes."
-        case .firmCockpit: return "Firm Cockpit."
-        case .monthEndClose: return "Month-End Close."
-        case .activityLog: return "Activity Log."
-        case .closePackage: return "Close Package."
-        case .clientMemory: return "Client Memory."
-        case .balanceSheetReport: return "Balance Sheet."
-        case .profitAndLossReport: return "Profit and Loss."
-        case .cashFlowReport: return "Cash Flow."
-        case .trialBalanceReport: return "Trial Balance."
-        case .agedReceivablesReport: return "Aged Receivables."
-        case .agedPayablesReport: return "Aged Payables."
-        case .generalLedgerReport: return "General Ledger."
-        case .cashFlowForecast: return "Cash Flow Forecast."
-        case .recurringVendors: return "Recurring Vendors."
-        case .amountSearch: return "Search by Amount."
-        case .clientDiagnostics: return "Client Diagnostics."
-        case .pricingCalculator: return "Pricing Calculator."
-        case .intakeQuestions: return "Intake Questions."
-        }
-    }
+    private static func speech(for destination: VoiceDestination) -> String { destination.menuTitle + "." }
 
     /// Prior turns of THIS voice conversation, for the AI reasoning path
     /// to replay — added 2026-08-29, after researching a different app's
@@ -960,6 +969,16 @@ extension VoiceEngine: AVAudioPlayerDelegate {
     public nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            // Wait briefly for the rest of the reply if it's still synthesizing.
+            if self.pendingSpeechTask != nil {
+                for _ in 0..<40 where self.pendingSpeechAudio == nil && !(self.pendingSpeechTask?.isCancelled ?? true) { try? await Task.sleep(for: .milliseconds(50)) }
+            }
+            if let next = self.pendingSpeechAudio {
+                self.pendingSpeechAudio = nil
+                self.pendingSpeechTask = nil
+                if (try? self.play(next)) != nil { return }
+            }
+            self.pendingSpeechTask = nil
             self.isSpeaking = false
             self.resumeListeningIfConversationMode()
         }

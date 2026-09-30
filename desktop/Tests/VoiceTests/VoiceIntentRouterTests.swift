@@ -14,6 +14,21 @@ struct VoiceIntentRouterTests {
         #expect(VoiceIntentRouter.match(text: "pull up client diagnostics", context: .empty) == .navigate(.clientDiagnostics))
     }
 
+    @Test("'Go to <any left-menu item>' works for every menu title, with filler and articles")
+    func everyMenuTitle() {
+        for destination in VoiceDestination.allCases {
+            let title = destination.menuTitle
+            for phrase in ["go to \(title)", "Go to the \(title).", "hey moneypenny take me to \(title)", "open \(title) please", "pull up my \(title) page"] {
+                let got = VoiceIntentRouter.match(text: phrase, context: .empty)
+                #expect(got == .navigate(destination), "PHRASE[\(phrase)] GOT[\(got)]")
+            }
+        }
+        #expect(VoiceIntentRouter.match(text: "go to profit and loss", context: .empty) == .navigate(.profitAndLossReport))
+        #expect(VoiceIntentRouter.match(text: "go to month end close", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "go to scope and period lock", context: .empty) == .navigate(.scopeAndPeriodLock))
+        #expect(VoiceIntentRouter.match(text: "go to ai conversations", context: .empty) == .navigate(.aiConversations))
+    }
+
     @Test("'Hi'/'status update' matches statusOverview")
     func statusOverviewPhrasesMatch() {
         #expect(VoiceIntentRouter.match(text: "hi", context: .empty) == .statusOverview)

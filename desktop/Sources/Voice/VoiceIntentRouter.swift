@@ -183,13 +183,27 @@ public enum VoiceIntentRouter {
         return t
     }
 
+    /// Every menu title as people say it: "profit and loss", "month end close",
+    /// "scope and period lock", "p and l" (from the hand list), plus "the …".
+    static func spokenForms(of title: String) -> Set<String> {
+        let base = title.lowercased().replacingOccurrences(of: "&", with: "and").replacingOccurrences(of: "-", with: " ")
+            .components(separatedBy: .whitespaces).filter { !$0.isEmpty }.joined(separator: " ")
+        var forms: Set<String> = [base, base + " page", base + " section", base + " screen", base + " report", base + " tab"]
+        forms.insert(base.replacingOccurrences(of: " and ", with: " "))
+        return forms
+    }
+
     private static func matchDestination(_ normalized: String) -> VoiceDestination? {
-        var stripped = normalized
-        for prefix in navigationPrefixes where stripped.hasPrefix(prefix) {
+        var stripped = CommandGrammar.normalize(normalized)
+        for prefix in navigationPrefixes.sorted(by: { $0.count > $1.count }) where stripped.hasPrefix(prefix) {
             stripped = String(stripped.dropFirst(prefix.count))
             break
         }
+        for article in ["the ", "my ", "our "] where stripped.hasPrefix(article) { stripped = String(stripped.dropFirst(article.count)); break }
         for (destination, aliases) in destinationAliases where aliases.contains(stripped) {
+            return destination
+        }
+        for destination in VoiceDestination.allCases where spokenForms(of: destination.menuTitle).contains(stripped) {
             return destination
         }
         return nil

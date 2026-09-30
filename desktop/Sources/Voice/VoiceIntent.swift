@@ -37,6 +37,49 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case clientDiagnostics
     case pricingCalculator
     case intakeQuestions
+    case aiConversations
+    case connection
+    case scopeAndPeriodLock
+    case audioSettings
+
+    /// The exact label on the left-hand menu. Saying "go to <this>" always
+    /// works (owner directive 2026-09-30); `VoiceIntentRouter` derives its
+    /// aliases from these, so a renamed or new menu item is one edit here.
+    public var menuTitle: String {
+        switch self {
+        case .dashboard: return "Dashboard"
+        case .findingsList: return "Findings"
+        case .amountSearch: return "Search by Amount"
+        case .pricingCalculator: return "Pricing Calculator"
+        case .intakeQuestions: return "Intake Questions"
+        case .firmCockpit: return "Firm Cockpit"
+        case .cashFlowForecast: return "Cash Flow Forecast"
+        case .clientDiagnostics: return "Client Diagnostics"
+        case .cleanupAssessment: return "Cleanup Assessment"
+        case .balanceSheetIntegrity: return "Balance Sheet Integrity"
+        case .chartOfAccountsCleanup: return "Chart of Accounts"
+        case .bankFeedCleanup: return "Bank Feed Cleanup"
+        case .batchFixes: return "Batch Fixes"
+        case .salesTaxReview: return "Sales Tax Review"
+        case .recurringVendors: return "Recurring Vendors"
+        case .monthEndClose: return "Month-End Close"
+        case .closePackage: return "Close Package"
+        case .activityLog: return "Activity Log"
+        case .balanceSheetReport: return "Balance Sheet"
+        case .profitAndLossReport: return "Profit & Loss"
+        case .cashFlowReport: return "Cash Flow"
+        case .trialBalanceReport: return "Trial Balance"
+        case .agedReceivablesReport: return "Aged Receivables"
+        case .agedPayablesReport: return "Aged Payables"
+        case .generalLedgerReport: return "General Ledger"
+        case .taxes: return "Taxes"
+        case .clientMemory: return "Client Memory"
+        case .aiConversations: return "AI Conversations"
+        case .connection: return "Connection"
+        case .scopeAndPeriodLock: return "Scope & Period Lock"
+        case .audioSettings: return "Audio Settings"
+        }
+    }
 }
 
 /// A closed set of what a voice command can ever mean. Deliberately has NO
