@@ -126,10 +126,7 @@ public struct BalanceSheetReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "the Balance Sheet", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     KPICardRow(cards: kpiCards)
                     HStack(alignment: .top, spacing: VLSpacing.md) {

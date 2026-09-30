@@ -120,10 +120,7 @@ public struct GeneralLedgerReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "the General Ledger", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     HStack {
                         TextField("Filter by amount (e.g. 142.50)", text: $amountFilter)

@@ -30,14 +30,25 @@ struct AudioSettingsView: View {
                         .foregroundStyle(.red)
                 }
 
+                if let remembered = AudioDeviceManager.preferredInputUID.flatMap({ uid in inputDevices.first { $0.uid == uid } }) {
+                    Text("Remembered microphone: \(remembered.name) — Voice Ledger re-selects it every time it listens.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                } else {
+                    Text("No microphone remembered yet — the first time you use voice, a plugged-in USB mic is chosen automatically; pick one below to override.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                }
+
                 deviceCard(
                     title: "MICROPHONE (INPUT)",
-                    disclaimer: "Sets your Mac's system-wide default microphone — the same device every other app will use, not just Voice Ledger. Changing this while listening is safe; Voice Ledger already adapts to a mid-conversation device change.",
+                    disclaimer: "Sets your Mac's system-wide default microphone and remembers it: Voice Ledger re-selects this mic every time it starts listening, even after the mic is unplugged and plugged back in.",
                     devices: inputDevices,
                     selectedID: $selectedInputID,
                     onSelect: { device in
                         do {
                             try AudioDeviceManager.setDefaultInput(device)
+                            AudioDeviceManager.preferredInputUID = device.uid
                             errorMessage = nil
                         } catch {
                             errorMessage = "Couldn't switch microphone: \(error.localizedDescription)"

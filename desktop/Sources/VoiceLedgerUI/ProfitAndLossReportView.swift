@@ -126,10 +126,7 @@ public struct ProfitAndLossReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "the Profit & Loss", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     KPICardRow(cards: kpiCards)
                     WaterfallCard(data: ChartData.waterfall(from: lines))

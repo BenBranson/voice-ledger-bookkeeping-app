@@ -82,8 +82,11 @@ public struct AmountSearchView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 260)
 
+                if transactions.isEmpty {
+                    DataStateNotice(.notLoaded(what: "the transactions to search", onLoad: { (onSync ?? onLoadHistory ?? {})() }))
+                }
                 HStack(spacing: VLSpacing.sm) {
-                    Text(transactions.isEmpty ? "Nothing loaded to search yet." : "Searching \(transactions.count.formatted()) transactions from \(scopeDescription).")
+                    Text(transactions.isEmpty ? "" : "Searching \(transactions.count.formatted()) transactions from \(scopeDescription).")
                         .font(VLTypography.caption())
                         .foregroundStyle(transactions.isEmpty ? .orange : VLColor.textMuted)
                     if !isSynced, let onSync { Button("Sync now", action: onSync).controlSize(.small) }

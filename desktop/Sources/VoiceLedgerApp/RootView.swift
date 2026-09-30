@@ -30,7 +30,7 @@ struct RootView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             AppSidebar(
                 selection: sidebarSelection,
-                companyName: state.companyInfo?.companyName ?? "No company connected",
+                companyName: state.displayCompanyName,
                 periodLabel: "\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))",
                 environmentTone: state.environment == .production ? .production : .sandbox,
                 isSyncing: state.loadState == .loading,
@@ -65,12 +65,15 @@ struct RootView: View {
                 .padding(.bottom, VLSpacing.md)
             }
         }
+        .environment(\.dataFreshness, state.freshness)
+        .environment(\.syncNow, { Task { await state.syncAndEvaluate() } })
         .task {
             await state.loadFromDiskOnly()
             await state.checkHealth()
             await state.checkAIStatus()
             await state.voiceEngine.loadPersistedContext()
             state.loadIntakeRoster()
+            await state.syncOnLaunchIfStale()
         }
         .alert("Export Failed", isPresented: Binding(get: { state.exportError != nil }, set: { if !$0 { state.clearExportError() } })) {
             Button("OK") { state.clearExportError() }
@@ -323,7 +326,7 @@ struct RootView: View {
             }
             ClientDashboardView(
                 state: ClientDashboardView.ViewState(
-                    companyName: state.companyInfo?.companyName ?? "No company connected",
+                    companyName: state.displayCompanyName,
                     environment: state.environment == .production ? .production : .sandbox,
                     coverageStatus: StatusMapping.status(for: coverageOutcome),
                     coverageDetail: coverageDetail,
@@ -2524,18 +2527,11 @@ struct RootView: View {
         )
     }
 
+    /// The same freshness sentence Moneypenny speaks (ClientFacts).
     private var coverageDetail: String {
-        let periodLabel = "\(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][state.period.month - 1]) \(state.period.year)"
-        switch state.coverage {
-        case .complete:
-            let when = state.lastSyncedAt.map { " \($0.formatted(.relative(presentation: .named)))" } ?? ""
-            return "Synced\(when) · \(periodLabel)"
-        case .partial(let reason):
-            if state.lastSyncedAt == nil, let cached = state.cachedSyncedAt {
-                return "Cached from last sync \(cached.formatted(.relative(presentation: .named))) · \(periodLabel) — sync to refresh"
-            }
-            return reason
-        }
+        let periodLabel = ClientFacts.periodLabel(state.period)
+        if case .partial(let reason) = state.coverage, state.lastSyncedAt != nil { return reason }
+        return "\(state.freshness.sentence()) · \(periodLabel)"
     }
 
     /// `HealthStatus` (IntegrationsQuickBooks) -> `VLStatus` (DesignSystem).

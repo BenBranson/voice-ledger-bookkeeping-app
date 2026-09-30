@@ -378,7 +378,11 @@ public actor BackendClient {
         }
         request.httpBody = try JSONEncoder().encode(params)
 
-        let (data, response) = try await session.data(for: request)
+        // One retry on a transient failure (5xx / dropped connection): at
+        // launch the sync, health check and company info all hit QuickBooks
+        // in the same second and the sandbox occasionally refuses one
+        // (seen 2026-09-30 as two 500s among eleven requests).
+        let (data, response) = try await Self.dataWithOneRetry(session, request)
         guard let http = response as? HTTPURLResponse else {
             throw BackendClientError.invalidResponse
         }
@@ -533,6 +537,23 @@ public enum HealthStatus: String, Codable, Sendable {
     case yellow
     case red
     case gray
+}
+
+extension BackendClient {
+    static func dataWithOneRetry(_ session: URLSession, _ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            let first = try await session.data(for: request)
+            if let http = first.1 as? HTTPURLResponse, http.statusCode >= 500 {
+                try await Task.sleep(for: .milliseconds(700))
+                return try await session.data(for: request)
+            }
+            return first
+        } catch is CancellationError { throw CancellationError() }
+        catch {
+            try await Task.sleep(for: .milliseconds(700))
+            return try await session.data(for: request)
+        }
+    }
 }
 
 public enum BackendClientError: Error, CustomStringConvertible {

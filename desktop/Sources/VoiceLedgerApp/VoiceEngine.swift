@@ -57,6 +57,8 @@ public final class VoiceEngine: NSObject {
     private let voiceService: VoiceServiceClient
     /// Which recognizer produced the last transcript ("on-device" / "whisper").
     public private(set) var transcriptSource = ""
+    /// The microphone actually in use for the current/last recording.
+    public private(set) var activeMicrophoneName = ""
     /// Audio for the rest of a reply, synthesized while the first sentence plays.
     private var pendingSpeechAudio: Data?
     private var pendingSpeechTask: Task<Void, Never>?
@@ -207,6 +209,11 @@ public final class VoiceEngine: NSObject {
             return
         }
         micPermission = .granted
+
+        if let mic = AudioDeviceManager.applyPreferredInput() { activeMicrophoneName = mic.name }
+        else { activeMicrophoneName = AudioDeviceManager.currentDefaultInput()?.name ?? "" }
+        // Give Core Audio a moment to switch before we read the input format.
+        try? await Task.sleep(for: .milliseconds(150))
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("voiceledger-recording-\(UUID().uuidString).wav")
         recordingURL = tempURL

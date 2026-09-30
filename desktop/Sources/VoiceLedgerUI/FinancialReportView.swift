@@ -128,10 +128,7 @@ public struct FinancialReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "the \(title)", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     ReportLinesTable(lines: lines)
                 }

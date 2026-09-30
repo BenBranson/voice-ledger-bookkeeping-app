@@ -48,6 +48,34 @@ enum AudioDeviceManager {
     /// Throws a plain, readable error rather than silently no-op'ing — a
     /// settings screen that "picks" a device but doesn't actually apply it
     /// is exactly the kind of unverified claim CLAUDE.md rule 6 rules out.
+    // Owner directive (2026-09-30): "make it work with my Maono PD200W USB
+    // mic". macOS resets the default input to the built-in mic whenever a
+    // USB mic is unplugged and re-plugged, so the app remembers the mic the
+    // owner chose (by its stable UID) and re-selects it before listening.
+    private static let preferredInputKey = "preferredInputDeviceUID"
+
+    static var preferredInputUID: String? {
+        get { UserDefaults.standard.string(forKey: preferredInputKey) }
+        set { UserDefaults.standard.set(newValue, forKey: preferredInputKey) }
+    }
+
+    /// Makes the remembered mic the default input when it's present. If
+    /// nothing is remembered yet, a plugged-in USB microphone that isn't
+    /// the built-in one is preferred and remembered.
+    @discardableResult
+    static func applyPreferredInput() -> Device? {
+        let inputs = inputDevices()
+        var wanted = preferredInputUID.flatMap { uid in inputs.first { $0.uid == uid } }
+        if wanted == nil, preferredInputUID == nil,
+           let external = inputs.first(where: { !$0.name.localizedCaseInsensitiveContains("MacBook") && !$0.name.localizedCaseInsensitiveContains("Built-in") }) {
+            wanted = external
+            preferredInputUID = external.uid
+        }
+        guard let device = wanted else { return nil }
+        if currentDefaultInput()?.id != device.id { try? setDefaultInput(device) }
+        return device
+    }
+
     static func setDefaultInput(_ device: Device) throws {
         try setDefaultDevice(device, selector: kAudioHardwarePropertyDefaultInputDevice)
     }

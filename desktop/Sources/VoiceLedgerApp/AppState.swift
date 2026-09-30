@@ -284,6 +284,27 @@ public final class AppState {
 
     public func leaveFinding() { screen = findingReturnScreen }
 
+    /// On launch: refresh automatically when the saved data is older than
+    /// 15 minutes (the same rule Generate Report uses), then load the
+    /// 24-month history in the background so Search, Diagnostics and the
+    /// cleanup quote are ready. The user should almost never see "cached".
+    public func syncOnLaunchIfStale() async {
+        guard !realmID.rawValue.isEmpty else { return }
+        let stale: Bool
+        switch freshness {
+        case .neverSynced: stale = true
+        case .cached(let at): stale = Date().timeIntervalSince(at) > 15 * 60
+        default: stale = false
+        }
+        if stale { await syncDashboard() }
+        // The launcher may still be starting the backend when checkHealth()
+        // first ran, leaving the company name blank — try once more now.
+        if companyInfo == nil { await checkHealth() }
+        if historySnapshot == nil || (historySnapshot.map { Date().timeIntervalSince($0.fetchedAt) > 24 * 3600 } ?? false) {
+            Task { [weak self] in await self?.loadHistory() }
+        }
+    }
+
     /// How current the loaded data is — the one value every page and
     /// Moneypenny read (docs/MONEYPENNY_CONSISTENCY_DESIGN.md).
     public var freshness: Freshness {
@@ -1236,20 +1257,32 @@ public final class AppState {
     public func checkHealth() async {
         isCheckingHealth = true
         healthCheckError = nil
-        do {
-            async let health = backend.healthCheck(realmID: realmID)
-            async let info = syncClient.fetchCompanyInfo(realmID: realmID)
-            async let writeAccess = backend.getWriteAccess(realmID: realmID)
-            let (healthResultValue, infoValue, writeAccessValue) = try await (health, info, writeAccess)
-            healthResult = healthResultValue
-            companyInfo = infoValue
-            writeAccessEnabled = writeAccessValue
-        } catch {
-            if !Self.isCancellation(error) {
-                healthCheckError = error.localizedDescription
-            }
+        // Three independent reads: one failing must not blank the others.
+        // Seen 2026-09-30: QBO's CompanyInfo endpoint returned "System
+        // Failure" (code 10000) for an hour while every other read worked.
+        async let health = Result { try await backend.healthCheck(realmID: realmID) }
+        async let info = Result { try await syncClient.fetchCompanyInfo(realmID: realmID) }
+        async let writeAccess = Result { try await backend.getWriteAccess(realmID: realmID) }
+        let (healthR, infoR, writeR) = await (health, info, writeAccess)
+        if case .success(let v) = healthR { healthResult = v }
+        if case .success(let v) = writeR { writeAccessEnabled = v }
+        switch infoR {
+        case .success(let v):
+            companyInfo = v
+            UserDefaults.standard.set(v.companyName, forKey: "companyName:\(realmID.rawValue)")
+        case .failure(let error):
+            if !Self.isCancellation(error) { healthCheckError = "Company name couldn't be read from QuickBooks: \(error.localizedDescription)" }
         }
+        if case .failure(let error) = healthR, !Self.isCancellation(error) { healthCheckError = error.localizedDescription }
         isCheckingHealth = false
+    }
+
+    /// The company name to show: live if loaded, else the name from the last
+    /// successful read (so a transient QuickBooks fault never blanks the UI).
+    public var displayCompanyName: String {
+        if let name = companyInfo?.companyName { return name }
+        if let cached = UserDefaults.standard.string(forKey: "companyName:\(realmID.rawValue)"), !cached.isEmpty { return cached }
+        return "No company connected"
     }
 
     /// CLAUDE.md rule 4's access-mode gate, desktop side. Optimistic UI is

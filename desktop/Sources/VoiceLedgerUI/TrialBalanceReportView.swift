@@ -102,10 +102,7 @@ public struct TrialBalanceReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "the Trial Balance", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     VLCard {
                         VStack(alignment: .leading, spacing: VLSpacing.xxs) {

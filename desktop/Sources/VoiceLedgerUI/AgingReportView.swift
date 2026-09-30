@@ -109,10 +109,7 @@ public struct AgingReportView: View {
                 }
 
                 if lines.isEmpty && !isLoading && errorMessage == nil {
-                    VLCard {
-                        Text("No report loaded yet. Tap Refresh.")
-                            .foregroundStyle(VLColor.textMuted)
-                    }
+                    DataStateNotice(.notLoaded(what: "this aging report", onLoad: onRefresh), isLoading: isLoading)
                 } else {
                     VLCard {
                         ScrollView(.horizontal) {
