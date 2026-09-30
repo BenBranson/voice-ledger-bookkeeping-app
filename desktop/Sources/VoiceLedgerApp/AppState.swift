@@ -250,23 +250,25 @@ public final class AppState {
 
     public func leaveFinding() { screen = findingReturnScreen }
 
-    /// Search by Amount's pool: this session's sync plus the 24-month
-    /// history when loaded, de-duplicated by record ID (owner bug report
-    /// 2026-09-29 — a March transaction wasn't findable from July's sync).
-    public var searchableTransactions: [LedgerTransaction] {
-        var seen = Set<String>()
-        return (transactions + (historySnapshot?.transactions ?? [])).filter { seen.insert("\($0.entityKind.rawValue):\($0.id)").inserted }
+    /// How current the loaded data is — the one value every page and
+    /// Moneypenny read (docs/MONEYPENNY_CONSISTENCY_DESIGN.md).
+    public var freshness: Freshness {
+        if isSyncInFlight { return .syncing }
+        if let synced = lastSyncedAt { return .synced(at: synced) }
+        if let cached = cachedSyncedAt { return .cached(at: cached) }
+        return .neverSynced
     }
 
-    public var searchScopeDescription: String {
-        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        var parts: [String] = []
-        if lastSyncedAt != nil { parts.append("the last sync (\(months[period.month - 1]) \(period.year))") }
-        if let history = historySnapshot {
-            parts.append("the 24-month history (\(months[history.from.month - 1]) \(history.from.year) – \(months[history.through.month - 1]) \(history.through.year), loaded \(history.fetchedAt.formatted(date: .abbreviated, time: .omitted)))")
-        }
-        return parts.isEmpty ? "nothing yet" : parts.joined(separator: " and ")
+    /// Everything already loaded, as plain values for `ClientFacts`.
+    public var clientData: ClientData {
+        ClientData(period: period, transactions: transactions, accounts: accounts, balanceSheet: balanceSheetLines,
+                   priorBalanceSheet: priorPeriodBalanceSheetLines, profitAndLoss: profitAndLossLines,
+                   priorProfitAndLoss: priorPeriodProfitAndLossLines, cashFlow: cashFlowLines, findings: findings,
+                   history: historySnapshot, freshness: freshness)
     }
+
+    public var searchableTransactions: [LedgerTransaction] { clientData.searchableTransactions }
+    public var searchScopeDescription: String { ClientFacts.searchScope(clientData) }
 
     public var findingReturnLabel: String {
         switch findingReturnScreen {

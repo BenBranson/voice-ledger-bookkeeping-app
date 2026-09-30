@@ -2156,6 +2156,7 @@ struct RootView: View {
                 environment: state.environment == .production ? .production : .sandbox,
                 transactions: state.searchableTransactions,
                 accounts: state.accounts.isEmpty ? (state.historySnapshot?.accounts ?? []) : state.accounts,
+                search: { ClientFacts.searchAmount(state.clientData, text: $0) },
                 scopeDescription: state.searchScopeDescription,
                 hasHistory: state.historySnapshot != nil,
                 isSynced: state.lastSyncedAt != nil,

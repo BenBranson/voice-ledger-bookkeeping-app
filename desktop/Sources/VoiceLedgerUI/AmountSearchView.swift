@@ -19,10 +19,12 @@ public struct AmountSearchView: View {
     private let onSync: (() -> Void)?
     private let onLoadHistory: (() -> Void)?
     private let qboURL: ((LedgerTransaction) -> URL?)?
+    private let search: ((String) -> Fact<AmountSearchResult>)?
 
     @State private var query = ""
 
     public init(environment: VLEnvironmentTone, transactions: [LedgerTransaction], accounts: [LedgerAccount],
+                search: ((String) -> Fact<AmountSearchResult>)? = nil,
                 scopeDescription: String = "the last sync", hasHistory: Bool = false, isSynced: Bool = true,
                 onSync: (() -> Void)? = nil, onLoadHistory: (() -> Void)? = nil, qboURL: ((LedgerTransaction) -> URL?)? = nil) {
         self.scopeDescription = scopeDescription
@@ -31,6 +33,7 @@ public struct AmountSearchView: View {
         self.onSync = onSync
         self.onLoadHistory = onLoadHistory
         self.qboURL = qboURL
+        self.search = search
         self.environment = environment
         self.transactions = transactions
         self.accounts = accounts
@@ -40,21 +43,20 @@ public struct AmountSearchView: View {
         AmountSearch.parseAmount(query)
     }
 
-    private var matches: [LedgerTransaction] {
-        guard let parsedAmount else { return [] }
-        return AmountSearch.findTransactions(matching: parsedAmount, in: transactions)
-            .sorted { $0.txnDate < $1.txnDate }
+    /// The shared answer (ClientFacts) — the page renders it, never recomputes it.
+    private var result: AmountSearchResult? {
+        if let search { return search(query).value }
+        guard let parsedAmount else { return nil }
+        return AmountSearchResult(amount: parsedAmount,
+                                  exact: AmountSearch.findTransactions(matching: parsedAmount, in: transactions).sorted { $0.txnDate < $1.txnDate },
+                                  balanceAccounts: AmountSearch.accountsWithBalance(parsedAmount, in: accounts).map { ($0, AmountSearch.transactions(for: $0, in: transactions)) },
+                                  combination: nil)
     }
 
-    private var balanceAccounts: [LedgerAccount] {
-        guard let parsedAmount else { return [] }
-        return AmountSearch.accountsWithBalance(parsedAmount, in: accounts)
-    }
+    private var matches: [LedgerTransaction] { result?.exact ?? [] }
 
-    private var combination: [LedgerTransaction]? {
-        guard let parsedAmount, matches.isEmpty else { return nil }
-        return AmountSearch.combination(matching: parsedAmount, in: transactions)
-    }
+    private var balanceAccounts: [LedgerAccount] { result?.balanceAccounts.map(\.account) ?? [] }
+    private var combination: [LedgerTransaction]? { result?.combination }
 
     private func accountName(_ accountID: String?) -> String {
         guard let accountID else { return "—" }
@@ -147,7 +149,7 @@ public struct AmountSearchView: View {
     }
 
     private func balanceCard(_ account: LedgerAccount, amount: Money) -> some View {
-        let postings = AmountSearch.transactions(for: account, in: transactions)
+        let postings = result?.balanceAccounts.first { $0.account.id == account.id }?.postings ?? AmountSearch.transactions(for: account, in: transactions)
         let register = qboURL.flatMap { make in
             // Reuse the transaction link's base to reach the account register.
             postings.first.flatMap(make).map { url -> URL in
