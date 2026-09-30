@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "agreement-sample", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "agreement-sample", "facts", "facts-diff", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -429,6 +429,151 @@ case "history-check":
     } catch {
         FileHandle.standardError.write("history-check failed: \(error)\n".data(using: .utf8)!)
         exit(1)
+    }
+
+case "facts":
+    // Regression snapshot (docs/MONEYPENNY_CONSISTENCY_DESIGN.md, consumer 3):
+    // sync the sandbox exactly as the app does, evaluate every rule, then
+    // write every ClientFacts answer + every finding as sorted JSON with no
+    // timestamps. `facts-diff` compares two snapshots.
+    //   facts <year> <month> [--as-of YYYY-MM-DD] [--out file.json]
+    guard arguments.count >= 4, let year = Int(arguments[2]), let month = Int(arguments[3]) else {
+        FileHandle.standardError.write("Usage: facts <year> <month> [--as-of YYYY-MM-DD] [--out file.json]\n".data(using: .utf8)!)
+        exit(64)
+    }
+    var asOf = AccountingDate(date: Date())
+    var outPath: String? = nil
+    var i = 4
+    while i < arguments.count {
+        if arguments[i] == "--as-of", i + 1 < arguments.count { asOf = AccountingDate(qboDateString: arguments[i + 1]); i += 2 }
+        else if arguments[i] == "--out", i + 1 < arguments.count { outPath = arguments[i + 1]; i += 2 }
+        else { i += 1 }
+    }
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let backend = BackendClient(configuration: configuration)
+        let syncClient = QBOSyncClient(backend: backend)
+        let period = AccountingPeriod(year: year, month: month)
+        let agingAsOf = QBOSyncClient.agingDate(for: period, today: asOf)
+
+        async let bs = syncClient.fetchBalanceSheet(realmID: realmID, period: period)
+        async let pl = syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
+        async let cf = syncClient.fetchCashFlow(realmID: realmID, period: period)
+        async let tb = syncClient.fetchTrialBalance(realmID: realmID, period: period)
+        let (balanceSheetLines, profitAndLossLines, cashFlowLines, trialBalanceLines) = try await (bs, pl, cf, tb)
+        let agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)
+        let agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)
+        let priorBS = try await syncClient.fetchBalanceSheet(realmID: realmID, period: period.previousMonth)
+        let priorPL = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period.previousMonth)
+        let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
+        let priorPeriodTransactions = try await syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)
+
+        let dataSet = NormalizedDataSet(
+            realmID: syncedDataSet.realmID, period: syncedDataSet.period, transactions: syncedDataSet.transactions,
+            accounts: syncedDataSet.accounts, vendors: syncedDataSet.vendors, deposits: syncedDataSet.deposits,
+            vendorCredits: syncedDataSet.vendorCredits, profitAndLossLines: profitAndLossLines, balanceSheetLines: balanceSheetLines,
+            agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines, trialBalanceLines: trialBalanceLines,
+            priorPeriodTransactions: priorPeriodTransactions, coverage: syncedDataSet.coverage, companyFacts: syncedDataSet.companyFacts
+        )
+        let engine = RuleEngine(rules: RuleRegistry.all)
+        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, asOfDate: asOf)
+        let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
+        var findings: [Finding] = []
+        var passes: [String] = []
+        var cannot: [String: String] = [:]
+        for (ruleID, result) in evaluation.results {
+            switch result.outcome {
+            case .pass: passes.append(ruleID.rawValue)
+            case .cannotEvaluate(let reason): cannot[ruleID.rawValue] = "\(reason)"
+            case .findings(let list): findings += list
+            }
+        }
+
+        let data = ClientData(period: period, transactions: syncedDataSet.transactions, accounts: syncedDataSet.accounts,
+                              balanceSheet: balanceSheetLines, priorBalanceSheet: priorBS, profitAndLoss: profitAndLossLines,
+                              priorProfitAndLoss: priorPL, cashFlow: cashFlowLines, findings: findings, history: nil, freshness: .synced(at: Date()))
+        func money(_ m: Money?) -> String { m?.accountingDescription ?? "—" }
+        func totals(_ lines: [ReportLine]) -> [String: String] {
+            Dictionary(lines.filter(\.isSummary).compactMap { l in l.amount.map { (l.label, $0.accountingDescription) } }, uniquingKeysWith: { a, _ in a })
+        }
+        var facts: [String: Any] = [
+            "cashBalance": money(ClientFacts.cashBalance(data).value),
+            "revenue": money(ClientFacts.revenue(data).value),
+            "netIncome": money(ClientFacts.netIncome(data).value),
+            "revenuePrior": money(ClientFacts.revenue(data, .priorMonth).value),
+            "netIncomePrior": money(ClientFacts.netIncome(data, .priorMonth).value),
+            "workingCapital": money(FinancialKPIs.workingCapital(from: balanceSheetLines)),
+            "openFindingCount": ClientFacts.openFindingCount(data),
+            "exposure.cleanupAssessment": money(ClientFacts.totalExposure(data, category: .cleanupAssessment).value),
+            "exposure.balanceSheetIntegrity": money(ClientFacts.totalExposure(data, category: .balanceSheetIntegrity).value),
+            "exposure.allOpen": money(ClientFacts.totalExposure(data, category: .allOpen).value),
+            "balanceSheetTotals": totals(balanceSheetLines),
+            "profitAndLossTotals": totals(profitAndLossLines),
+            "cashFlowTotals": totals(cashFlowLines),
+            "chartOfAccounts": Dictionary((ClientFacts.chartOfAccounts(data).value ?? []).map { ($0.name, $0.balance.accountingDescription) }, uniquingKeysWith: { a, _ in a }),
+            "transactionCount": syncedDataSet.transactions.count
+        ]
+        if let arTotal = agedReceivablesLines.last(where: \.isSummary) {
+            let split = AgingSplit(arTotal)
+            facts["receivables"] = ["owed": money(split.owed), "credits": money(split.credits), "over60": money(split.over60Owed), "net": money(split.net)]
+        }
+        if let apTotal = agedPayablesLines.last(where: \.isSummary) { facts["payablesTotal"] = money(apTotal.total) }
+        let findingRows: [[String: Any]] = findings.map { f in
+            ["rule": f.ruleID.rawValue, "title": f.title, "amount": f.dollarExposure.accountingDescription, "severity": f.severity.rawValue,
+             "confidence": f.confidence.rawValue, "evidence": f.evidence.map(\.transactionID).sorted()]
+        }.sorted { a, b in
+            let ka = "\(a["rule"]!)|\(a["title"]!)|\(a["amount"]!)", kb = "\(b["rule"]!)|\(b["title"]!)|\(b["amount"]!)"
+            return ka < kb
+        }
+        let snapshot: [String: Any] = [
+            "period": String(format: "%04d-%02d", year, month), "asOf": String(format: "%04d-%02d-%02d", asOf.year, asOf.month, asOf.day),
+            "realmId": realmID.rawValue, "facts": facts, "findings": findingRows, "rulesPassed": passes.sorted(), "rulesCannotEvaluate": cannot
+        ]
+        let json = try JSONSerialization.data(withJSONObject: snapshot, options: [.prettyPrinted, .sortedKeys])
+        if let outPath { try json.write(to: URL(fileURLWithPath: outPath)); print("Wrote \(findings.count) findings, \(facts.count) fact groups to \(outPath)") }
+        else { print(String(decoding: json, as: UTF8.self)) }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write("facts failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
+    }
+
+case "facts-diff":
+    //   facts-diff baseline.json current.json   (exit 1 when anything differs)
+    guard arguments.count >= 4 else { FileHandle.standardError.write("Usage: facts-diff baseline.json current.json\n".data(using: .utf8)!); exit(64) }
+    do {
+        func load(_ path: String) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path))) as? [String: Any] ?? [:]
+        }
+        let a = try load(arguments[2]), b = try load(arguments[3])
+        var changes: [String] = []
+        func flatten(_ v: Any, _ prefix: String, into out: inout [String: String]) {
+            if let d = v as? [String: Any] { for (k, x) in d { flatten(x, prefix.isEmpty ? k : "\(prefix).\(k)", into: &out) } }
+            else { out[prefix] = "\(v)" }
+        }
+        var fa: [String: String] = [:], fb: [String: String] = [:]
+        flatten(a["facts"] ?? [:], "", into: &fa); flatten(b["facts"] ?? [:], "", into: &fb)
+        for key in Set(fa.keys).union(fb.keys).sorted() where fa[key] != fb[key] {
+            changes.append("FACT \(key): \(fa[key] ?? "(absent)") → \(fb[key] ?? "(absent)")")
+        }
+        func keys(_ s: [String: Any]) -> [String: [String: Any]] {
+            var out: [String: [String: Any]] = [:]
+            for f in (s["findings"] as? [[String: Any]] ?? []) { out["\(f["rule"] ?? "")|\(f["title"] ?? "")|\(f["amount"] ?? "")"] = f }
+            return out
+        }
+        let ka = keys(a), kb = keys(b)
+        for k in Set(kb.keys).subtracting(ka.keys).sorted() { changes.append("FINDING APPEARED: \(k)") }
+        for k in Set(ka.keys).subtracting(kb.keys).sorted() { changes.append("FINDING DISAPPEARED: \(k)") }
+        let pa = Set(a["rulesPassed"] as? [String] ?? []), pb = Set(b["rulesPassed"] as? [String] ?? [])
+        for r in pa.subtracting(pb).sorted() { changes.append("RULE NO LONGER PASSES: \(r)") }
+        for r in pb.subtracting(pa).sorted() { changes.append("RULE NOW PASSES: \(r)") }
+        if changes.isEmpty { print("No differences: \(kb.count) findings, \(fb.count) facts match the baseline."); exit(0) }
+        print("\(changes.count) difference(s) from the baseline:")
+        for c in changes { print("  " + c) }
+        exit(1)
+    } catch {
+        FileHandle.standardError.write("facts-diff failed: \(error)\n".data(using: .utf8)!)
+        exit(2)
     }
 
 case "sync-check":

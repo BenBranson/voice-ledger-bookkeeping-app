@@ -23,6 +23,16 @@
 set -euo pipefail
 
 CONFIG="${1:-release}"
+# Regression gate (2026-09-30): a release bundle never ships numbers that
+# silently changed. Skip only deliberately: VL_SKIP_PREFLIGHT=1 (e.g. when
+# the backend is down) — the skip is printed so it can't go unnoticed.
+if [ "$CONFIG" = "release" ]; then
+  if [ "${VL_SKIP_PREFLIGHT:-0}" = "1" ]; then
+    echo "build-app-bundle: PREFLIGHT SKIPPED (VL_SKIP_PREFLIGHT=1)"
+  else
+    "$(dirname "$0")/preflight.sh" --skip-tests || { echo "build-app-bundle: preflight failed — not bundling"; exit 1; }
+  fi
+fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_DIR="$(dirname "$SCRIPT_DIR")"
 BINARY="$DESKTOP_DIR/.build/$CONFIG/VoiceLedgerApp"

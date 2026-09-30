@@ -1,0 +1,357 @@
+{
+  "asOf" : "2026-09-30",
+  "facts" : {
+    "balanceSheetTotals" : {
+      "Total Accounts Payable" : "$3,913.76",
+      "Total Accounts Receivable" : "$17,771.03",
+      "TOTAL ASSETS" : "$47,468.72",
+      "Total Bank Accounts" : "$10,448.92",
+      "Total Credit Cards" : "$1,111.22",
+      "Total Current Assets" : "$33,973.72",
+      "Total Current Liabilities" : "$9,395.92",
+      "Total Equity" : "$19,737.86",
+      "Total Fixed Assets" : "$13,495.00",
+      "Total Liabilities" : "$27,730.86",
+      "TOTAL LIABILITIES AND EQUITY" : "$47,468.72",
+      "Total Long-Term Liabilities" : "$18,334.94",
+      "Total Other Current Assets" : "$5,753.77",
+      "Total Other Current Liabilities" : "$4,370.94",
+      "Total Truck" : "$13,495.00"
+    },
+    "cashBalance" : "$10,448.92",
+    "cashFlowTotals" : {
+      "Cash at end of period" : "$13,311.44",
+      "Net cash increase for period" : "($1,766.60)",
+      "Net cash provided by financing activities" : "($2,032.08)",
+      "Net cash provided by operating activities" : "$265.48",
+      "Total Adjustments to reconcile Net Income to Net Cash provided by operations:" : "($1,579.67)"
+    },
+    "chartOfAccounts" : {
+      "Accounting" : "$0.00",
+      "Accounts Payable (A\/P)" : "($3,523.60)",
+      "Accounts Receivable (A\/R)" : "$17,176.93",
+      "Advertising" : "$0.00",
+      "Arizona Dept. of Revenue Payable" : "$0.00",
+      "Ask My Accountant" : "$0.00",
+      "Automobile" : "$0.00",
+      "Bank Charges" : "$0.00",
+      "Billable Expense Income" : "$0.00",
+      "Board of Equalization Payable" : "($370.94)",
+      "Bookkeeper" : "$0.00",
+      "Building Repairs" : "$0.00",
+      "Checking" : "$14,408.03",
+      "Commissions & fees" : "$0.00",
+      "Computer Repairs" : "$0.00",
+      "Cost of Goods Sold" : "$0.00",
+      "Cost of Labor" : "$0.00",
+      "Decks and Patios" : "$0.00",
+      "Depreciation" : "$0.00",
+      "Design income" : "$0.00",
+      "Discounts given" : "$0.00",
+      "Disposal Fees" : "$0.00",
+      "Dues & Subscriptions" : "$0.00",
+      "Equipment Rental" : "$0.00",
+      "Equipment Repairs" : "$0.00",
+      "Fees Billed" : "$0.00",
+      "Fountain and Garden Lighting" : "$0.00",
+      "Fountains and Garden Lighting" : "$0.00",
+      "Fuel" : "$0.00",
+      "Gas and Electric" : "$0.00",
+      "Installation" : "$0.00",
+      "Insurance" : "$0.00",
+      "Interest Earned" : "$0.00",
+      "Interest Paid" : "$0.00",
+      "Inventory Asset" : "$596.25",
+      "Job Expenses" : "$0.00",
+      "Job Materials" : "$0.00",
+      "Labor" : "$0.00",
+      "Landscaping Services" : "$0.00",
+      "Lawyer" : "$0.00",
+      "Legal & Professional Fees" : "$0.00",
+      "Loan Payable" : "($4,000.00)",
+      "Maintenance and Repair" : "$0.00",
+      "Maintenance and Repairs" : "$0.00",
+      "Mastercard" : "($1,222.70)",
+      "Meals and Entertainment" : "$0.00",
+      "Miscellaneous" : "$0.00",
+      "Notes Payable" : "($17,260.78)",
+      "Office Expenses" : "$0.00",
+      "Opening Balance Equity" : "$9,247.50",
+      "Original Cost" : "$13,495.00",
+      "Other Income" : "$0.00",
+      "Other Portfolio Income" : "$0.00",
+      "Owner's Draw" : "$21,600.00",
+      "Penalties & Settlements" : "$0.00",
+      "Permits" : "$0.00",
+      "Pest Control Services" : "$0.00",
+      "Plants and Soil" : "$0.00",
+      "Prepaid Expenses" : "$0.00",
+      "Promotional" : "$0.00",
+      "Purchases" : "$0.00",
+      "Reconciliation Discrepancies" : "$0.00",
+      "Refunds-Allowances" : "$0.00",
+      "Rent or Lease" : "$0.00",
+      "Retained Earnings" : "$0.00",
+      "Sales of Product Income" : "$0.00",
+      "Savings" : "$800.00",
+      "Services" : "$0.00",
+      "Sprinklers and Drip Systems" : "$0.00",
+      "Stationery & Printing" : "$0.00",
+      "Supplies" : "$0.00",
+      "Taxes & Licenses" : "$0.00",
+      "Telephone" : "$0.00",
+      "Travel" : "$0.00",
+      "Travel Meals" : "$0.00",
+      "Truck" : "$0.00",
+      "Unapplied Cash Bill Payment Expense" : "$0.00",
+      "Unapplied Cash Payment Income" : "$0.00",
+      "Uncategorized Asset" : "$0.00",
+      "Uncategorized Expense" : "$0.00",
+      "Uncategorized Income" : "$0.00",
+      "Undeposited Funds" : "$2,862.52",
+      "Utilities" : "$0.00",
+      "Visa" : "$0.00",
+      "VL Spike Payroll Clearing" : "$1,420.00",
+      "VL Spike Suspense" : "$875.00",
+      "VL Spike Sweeper Checking" : "($3,293.02)",
+      "VL Spike Sweeper Supplies" : "$0.00",
+      "Workers Compensation" : "$0.00"
+    },
+    "exposure.allOpen" : "$30,124.07",
+    "exposure.balanceSheetIntegrity" : "$19,900.28",
+    "exposure.cleanupAssessment" : "$25,546.81",
+    "netIncome" : "$1,845.15",
+    "netIncomePrior" : "$6,239.07",
+    "openFindingCount" : 17,
+    "payablesTotal" : "$3,913.76",
+    "profitAndLossTotals" : {
+      "Gross Profit" : "$16,019.16",
+      "Net Income" : "$1,845.15",
+      "Net Operating Income" : "$6,227.83",
+      "Net Other Income" : "($4,382.68)",
+      "Total Automobile" : "$750.06",
+      "Total Expenses" : "$9,791.33",
+      "Total Income" : "$16,019.16",
+      "Total Job Expenses" : "$5,575.81",
+      "Total Job Materials" : "$2,932.51",
+      "Total Labor" : "$5,820.17",
+      "Total Landscaping Services" : "$10,987.88",
+      "Total Other Expenses" : "$4,382.68",
+      "Total Utilities" : "$378.50"
+    },
+    "receivables" : {
+      "credits" : "($800.00)",
+      "net" : "$17,771.03",
+      "over60" : "$6,317.69",
+      "owed" : "$18,571.03"
+    },
+    "revenue" : "$16,019.16",
+    "revenuePrior" : "$16,260.82",
+    "transactionCount" : 54,
+    "workingCapital" : "$24,577.80"
+  },
+  "findings" : [
+    {
+      "amount" : "$3,293.02",
+      "confidence" : "high",
+      "evidence" : [
+        "1150040019"
+      ],
+      "rule" : "VL-BS-NEGBAL-001",
+      "severity" : "high",
+      "title" : "VL Spike Sweeper Checking is overdrawn — USD 3293.02"
+    },
+    {
+      "amount" : "$1,420.00",
+      "confidence" : "high",
+      "evidence" : [
+        "1150040018"
+      ],
+      "rule" : "VL-BS-SUSPENSE-001",
+      "severity" : "high",
+      "title" : "VL Spike Payroll Clearing has a USD 1420.00 balance — clearing account not zeroed"
+    },
+    {
+      "amount" : "$875.00",
+      "confidence" : "high",
+      "evidence" : [
+        "1150040017"
+      ],
+      "rule" : "VL-BS-SUSPENSE-001",
+      "severity" : "high",
+      "title" : "VL Spike Suspense has a USD 875.00 balance — unidentified items in suspense"
+    },
+    {
+      "amount" : "$400.00",
+      "confidence" : "high",
+      "evidence" : [
+        "223"
+      ],
+      "rule" : "VL-BS-UNDEP-001",
+      "severity" : "high",
+      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
+    },
+    {
+      "amount" : "$400.00",
+      "confidence" : "high",
+      "evidence" : [
+        "222"
+      ],
+      "rule" : "VL-BS-UNDEP-001",
+      "severity" : "high",
+      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
+    },
+    {
+      "amount" : "$312.50",
+      "confidence" : "high",
+      "evidence" : [
+        "232"
+      ],
+      "rule" : "VL-CAT-UNCAT-001",
+      "severity" : "high",
+      "title" : "Uncategorized transaction — VL Spike Permian Supply, USD 312.50"
+    },
+    {
+      "amount" : "$500.00",
+      "confidence" : "high",
+      "evidence" : [
+        "220",
+        "221"
+      ],
+      "rule" : "VL-DUP-INV-001",
+      "severity" : "high",
+      "title" : "Possible duplicate invoice — USD 500.00"
+    },
+    {
+      "amount" : "$264.99",
+      "confidence" : "low",
+      "evidence" : [
+        "235",
+        "236"
+      ],
+      "rule" : "VL-DUP-NEAR-001",
+      "severity" : "high",
+      "title" : "Possible near-duplicate expense — USD 264.99"
+    },
+    {
+      "amount" : "$77.77",
+      "confidence" : "low",
+      "evidence" : [
+        "237",
+        "238"
+      ],
+      "rule" : "VL-DUP-NEAR-001",
+      "severity" : "high",
+      "title" : "Possible near-duplicate expense — USD 77.77"
+    },
+    {
+      "amount" : "$400.00",
+      "confidence" : "medium",
+      "evidence" : [
+        "222",
+        "223"
+      ],
+      "rule" : "VL-DUP-PAY-001",
+      "severity" : "high",
+      "title" : "Possible duplicate payment — USD 400.00"
+    },
+    {
+      "amount" : "$0.00",
+      "confidence" : "high",
+      "evidence" : [
+        "200000001",
+        "200000011"
+      ],
+      "rule" : "VL-DUP-VEND-001",
+      "severity" : "low",
+      "title" : "Possible duplicate vendor — VL SPIKE GULF COAST HARDWARE, LLC, VL Spike Gulf Coast Hardware"
+    },
+    {
+      "amount" : "$4,264.76",
+      "confidence" : "high",
+      "evidence" : [
+        "Reconciliation Discrepancies"
+      ],
+      "rule" : "VL-FORCED-RECON-001",
+      "severity" : "high",
+      "title" : "Reconciliation Discrepancies carries a balance — USD 4264.76"
+    },
+    {
+      "amount" : "$4,264.76",
+      "confidence" : "high",
+      "evidence" : [
+        "228"
+      ],
+      "rule" : "VL-MISSING-PAYEE-001",
+      "severity" : "high",
+      "title" : "Expense with no vendor — USD 4264.76"
+    },
+    {
+      "amount" : "$9,247.50",
+      "confidence" : "high",
+      "evidence" : [
+        "34"
+      ],
+      "rule" : "VL-OBE-BALANCE-001",
+      "severity" : "high",
+      "title" : "Opening Balance Equity carries a nonzero balance — USD 9247.50"
+    },
+    {
+      "amount" : "$1,759.08",
+      "confidence" : "medium",
+      "evidence" : [
+        "437"
+      ],
+      "rule" : "VL-PAYROLL-LUMP-001",
+      "severity" : "high",
+      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1759.08"
+    },
+    {
+      "amount" : "$1,769.69",
+      "confidence" : "medium",
+      "evidence" : [
+        "436"
+      ],
+      "rule" : "VL-PAYROLL-LUMP-001",
+      "severity" : "high",
+      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1769.69"
+    },
+    {
+      "amount" : "$875.00",
+      "confidence" : "medium",
+      "evidence" : [
+        "233"
+      ],
+      "rule" : "VL-VEND-ANOMALY-001",
+      "severity" : "high",
+      "title" : "Unusually large amount for VL Spike Permian Supply — USD 875.00"
+    }
+  ],
+  "period" : "2026-07",
+  "realmId" : "9341456442848752",
+  "rulesCannotEvaluate" : {
+    "VL-CLOSED-PERIOD-DRIFT-001" : "partialCoverage(reason: \"No period lock has been set. Set one on the Scope & Period Lock page to enable this check.\")",
+    "VL-PERIOD-CLOSED-001" : "partialCoverage(reason: \"No period lock has been set (docs\/VOICE_LEDGER_SPEC.md Page 2). Set one on the Scope & Period Lock page to enable this check.\")",
+    "VL-RECON-AMBIGUOUS-001" : "partialCoverage(reason: \"No statement imported for this period. Import a bank\/card statement to run this check (docs\/VOICE_LEDGER_SPEC.md Page 4).\")",
+    "VL-RECON-DIFF-001" : "partialCoverage(reason: \"No bank statement has been imported with a stated ending balance yet. Import an OFX\/QFX file on the Bank Feed Cleanup page to enable this check.\")",
+    "VL-RECON-MISSING-001" : "partialCoverage(reason: \"No statement imported for this period. Import a bank\/card statement to run this check (docs\/VOICE_LEDGER_SPEC.md Page 4).\")",
+    "VL-VENDOR-MISMATCH-001" : "partialCoverage(reason: \"No statement imported for this period. Import a bank\/card statement to run this check.\")"
+  },
+  "rulesPassed" : [
+    "VL-BS-DRCR-001",
+    "VL-BS-EQUITY-DR-001",
+    "VL-CAT-MISCODE-001",
+    "VL-CC-PAYMENT-001",
+    "VL-DUP-BILL-001",
+    "VL-DUP-EXP-001",
+    "VL-DUP-EXP-002",
+    "VL-FEE-AVOIDABLE-001",
+    "VL-PERSONAL-001",
+    "VL-RELATIONSHIP-003",
+    "VL-RELATIONSHIP-005",
+    "VL-REPORT-TIE-001",
+    "VL-TRANSPOSITION-001",
+    "VL-VEND-PRICE-001",
+    "VL-VENDCREDIT-UNAPPLIED-001"
+  ]
+}
