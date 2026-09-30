@@ -142,3 +142,69 @@ dependency inside Core, so the devtool can call the same code.
    build script gate, consistency unit test.
 
 Not in scope now: real-client/production path, backend deployment, hosted signing.
+
+---
+# Part 2 — Moneypenny voice architecture (Fable review, 2026-09-30)
+
+## How a turn works today, and where the time goes
+mic → 1.4 s silence wait → WAV to voice-service (Python, faster-whisper base.en, CPU) ≈ 1–2 s
+→ `VoiceIntentRouter` exact-phrase match (instant) — else →
+→ backend → Ollama gemma4:12b **call 1** (choose a tool; whole system prompt + page context + 20 findings ≈ 6k tokens) ≈ 10–30 s
+→ tool executes (instant) → gemma4:12b **call 2** (narrate the result) ≈ 10–20 s
+→ Piper TTS (Python) ≈ 1 s → play.
+Typical spoken turn: 25–55 s. First turn after 5 idle minutes adds ≈ 8 s because Ollama unloaded the model (no `keep_alive`).
+
+Verified failures: (a) the model answered "-3,293.02" from memory instead of calling the balance tool (dropped the $/parentheses and the "cached 17 hours" warning); (b) on an earlier turn its narration described a different finding than the one it opened; (c) `go back` always jumps to the Findings list, not the previous page; (d) the exact-phrase router only knows fixed strings, so "pull up the duplicates" or "what do we owe Norton" always falls through to the slow model.
+
+## Answer to "put the LLM inside the app so it replies instantly"
+Where the model runs is not the bottleneck; how much work it does per turn is. gemma4:12b embedded in the app (MLX/llama.cpp) would take the same seconds per token on this Mac and add a second copy of an 8 GB model. The win is to **stop asking the model to do things code can do**, and to move the two audio hops in-app where Apple already does them on-device.
+
+## Target design: deterministic first, model last, numbers never from the model
+
+### Layer 0 — audio, in-app and on-device
+- **Speech-to-text: Apple `SFSpeechRecognizer` with `requiresOnDeviceRecognition = true`**, streaming partial results. Transcription appears while the person is still talking; the utterance is final ≈ 0.3 s after they stop. Removes the WAV upload and the 1–2 s Whisper hop. Keep voice-service Whisper as a fallback when on-device recognition is unavailable.
+- **Text-to-speech: keep Piper** (voice quality), but start speaking the first sentence while the rest synthesizes; `AVSpeechSynthesizer` as the instant fallback if voice-service is down.
+- Silence window 1.4 s → 0.9 s once streaming STT is in (the recognizer's own end-pointing does the rest).
+
+### Layer 1 — `CommandGrammar`: a real local parser (no model), target ≥ 90 % of turns, < 50 ms
+Replace exact-phrase lists with a small normalized grammar: strip filler ("hey moneypenny", "can you", "please"), then match **verb + object + optional argument**:
+- Navigation: `(go to|open|show|pull up|take me to) <page alias>` → `.navigate`. Every `Screen` has aliases; **"go back" pops a real navigation history stack** (`AppState.navigationHistory`, pushed on every `screen` change, capped at 50). "Forward" too.
+- Findings by group: `(show|pull up|open|list) (the) <duplicates|uncategorized|negative balances|suspense|personal expenses|price increases|high severity|everything open>` → `.findings(FactFindingGroup)`; navigates to the page that owns that group **and** speaks the count/total from `ClientFacts` (same source as the page header).
+- Findings by amount/vendor: `(open|pull up|show|explain) (the) ($X|<vendor>|<title words>)` → resolve against open findings by exact amount, then vendor, then title words. One match → open it. Several → speak the short list and ask which (no model needed). Zero → fall through to search.
+- Data questions with a recognizable shape → straight to `ClientFacts`, answer spoken verbatim:
+  - `(what's|what is|how much is) (the) balance (of|in|on) <account>` → `accountBalance`
+  - `(find|search|look up|any) ($X|<vendor>)`, `(what do we owe|how much do we owe) <vendor>` → `searchAmount` / `vendor`
+  - `(what's|what was) (our|the) (revenue|net income|cash|cash balance) (this month|last month)` → KPI facts
+  - `(when did we|when was) (the) last sync`, `is this current` → `freshness`
+  - `(show|chart) <expenses|vendors|income vs expenses>` → chart
+- Review-queue and confirm/reject phrases stay as they are.
+- Everything is unit-tested with a phrase table (≥ 150 phrasings, including STT quirks: "one four twenty", "fourteen twenty", "$1,420").
+
+### Layer 2 — model as a **classifier**, not an author
+Only when Layer 1 has no match. One call, **gemma4:12b**, `think:false`, `keep_alive: "30m"`, `num_ctx 16384`, and the prompt is cut to what classification needs: the tool list + a one-line page summary + the freshness line + the open-finding index (ID, amount, vendor, 6-word title). Not the full narrative of 20 findings. The model must return a tool call; if it returns prose instead, Moneypenny says "I'm not sure which page or figure you mean — try 'balance of checking' or 'pull up the duplicates'" (never speaks model prose as if it were data).
+- Fact tools' results are **spoken verbatim** (already in v1.34). No second model call.
+- The second (narration) call survives only for true explanations: "why is this flagged", "what does this mean", "summarize the month". Its context is the finding/facts text; and its output passes the guard below.
+
+### Layer 3 — `NumberGuard` (deterministic, always on)
+Before any model text is spoken or shown: extract every dollar amount, percentage, date and count in it; each must appear verbatim in the tool results/context given to the model for that turn. Any that doesn't → the sentence containing it is replaced by the verbatim source text, and the turn is logged as `guard_replaced` in the voice transcript. This makes "no hallucinated number" a property of the code, not a hope about the model.
+
+### Layer 4 — speed housekeeping
+- `keep_alive: "30m"` on every Ollama call; warm-up ping at app launch and after each sync, so the first spoken turn never pays the 8 s load.
+- Show the transcript and a "thinking…" state immediately; when a Layer 1 match exists, act **before** speaking (navigate first, then say "Duplicates. 7 open, $1,978.50.").
+- Keep the AI Connection card's model picker, but the default and the tested path is gemma4:12b (owner directive 2026-09-30).
+
+### What this yields
+| Turn type | Today | Target |
+|---|---|---|
+| "go to balance sheet", "go back" | 3–5 s (audio hops) | < 1 s |
+| "pull up the duplicates", "balance of checking", "find $1,420" | 25–55 s, sometimes wrong | 1–2 s, always from `ClientFacts` |
+| "why is this flagged?" | 25–55 s | 10–20 s (one 12B call, guarded) |
+| Numbers spoken | model's rewrite | verbatim from the same functions the pages use |
+
+## Revised order of work (Sonnet)
+1. **Voice A** — navigation history + real `go back`/`forward`; `CommandGrammar` for navigation, finding groups, finding-by-amount/vendor; phrase-table tests. (Ship: v1.35)
+2. **Voice B** — data-question grammar → `ClientFacts` verbatim; `NumberGuard`; classifier prompt trim; `keep_alive` + warm-up; prose-without-tool fallback message. (v1.36)
+3. **Voice C** — on-device `SFSpeechRecognizer` streaming STT with Whisper fallback; Piper first-sentence streaming; silence 0.9 s. (v1.37)
+4. **Step 3 (freshness)** as written in Part 1: auto-sync on launch when cached > 15 min, background history load, one `DataStateNotice`. (v1.38)
+5. **Step 4 (regression)** as written in Part 1: `facts` / `facts-diff`, baselines, `preflight.sh`, build gate. (v1.39)
+Each step: build, tests, one screenshot, commit, push. Fable review after 2 and after 5.
