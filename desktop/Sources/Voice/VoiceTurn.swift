@@ -30,6 +30,7 @@ public enum VoiceUIAction: Equatable, Sendable {
     /// not one at a time.
     case openFindings(ids: [String])
     case goBack
+    case goForward
     /// Added 2026-09-06 for `VoiceToolLoop`'s `generate_chart` tool — a
     /// popup, not a full-page navigation, matching the owner's own
     /// framing ("maybe for making charts it can make a pop up"). Renders

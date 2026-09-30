@@ -61,6 +61,17 @@ export class OllamaClient implements AICompletionClient {
    * correctly grounded final answer. Omitted entirely from the request
    * body when not provided (`undefined` inside `JSON.stringify` is
    * dropped, not sent as `null`), so every non-voice caller is unaffected. */
+  /** Loads the model into memory without generating anything (empty prompt). */
+  async warmUp(): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/generate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: this.model, prompt: "", keep_alive: "30m" }),
+        signal: AbortSignal.timeout(120_000)
+      });
+    } catch { /* best effort */ }
+  }
+
   async complete(systemPrompt: string, userMessage: string, history: AIChatTurn[] = [], tools?: unknown[]): Promise<AICompletionResult> {
     const startedAt = Date.now();
     const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -80,6 +91,10 @@ export class OllamaClient implements AICompletionClient {
         // doesn't support "thinking" at all (e.g. gemma4:e4b): Ollama
         // simply ignores the field rather than erroring.
         think: false,
+        // Keep the 8 GB model resident between turns (default is 5 min, after
+        // which the next spoken turn pays ~8 s to reload). Owner directive
+        // 2026-09-30: speed matters, this Mac has the RAM.
+        keep_alive: "30m",
         tools,
         options: {
           // Same deterministic-leaning reasoning as OpenAIClient's own

@@ -139,9 +139,15 @@ export function sanitizeHistory(raw: unknown): AIChatTurn[] {
 
 function buildClient(config: AIConfig | null): AICompletionClient | null {
   if (!config) return null;
-  return config.provider === "ollama"
-    ? new OllamaClient(config.baseUrl, config.model)
-    : new OpenAIClient(config.apiKey, config.model);
+  if (config.provider === "ollama") {
+    const client = new OllamaClient(config.baseUrl, config.model);
+    // Keep the local model resident: load it now and re-touch it every 25
+    // minutes (keep_alive is 30m), so a spoken turn never pays the reload.
+    void client.warmUp();
+    setInterval(() => { void client.warmUp(); }, 25 * 60 * 1000).unref();
+    return client;
+  }
+  return new OpenAIClient(config.apiKey, config.model);
 }
 
 /**

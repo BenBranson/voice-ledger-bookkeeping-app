@@ -4,6 +4,7 @@ import Observation
 import Core
 import Voice
 import IntegrationsVoice
+import IntegrationsQuickBooks
 
 /// docs/VOICE_LEDGER_SPEC.md's `/voice` module's Swift half — owns the
 /// microphone/speaker plumbing and orchestrates one voice turn end to end:
@@ -504,7 +505,7 @@ public final class VoiceEngine: NSObject {
     /// Appends to both the persisted store (survives an app restart) and
     /// the live `transcriptHistory` shown in `VoiceHistoryView` — the two
     /// stay in sync because this is the only place either is written to.
-    private func recordTranscript(speaker: VoiceTranscriptEntry.Speaker, text: String) async {
+    func recordTranscript(speaker: VoiceTranscriptEntry.Speaker, text: String) async {
         guard !text.isEmpty else { return }
         let entry = VoiceTranscriptEntry(speaker: speaker, text: text)
         transcriptHistory.append(entry)
@@ -552,10 +553,9 @@ public final class VoiceEngine: NSObject {
                 appState.comparedFindingIDs = ids
             }
         case .goBack:
-            // No navigation stack exists in AppState yet — the safest
-            // universal "back" is the findings list, the same landing
-            // screen every other "go back" affordance in this app uses.
-            appState.screen = .list
+            appState.goBack()
+        case .goForward:
+            appState.goForward()
         case .presentChart(let request):
             appState.presentedChart = request
         }
@@ -650,7 +650,43 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: Self.speech(for: destination), uiAction: .navigate(destination))
 
         case .goBack:
+            guard appState.canGoBack else { return VoiceTurn(speech: "There's no earlier page to go back to.") }
             return VoiceTurn(speech: "Going back.", uiAction: .goBack)
+
+        case .goForward:
+            guard appState.canGoForward else { return VoiceTurn(speech: "There's no page to go forward to.") }
+            return VoiceTurn(speech: "Going forward.", uiAction: .goForward)
+
+        case .findingsGroup(let group):
+            return findingsGroupTurn(group)
+
+        case .openFindingMatching(let amount, let text):
+            return await openFindingMatchingTurn(amount: amount, text: text, rawText: rawText)
+
+        case .accountBalance(let name):
+            let fact = ClientFacts.accountBalance(appState.clientData, name: name)
+            guard let account = fact.value else { return VoiceTurn(speech: fact.note ?? "I couldn't find that account.") }
+            return VoiceTurn(speech: ClientText.polish("\(account.name) currently shows \(account.balance.accountingDescription). \(fact.note ?? "") \(fact.scope.sentence())"))
+
+        case .searchAmount(let amount):
+            let result = await execute(AIToolCall(id: "grammar", name: "search_transactions", arguments: ["query": .string(amount.accountingDescription)]))
+            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
+
+        case .searchVendor(let name):
+            let result = await execute(AIToolCall(id: "grammar", name: "get_vendor_details", arguments: ["vendor_name": .string(name)]))
+            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
+
+        case .kpi(let metric, let period):
+            let metricName = metric == .revenue ? "revenue" : metric == .netIncome ? "net_income" : "cash_balance"
+            let result = await execute(AIToolCall(id: "grammar", name: "get_financial_summary", arguments: ["metric": .string(metricName), "period": .string(period.rawValue)]))
+            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
+
+        case .freshness:
+            return VoiceTurn(speech: ClientFacts.freshnessSentence(appState.clientData))
+
+        case .chart(let kind):
+            let result = await execute(AIToolCall(id: "grammar", name: "generate_chart", arguments: ["kind": .string(kind.rawValue)]))
+            return VoiceTurn(speech: result.resultText, uiAction: result.uiAction)
 
         case .statusOverview:
             return statusOverview()
@@ -732,6 +768,64 @@ public final class VoiceEngine: NSObject {
             // comment for why this is the same safety property through a
             // different, still-real mechanism.
             return await handleWithTools(rawText: rawText)
+        }
+    }
+
+    /// "Pull up the duplicates": go to the page that owns the group and
+    /// speak its count and total — the same numbers the page header shows.
+    private func findingsGroupTurn(_ group: FactFindingGroup) -> VoiceTurn {
+        let data = appState.clientData
+        let list = ClientFacts.findings(data, category: group).value ?? []
+        let total = ClientFacts.totalExposure(data, category: group).value
+        let destination: VoiceDestination
+        switch group {
+        case .negativeBalance, .balanceSheetIntegrity: destination = .balanceSheetIntegrity
+        case .allOpen: destination = .findingsList
+        default: destination = .cleanupAssessment
+        }
+        let label = group.rawValue.replacingOccurrences(of: "_", with: " ")
+        var speech = "\(label.prefix(1).uppercased() + label.dropFirst()): \(list.count) open"
+        if let total, list.count > 0 { speech += ", \(total.accountingDescription) in total" }
+        speech += "."
+        if let top = list.first, list.count > 0 { speech += " Largest: \(ClientText.polish(top.title))." }
+        return VoiceTurn(speech: speech, uiAction: .navigate(destination))
+    }
+
+    /// Resolve "the $1,420 one" / "the Cool Cars payment" against open
+    /// findings in code: exact amount first, then vendor, then title words.
+    private func openFindingMatchingTurn(amount: Money?, text: String, rawText: String) async -> VoiceTurn {
+        let open = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
+        var matches: [Finding] = []
+        if let amount {
+            matches = open.filter { abs($0.dollarExposure.minorUnits) == abs(amount.minorUnits) }
+        }
+        if matches.isEmpty {
+            let words = text.split(separator: " ").map(String.init).filter { $0.count > 2 && !["the", "one", "finding", "issue", "item", "flag", "that", "this"].contains($0) }
+            if !words.isEmpty {
+                matches = open.filter { f in
+                    let hay = ((f.vendorName ?? "") + " " + f.title).lowercased()
+                    return words.allSatisfy { hay.contains($0) }
+                }
+                if matches.isEmpty { matches = open.filter { f in let hay = ((f.vendorName ?? "") + " " + f.title).lowercased(); return words.contains { hay.contains($0) } } }
+            }
+        }
+        // De-duplicate identical titles (the same problem seen by two rules).
+        var seen = Set<String>(); matches = matches.filter { seen.insert($0.title).inserted }
+        switch matches.count {
+        case 1:
+            let f = matches[0]
+            context = context.viewingEntity(VoiceEntityRef(type: .finding, id: f.id, label: f.title))
+            return VoiceTurn(speech: "Opening \(ClientText.polish(f.title)).", uiAction: .openFinding(id: f.id))
+        case 2...4:
+            let list = matches.map { ClientText.polish($0.title) }.joined(separator: "; ")
+            return VoiceTurn(speech: "I found \(matches.count): \(list). Which one?")
+        case 0 where amount != nil:
+            let result = await execute(AIToolCall(id: "grammar", name: "search_transactions", arguments: ["query": .string(amount!.accountingDescription)]))
+            return VoiceTurn(speech: "No open finding is \(amount!.accountingDescription). " + ClientText.polish(result.resultText), uiAction: result.uiAction)
+        case 0:
+            return await handleWithTools(rawText: rawText)
+        default:
+            return VoiceTurn(speech: "I found \(matches.count) matching findings — say an amount or a vendor name to narrow it down.")
         }
     }
 

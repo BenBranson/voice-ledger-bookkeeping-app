@@ -233,6 +233,14 @@ public final class AppState {
     // the sidebar's SETUP section, unchanged.
     public var screen: Screen = .clientDashboard {
         didSet {
+            // Real navigation history (owner bug 2026-09-30: "go back" always
+            // jumped to Findings). Back/forward set `isNavigatingHistory`
+            // so their own moves aren't recorded as new history.
+            if !isNavigatingHistory, oldValue != screen {
+                navigationHistory.append(oldValue)
+                if navigationHistory.count > 50 { navigationHistory.removeFirst() }
+                navigationForward.removeAll()
+            }
             // Remember the page a finding was opened from, so Back returns
             // there instead of always to Findings (owner bug report 2026-09-29).
             switch screen {
@@ -247,6 +255,32 @@ public final class AppState {
     }
     /// Where "Back" from a finding goes.
     public private(set) var findingReturnScreen: Screen = .list
+
+    public private(set) var navigationHistory: [Screen] = []
+    public private(set) var navigationForward: [Screen] = []
+    private var isNavigatingHistory = false
+    public var canGoBack: Bool { !navigationHistory.isEmpty }
+    public var canGoForward: Bool { !navigationForward.isEmpty }
+
+    @discardableResult
+    public func goBack() -> Bool {
+        guard let previous = navigationHistory.popLast() else { return false }
+        isNavigatingHistory = true
+        navigationForward.append(screen)
+        screen = previous
+        isNavigatingHistory = false
+        return true
+    }
+
+    @discardableResult
+    public func goForward() -> Bool {
+        guard let next = navigationForward.popLast() else { return false }
+        isNavigatingHistory = true
+        navigationHistory.append(screen)
+        screen = next
+        isNavigatingHistory = false
+        return true
+    }
 
     public func leaveFinding() { screen = findingReturnScreen }
 

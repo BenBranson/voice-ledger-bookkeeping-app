@@ -500,6 +500,9 @@ public struct AIToolCall: Sendable {
     public let id: String?
     public let name: String
     public let arguments: [String: JSONValue]
+    public init(id: String?, name: String, arguments: [String: JSONValue]) {
+        self.id = id; self.name = name; self.arguments = arguments
+    }
 }
 
 

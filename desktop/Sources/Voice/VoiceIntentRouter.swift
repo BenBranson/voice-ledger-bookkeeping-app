@@ -141,6 +141,11 @@ public enum VoiceIntentRouter {
         if startReviewPhrases.contains(normalized) || anomalyPhrases.contains(normalized) { return .startReviewQueue }
         if explainPhrases.contains(normalized) { return .explainCurrent }
 
+        // The command grammar (2026-09-30) takes everything that used to fall
+        // through to the model: finding groups, amounts, balances, vendors,
+        // KPIs, freshness, charts. It runs last so no existing phrase changes.
+        if let parsed = CommandGrammar.parse(text) { return parsed }
+
         return .unrecognized(text)
     }
 

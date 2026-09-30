@@ -56,15 +56,16 @@ extension VoiceEngine {
         if let activeCompanyName = appState.companyInfo?.companyName {
             context += "\n\nThe ACTIVE client right now is \"\(activeCompanyName)\" — every tool already operates on this client. Mentioning this same name in a question (e.g. \"what's \(activeCompanyName)'s revenue\") is just identifying which client the question is about, NOT a request to switch — do not call switch_client unless the person is clearly asking to change to a DIFFERENT client (e.g. \"switch to X,\" \"the other client,\" \"pull up Y instead\")."
         }
+        // A compact index, not the full narrative: the model only needs enough
+        // to pick a tool and an ID (docs/MONEYPENNY_CONSISTENCY_DESIGN.md Part 2).
         let allOpenFindings = FindingTriage.sorted(appState.findings.filter { $0.status == .open })
         if !allOpenFindings.isEmpty {
-            var lines = ["", "ALL OF THIS CLIENT'S OPEN FINDINGS (reference for questions about specific issues):"]
-            for finding in allOpenFindings.prefix(50) {
-                lines.append("- \(finding.title) (\(finding.severity.rawValue) severity, \(finding.dollarExposure.description)) [ID: \(finding.id)]")
+            var lines = ["OPEN FINDINGS INDEX (\(allOpenFindings.count)) — id | amount | vendor | title:"]
+            for finding in allOpenFindings.prefix(40) {
+                let title = ClientText.polish(finding.title).split(separator: " ").prefix(8).joined(separator: " ")
+                lines.append("\(finding.id.prefix(12)) | \(finding.dollarExposure.accountingDescription) | \(finding.vendorName ?? "-") | \(title)")
             }
-            if allOpenFindings.count > 50 {
-                lines.append("...and \(allOpenFindings.count - 50) more not listed here")
-            }
+            if allOpenFindings.count > 40 { lines.append("...and \(allOpenFindings.count - 40) more") }
             context += "\n" + lines.joined(separator: "\n")
         }
         // Stated last so it is the most salient: bare "this"/"it" means the
@@ -93,7 +94,13 @@ extension VoiceEngine {
             // to the user (e.g. "show me a chart" with nothing to chart).
             // Either way: narration only, exactly like the old reasoning
             // fallback — no `uiAction` is possible on this path.
-            return VoiceTurn(speech: decision.answer.isEmpty ? "I'm not sure how to help with that — could you say it a different way?" : decision.answer)
+            // The model may only NARRATE on this path (an explanation or a
+            // clarifying question). Its numbers are checked against what it
+            // was given; anything else is replaced with the source text.
+            guard !decision.answer.isEmpty else { return VoiceTurn(speech: "I'm not sure which page or figure you mean — try “balance of checking” or “pull up the duplicates”.") }
+            let guarded = NumberGuard.check(decision.answer, source: context)
+            if guarded.replacedSentences > 0 { await recordTranscript(speaker: .assistant, text: "[guard replaced \(guarded.replacedSentences) sentence(s) with unverified figures]") }
+            return VoiceTurn(speech: guarded.text)
         }
 
         var resultLines: [String] = []
@@ -133,6 +140,8 @@ extension VoiceEngine {
             return VoiceTurn(speech: resultLines.joined(separator: ". "), uiAction: uiAction)
         }
 
-        return VoiceTurn(speech: narration.answer.isEmpty ? resultLines.joined(separator: ". ") : narration.answer, uiAction: uiAction)
+        let guarded = NumberGuard.check(narration.answer, source: narrationContext)
+        if guarded.replacedSentences > 0 { await recordTranscript(speaker: .assistant, text: "[guard replaced \(guarded.replacedSentences) sentence(s) with unverified figures]") }
+        return VoiceTurn(speech: narration.answer.isEmpty ? resultLines.joined(separator: ". ") : guarded.text, uiAction: uiAction)
     }
 }
