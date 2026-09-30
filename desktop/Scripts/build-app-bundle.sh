@@ -88,6 +88,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 	<string>15.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Voice Ledger transcribes your voice commands on this Mac using Apple's on-device speech recognition. Audio is never sent to Apple or anyone else.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voice Ledger uses your microphone for voice commands — navigating pages, reviewing findings, and asking questions about what's flagged. Voice never applies a QuickBooks write on its own; every write still requires a real on-screen confirmation.</string>
 	<!-- Root cause of the "sometimes launches with zero windows" flakiness
