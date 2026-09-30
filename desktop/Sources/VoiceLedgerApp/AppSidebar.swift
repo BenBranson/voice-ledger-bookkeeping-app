@@ -105,7 +105,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .generalLedgerReport: return "General Ledger"
         case .taxes: return "Taxes"
         case .clientMemory: return "Client Memory"
-        case .voiceHistory: return "AI Conversations"
+        case .voiceHistory: return "Voice History"
         case .connection: return "Connection"
         case .scopeAndPeriodLock: return "Scope & Period Lock"
         case .audioSettings: return "Audio Settings"
@@ -228,7 +228,7 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
-                Text("v1.39")
+                Text("v1.40")
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(VLColor.textMuted)
                 voiceMicButton

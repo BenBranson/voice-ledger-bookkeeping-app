@@ -25,6 +25,7 @@ public final class AppState {
         case connection
         case scopeAndPeriodLock
         case list
+        case findingGroup(FactFindingGroup)
         case detail(findingID: String)
         case procedure(findingID: String, actionID: String)
         case activityLog
@@ -253,6 +254,57 @@ public final class AppState {
             }
         }
     }
+    public var voiceLogLabel: String {
+        switch screen {
+        case .clientDashboard: return "Dashboard"
+        case .connection: return "Connection"
+        case .scopeAndPeriodLock: return "Scope & Period Lock"
+        case .list: return "Findings"
+        case .findingGroup(let group): return "Findings: \(group.rawValue)"
+        case .detail: return "Finding Detail"
+        case .procedure: return "Guided Procedure"
+        case .activityLog: return "Activity Log"
+        case .cleanupAssessment: return "Cleanup Assessment"
+        case .balanceSheetIntegrity: return "Balance Sheet Integrity"
+        case .chartOfAccountsCleanup: return "Chart of Accounts"
+        case .batchFixes: return "Batch Fixes"
+        case .salesTaxReview: return "Sales Tax Review"
+        case .taxes: return "Taxes"
+        case .firmCockpit: return "Firm Cockpit"
+        case .bankFeedCleanup: return "Bank Feed Cleanup"
+        case .monthEndClose: return "Month-End Close"
+        case .balanceSheetReport: return "Balance Sheet"
+        case .profitAndLossReport: return "Profit & Loss"
+        case .cashFlowReport: return "Cash Flow"
+        case .trialBalanceReport: return "Trial Balance"
+        case .agedReceivablesReport: return "Aged Receivables"
+        case .agedPayablesReport: return "Aged Payables"
+        case .generalLedgerReport: return "General Ledger"
+        case .closePackage: return "Close Package"
+        case .clientMemory: return "Client Memory"
+        case .voiceHistory: return "Voice History"
+        case .amountSearch: return "Search by Amount"
+        case .pricingCalculator: return "Pricing Calculator"
+        case .audioSettings: return "Audio Settings"
+        case .cashFlowForecast: return "Cash Flow Forecast"
+        case .diagnostics: return "Client Diagnostics"
+        case .recurringVendors: return "Recurring Vendors"
+        case .intakeQuestions: return "Intake Questions"
+        }
+    }
+
+    public var visibleFindings: [Finding] {
+        if case .findingGroup(let group) = screen {
+            return FindingTriage.sorted(ClientFacts.findings(clientData, category: group).value ?? [])
+        }
+        return FindingTriage.sorted(findings.filter { $0.status == .open })
+    }
+
+    public var findingsPageTitle: String {
+        if case .findingGroup(let group) = screen { return group.rawValue.replacingOccurrences(of: "_", with: " ").capitalized }
+        return "All Findings"
+    }
+
     /// Where "Back" from a finding goes.
     public private(set) var findingReturnScreen: Screen = .list
 
@@ -3278,10 +3330,10 @@ public final class AppState {
             }
             return lines.joined(separator: "\n")
 
-        case .list:
-            let openFindings = findings.filter { $0.status == .open }
-            var lines = ["Page: All Findings (complete list visible on screen)."]
-            lines.append("Total findings: \(findings.count), Open: \(openFindings.count), Closed: \(findings.count - openFindings.count)")
+        case .list, .findingGroup:
+            let openFindings = visibleFindings
+            var lines = ["Page: \(findingsPageTitle) (filtered list visible on screen)."]
+            lines.append("Open findings shown: \(openFindings.count)")
             lines.append("")
             lines.append("FINDINGS CURRENTLY LISTED ON THIS PAGE:")
             for finding in openFindings.prefix(20) {

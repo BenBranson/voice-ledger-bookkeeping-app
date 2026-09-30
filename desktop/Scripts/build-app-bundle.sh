@@ -58,7 +58,7 @@ else
 fi
 
 # The PDF renderer runs outside ~/Documents so the app never needs macOS's
-# Documents-folder permission (which re-prompts after every rebuild).
+# Documents-folder permission.
 if [ -n "$RENDERER_DIR" ] && [ -x "$RENDERER_DIR/.venv/bin/python" ]; then
     RUNTIME_DIR="$HOME/Library/Application Support/VoiceLedger/Renderer"
     mkdir -p "$RUNTIME_DIR"
@@ -112,11 +112,34 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
+/usr/libexec/PlistBuddy -c "Add :VoiceLedgerLauncherPath string $DESKTOP_DIR/../Voice Ledger Launcher.app/Contents/MacOS/launch" "$APP_BUNDLE/Contents/Info.plist"
+
 echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
 
-# Ad-hoc sign the whole bundle (not just the raw Mach-O, which macOS
-# auto-signs ad-hoc on its own) — a real .app is expected to carry one
-# consistent signature over the bundle as a unit.
-codesign --force --deep --sign - "$APP_BUNDLE" 2>&1
+# Prefer a stable Apple Development identity when this Mac has one. An
+# ad-hoc signature's designated requirement is its CDHash, which changes
+# on every rebuild and makes macOS treat the app as a new TCC client,
+# prompting again for microphone/speech access. Keep ad-hoc signing as a
+# portable fallback for machines without a development certificate; an
+# explicit VOICE_LEDGER_CODESIGN_IDENTITY can select a specific identity.
+SIGNING_IDENTITY="${VOICE_LEDGER_CODESIGN_IDENTITY:-}"
+if [ -z "$SIGNING_IDENTITY" ] && command -v security >/dev/null 2>&1; then
+    SIGNING_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/^[[:space:]]*[0-9][0-9]*) \([0-9A-Fa-f]\{40\}\) "Apple Development:.*$/\1/p' | head -n 1)"
+fi
+if [ -n "$SIGNING_IDENTITY" ]; then
+    echo "Signing Voice Ledger with a stable Apple Development identity."
+    codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP_BUNDLE" 2>&1
+    LAUNCHER_APP="$DESKTOP_DIR/../Voice Ledger Launcher.app"
+    if [ -d "$LAUNCHER_APP" ]; then
+        # The launcher reads the local .env and starts the backend from
+        # Documents. Give that TCC client the same stable identity too, so
+        # Files & Folders consent survives launcher script rebuilds.
+        echo "Signing Voice Ledger Launcher with the same stable identity."
+        codesign --force --deep --sign "$SIGNING_IDENTITY" "$LAUNCHER_APP" 2>&1
+    fi
+else
+    echo "No Apple Development identity found; using ad-hoc signing (TCC permissions may be requested again after rebuilds)."
+    codesign --force --deep --sign - "$APP_BUNDLE" 2>&1
+fi
 
 echo "Built $APP_BUNDLE"

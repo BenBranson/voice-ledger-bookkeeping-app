@@ -41,6 +41,7 @@ public struct VoiceStatusPanel: View {
     private let lastMessage: String?
     private let errorMessage: String?
     private let onStop: () -> Void
+    private let onRetry: () -> Void
     private let onDismiss: () -> Void
 
     public init(
@@ -51,6 +52,7 @@ public struct VoiceStatusPanel: View {
         lastMessage: String?,
         errorMessage: String?,
         onStop: @escaping () -> Void,
+        onRetry: @escaping () -> Void = {},
         onDismiss: @escaping () -> Void
     ) {
         self.isListening = isListening
@@ -60,6 +62,7 @@ public struct VoiceStatusPanel: View {
         self.lastMessage = lastMessage
         self.errorMessage = errorMessage
         self.onStop = onStop
+        self.onRetry = onRetry
         self.onDismiss = onDismiss
     }
 
@@ -131,6 +134,14 @@ public struct VoiceStatusPanel: View {
                     Text(errorMessage)
                         .font(VLTypography.caption())
                         .foregroundStyle(.red)
+                }
+                if !isListening && !isSpeaking && (!transcript.isEmpty || errorMessage != nil) {
+                    Button(action: onRetry) {
+                        Label("Try again", systemImage: "mic")
+                            .font(VLTypography.caption())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(VLColor.cyan)
                 }
             }
         }

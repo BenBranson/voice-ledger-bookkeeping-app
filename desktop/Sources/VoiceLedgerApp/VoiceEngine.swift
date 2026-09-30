@@ -60,8 +60,10 @@ public final class VoiceEngine: NSObject {
     /// The microphone actually in use for the current/last recording.
     public private(set) var activeMicrophoneName = ""
     /// Audio for the rest of a reply, synthesized while the first sentence plays.
-    private var pendingSpeechAudio: Data?
-    private var pendingSpeechTask: Task<Void, Never>?
+    private var pendingSpeechTask: Task<Data?, Never>?
+    private var commandTask: Task<Void, Never>?
+    private var speechGeneration = 0
+    private var isStartingListening = false
     private let actorName: String
     /// `internal`, not `private` — `VoiceToolLoop.swift` reads
     /// `currentEntity` to keep an open-ended follow-up grounded in
@@ -72,15 +74,6 @@ public final class VoiceEngine: NSObject {
     private var recordingURL: URL?
     private var audioPlayer: AVAudioPlayer?
     private var levelMeterTimer: Timer?
-
-    // Silence-detection thresholds — ported directly from
-    // VoiceEngineContext.jsx's SPEAK_THRESHOLD/SILENCE_MS/MAX_RECORDING_MS.
-    // Plain `let` (no isolation annotation needed): immutable Sendable
-    // values are always safe to read from any thread, including the audio
-    // tap's realtime thread where `evaluateSilenceOffMainActor` reads them.
-    private let speakThreshold: Float = 0.06
-    private let silenceSeconds: TimeInterval = 1.0
-    private let maxRecordingSeconds: TimeInterval = 20
 
     // Everything below is written from inside `installTap`'s callback,
     // which AVAudioEngine invokes on a CoreAudio-owned realtime thread via
@@ -106,9 +99,10 @@ public final class VoiceEngine: NSObject {
     // effect" warning suggestion above.
     @ObservationIgnored nonisolated(unsafe) private var audioFile: AVAudioFile?
     @ObservationIgnored nonisolated(unsafe) private var hasSpokenThisRecording = false
-    @ObservationIgnored nonisolated(unsafe) private var silenceStartedAt: Date?
+    @ObservationIgnored nonisolated(unsafe) private var endpointDetector = SpeechEndpointDetector()
     @ObservationIgnored nonisolated(unsafe) private var recordingStartedAt: Date?
     @ObservationIgnored nonisolated(unsafe) private var rawMicLevel: Float = 0
+    @ObservationIgnored nonisolated(unsafe) private var recordingWriteFailed = false
     @ObservationIgnored nonisolated(unsafe) private var shouldAutoStop = false
     /// Set by a `.AVAudioEngineConfigurationChange` observer (e.g. a
     /// Bluetooth headset connecting/disconnecting mid-recording) — read by
@@ -159,10 +153,21 @@ public final class VoiceEngine: NSObject {
     public func toggleListening() {
         if conversationMode || isListening {
             conversationMode = false
-            stopListening()
-            audioPlayer?.stop()
-            isSpeaking = false
+            commandTask?.cancel()
+            commandTask = nil
+            stopListening(discard: true)
+            cancelSpeech()
+            isProcessing = false
         } else {
+            // A quick retry can land while a command's spoken reply is
+            // still being synthesized. Cancel that turn first so the
+            // startListening guard below cannot silently discard the tap.
+            if isProcessing || isSpeaking {
+                commandTask?.cancel()
+                commandTask = nil
+                cancelSpeech()
+                isProcessing = false
+            }
             conversationMode = true
             Task { await startListening() }
         }
@@ -177,9 +182,21 @@ public final class VoiceEngine: NSObject {
     /// conversation mode the way the mic-toggle button does — a bookkeeper
     /// who wants to stop a reply short and then keep talking shouldn't
     /// have to restart the whole conversation.
-    public func stopSpeaking() {
+    private func cancelSpeech() {
+        speechGeneration += 1
+        pendingSpeechTask?.cancel()
+        pendingSpeechTask = nil
         audioPlayer?.stop()
+        audioPlayer = nil
         isSpeaking = false
+    }
+
+    public func stopSpeaking() {
+        commandTask?.cancel()
+        commandTask = nil
+        cancelSpeech()
+        isProcessing = false
+        resumeListeningIfConversationMode()
     }
 
     /// Clears everything the floating status panel shows — real, live-
@@ -197,9 +214,12 @@ public final class VoiceEngine: NSObject {
     // MARK: - Recording
 
     private func startListening() async {
-        guard !isListening else { return }
+        guard conversationMode, !isListening, !isStartingListening, !isProcessing, !isSpeaking else { return }
+        isStartingListening = true
+        defer { isStartingListening = false }
         errorMessage = nil
         transcript = ""
+        transcriptSource = ""
 
         let granted = await requestMicPermissionIfNeeded()
         guard granted else {
@@ -209,12 +229,19 @@ public final class VoiceEngine: NSObject {
             return
         }
         micPermission = .granted
-
-        if let mic = AudioDeviceManager.applyPreferredInput() { activeMicrophoneName = mic.name }
-        else { activeMicrophoneName = AudioDeviceManager.currentDefaultInput()?.name ?? "" }
+        guard conversationMode else { return }
+        do {
+            let mic = try AudioDeviceManager.applyPreferredInput()
+            activeMicrophoneName = mic?.name ?? AudioDeviceManager.currentDefaultInput()?.name ?? "Unknown microphone"
+        } catch {
+            errorMessage = error.localizedDescription
+            conversationMode = false
+            return
+        }
         // Give Core Audio a moment to switch before we read the input format.
         try? await Task.sleep(for: .milliseconds(150))
 
+        guard conversationMode else { return }
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("voiceledger-recording-\(UUID().uuidString).wav")
         recordingURL = tempURL
 
@@ -244,6 +271,8 @@ public final class VoiceEngine: NSObject {
         guard format.channelCount > 0, format.sampleRate > 0 else {
             errorMessage = "The microphone isn't ready yet — this can happen right after switching to Bluetooth headphones. Wait a moment and try again."
             conversationMode = false
+            recordingURL = nil
+            try? FileManager.default.removeItem(at: tempURL)
             return
         }
 
@@ -252,11 +281,15 @@ public final class VoiceEngine: NSObject {
         } catch {
             errorMessage = "Could not start recording: \(error)"
             conversationMode = false
+            recordingURL = nil
+            try? FileManager.default.removeItem(at: tempURL)
             return
         }
 
+        guard conversationMode else { audioFile = nil; try? FileManager.default.removeItem(at: tempURL); return }
+        recordingWriteFailed = false
         hasSpokenThisRecording = false
-        silenceStartedAt = nil
+        endpointDetector = SpeechEndpointDetector()
         recordingStartedAt = Date()
         shouldAutoStop = false
         rawMicLevel = 0
@@ -283,7 +316,8 @@ public final class VoiceEngine: NSObject {
         // `nonisolated(unsafe)` storage, same as before.
         let tapBlock: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = { [weak self] buffer, _ in
             guard let self else { return }
-            try? self.audioFile?.write(from: buffer)
+            do { try self.audioFile?.write(from: buffer) }
+            catch { self.recordingWriteFailed = true }
             let level = Self.rmsLevel(of: buffer)
             self.rawMicLevel = level
             self.evaluateSilenceOffMainActor(level: level)
@@ -316,6 +350,9 @@ public final class VoiceEngine: NSObject {
         } catch {
             errorMessage = "Could not start the microphone: \(error)"
             inputNode.removeTap(onBus: 0)
+            audioFile = nil
+            recordingURL = nil
+            try? FileManager.default.removeItem(at: tempURL)
             conversationMode = false
             if let observer = configurationChangeObserver {
                 NotificationCenter.default.removeObserver(observer)
@@ -330,21 +367,9 @@ public final class VoiceEngine: NSObject {
     /// Doesn't stop listening directly; sets `shouldAutoStop` for the
     /// main-thread level-meter timer to notice and act on.
     nonisolated private func evaluateSilenceOffMainActor(level: Float) {
-        let now = Date()
-        if level > speakThreshold {
-            hasSpokenThisRecording = true
-            silenceStartedAt = nil
-        } else if hasSpokenThisRecording {
-            if silenceStartedAt == nil {
-                silenceStartedAt = now
-            } else if let startedAt = silenceStartedAt, now.timeIntervalSince(startedAt) > silenceSeconds {
-                shouldAutoStop = true
-                return
-            }
-        }
-        if let startedAt = recordingStartedAt, now.timeIntervalSince(startedAt) > maxRecordingSeconds {
-            shouldAutoStop = true
-        }
+        guard let startedAt = recordingStartedAt else { return }
+        shouldAutoStop = endpointDetector.update(level: level, elapsed: Date().timeIntervalSince(startedAt))
+        hasSpokenThisRecording = endpointDetector.hasSpeech
     }
 
     /// A silent/empty recording is a normal occurrence in an ongoing
@@ -377,7 +402,9 @@ public final class VoiceEngine: NSObject {
                 if self.audioRouteDidChange {
                     self.audioRouteDidChange = false
                     self.errorMessage = "The audio device changed (e.g. Bluetooth headphones connecting or disconnecting) — stopped listening. Try again now that it's settled."
-                    self.stopListening()
+                    self.conversationMode = false
+                    self.stopListening(discard: true)
+                    Task { await self.recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(self.errorMessage ?? "Audio device changed")") }
                 } else if self.shouldAutoStop {
                     self.shouldAutoStop = false
                     self.stopListening()
@@ -388,7 +415,7 @@ public final class VoiceEngine: NSObject {
         levelMeterTimer = timer
     }
 
-    private func stopListening() {
+    private func stopListening(discard: Bool = false) {
         guard isListening else { return }
         isListening = false
         micLevel = 0
@@ -401,10 +428,36 @@ public final class VoiceEngine: NSObject {
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
         audioFile = nil // closing the AVAudioFile flushes it to disk
+        if !discard, let started = recordingStartedAt {
+            NSLog("Voice timing: recording %.2fs, stop=%@", Date().timeIntervalSince(started), endpointDetector.stopReason ?? "manual")
+        }
 
         guard let url = recordingURL else { return }
         recordingURL = nil
-        Task { await handleRecordedAudio(at: url) }
+        guard !discard else { try? FileManager.default.removeItem(at: url); return }
+        guard !recordingWriteFailed, hasSpokenThisRecording else {
+            try? FileManager.default.removeItem(at: url)
+            if recordingWriteFailed {
+                conversationMode = false
+                errorMessage = "Couldn't save microphone audio. Try starting the microphone again."
+                let reason = errorMessage ?? "Couldn't save microphone audio."
+                Task { await recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(reason)") }
+            } else if conversationMode {
+                // A pause after a reply is normal in hands-free conversation.
+                // Keep the session ready instead of presenting a mic failure
+                // when the user simply hasn't started their next sentence.
+                Task {
+                    await recordTranscript(speaker: .assistant, text: "VOICE NOTE: No speech detected from \(activeMicrophoneName); conversation stayed ready for the next command.")
+                    resumeListeningIfConversationMode()
+                }
+            } else {
+                errorMessage = "No speech detected from \(activeMicrophoneName). Check its mute button and input gain, or choose another microphone in Audio Settings."
+                let reason = errorMessage ?? "No speech detected."
+                Task { await recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(reason)") }
+            }
+            return
+        }
+        commandTask = Task { await handleRecordedAudio(at: url) }
     }
 
     private func requestMicPermissionIfNeeded() async -> Bool {
@@ -443,7 +496,9 @@ public final class VoiceEngine: NSObject {
     private func resumeListeningIfConversationMode() {
         guard conversationMode else { return }
         Task {
-            try? await Task.sleep(for: .milliseconds(400))
+            // Leave a short acoustic tail after the Mac finishes speaking so
+            // the nearby microphone doesn't immediately capture its own reply.
+            try? await Task.sleep(for: .milliseconds(800))
             if conversationMode { await startListening() }
         }
     }
@@ -456,34 +511,54 @@ public final class VoiceEngine: NSObject {
         // server-side.
         guard let data = try? Data(contentsOf: url), data.count > 2000 else {
             errorMessage = "No audio was captured — check that the right microphone is selected as your input device."
-            resumeListeningIfConversationMode()
+            conversationMode = false
+            await recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(errorMessage!)")
             return
         }
 
+        guard !Task.isCancelled else { return }
         isProcessing = true
+        defer { if !Task.isCancelled { isProcessing = false } }
         do {
-            // On-device first (sub-second, private); Whisper only as fallback.
+            let transcriptionStarted = Date()
+            // On-device first; Whisper only as fallback.
             let text: String
             if let local = await OnDeviceTranscriber.transcribe(fileAt: url), !local.trimmingCharacters(in: .whitespaces).isEmpty {
                 text = local
                 transcriptSource = "on-device"
             } else {
+                try Task.checkCancellation()
                 text = try await voiceService.transcribe(audioData: data)
                 transcriptSource = "whisper"
             }
-            isProcessing = false
+            try Task.checkCancellation()
             guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-                transcript = "(heard nothing)"
-                resumeListeningIfConversationMode()
+                if conversationMode {
+                    // Acoustic echo or a brief unclear sound can reach the
+                    // recognizer after a successful command. That's not a
+                    // failed command: preserve its response and keep the mic
+                    // ready, while leaving a diagnostic note in Voice History.
+                    transcript = ""
+                    errorMessage = nil
+                    await recordTranscript(speaker: .assistant, text: "VOICE NOTE: Audio arrived from \(activeMicrophoneName), but transcription returned no words; conversation stayed ready for another command.")
+                    resumeListeningIfConversationMode()
+                } else {
+                    transcript = "(no words recognized)"
+                    errorMessage = "Audio arrived from \(activeMicrophoneName), but no words were recognized. Check the mic's mute/gain and try again."
+                    await recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(errorMessage!)")
+                }
                 return
             }
+            NSLog("Voice timing: transcription %.2fs, source=%@", Date().timeIntervalSince(transcriptionStarted), transcriptSource)
             transcript = text
             await recordTranscript(speaker: .user, text: text)
             await processCommand(text)
         } catch {
+            guard !Task.isCancelled else { return }
             isProcessing = false
-            errorMessage = "Voice error: \(error)"
-            resumeListeningIfConversationMode()
+            conversationMode = false
+            errorMessage = "Voice transcription failed: \(error). Check Audio Settings and that Voice Ledger Launcher is running."
+            await recordTranscript(speaker: .assistant, text: "VOICE ERROR: \(errorMessage!)")
         }
     }
 
@@ -498,18 +573,30 @@ public final class VoiceEngine: NSObject {
     /// real text is identical.
     public func handleTypedCommand(_ text: String) async {
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        commandTask?.cancel()
+        stopListening(discard: true)
+        cancelSpeech()
+        errorMessage = nil
         transcript = text
+        transcriptSource = ""
         isProcessing = true
-        await recordTranscript(speaker: .user, text: text)
-        await processCommand(text)
-        isProcessing = false
+        let task = Task {
+            await recordTranscript(speaker: .user, text: text)
+            await processCommand(text)
+            if !Task.isCancelled { isProcessing = false }
+        }
+        commandTask = task
+        await task.value
     }
 
     private func processCommand(_ text: String) async {
+        let commandStarted = Date()
         syncCurrentEntityWithScreen()
         let intent = VoiceIntentRouter.match(text: text, context: context)
+        if case .chooseFinding = intent {} else { context.candidateFindingIDs = nil }
         let turn = await resolveTurn(for: intent, rawText: text)
 
+        guard !Task.isCancelled else { return }
         lastMessage = turn.speech
         if let newPending = turn.newPendingAction {
             context.pendingAction = newPending
@@ -517,9 +604,26 @@ public final class VoiceEngine: NSObject {
         if let uiAction = turn.uiAction {
             apply(uiAction)
         }
+        NSLog("Voice timing: command to screen %.2fs", Date().timeIntervalSince(commandStarted))
         await appState.saveVoiceSessionContext(context)
-        await recordTranscript(speaker: .assistant, text: turn.speech)
+        let actionDescription: String
+        if let uiAction = turn.uiAction { actionDescription = describe(uiAction) }
+        else { actionDescription = "No screen action" }
+        await recordTranscript(speaker: .assistant, text: "COMMAND RESULT\nHEARD: \(text)\nSOURCE: \(transcriptSource.isEmpty ? "typed" : transcriptSource)\nACTION: \(actionDescription) → \(appState.voiceLogLabel)\nRESPONSE: \(turn.speech)")
+        guard !Task.isCancelled else { return }
         await speak(turn.speech)
+    }
+
+    private func describe(_ action: VoiceUIAction) -> String {
+        switch action {
+        case .navigate(let destination): return "Opened \(destination.menuTitle)"
+        case .showFindingGroup(let group): return "Opened \(group.rawValue) findings"
+        case .openFinding: return "Opened finding detail"
+        case .openFindings(let ids): return ids.count == 1 ? "Opened one finding" : "Opened \(ids.count) findings for comparison"
+        case .goBack: return "Went back"
+        case .goForward: return "Went forward"
+        case .presentChart: return "Displayed chart"
+        }
     }
 
     /// Appends to both the persisted store (survives an app restart) and
@@ -541,20 +645,24 @@ public final class VoiceEngine: NSObject {
         }
         isSpeaking = true
         pendingSpeechTask?.cancel()
-        pendingSpeechAudio = nil
+        pendingSpeechTask = nil
+        speechGeneration += 1
+        let generation = speechGeneration
         // Speak the first sentence as soon as it's ready; synthesize the rest
         // while it plays (Part 2, Layer 0).
         let (first, rest) = Self.splitFirstSentence(text)
         do {
-            let wav = try await voiceService.synthesize(text: first)
+            let wav = try await voiceService.synthesize(text: VoiceSpeechFormatter.formatCurrency(first))
+            guard !Task.isCancelled, generation == speechGeneration else { return }
             if let rest {
-                pendingSpeechTask = Task { [weak self] in
-                    guard let self, let data = try? await self.voiceService.synthesize(text: rest), !Task.isCancelled else { return }
-                    self.pendingSpeechAudio = data
+                pendingSpeechTask = Task { [voiceService] in
+                    let data = try? await voiceService.synthesize(text: VoiceSpeechFormatter.formatCurrency(rest))
+                    return Task.isCancelled ? nil : data
                 }
             }
             try play(wav)
         } catch {
+            guard !Task.isCancelled, generation == speechGeneration else { return }
             isSpeaking = false
             errorMessage = "I have a reply, but couldn't play the audio: \(error)"
             resumeListeningIfConversationMode()
@@ -565,7 +673,7 @@ public final class VoiceEngine: NSObject {
         let player = try AVAudioPlayer(data: wav)
         player.delegate = self
         audioPlayer = player
-        player.play()
+        guard player.play() else { throw CocoaError(.fileReadUnknown) }
     }
 
     static func splitFirstSentence(_ text: String) -> (String, String?) {
@@ -583,6 +691,8 @@ public final class VoiceEngine: NSObject {
         switch action {
         case .navigate(let destination):
             appState.screen = Self.screen(for: destination)
+        case .showFindingGroup(let group):
+            appState.screen = .findingGroup(group)
         case .openFinding(let id):
             appState.screen = .detail(findingID: id)
         case .openFindings(let ids):
@@ -692,6 +802,13 @@ public final class VoiceEngine: NSObject {
 
     private func resolveTurn(for intent: VoiceIntent, rawText: String) async -> VoiceTurn {
         switch intent {
+        case .chooseFinding(let index):
+            guard let ids = context.candidateFindingIDs, ids.indices.contains(index), let finding = appState.finding(id: ids[index]) else {
+                return VoiceTurn(speech: "That selection is no longer available. Please search again.")
+            }
+            context.candidateFindingIDs = nil
+            context = context.viewingEntity(VoiceEntityRef(type: .finding, id: finding.id, label: finding.title))
+            return VoiceTurn(speech: "Opening \(ClientText.polish(finding.title)).", uiAction: .openFinding(id: finding.id))
         case .navigate(let destination):
             return VoiceTurn(speech: Self.speech(for: destination), uiAction: .navigate(destination))
 
@@ -823,18 +940,12 @@ public final class VoiceEngine: NSObject {
         let data = appState.clientData
         let list = ClientFacts.findings(data, category: group).value ?? []
         let total = ClientFacts.totalExposure(data, category: group).value
-        let destination: VoiceDestination
-        switch group {
-        case .negativeBalance, .balanceSheetIntegrity: destination = .balanceSheetIntegrity
-        case .allOpen: destination = .findingsList
-        default: destination = .cleanupAssessment
-        }
         let label = group.rawValue.replacingOccurrences(of: "_", with: " ")
         var speech = "\(label.prefix(1).uppercased() + label.dropFirst()): \(list.count) open"
         if let total, list.count > 0 { speech += ", \(total.accountingDescription) in total" }
         speech += "."
         if let top = list.first, list.count > 0 { speech += " Largest: \(ClientText.polish(top.title))." }
-        return VoiceTurn(speech: speech, uiAction: .navigate(destination))
+        return VoiceTurn(speech: speech, uiAction: .showFindingGroup(group))
     }
 
     /// Resolve "the $1,420 one" / "the Cool Cars payment" against open
@@ -852,19 +963,17 @@ public final class VoiceEngine: NSObject {
                     let hay = ((f.vendorName ?? "") + " " + f.title).lowercased()
                     return words.allSatisfy { hay.contains($0) }
                 }
-                if matches.isEmpty { matches = open.filter { f in let hay = ((f.vendorName ?? "") + " " + f.title).lowercased(); return words.contains { hay.contains($0) } } }
             }
         }
-        // De-duplicate identical titles (the same problem seen by two rules).
-        var seen = Set<String>(); matches = matches.filter { seen.insert($0.title).inserted }
         switch matches.count {
         case 1:
             let f = matches[0]
             context = context.viewingEntity(VoiceEntityRef(type: .finding, id: f.id, label: f.title))
             return VoiceTurn(speech: "Opening \(ClientText.polish(f.title)).", uiAction: .openFinding(id: f.id))
         case 2...4:
-            let list = matches.map { ClientText.polish($0.title) }.joined(separator: "; ")
-            return VoiceTurn(speech: "I found \(matches.count): \(list). Which one?")
+            context.candidateFindingIDs = matches.map(\.id)
+            let list = matches.enumerated().map { "\($0.offset + 1): \(ClientText.polish($0.element.title))" }.joined(separator: "; ")
+            return VoiceTurn(speech: "I found \(matches.count): \(list). Say first, second, or the finding's amount.", uiAction: .openFindings(ids: matches.map(\.id)))
         case 0 where amount != nil:
             let result = await execute(AIToolCall(id: "grammar", name: "search_transactions", arguments: ["query": .string(amount!.accountingDescription)]))
             return VoiceTurn(speech: "No open finding is \(amount!.accountingDescription). " + ClientText.polish(result.resultText), uiAction: result.uiAction)
@@ -974,18 +1083,18 @@ public final class VoiceEngine: NSObject {
 
 extension VoiceEngine: AVAudioPlayerDelegate {
     public nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        let playerID = ObjectIdentifier(player)
         Task { @MainActor [weak self] in
             guard let self else { return }
-            // Wait briefly for the rest of the reply if it's still synthesizing.
-            if self.pendingSpeechTask != nil {
-                for _ in 0..<40 where self.pendingSpeechAudio == nil && !(self.pendingSpeechTask?.isCancelled ?? true) { try? await Task.sleep(for: .milliseconds(50)) }
-            }
-            if let next = self.pendingSpeechAudio {
-                self.pendingSpeechAudio = nil
+            guard let current = self.audioPlayer, ObjectIdentifier(current) == playerID else { return }
+            let generation = self.speechGeneration
+            if let task = self.pendingSpeechTask {
                 self.pendingSpeechTask = nil
-                if (try? self.play(next)) != nil { return }
+                let next = await task.value
+                guard generation == self.speechGeneration else { return }
+                if let next, (try? self.play(next)) != nil { return }
+                self.errorMessage = "The rest of the spoken reply couldn't be played. The full answer is shown on screen."
             }
-            self.pendingSpeechTask = nil
             self.isSpeaking = false
             self.resumeListeningIfConversationMode()
         }

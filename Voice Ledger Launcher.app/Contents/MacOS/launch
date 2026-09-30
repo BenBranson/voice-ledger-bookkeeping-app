@@ -42,6 +42,36 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
+# A directly reopened app can request recovery. Wait for that exact app
+# process to exit before the existing already-running check below.
+RECOVERY_REQUESTED=false
+if [[ "${VOICE_LEDGER_RELAUNCH_PID:-}" =~ ^[0-9]+$ ]]; then
+    RECOVERY_REQUESTED=true
+    for _ in $(seq 1 30); do
+        kill -0 "$VOICE_LEDGER_RELAUNCH_PID" 2>/dev/null || break
+        sleep 0.2
+    done
+    # SwiftUI/AppKit can leave the error-only window process alive after
+    # terminate() was requested. This PID came from that app instance itself,
+    # so finish its graceful shutdown before the already-running check.
+    if kill -0 "$VOICE_LEDGER_RELAUNCH_PID" 2>/dev/null; then
+        kill -TERM "$VOICE_LEDGER_RELAUNCH_PID" 2>/dev/null || true
+        for _ in $(seq 1 20); do
+            kill -0 "$VOICE_LEDGER_RELAUNCH_PID" 2>/dev/null || break
+            sleep 0.1
+        done
+    fi
+    # LaunchServices may immediately reopen the app while restoring its
+    # window. That instance has no session either, so clear it before writing
+    # the handoff file and opening the fresh, configured instance below.
+    pkill -TERM -x VoiceLedgerApp 2>/dev/null || true
+    for _ in $(seq 1 20); do
+        pgrep -x VoiceLedgerApp >/dev/null 2>&1 || break
+        sleep 0.1
+    done
+fi
+unset VOICE_LEDGER_RELAUNCH_PID
+
 status_lines=()
 # Owner directive (2026-08-29): the status dialog at the end used to show
 # every single launch, even a fully successful one — stealing focus and
@@ -155,9 +185,8 @@ fi
 # builds it (already-working `swift build -c release` from a Terminal
 # session, or Claude Code running it), and this launcher's only job is to
 # run the binary that build already produced.
-if pgrep -x VoiceLedgerApp >/dev/null 2>&1; then
+if pgrep -x VoiceLedgerApp >/dev/null 2>&1 && [ "$RECOVERY_REQUESTED" = false ]; then
     status_lines+=("Voice Ledger app: already running")
-    osascript -e 'tell application "System Events" to set frontmost of process "VoiceLedgerApp" to true' >/dev/null 2>&1
 else
     # Runs the app from a real .app bundle (Contents/MacOS +
     # Contents/Info.plist), not the bare Mach-O. See
@@ -226,7 +255,10 @@ else
         # live that `sqlite3` hits "authorization denied" reading this
         # exact file from this exact launch context even though `node`
         # (already proven working for the backend itself, above) does not.
-        CONNECTION_INFO="$(cd "$BACKEND_DIR" && arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" spike/latestConnection.ts 2>>"$APP_LOG")"
+        # Keep the helper's working directory out of macOS's protected
+        # Documents tree. tsx calls getcwd() during startup, which can block
+        # indefinitely in the GUI-launch context even though Terminal works.
+        CONNECTION_INFO="$(cd /tmp && DOTENV_CONFIG_PATH="$BACKEND_DIR/.env" SQLITE_PATH="$BACKEND_DIR/data/voiceledger.sqlite" arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" "$BACKEND_DIR/spike/latestConnection.ts" 2>>"$APP_LOG")"
         REALM_ID="$(echo "$CONNECTION_INFO" | sed -n '1p')"
         REALM_ENV="$(echo "$CONNECTION_INFO" | sed -n '2p')"
         [ -z "$REALM_ENV" ] && REALM_ENV="sandbox"
@@ -237,7 +269,7 @@ else
         else
             SESSION_TOKEN_FILE="$LOG_DIR/session-token.txt"
             rm -f "$SESSION_TOKEN_FILE"
-            (cd "$BACKEND_DIR" && arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" spike/mintDevSession.ts "$REALM_ID" "$SESSION_TOKEN_FILE") >> "$APP_LOG" 2>&1
+            (cd /tmp && DOTENV_CONFIG_PATH="$BACKEND_DIR/.env" SQLITE_PATH="$BACKEND_DIR/data/voiceledger.sqlite" arch -arm64 "$BACKEND_DIR/node_modules/.bin/tsx" "$BACKEND_DIR/spike/mintDevSession.ts" "$REALM_ID" "$SESSION_TOKEN_FILE") >> "$APP_LOG" 2>&1
             SESSION_TOKEN="$(cat "$SESSION_TOKEN_FILE" 2>/dev/null)"
             rm -f "$SESSION_TOKEN_FILE"
 
@@ -245,6 +277,14 @@ else
                 status_lines+=("Voice Ledger app: could not create a session for the connected company — check ~/Library/Logs/VoiceLedger/app.log")
                 has_problem=true
             else
+                # LaunchServices drops --env values on this macOS version.
+                # Pass the one-launch session through a private file instead;
+                # Voice Ledger reads and removes it immediately at startup.
+                LAUNCH_CONFIG="$LOG_DIR/launch-config.json"
+                umask 077
+                printf '{"backendURL":"http://localhost:%s","sessionToken":"%s","realmID":"%s","environment":"%s"}\n' \
+                    "$BACKEND_PORT" "$SESSION_TOKEN" "$REALM_ID" "$REALM_ENV" > "$LAUNCH_CONFIG"
+                chmod 600 "$LAUNCH_CONFIG"
                 # `arch -arm64` intentionally NOT used here (unlike the
                 # backend/voice-service sections above) — this machine and
                 # this binary are both already native arm64, so it would be
@@ -257,7 +297,10 @@ else
                 # needs are passed explicitly via `--env`. `--stdout`/
                 # `--stderr` preserve the same log file the old `nohup ...
                 # >> "$APP_LOG" 2>&1` redirect produced.
-                open -a "$APP_BUNDLE" \
+                # Explicitly request a fresh process so LaunchServices applies
+                # these per-launch credentials instead of reusing an app
+                # instance that may have been opened directly without them.
+                open -n -a "$APP_BUNDLE" \
                     --env VOICE_LEDGER_BACKEND_URL="http://localhost:$BACKEND_PORT" \
                     --env VOICE_LEDGER_SESSION_TOKEN="$SESSION_TOKEN" \
                     --env VOICE_LEDGER_REALM_ID="$REALM_ID" \

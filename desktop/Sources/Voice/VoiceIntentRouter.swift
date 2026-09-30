@@ -25,11 +25,7 @@ public enum VoiceIntentRouter {
     /// That phrase fell through every check here to the slow AI reasoning
     /// fallback, which only speaks — it never navigates — so the person's
     /// actual request (see the page) silently never happened.
-    private static let navigationPrefixes = [
-        "go to the ", "go to ", "open the ", "open ", "show me the ", "show the ",
-        "show me ", "take me to the ", "take me to ", "navigate to the ", "navigate to ",
-        "pull up the ", "pull up ", "bring up the ", "bring up "
-    ]
+    private static let navigationPrefixes = CommandGrammar.openVerbs.map { $0 + " " }
 
     /// Each destination's recognized phrases, already normalized (lowercase,
     /// no punctuation). Deliberately a plain alias SET, not a regex engine —
@@ -48,7 +44,13 @@ public enum VoiceIntentRouter {
         (.salesTaxReview, ["sales tax review", "sales tax"]),
         (.taxes, ["taxes", "tax"]),
         (.firmCockpit, ["firm cockpit", "cockpit"]),
-        (.monthEndClose, ["month end close", "month end review", "month end"]),
+        (.monthEndClose, [
+            "month end close", "month end review", "month end", "monthly close",
+            "end of month close", "close out the month", "close the month",
+            "close out the books", "close the books", "wrap up the books",
+            "wrap up the month", "month end checklist",
+            "end clothes" // Clipped ASR phrase covered by the navigation regression suite.
+        ]),
         (.activityLog, ["activity log", "activity and correction log", "correction log"]),
         (.closePackage, ["close package"]),
         (.clientMemory, ["client memory"]),
@@ -119,7 +121,7 @@ public enum VoiceIntentRouter {
     ]
 
     public static func match(text: String, context: VoiceSessionContext) -> VoiceIntent {
-        let normalized = normalize(text)
+        let normalized = normalize(correctCommonRecognition(text))
         guard !normalized.isEmpty else { return .unrecognized(text) }
 
         if context.pendingAction != nil {
@@ -127,8 +129,31 @@ public enum VoiceIntentRouter {
             if matchesLeading(normalized, any: rejectWords) { return .rejectPending }
         }
 
+        if let candidates = context.candidateFindingIDs, !candidates.isEmpty {
+            let selection = CommandGrammar.strip(CommandGrammar.strip(CommandGrammar.normalize(text), CommandGrammar.openVerbs), CommandGrammar.articles)
+            let ordinals = ["first", "second", "third", "fourth"]
+            for (index, ordinal) in ordinals.enumerated() where index < candidates.count {
+                if [ordinal, ordinal + " one", "number \(index + 1)", "\(index + 1)"].contains(selection) {
+                    return .chooseFinding(index)
+                }
+            }
+        }
+
         if let destination = matchDestination(normalized) {
             return .navigate(destination)
+        }
+
+        // Whisper and on-device recognition sometimes include the same short
+        // page command more than once, or prepend a clipped word from the
+        // previous utterance (e.g. "Close. Go to month and close. Month and
+        // close."). Check punctuation-delimited command fragments so a clear
+        // navigation phrase still takes the deterministic fast path instead
+        // of falling through to a slow reasoning response that cannot navigate.
+        for fragment in text.split(whereSeparator: { ".!?;\n".contains($0) }) {
+            let candidate = normalize(correctCommonRecognition(String(fragment)))
+            if let destination = matchDestination(candidate) {
+                return .navigate(destination)
+            }
         }
 
         if goBackPhrases.contains(normalized) { return .goBack }
@@ -193,17 +218,82 @@ public enum VoiceIntentRouter {
         return forms
     }
 
+    private static func correctCommonRecognition(_ text: String) -> String {
+        var value = text.lowercased()
+        // Whisper repeatedly rendered the spoken “month-end close” as
+        // “month and clothes” / “month end clothes”; resolve that known
+        // phonetic error before it reaches the slower model fallback.
+        for phrase in [
+            "month and clothes", "month end clothes", "month in clothes",
+            "month and cloths", "month and close", "month in close", "month end to close",
+            "month end two close", "month send close", "month sent close", "month and to close"
+        ] {
+            value = value.replacingOccurrences(of: phrase, with: "month end close")
+        }
+        return value
+    }
+
     private static func matchDestination(_ normalized: String) -> VoiceDestination? {
         var stripped = CommandGrammar.normalize(normalized)
         for prefix in navigationPrefixes.sorted(by: { $0.count > $1.count }) where stripped.hasPrefix(prefix) {
             stripped = String(stripped.dropFirst(prefix.count))
             break
         }
-        for article in ["the ", "my ", "our "] where stripped.hasPrefix(article) { stripped = String(stripped.dropFirst(article.count)); break }
-        for (destination, aliases) in destinationAliases where aliases.contains(stripped) {
+        if let destination = exactDestination(stripped) { return destination }
+
+        // Recognition can prepend the page name it heard before the actual
+        // navigation wording ("month end close take me to month end close").
+        // A named navigation verb is an explicit request, so inspect only the
+        // words after that verb and still require an exact destination alias.
+        for prefix in navigationPrefixes.sorted(by: { $0.count > $1.count }) {
+            // `navigationPrefixes` already includes its trailing space.
+            guard let range = stripped.range(of: prefix) else { continue }
+            let requestedPage = String(stripped[range.upperBound...])
+            if let destination = exactDestination(requestedPage) { return destination }
+            if resemblesMonthEndClose(requestedPage) { return .monthEndClose }
+        }
+        // Short bare page names are common spoken commands, and their three
+        // words remain highly distinctive even when ASR substitutes a
+        // near-homophone ("month send clothes"). Don't fuzzy-match arbitrary
+        // long questions or unrelated menu destinations.
+        if resemblesMonthEndClose(stripped) { return .monthEndClose }
+        return nil
+    }
+
+    private static func resemblesMonthEndClose(_ phrase: String) -> Bool {
+        let words = phrase.split(separator: " ").map(String.init)
+        guard words.count == 3, words[0] == "month" else { return false }
+        return editDistance(words[1], "end") <= 2 && editDistance(words[2], "close") <= 3
+    }
+
+    private static func editDistance(_ lhs: String, _ rhs: String) -> Int {
+        let left = Array(lhs)
+        let right = Array(rhs)
+        var previous = Array(0...right.count)
+        for row in 1...left.count {
+            var current = [row] + Array(repeating: 0, count: right.count)
+            for column in 1...right.count {
+                current[column] = min(
+                    previous[column] + 1,
+                    current[column - 1] + 1,
+                    previous[column - 1] + (left[row - 1] == right[column - 1] ? 0 : 1)
+                )
+            }
+            previous = current
+        }
+        return previous[right.count]
+    }
+
+    private static func exactDestination(_ phrase: String) -> VoiceDestination? {
+        var value = phrase
+        for article in ["the ", "my ", "our "] where value.hasPrefix(article) {
+            value = String(value.dropFirst(article.count))
+            break
+        }
+        for (destination, aliases) in destinationAliases where aliases.contains(value) {
             return destination
         }
-        for destination in VoiceDestination.allCases where spokenForms(of: destination.menuTitle).contains(stripped) {
+        for destination in VoiceDestination.allCases where spokenForms(of: destination.menuTitle).contains(value) {
             return destination
         }
         return nil

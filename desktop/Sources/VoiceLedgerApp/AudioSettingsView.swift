@@ -35,7 +35,7 @@ struct AudioSettingsView: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
                 } else {
-                    Text("No microphone remembered yet — the first time you use voice, a plugged-in USB mic is chosen automatically; pick one below to override.")
+                    Text("Choose a connected microphone below. Until you choose one, Voice Ledger uses the Mac’s current default input.")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
                 }

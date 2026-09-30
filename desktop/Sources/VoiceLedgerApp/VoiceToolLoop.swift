@@ -88,20 +88,19 @@ extension VoiceEngine {
         }
 
         guard !decision.toolCalls.isEmpty else {
-            // The model answered directly with no tool call — either a
-            // genuinely out-of-scope question it correctly declined (per
-            // this file's system prompt), or a clarifying question back
-            // to the user (e.g. "show me a chart" with nothing to chart).
-            // Either way: narration only, exactly like the old reasoning
-            // fallback — no `uiAction` is possible on this path.
-            // The model may only NARRATE on this path (an explanation or a
-            // clarifying question). Its numbers are checked against what it
-            // was given; anything else is replaced with the source text.
-            guard !decision.answer.isEmpty else { return VoiceTurn(speech: "I'm not sure which page or figure you mean — try “balance of checking” or “pull up the duplicates”.") }
+            guard !decision.answer.isEmpty else {
+                return VoiceTurn(speech: "I couldn't resolve that request to an app action or a verified answer. Try naming the page, account, vendor, or finding you want.")
+            }
+            let lowered = decision.answer.lowercased()
+            let falseActionClaims = ["i opened ", "i've opened ", "i have opened ", "i navigated to ", "i've navigated to ", "i took you to ", "i've taken you to ", "i pulled up ", "i've pulled up "]
+            if falseActionClaims.contains(where: lowered.contains) {
+                return VoiceTurn(speech: "I didn't change the screen. Try the command again, or name the page you want.")
+            }
             let guarded = NumberGuard.check(decision.answer, source: context)
             if guarded.replacedSentences > 0 { await recordTranscript(speaker: .assistant, text: "[guard replaced \(guarded.replacedSentences) sentence(s) with unverified figures]") }
             return VoiceTurn(speech: guarded.text)
         }
+        guard !Task.isCancelled else { return VoiceTurn(speech: "") }
 
         var resultLines: [String] = []
         var uiAction: VoiceUIAction?
@@ -111,37 +110,9 @@ extension VoiceEngine {
             if let action = result.uiAction { uiAction = action }
         }
 
-        // Fact tools already return a complete, exact answer (with its data
-        // scope) from `ClientFacts` — the same one the pages show. Speak it
-        // verbatim: a model rewrite can only introduce errors here (seen
-        // 2026-09-30: it described a different finding than the one opened).
-        // Navigation / open_findings / charts still get the model's narration.
-        let factTools: Set<String> = ["search_transactions", "get_account_balance", "get_vendor_details", "get_report_summary", "get_financial_summary",
-                                      "get_chart_of_accounts", "get_sync_status", "find_findings", "list_vendors_by_spend"]
-        if decision.toolCalls.allSatisfy({ factTools.contains($0.name) }) {
-            return VoiceTurn(speech: ClientText.polish(resultLines.map { String($0.split(separator: "→", maxSplits: 1).last ?? "").trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")), uiAction: uiAction)
-        }
-
-        // Narrate the tool result(s) — a second, tool-free call so the
-        // spoken answer is natural prose grounded in what the tool(s)
-        // actually returned, same "code computed it, the model explains
-        // it" boundary as every other Ask AI surface in this app.
-        let narrationContext = context + "\n\nTOOL RESULTS (real, already-computed data — narrate this, do not recompute or contradict it). Copy every dollar amount exactly as written, keeping the $ sign and any parentheses — ($3,293.02) means negative/overdrawn, never write it as -3,293.02. If a result's data-status sentence says the data is saved (cached) or not yet synced, say so in one short closing sentence and offer to refresh:\n" + resultLines.joined(separator: "\n")
-        let narration: (answer: String, toolCalls: [AIToolCall])
-        do {
-            narration = try await appState.askAIWithTools(
-                question: rawText,
-                context: narrationContext,
-                history: recentHistory(),
-                model: Self.toolLoopModel,
-                tools: []
-            )
-        } catch {
-            return VoiceTurn(speech: resultLines.joined(separator: ". "), uiAction: uiAction)
-        }
-
-        let guarded = NumberGuard.check(narration.answer, source: narrationContext)
-        if guarded.replacedSentences > 0 { await recordTranscript(speaker: .assistant, text: "[guard replaced \(guarded.replacedSentences) sentence(s) with unverified figures]") }
-        return VoiceTurn(speech: narration.answer.isEmpty ? resultLines.joined(separator: ". ") : guarded.text, uiAction: uiAction)
+        // Speak the actual tool result. A model rewrite can claim a different
+        // action and used to delay navigation by a second inference request.
+        let speech = resultLines.map { String($0.split(separator: "→", maxSplits: 1).last ?? "").trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
+        return VoiceTurn(speech: ClientText.polish(speech), uiAction: uiAction)
     }
 }

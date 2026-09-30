@@ -63,17 +63,23 @@ enum AudioDeviceManager {
     /// nothing is remembered yet, a plugged-in USB microphone that isn't
     /// the built-in one is preferred and remembered.
     @discardableResult
-    static func applyPreferredInput() -> Device? {
+    static func applyPreferredInput() throws -> Device? {
         let inputs = inputDevices()
-        var wanted = preferredInputUID.flatMap { uid in inputs.first { $0.uid == uid } }
-        if wanted == nil, preferredInputUID == nil,
-           let external = inputs.first(where: { !$0.name.localizedCaseInsensitiveContains("MacBook") && !$0.name.localizedCaseInsensitiveContains("Built-in") }) {
-            wanted = external
-            preferredInputUID = external.uid
+        // Honor an explicit selection. Never substitute a random webcam or
+        // virtual device just because Core Audio lists it first.
+        guard let uid = preferredInputUID else { return currentDefaultInput() }
+        guard let device = inputs.first(where: { $0.uid == uid }) else {
+            throw MicrophoneSelectionError.unavailable
         }
-        guard let device = wanted else { return nil }
-        if currentDefaultInput()?.id != device.id { try? setDefaultInput(device) }
+        if currentDefaultInput()?.id != device.id { try setDefaultInput(device) }
         return device
+    }
+
+    private enum MicrophoneSelectionError: LocalizedError {
+        case unavailable
+        var errorDescription: String? {
+            "Your saved microphone is disconnected. Reconnect it or select a connected microphone in Audio Settings."
+        }
     }
 
     static func setDefaultInput(_ device: Device) throws {

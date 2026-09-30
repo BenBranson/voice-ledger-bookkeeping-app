@@ -21,7 +21,7 @@ extension VoiceEngine {
             guard let pageRaw = call.arguments["page"]?.stringValue, let destination = VoiceDestination(rawValue: pageRaw) else {
                 return ("Unknown page.", nil)
             }
-            return ("Navigated to \(destination.rawValue).", .navigate(destination))
+            return ("Opening \(destination.menuTitle).", .navigate(destination))
 
         case "open_findings":
             guard let queriesValue = call.arguments["queries"], case .array(let queryValues) = queriesValue else {
@@ -52,7 +52,7 @@ extension VoiceEngine {
             let lines = matches.prefix(50).map { "\(ClientText.polish($0.title)) (\($0.severity.rawValue), \($0.dollarExposure.accountingDescription))" }
             var text = "\(matches.count) matching finding(s): " + lines.joined(separator: "; ")
             if matches.count > 50 { text += "; and \(matches.count - 50) more" }
-            return (text + " " + fact.scope.sentence(), nil)
+            return (text + " " + fact.scope.sentence(), .showFindingGroup(group))
 
         case "get_financial_summary":
             return await getFinancialSummary(

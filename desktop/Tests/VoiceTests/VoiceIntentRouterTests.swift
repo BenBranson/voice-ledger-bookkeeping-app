@@ -25,8 +25,16 @@ struct VoiceIntentRouterTests {
         }
         #expect(VoiceIntentRouter.match(text: "go to profit and loss", context: .empty) == .navigate(.profitAndLossReport))
         #expect(VoiceIntentRouter.match(text: "go to month end close", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Close. Go to month and close. Month and close. Month and close.", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Month-End Close.", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Go to month end to close", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Month send close", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Month send clothes", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Month and close take me to month and close", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "Please close out the books", context: .empty) == .navigate(.monthEndClose))
+        #expect(VoiceIntentRouter.match(text: "wrap up the month", context: .empty) == .navigate(.monthEndClose))
         #expect(VoiceIntentRouter.match(text: "go to scope and period lock", context: .empty) == .navigate(.scopeAndPeriodLock))
-        #expect(VoiceIntentRouter.match(text: "go to ai conversations", context: .empty) == .navigate(.aiConversations))
+        #expect(VoiceIntentRouter.match(text: "go to voice history", context: .empty) == .navigate(.aiConversations))
     }
 
     @Test("'Hi'/'status update' matches statusOverview")

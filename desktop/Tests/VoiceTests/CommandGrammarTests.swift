@@ -7,6 +7,41 @@ struct CommandGrammarTests {
     func usd(_ c: Int64) -> Money { Money(minorUnits: c, currency: .usd) }
     func parse(_ s: String) -> VoiceIntent? { CommandGrammar.parse(s) }
 
+    @Test("Every sidebar destination accepts natural opening verbs")
+    func allNavigationPhrases() {
+        for destination in VoiceDestination.allCases {
+            for verb in ["go to", "open", "open up", "show", "show me", "display", "pull up", "bring up", "take me to", "navigate to", "get me"] {
+                let phrase = "please \(verb) the \(destination.menuTitle) for me"
+                #expect(VoiceIntentRouter.match(text: phrase, context: .empty) == .navigate(destination), "\(phrase)")
+            }
+        }
+        #expect(VoiceIntentRouter.match(text: "show balance sheet", context: .empty) == .navigate(.balanceSheetReport))
+        for phrase in ["go to month and clothes", "open month end clothes", "show month in clothes", "take me to end clothes"] {
+            #expect(VoiceIntentRouter.match(text: phrase, context: .empty) == .navigate(.monthEndClose), "\(phrase)")
+        }
+        #expect(VoiceIntentRouter.match(text: "display the duplicates", context: .empty) == .findingsGroup(.duplicates))
+        #expect(VoiceIntentRouter.match(text: "show me a chart of income vs expenses", context: .empty) == .chart(.incomeVsExpenses))
+    }
+
+    @Test("Currency is spoken as grouped amounts")
+    func spokenCurrency() {
+        #expect(VoiceSpeechFormatter.formatCurrency("$19,200.00") == "nineteen thousand two hundred dollars")
+        #expect(VoiceSpeechFormatter.formatCurrency("($3,293.02)") == "negative three thousand two hundred ninety three dollars and two cents")
+        #expect(VoiceSpeechFormatter.formatCurrency("$1,420.50") == "one thousand four hundred twenty dollars and fifty cents")
+        #expect(VoiceSpeechFormatter.formatCurrency("$1.01") == "one dollar and one cent")
+        #expect(VoiceSpeechFormatter.formatCurrency("$1.5") == "one dollar and fifty cents")
+    }
+
+    @Test("Follow-up selections require real candidates")
+    func selection() {
+        var context = VoiceSessionContext.empty
+        context.candidateFindingIDs = ["a", "b"]
+        #expect(VoiceIntentRouter.match(text: "open the second one", context: context) == .chooseFinding(1))
+        #expect(VoiceIntentRouter.match(text: "first", context: context) == .chooseFinding(0))
+        #expect(VoiceIntentRouter.match(text: "third", context: context) == .unrecognized("third"))
+        #expect(VoiceIntentRouter.match(text: "second", context: .empty) == .unrecognized("second"))
+    }
+
     @Test("Back and forward, with filler")
     func backForward() {
         for p in ["go back", "Go back.", "hey moneypenny go back", "please go back", "back", "previous page", "can you go back"] { #expect(parse(p) == .goBack, "\(p)") }

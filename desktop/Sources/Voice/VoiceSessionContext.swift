@@ -77,6 +77,7 @@ public enum VoiceStage: String, Sendable {
 }
 
 public struct VoiceSessionContext: Codable, Sendable, Equatable {
+    public var candidateFindingIDs: [String]?
     public var currentEntity: VoiceEntityRef?
     /// Ordered finding IDs — `ReviewQueue.build` produces this from real
     /// `[Finding]` data (severity, then dollar exposure, descending).

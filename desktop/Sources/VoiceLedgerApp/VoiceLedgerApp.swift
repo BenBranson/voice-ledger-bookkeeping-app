@@ -155,8 +155,11 @@ struct VoiceLedgerApp: App {
 
     private func configure() {
         do {
-            let configuration = try BackendConfiguration.fromEnvironment()
-            guard let realmIDString = ProcessInfo.processInfo.environment["VOICE_LEDGER_REALM_ID"] else {
+            let launchValues = Self.consumeLauncherConfiguration()
+            var launchEnvironment = ProcessInfo.processInfo.environment
+            for (key, value) in launchValues { launchEnvironment[key] = value }
+            let configuration = try BackendConfiguration.fromEnvironment(environment: launchEnvironment)
+            guard let realmIDString = launchEnvironment["VOICE_LEDGER_REALM_ID"] else {
                 configError = "VOICE_LEDGER_REALM_ID is not set."
                 return
             }
@@ -169,13 +172,49 @@ struct VoiceLedgerApp: App {
             // THIS initial launch — a client switched-to later carries its
             // own real environment from the backend's connection registry,
             // see `performSwitch` below, never this env var.)
-            let environmentString = ProcessInfo.processInfo.environment["VOICE_LEDGER_ENVIRONMENT"] ?? "sandbox"
+            let environmentString = launchEnvironment["VOICE_LEDGER_ENVIRONMENT"] ?? "sandbox"
             let environment: QBOEnvironment = environmentString == "production" ? .production : .sandbox
 
             backendBaseURL = configuration.baseURL
             appState = try buildAppState(realmID: realmID, environment: environment, sessionToken: configuration.sessionToken, backendBaseURL: configuration.baseURL)
         } catch {
             configError = "\(error)"
+        }
+    }
+
+    /// LaunchServices on some macOS versions silently omits `open --env`
+    /// values. The Launcher therefore writes a mode-0600 one-shot config;
+    /// consume and remove it before constructing the backend client.
+    private static func consumeLauncherConfiguration() -> [String: String] {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Logs/VoiceLedger/launch-config.json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let data = try? Data(contentsOf: url),
+              let values = try? JSONSerialization.jsonObject(with: data) as? [String: String] else {
+            recordLauncherConfigDiagnostic("present=false or invalid")
+            return [:]
+        }
+        var environment: [String: String] = [:]
+        if let value = values["backendURL"] { environment["VOICE_LEDGER_BACKEND_URL"] = value }
+        if let value = values["sessionToken"] { environment["VOICE_LEDGER_SESSION_TOKEN"] = value }
+        if let value = values["realmID"] { environment["VOICE_LEDGER_REALM_ID"] = value }
+        if let value = values["environment"] { environment["VOICE_LEDGER_ENVIRONMENT"] = value }
+        recordLauncherConfigDiagnostic("present=true fields=\(environment.keys.sorted().joined(separator: ","))")
+        return environment
+    }
+
+    private static func recordLauncherConfigDiagnostic(_ message: String) {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Logs/VoiceLedger/launcher-config-diagnostic.log")
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if FileManager.default.fileExists(atPath: url.path),
+           let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url, options: .atomic)
         }
     }
 
@@ -300,13 +339,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 private struct ConfigErrorView: View {
     let message: String
+    @State private var recoveryError: String?
     var body: some View {
         VStack(spacing: VLSpacing.md) {
-            Text("Configuration error")
+            Text("Open Voice Ledger with its Launcher")
                 .font(VLTypography.pageTitle())
-            Text(message)
+            Text("The Launcher starts the local services and supplies your client session. Reopening the app directly after a crash can lose that session.")
                 .font(VLTypography.body())
+            Text(recoveryError ?? message)
+                .font(VLTypography.caption())
                 .foregroundStyle(VLColor.textMuted)
+            if let path = Bundle.main.object(forInfoDictionaryKey: "VoiceLedgerLauncherPath") as? String {
+                Button("Restart with Launcher") {
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                    process.arguments = [path]
+                    var environment = ProcessInfo.processInfo.environment
+                    environment["VOICE_LEDGER_RELAUNCH_PID"] = String(ProcessInfo.processInfo.processIdentifier)
+                    process.environment = environment
+                    do {
+                        try process.run()
+                        NSApplication.shared.terminate(nil)
+                    } catch { recoveryError = "Couldn't open Launcher: \(error.localizedDescription)" }
+                }
+            }
         }
         .padding(VLSpacing.pageGutter)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

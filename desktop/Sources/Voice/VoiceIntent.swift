@@ -74,7 +74,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
         case .generalLedgerReport: return "General Ledger"
         case .taxes: return "Taxes"
         case .clientMemory: return "Client Memory"
-        case .aiConversations: return "AI Conversations"
+        case .aiConversations: return "Voice History"
         case .connection: return "Connection"
         case .scopeAndPeriodLock: return "Scope & Period Lock"
         case .audioSettings: return "Audio Settings"
@@ -93,6 +93,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
 /// see `VoicePendingAction.Kind`), never a QBO entity.
 public enum VoiceIntent: Equatable, Sendable {
     case navigate(VoiceDestination)
+    case chooseFinding(Int)
     case goBack
     /// "Hi"/"status update" — a greeting that gets a real, deterministic
     /// answer (open-findings count + total dollar exposure, both already-

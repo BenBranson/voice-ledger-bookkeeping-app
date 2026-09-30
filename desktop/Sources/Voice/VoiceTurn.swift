@@ -20,6 +20,7 @@ import Core
 /// impossible either way.
 public enum VoiceUIAction: Equatable, Sendable {
     case navigate(VoiceDestination)
+    case showFindingGroup(FactFindingGroup)
     case openFinding(id: String)
     /// Added 2026-09-06 for side-by-side comparison ("pull up these two
     /// transactions") — a real UI need `VoiceIntentRouter`'s single

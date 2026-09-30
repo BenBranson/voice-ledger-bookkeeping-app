@@ -60,6 +60,7 @@ struct RootView: View {
                     lastMessage: state.voiceEngine.lastMessage,
                     errorMessage: state.voiceEngine.errorMessage,
                     onStop: { state.voiceEngine.stopSpeaking() },
+                    onRetry: { state.voiceEngine.toggleListening() },
                     onDismiss: { state.voiceEngine.dismissStatus() }
                 )
                 .padding(.bottom, VLSpacing.md)
@@ -238,7 +239,7 @@ struct RootView: View {
                 case .clientDashboard: return .dashboard
                 case .connection: return .connection
                 case .scopeAndPeriodLock: return .scopeAndPeriodLock
-                case .list, .detail, .procedure: return .findings
+                case .list, .findingGroup, .detail, .procedure: return .findings
                 case .batchFixes: return .batchFixes
                 case .firmCockpit: return .firmCockpit
                 case .taxes: return .taxes
@@ -809,8 +810,15 @@ struct RootView: View {
                 onClearLock: { Task { await state.clearPeriodLock() } }
             )
 
-        case .list:
+        case .list, .findingGroup:
             VStack(spacing: 0) {
+                if case .findingGroup = state.screen {
+                    HStack {
+                        Text("\(state.findingsPageTitle) · \(state.visibleFindings.count) open").font(.headline)
+                        Spacer()
+                        Button("Show all findings") { state.screen = .list }
+                    }.padding()
+                }
                 // The dashboard's own voice entry point — the owner's own
                 // ask ("voice button on the dashboard"), placed where a
                 // bookkeeper's eye lands first, above the findings the
@@ -861,7 +869,7 @@ struct RootView: View {
                         // their own filtered views below (harmless overlap,
                         // not a source of truth conflict — both read the
                         // same `state.findings`).
-                        findings: FindingTriage.sorted(state.findings.filter { $0.status == .open }),
+                        findings: state.visibleFindings,
                         nextBestAction: NextBestAction.compute(
                             findings: state.findings,
                             checklistCompletions: state.checklistCompletions,
@@ -2143,14 +2151,15 @@ struct RootView: View {
             }
 
         case .voiceHistory:
-            AIConversationHistoryView(
-                rows: Self.conversationHistoryRows(state.conversationHistory),
-                onExport: { format in state.exportTable(Self.exportTable(conversationHistory: state.conversationHistory), format: format, suggestedFilename: "AI Conversations") },
-                onClearHistory: { state.clearConversationHistory() }
-            )
+            VoiceHistoryView(rows: state.voiceEngine.transcriptHistory.reversed().map { entry in
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                return VoiceHistoryView.Row(id: entry.id, isUser: entry.speaker == .user, text: entry.text, timeLabel: formatter.string(from: entry.timestamp))
+            })
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Back") { state.screen = .list }
+                        Button("Back") { state.goBack() }
                     }
                 }
 

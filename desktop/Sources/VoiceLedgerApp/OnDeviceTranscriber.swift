@@ -1,5 +1,6 @@
 import Foundation
 import Speech
+import Voice
 
 /// Apple's on-device speech recognition for a short recorded command
 /// (docs/MONEYPENNY_CONSISTENCY_DESIGN.md Part 2, Layer 0). Nothing leaves
@@ -16,21 +17,28 @@ enum OnDeviceTranscriber {
         }
     }
 
-    static func transcribe(fileAt url: URL, deadline: TimeInterval = 6) async -> String? {
+    // A recognizer that cannot finish promptly must not hold a short command
+    // for six seconds before the already-warm local Whisper fallback starts.
+    static func transcribe(fileAt url: URL, deadline: TimeInterval = 1.5) async -> String? {
         guard await authorize(), let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US")),
               recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else { return nil }
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
-        request.taskHint = .dictation
+        request.taskHint = .search
+        request.contextualStrings = VoiceDestination.allCases.map(\.menuTitle) + [
+            "month end close", "profit and loss", "balance sheet integrity", "chart of accounts",
+            "search by amount", "client diagnostics", "voice history"
+        ]
         let box = ResultBox()
         let task = recognizer.recognitionTask(with: request) { result, error in
             if let result, result.isFinal { box.finish(result.bestTranscription.formattedString) }
             else if error != nil { box.finish(nil) }
         }
         let started = Date()
-        while !box.isDone, Date().timeIntervalSince(started) < deadline { try? await Task.sleep(for: .milliseconds(40)) }
-        if !box.isDone { task.cancel() }
+        while !Task.isCancelled, !box.isDone, Date().timeIntervalSince(started) < deadline { try? await Task.sleep(for: .milliseconds(40)) }
+        if Task.isCancelled || !box.isDone { task.cancel() }
+        guard !Task.isCancelled else { return nil }
         return box.value
     }
 
