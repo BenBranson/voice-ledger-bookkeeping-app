@@ -46,4 +46,17 @@ public enum VoiceSpeechFormatter {
         }
         return groups.joined(separator: " ")
     }
+
+    /// What is spoken aloud, which is shorter than what is shown: a closing
+    /// data-scope sentence ("July 2026, synced 3 minutes ago.") stays on
+    /// screen when the data is fresh, and is only read out when it matters
+    /// (saved/stale data, or never synced). Owner request 2026-10-01: long
+    /// replies kept the mic off too long to say "try again".
+    public static func shortenForSpeech(_ text: String, dataIsFresh: Bool) -> String {
+        guard dataIsFresh else { return text }
+        let pattern = #"\s*[A-Z][a-z]+ \d{4}(?:, including the 24-month history)?, synced [^.]*\.\s*$"#
+        guard let range = text.range(of: pattern, options: .regularExpression) else { return text }
+        let shorter = String(text[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return shorter.isEmpty ? text : shorter
+    }
 }

@@ -611,7 +611,10 @@ public final class VoiceEngine: NSObject {
         else { actionDescription = "No screen action" }
         await recordTranscript(speaker: .assistant, text: "COMMAND RESULT\nHEARD: \(text)\nSOURCE: \(transcriptSource.isEmpty ? "typed" : transcriptSource)\nACTION: \(actionDescription) → \(appState.voiceLogLabel)\nRESPONSE: \(turn.speech)")
         guard !Task.isCancelled else { return }
-        await speak(turn.speech)
+        // Fresh data: the scope sentence stays on screen but isn't read aloud.
+        var fresh = false
+        if case .synced(let at) = appState.freshness, Date().timeIntervalSince(at) < 15 * 60 { fresh = true }
+        await speak(VoiceSpeechFormatter.shortenForSpeech(turn.speech, dataIsFresh: fresh))
     }
 
     private func describe(_ action: VoiceUIAction) -> String {
