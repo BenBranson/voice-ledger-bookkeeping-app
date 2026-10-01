@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wraps the already-built `swift build -c release` executable in a real
+# Compiles (`swift build -c release`), then wraps the executable in a real
 # .app bundle (Contents/MacOS + Contents/Info.plist), instead of running
 # the bare Mach-O binary directly the way the launcher did before.
 #
@@ -42,7 +42,7 @@ BINARY="$DESKTOP_DIR/.build/$CONFIG/VoiceLedgerApp"
 APP_BUNDLE="$DESKTOP_DIR/.build/$CONFIG/VoiceLedgerApp.app"
 
 if [ ! -x "$BINARY" ]; then
-    echo "error: $BINARY does not exist — run 'swift build -c $CONFIG' first." >&2
+    echo "error: $BINARY does not exist — the compile step above failed; read its error." >&2
     exit 1
 fi
 
