@@ -298,28 +298,17 @@ public struct RuleContext: Sendable {
     /// from relationship-rule findings, without relationship rules ever
     /// seeing it themselves.
     ///
-    /// **Known gap, found and verified 2026-08-23 (Gauntlet Loop hardening
-    /// pass on `VL-DUP-EXP-001`), documented rather than fixed here — this
-    /// method touches shared engine code used by every rule, outside that
-    /// pass's scope.** This constructor call does not pass `asOfDate:`
-    /// through, so it silently resets to the initializer's default
-    /// ("today," via `Date()`) instead of preserving whatever the caller
-    /// originally supplied. **Confirmed NOT live today**: no production call
-    /// site (`AppState.syncAndEvaluate()`, the devtool) ever supplies a
-    /// non-default `asOfDate` — only tests do, and rule-level tests call a
-    /// `Rule.evaluate` directly, never through `RuleEngine.evaluate`'s
-    /// gating path that calls this method. Would matter the moment an
-    /// age-based categorization rule (e.g. `VL-BS-UNDEP-001`, which reads
-    /// `context.asOfDate`) is ever tested end-to-end through the full engine
-    /// with a fixed test date. Fix, when needed: add `asOfDate: asOfDate` to
-    /// the constructor call below.
+    /// Preserves `asOfDate`. It used to be dropped here, silently resetting
+    /// age-based rules (e.g. `VL-BS-UNDEP-001`) to the real clock; found
+    /// 2026-10-01 when a pinned regression snapshot drifted by one day.
     public func gatingTransactions(_ ids: Set<String>) -> RuleContext {
         RuleContext(
             period: period,
             materiality: materiality,
             companyFacts: companyFacts,
             dismissedFindingIDs: dismissedFindingIDs,
-            gatedTransactionIDs: ids
+            gatedTransactionIDs: ids,
+            asOfDate: asOfDate
         )
     }
 }
