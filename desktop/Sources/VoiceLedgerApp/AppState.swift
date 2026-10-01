@@ -336,8 +336,8 @@ public final class AppState {
 
     public func leaveFinding() { screen = findingReturnScreen }
 
-    /// On launch: refresh automatically when the saved data is older than
-    /// 15 minutes (the same rule Generate Report uses), then load the
+    /// On launch: always refresh from QuickBooks (changed 2026-10-01 from a
+    /// 15-minute rule; the owner kept seeing "saved data"), then load the
     /// 24-month history in the background so Search, Diagnostics and the
     /// cleanup quote are ready. The user should almost never see "cached".
     public func syncOnLaunchIfStale() async {
@@ -345,7 +345,7 @@ public final class AppState {
         let stale: Bool
         switch freshness {
         case .neverSynced: stale = true
-        case .cached(let at): stale = Date().timeIntervalSince(at) > 15 * 60
+        case .cached: stale = true   // every launch syncs: "saved data" should never be what the owner sees at startup
         default: stale = false
         }
         if stale { await syncDashboard() }
