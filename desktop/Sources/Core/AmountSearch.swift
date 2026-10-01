@@ -71,7 +71,9 @@ public extension AmountSearch {
 
     /// Transactions paid from or deposited to an account, oldest first.
     static func transactions(for account: LedgerAccount, in transactions: [LedgerTransaction]) -> [LedgerTransaction] {
-        transactions.filter { $0.paymentAccountID == account.id && !$0.isVoided }.sorted { $0.txnDate < $1.txnDate }
+        // Paid from / deposited to the account, OR coded to it on a line
+        // (clearing and suspense accounts only ever appear as the coded side).
+        transactions.filter { ($0.paymentAccountID == account.id || $0.lineAccountIDs.contains(account.id)) && !$0.isVoided }.sorted { $0.txnDate < $1.txnDate }
     }
 
     /// Two or three transactions whose amounts add up exactly to `amount`

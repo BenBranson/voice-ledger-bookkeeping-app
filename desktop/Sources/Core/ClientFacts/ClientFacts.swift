@@ -69,6 +69,23 @@ public enum Freshness: Sendable, Equatable {
         }
     }
 
+    /// The short form used in spoken answers: "synced 3 minutes ago".
+    public func short(now: Date = Date()) -> String {
+        func ago(_ d: Date) -> String {
+            let seconds = max(0, Int(now.timeIntervalSince(d)))
+            if seconds < 90 { return "just now" }
+            if seconds < 3_600 { return "\(seconds / 60) minutes ago" }
+            if seconds < 86_400 { let h = seconds / 3_600; return "\(h) hour\(h == 1 ? "" : "s") ago" }
+            let days = seconds / 86_400; return "\(days) day\(days == 1 ? "" : "s") ago"
+        }
+        switch self {
+        case .neverSynced: return "not synced yet"
+        case .cached(let at): return "saved data from \(ago(at)) — sync to refresh"
+        case .syncing: return "syncing now"
+        case .synced(let at): return "synced \(ago(at))"
+        }
+    }
+
     public var isCurrent: Bool { if case .synced = self { return true }; return false }
 }
 
@@ -79,7 +96,9 @@ public struct FactScope: Sendable, Equatable {
     public let freshness: Freshness
 
     public func sentence(now: Date = Date()) -> String {
-        "For \(ClientFacts.periodLabel(period)) (\(source)). \(freshness.sentence(now: now))"
+        // Short on purpose: this is spoken aloud. Full detail stays on screen.
+        let history = source.contains("24-month") ? ", including the 24-month history" : ""
+        return "\(ClientFacts.periodLabel(period))\(history), \(freshness.short(now: now))."
     }
 }
 

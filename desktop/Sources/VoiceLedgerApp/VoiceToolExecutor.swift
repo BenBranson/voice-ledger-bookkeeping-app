@@ -159,7 +159,8 @@ extension VoiceEngine {
                     lines += result.exact.prefix(20).map { Self.transactionLine($0) }
                 }
                 for entry in result.balanceAccounts {
-                    lines.append("\(result.amount.accountingDescription) is the current balance of \(entry.account.name) — the total of \(entry.postings.count) posting(s), not a single transaction.")
+                    let n = entry.postings.count
+                    lines.append("\(result.amount.accountingDescription) is the balance of \(entry.account.name), not a single transaction" + (n > 0 ? " — it's built from \(n) posting\(n == 1 ? "" : "s")." : "."))
                 }
                 if let combo = result.combination {
                     lines.append("No single transaction matches, but these \(combo.count) add up to \(result.amount.accountingDescription): " + combo.map { Self.transactionLine($0) }.joined(separator: " "))
