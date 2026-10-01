@@ -705,7 +705,9 @@ public struct FindingDetailView: View {
                     .foregroundStyle(VLColor.textMuted)
                 ForEach(finding.evidence, id: \.transactionID) { item in
                     VStack(alignment: .leading, spacing: VLSpacing.xxs) {
-                        Text(item.fieldValues["account"].map { "Account: \($0)" } ?? "Transaction \(item.transactionID)")
+                        Text(item.fieldValues["account"].map { "Account: \($0)" }
+                             ?? item.fieldValues["displayName"].map { "Vendor record: \($0) (QuickBooks ID \(item.transactionID))" }
+                             ?? "Transaction \(item.transactionID)")
                             .font(VLTypography.body())
                             .foregroundStyle(VLColor.textPrimary)
                         // Gauntlet Loop, Gauntlet B (2026-08-23): show the
