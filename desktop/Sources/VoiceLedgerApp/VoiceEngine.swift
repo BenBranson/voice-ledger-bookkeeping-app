@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import AppKit
 import Observation
 import Core
 import Voice
@@ -170,6 +171,34 @@ public final class VoiceEngine: NSObject {
             }
             conversationMode = true
             Task { await startListening() }
+        }
+    }
+
+    /// Tab: cut her off if she's talking (or thinking) and start listening
+    /// right away; ignored while already listening. Unlike the mic toggle it
+    /// never turns conversation mode off. Owner request 2026-10-01.
+    public func interruptAndListen() {
+        guard !isListening else { return }
+        commandTask?.cancel()
+        commandTask = nil
+        cancelSpeech()
+        isProcessing = false
+        errorMessage = nil
+        conversationMode = true
+        Task { await startListening() }
+    }
+
+    @ObservationIgnored nonisolated(unsafe) private var tabMonitor: Any?
+
+    /// Installs the Tab-key shortcut once. Tab still moves focus normally
+    /// while the owner is typing in a text field or when any modifier is held.
+    public func installTabShortcut() {
+        guard tabMonitor == nil else { return }
+        tabMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 48, event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
+            if NSApp.keyWindow?.firstResponder is NSTextView { return event }
+            MainActor.assumeIsolated { self?.interruptAndListen() }
+            return nil
         }
     }
 

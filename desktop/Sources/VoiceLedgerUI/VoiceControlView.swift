@@ -135,9 +135,14 @@ public struct VoiceStatusPanel: View {
                         .font(VLTypography.caption())
                         .foregroundStyle(.red)
                 }
+                if isSpeaking {
+                    Text("Press Tab to interrupt and speak")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textMuted)
+                }
                 if !isListening && !isSpeaking && (!transcript.isEmpty || errorMessage != nil) {
                     Button(action: onRetry) {
-                        Label("Try again", systemImage: "mic")
+                        Label("Try again (Tab)", systemImage: "mic")
                             .font(VLTypography.caption())
                     }
                     .buttonStyle(.plain)

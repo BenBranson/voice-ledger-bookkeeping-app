@@ -73,6 +73,7 @@ struct RootView: View {
             await state.checkHealth()
             await state.checkAIStatus()
             await state.voiceEngine.loadPersistedContext()
+            state.voiceEngine.installTabShortcut()
             state.loadIntakeRoster()
             await state.syncOnLaunchIfStale()
         }
