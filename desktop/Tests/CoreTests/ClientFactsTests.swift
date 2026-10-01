@@ -49,6 +49,17 @@ struct ClientFactsTests {
         #expect(FactFindingGroup.allOpen.ruleIDs == nil)
     }
 
+    @Test("What we owe a vendor comes from aged payables, split into current and past due")
+    func amountOwed() throws {
+        let row = AgingLine(label: "Norton Lumber and Building Materials", current: usd(75_693), days1to30: usd(0), days31to60: usd(0), days61to90: usd(0), days91AndOver: usd(139_300), total: usd(214_993), depth: 0, isSummary: false)
+        let total = AgingLine(label: "TOTAL", current: usd(75_693), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: usd(139_300), total: usd(214_993), depth: 0, isSummary: true)
+        let data = ClientData(period: period, freshness: .synced(at: Date()), agedPayables: [row, total])
+        let owed = try #require(ClientFacts.amountOwed(data, vendor: "norton lumber").value)
+        #expect(owed.total == usd(214_993) && owed.current == usd(75_693) && owed.overdue == usd(139_300) && owed.over90 == usd(139_300))
+        #expect(ClientFacts.amountOwed(data, vendor: "acme").value == nil)
+        #expect(ClientFacts.amountOwed(ClientData(period: period), vendor: "norton").note?.contains("isn't loaded") == true)
+    }
+
     @Test("Freshness reads the same everywhere: never / cached / synced")
     func freshness() {
         let now = Date()

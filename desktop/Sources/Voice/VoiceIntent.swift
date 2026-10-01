@@ -131,6 +131,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case searchVendor(String)
     case kpi(KPIMetric, PeriodChoice)
     case freshness
+    /// "what do we owe Norton Lumber" — answered from aged payables.
+    case vendorOwed(String)
+    /// "try again" — dismiss the last answer and listen again, hands-free.
+    case retry
     case chart(ChartKind)
 }
 

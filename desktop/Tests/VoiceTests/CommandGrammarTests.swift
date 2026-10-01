@@ -88,6 +88,15 @@ struct CommandGrammarTests {
         #expect(parse("show me a chart of income vs expenses") == .chart(.incomeVsExpenses))
     }
 
+    @Test("'What do we owe <vendor>' — including the 'own' mishearing — and hands-free retry")
+    func owedAndRetry() {
+        for p in ["what do we owe norton lumber", "what do we own norton lumber", "How much do we owe Norton Lumber?", "what do we owe to norton lumber", "how much do we oh norton lumber"] {
+            #expect(parse(p) == .vendorOwed("norton lumber"), "\(p)")
+        }
+        for p in ["try again", "Try again.", "hey moneypenny try again", "that's wrong", "never mind", "scratch that"] { #expect(parse(p) == .retry, "\(p)") }
+        #expect(parse("what do we own") == nil)
+    }
+
     @Test("Open-ended questions are left to the model")
     func leftToModel() {
         #expect(parse("why is this flagged") == nil)

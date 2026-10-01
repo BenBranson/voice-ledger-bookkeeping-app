@@ -18,11 +18,14 @@ public struct ClientData: Sendable {
     public var findings: [Finding]
     public var history: HistorySnapshot?
     public var freshness: Freshness
+    /// Aged payables as of the loaded period (QuickBooks' summary, or rebuilt from the detail report).
+    public var agedPayables: [AgingLine]
 
     public init(period: AccountingPeriod, transactions: [LedgerTransaction] = [], accounts: [LedgerAccount] = [],
                 balanceSheet: [ReportLine] = [], priorBalanceSheet: [ReportLine] = [], profitAndLoss: [ReportLine] = [],
                 priorProfitAndLoss: [ReportLine] = [], cashFlow: [ReportLine] = [], findings: [Finding] = [],
-                history: HistorySnapshot? = nil, freshness: Freshness = .neverSynced) {
+                history: HistorySnapshot? = nil, freshness: Freshness = .neverSynced, agedPayables: [AgingLine] = []) {
+        self.agedPayables = agedPayables
         self.period = period
         self.transactions = transactions
         self.accounts = accounts
@@ -141,6 +144,14 @@ public enum ReportKind: String, Sendable, CaseIterable { case balanceSheet = "ba
 
 public enum PeriodChoice: String, Sendable { case current, priorMonth = "prior_month" }
 
+public struct AmountOwed: Sendable, Equatable {
+    public let vendor: String
+    public let total: Money
+    public let current: Money
+    public let overdue: Money
+    public let over90: Money
+}
+
 public struct VendorSummary: Sendable, Equatable {
     public let name: String
     public let transactionCount: Int
@@ -245,6 +256,21 @@ public enum ClientFacts {
 
     public static func vendorsBySpend(_ d: ClientData, limit: Int) -> Fact<[VendorSpendSummary.VendorTotal]> {
         Fact(value: VendorSpendSummary.top(limit, from: d.transactions), scope: scope(d, currentSource), note: nil)
+    }
+
+    /// What we owe a vendor right now, from the aged payables the Aged Payables page shows.
+    public static func amountOwed(_ d: ClientData, vendor name: String) -> Fact<AmountOwed> {
+        let sc = scope(d, "the aged payables report")
+        let q = name.trimmingCharacters(in: .whitespaces)
+        guard !d.agedPayables.isEmpty else { return Fact(value: nil, scope: sc, note: "The aged payables report isn't loaded yet.") }
+        let rows = d.agedPayables.filter { !$0.isSummary && $0.label.localizedCaseInsensitiveContains(q) }
+        guard let row = rows.first else {
+            return Fact(value: nil, scope: sc, note: "No open bills for a vendor matching “\(q)”. We owe them nothing on the books.")
+        }
+        func m(_ x: Money?) -> Money { x ?? .zero }
+        let current = m(row.current)
+        let overdue = m(row.days1to30) + m(row.days31to60) + m(row.days61to90) + m(row.days91AndOver)
+        return Fact(value: AmountOwed(vendor: row.label, total: m(row.total), current: current, overdue: overdue, over90: m(row.days91AndOver)), scope: sc, note: nil)
     }
 
     // MARK: Reports

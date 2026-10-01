@@ -99,8 +99,21 @@ public enum CommandGrammar {
             return .accountBalance(name)
         }
 
+        // Hands-free correction: say it again without touching the mouse.
+        if ["try again", "again", "retry", "let me try again", "start over", "scratch that", "that's wrong", "thats wrong", "that is wrong", "wrong",
+            "that's not right", "thats not right", "no that's wrong", "no thats wrong", "no", "nope", "never mind", "nevermind", "cancel that", "cancel", "clear that", "clear", "dismiss", "close that", "listen again", "i said"].contains(t) {
+            return .retry
+        }
+
+        // What we owe a vendor. Recognizers hear "owe" as "own", "oh" and "ow", so accept those before a name.
+        for lead in ["what do we owe ", "what do we own ", "what do we oh ", "how much do we owe ", "how much do we own ", "how much do we oh ", "what do i owe ", "what do i own ",
+                     "how much do i owe ", "do we owe ", "what are we owing ", "what is owed to ", "what's owed to ", "how much is owed to ", "what do we owe to ", "what do we own to "] where t.hasPrefix(lead) {
+            let name = strip(String(t.dropFirst(lead.count)), articles + ["to"])
+            if !name.isEmpty, SpokenNumber.amount(in: name) == nil { return .vendorOwed(name.replacingOccurrences(of: #" \?$"#, with: "", options: .regularExpression)) }
+        }
+
         // Vendor: "what do we owe <vendor>", "how much have we paid <vendor>", "transactions from/for/with <vendor>"
-        for lead in ["what do we owe ", "how much do we owe ", "how much have we paid ", "how much did we pay ", "what have we paid ", "what did we pay ", "transactions from ", "transactions for ", "transactions with ", "payments to ", "everything from ", "purchases from ", "spend with ", "spending with "] where t.hasPrefix(lead) {
+        for lead in ["how much have we paid ", "how much did we pay ", "what have we paid ", "what did we pay ", "transactions from ", "transactions for ", "transactions with ", "payments to ", "everything from ", "purchases from ", "spend with ", "spending with "] where t.hasPrefix(lead) {
             let name = strip(String(t.dropFirst(lead.count)), articles)
             if !name.isEmpty, SpokenNumber.amount(in: name) == nil { return .searchVendor(name) }
         }

@@ -371,7 +371,7 @@ public final class AppState {
         ClientData(period: period, transactions: transactions, accounts: accounts, balanceSheet: balanceSheetLines,
                    priorBalanceSheet: priorPeriodBalanceSheetLines, profitAndLoss: profitAndLossLines,
                    priorProfitAndLoss: priorPeriodProfitAndLossLines, cashFlow: cashFlowLines, findings: findings,
-                   history: historySnapshot, freshness: freshness)
+                   history: historySnapshot, freshness: freshness, agedPayables: agedPayablesLines)
     }
 
     public var searchableTransactions: [LedgerTransaction] { clientData.searchableTransactions }

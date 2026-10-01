@@ -847,6 +847,20 @@ public final class VoiceEngine: NSObject {
         case .freshness:
             return VoiceTurn(speech: ClientFacts.freshnessSentence(appState.clientData))
 
+        case .vendorOwed(let name):
+            if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            let fact = ClientFacts.amountOwed(appState.clientData, vendor: name)
+            guard let owed = fact.value else { return VoiceTurn(speech: (fact.note ?? "I couldn't find that vendor.") + " " + fact.scope.sentence()) }
+            var speech = "We owe \(owed.vendor) \(owed.total.accountingDescription)"
+            if owed.overdue.minorUnits > 0 { speech += ": \(owed.current.accountingDescription) current and \(owed.overdue.accountingDescription) past due" }
+            if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
+            return VoiceTurn(speech: ClientText.polish(speech + ". " + fact.scope.sentence()))
+
+        case .retry:
+            dismissStatus()
+            conversationMode = true
+            return VoiceTurn(speech: "Go ahead.")
+
         case .chart(let kind):
             let result = await execute(AIToolCall(id: "grammar", name: "generate_chart", arguments: ["kind": .string(kind.rawValue)]))
             return VoiceTurn(speech: result.resultText, uiAction: result.uiAction)
