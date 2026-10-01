@@ -4,6 +4,13 @@ import Core
 
 @Suite("VoiceIntentRouter.match")
 struct VoiceIntentRouterTests {
+    @Test("short ASR noise is rejected before the slow tool loop")
+    func shortNoiseDetection() {
+        #expect(VoiceIntentRouter.isLikelyShortNoise("boom boom"))
+        #expect(!VoiceIntentRouter.isLikelyShortNoise("what is revenue"))
+        #expect(!VoiceIntentRouter.isLikelyShortNoise("month close"))
+    }
+
     // MARK: Phase 2 — state coverage (2026-08-29)
 
     @Test("'Dashboard' goes to the Dashboard, not the Findings list; Search/Diagnostics/Pricing/Intake are reachable")

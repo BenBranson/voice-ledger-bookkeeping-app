@@ -38,8 +38,6 @@ public enum MonthlyReportSections {
         let priorRevenue = priorLines.map { summary("Total Income", $0) ?? .zero }
         let cash = summary("Total Bank Accounts", bs)
         let currentLiabilities = summary("Total Current Liabilities", bs)
-        let open = input.findings.filter { $0.status == .open }
-
         report.preparedBy = input.preparedBy
         report.workCompleted = WorkLog.items(activityLog: input.activityLog, findings: input.findings, period: period)
         let workCounts = Dictionary(grouping: report.workCompleted, by: \.status).mapValues(\.count)

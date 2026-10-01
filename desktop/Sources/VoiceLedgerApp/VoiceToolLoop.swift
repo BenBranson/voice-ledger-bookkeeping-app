@@ -39,6 +39,14 @@ extension VoiceEngine {
     /// Called from `.unrecognized` instead of `reasoningFallback` — see
     /// `handle(_:)`'s own call site.
     func handleWithTools(rawText: String) async -> VoiceTurn {
+        // Short non-question noise should never wake the local model. A
+        // malformed two-word transcript such as "boom boom" previously
+        // spent 30+ seconds in the tool loop even though it could not name
+        // a page, fact, or action. All supported two-word commands are
+        // resolved by VoiceIntentRouter before this fallback is reached.
+        if VoiceIntentRouter.isLikelyShortNoise(rawText) {
+            return VoiceTurn(speech: "I didn't recognize that as a command. Name the page, account, vendor, or finding you want.")
+        }
         let tools = Self.toolDefinitions
         // Preserves what the old narration-only fallback already got
         // right: if a specific finding is currently open on screen, an

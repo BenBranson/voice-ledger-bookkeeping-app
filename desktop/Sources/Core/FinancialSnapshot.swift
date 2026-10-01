@@ -37,4 +37,14 @@ public struct FinancialSnapshot: Codable, Sendable {
         self.balanceSheetLines = balanceSheetLines
         self.profitAndLossLines = profitAndLossLines
     }
+
+    /// Failed/partial refreshes must retain the previous snapshot and its
+    /// timestamp. Every value here comes from this single sync's dataset.
+    public static func fromCompleteSync(_ data: NormalizedDataSet, syncedAt: Date) -> FinancialSnapshot? {
+        guard data.coverage == .complete,
+              !data.balanceSheetLines.isEmpty, !data.profitAndLossLines.isEmpty else { return nil }
+        return FinancialSnapshot(syncedAt: syncedAt, accounts: data.accounts, transactions: data.transactions,
+                                 balanceSheetLines: data.balanceSheetLines, profitAndLossLines: data.profitAndLossLines)
+    }
+
 }

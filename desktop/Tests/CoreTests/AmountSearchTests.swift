@@ -76,3 +76,20 @@ struct AmountSearchTests {
         #expect(matches.isEmpty)
     }
 }
+
+@Suite("Amount search input boundaries")
+struct AmountSearchBoundaryTests {
+    @Test func excessiveAmountsAreRejectedWithoutOverflow() {
+        #expect(AmountSearch.parseAmount("92233720368547758.07")?.minorUnits == Int64.max)
+        for text in ["92233720368547758.08", "92233720368547759", "9223372036854775807", "-9223372036854775807", ".", "$."] {
+            #expect(AmountSearch.parseAmount(text) == nil)
+        }
+    }
+
+    @Test func minimumSignedAmountDoesNotTrapWhenComparing() {
+        let amount = Money(minorUnits: Int64.min, currency: .usd)
+        #expect(AmountSearch.findTransactions(matching: amount, in: []).isEmpty)
+        #expect(AmountSearch.accountsWithBalance(amount, in: []).isEmpty)
+        #expect(AmountSearch.combination(matching: amount, in: []) == nil)
+    }
+}

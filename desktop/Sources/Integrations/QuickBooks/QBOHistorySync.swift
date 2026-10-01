@@ -85,7 +85,7 @@ extension QBOSyncClient {
             monthlyProfitAndLoss: monthly,
             latestBalanceSheet: balanceSheet,
             latestCashFlow: cashFlow,
-            coverage: .complete
+            coverage: Self.syncCoverage(pageCounts: ["accounts": accounts.count])
         )
         snapshot.monthEndCash = monthEndCash
         return snapshot

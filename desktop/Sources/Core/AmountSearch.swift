@@ -23,7 +23,7 @@ public enum AmountSearch {
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: "$", with: "")
         cleaned = cleaned.replacingOccurrences(of: ",", with: "")
-        guard !cleaned.isEmpty else { return nil }
+        guard !cleaned.isEmpty, cleaned.contains(where: \.isNumber) else { return nil }
 
         let isNegative = cleaned.hasPrefix("-")
         if isNegative { cleaned.removeFirst() }
@@ -40,7 +40,10 @@ public enum AmountSearch {
         while centsText.count < 2 { centsText += "0" }
         guard let cents = Int64(centsText) else { return nil }
 
-        let minorUnits = whole * 100 + cents
+        // User-entered digits may fit Int64 as dollars but overflow in cents.
+        let (scaled, scaleOverflow) = whole.multipliedReportingOverflow(by: 100)
+        let (minorUnits, sumOverflow) = scaled.addingReportingOverflow(cents)
+        guard !scaleOverflow, !sumOverflow else { return nil }
         return Money(minorUnits: isNegative ? -minorUnits : minorUnits, currency: currency)
     }
 
@@ -53,7 +56,7 @@ public enum AmountSearch {
     /// currencies by raw minor-unit value would be a wrong answer, not a
     /// permissive one.
     public static func findTransactions(matching amount: Money, in transactions: [LedgerTransaction]) -> [LedgerTransaction] {
-        transactions.filter { $0.totalAmount.currency == amount.currency && abs($0.totalAmount.minorUnits) == abs(amount.minorUnits) }
+        transactions.filter { $0.totalAmount.currency == amount.currency && $0.totalAmount.minorUnits.magnitude == amount.minorUnits.magnitude }
     }
 }
 
@@ -63,7 +66,7 @@ public enum AmountSearch {
 public extension AmountSearch {
     /// Accounts whose current balance is this amount (either sign).
     static func accountsWithBalance(_ amount: Money, in accounts: [LedgerAccount]) -> [LedgerAccount] {
-        accounts.filter { $0.currentBalance.currency == amount.currency && $0.currentBalance.minorUnits != 0 && abs($0.currentBalance.minorUnits) == abs(amount.minorUnits) }
+        accounts.filter { $0.currentBalance.currency == amount.currency && $0.currentBalance.minorUnits != 0 && $0.currentBalance.minorUnits.magnitude == amount.minorUnits.magnitude }
     }
 
     /// Transactions paid from or deposited to an account, oldest first.
@@ -76,19 +79,21 @@ public extension AmountSearch {
     /// set and triples only when the candidate set is small; returns the
     /// first combination found, preferring fewer items.
     static func combination(matching amount: Money, in transactions: [LedgerTransaction]) -> [LedgerTransaction]? {
-        let target = abs(amount.minorUnits)
+        let target = amount.minorUnits.magnitude
         guard target > 0 else { return nil }
-        let pool = transactions.filter { !$0.isVoided && $0.totalAmount.currency == amount.currency && abs($0.totalAmount.minorUnits) > 0 && abs($0.totalAmount.minorUnits) < target }
-        var byAmount: [Int64: [LedgerTransaction]] = [:]
-        for t in pool { byAmount[abs(t.totalAmount.minorUnits), default: []].append(t) }
+        let pool = transactions.filter { !$0.isVoided && $0.totalAmount.currency == amount.currency && $0.totalAmount.minorUnits.magnitude > 0 && $0.totalAmount.minorUnits.magnitude < target }
+        var byAmount: [UInt64: [LedgerTransaction]] = [:]
+        for t in pool { byAmount[t.totalAmount.minorUnits.magnitude, default: []].append(t) }
         for t in pool {
-            let rest = target - abs(t.totalAmount.minorUnits)
+            let rest = target - t.totalAmount.minorUnits.magnitude
             if let other = byAmount[rest]?.first(where: { $0.id != t.id }) { return [t, other] }
         }
         guard pool.count <= 400 else { return nil }
         for i in pool.indices {
             for j in pool.indices where j > i {
-                let rest = target - abs(pool[i].totalAmount.minorUnits) - abs(pool[j].totalAmount.minorUnits)
+                let afterFirst = target - pool[i].totalAmount.minorUnits.magnitude
+                guard pool[j].totalAmount.minorUnits.magnitude < afterFirst else { continue }
+                let rest = afterFirst - pool[j].totalAmount.minorUnits.magnitude
                 guard rest > 0 else { continue }
                 if let third = byAmount[rest]?.first(where: { $0.id != pool[i].id && $0.id != pool[j].id }) { return [pool[i], pool[j], third] }
             }

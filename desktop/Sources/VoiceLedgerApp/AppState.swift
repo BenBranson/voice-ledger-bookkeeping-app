@@ -1826,27 +1826,24 @@ public final class AppState {
             // A fetch failure here does NOT fail the whole sync — it just
             // means this one rule reports .cannotEvaluate, same as any
             // other optional-coverage source.
-            let profitAndLossLines = (try? await syncClient.fetchProfitAndLoss(realmID: realmID, period: period)) ?? []
-            // VL-REPORT-TIE-001 needs Balance Sheet + both aging reports, in
-            // the SAME NormalizedDataSet the rule receives — added
-            // 2026-08-18 immediately alongside the rule itself specifically
-            // to avoid repeating the vendorCredits/profitAndLossLines
-            // omission bugs found earlier this session in this exact spot.
-            // Each fetched independently and `try?`-wrapped: one report
-            // failing must not fail the whole sync, and must not silently
-            // make another report's rule look unrelatedly broken.
-            let balanceSheetLines = (try? await syncClient.fetchBalanceSheet(realmID: realmID, period: period)) ?? []
-            // Aging as of the period's end, so it ties to that Balance Sheet.
+            // Independent report reads share the backend's per-realm limit.
+            // Reuse these results for the dashboard instead of fetching its
+            // Balance Sheet and P&L a second time during the same refresh.
             let agingAsOf = QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date()))
-            let agedReceivablesLines = (try? await syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)) ?? []
-            let agedPayablesLines = (try? await syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)) ?? []
-            // VL-CLOSED-PERIOD-DRIFT-001 needs this period's Trial Balance
-            // in the same NormalizedDataSet the rule receives — same
-            // independent-fetch, try?-wrapped posture as the reports above.
-            let trialBalanceLinesForSync = (try? await syncClient.fetchTrialBalance(realmID: realmID, period: period)) ?? []
-            // VL-VEND-PRICE-001 needs last period's Purchases to compare
-            // against this period's — same independent-fetch posture.
-            let priorPeriodTransactionsForSync = (try? await syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)) ?? []
+            async let profitAndLossRead = try? syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
+            async let balanceSheetRead = try? syncClient.fetchBalanceSheet(realmID: realmID, period: period)
+            async let receivablesRead = try? syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)
+            async let payablesRead = try? syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)
+            async let trialBalanceRead = try? syncClient.fetchTrialBalance(realmID: realmID, period: period)
+            async let priorPurchasesRead = try? syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)
+            let (pl, bs, ar, ap, tb, prior) = await (profitAndLossRead, balanceSheetRead, receivablesRead, payablesRead, trialBalanceRead, priorPurchasesRead)
+            try Task.checkCancellation()
+            let profitAndLossLines = pl ?? []
+            let balanceSheetLines = bs ?? []
+            let agedReceivablesLines = ar ?? []
+            let agedPayablesLines = ap ?? []
+            let trialBalanceLinesForSync = tb ?? []
+            let priorPeriodTransactionsForSync = prior ?? []
 
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
@@ -2024,66 +2021,33 @@ public final class AppState {
             findings = newFindings
             activityLog = newActivityLog
             importedStatementLineCount = importedLines.count
+            if let bs { self.balanceSheetLines = bs }
+            if let pl { self.profitAndLossLines = pl }
+            balanceSheetError = bs == nil ? "Balance Sheet refresh failed; showing previously loaded data." : nil
+            profitAndLossError = pl == nil ? "Profit & Loss refresh failed; showing previously loaded data." : nil
             let syncedAt = Date()
             lastSyncedAt = syncedAt
             cachedSyncedAt = syncedAt
             loadState = .loaded
             try? await store.saveLastSyncedAt(syncedAt)
+            if let snapshot = FinancialSnapshot.fromCompleteSync(dataSet, syncedAt: syncedAt) {
+                try? await store.saveFinancialSnapshot(snapshot)
+            }
         } catch {
             loadState = .failed(error.localizedDescription)
         }
     }
 
-    /// Owner directive (2026-08-30): "should refreshing the dashboard
-    /// refresh all the sections... instead of having to click on sections
-    /// and then have to press refresh and wait." The Dashboard renders
-    /// Balance Sheet and P&L KPIs/charts directly on itself (see
-    /// `ClientDashboardView`), so its Sync button refreshes those two
-    /// reports too, not just findings — while every OTHER page's own Sync
-    /// button stays a plain `syncAndEvaluate()`, since those pages don't
-    /// show report data and forcing two extra report fetches on, say, the
-    /// Cleanup Assessment page's Sync button would just slow it down for
-    /// no visible benefit there.
-    ///
-    /// Deliberately calls the existing `loadBalanceSheet()`/
-    /// `loadProfitAndLoss()` rather than reusing the `try?`-collapsed
-    /// fetches already inside `syncAndEvaluate()` (which exist purely to
-    /// feed the rule engine, not the UI) — those swallow a failure into an
-    /// empty array with no memory of whether the fetch actually succeeded,
-    /// so wiring them to `self.balanceSheetLines`/`self.profitAndLossLines`
-    /// directly would erase a page's last-known-good data on a merely
-    /// transient report-fetch failure. `loadBalanceSheet()`/
-    /// `loadProfitAndLoss()` already get this right (an error sets
-    /// `balanceSheetError`/`profitAndLossError` and leaves the prior lines
-    /// alone) — reusing them costs one redundant API call each but avoids
-    /// re-deriving that same correctness inside `syncAndEvaluate()`, a
-    /// method with a long history of subtle atomic-publish bugs (see its
-    /// own comments above) that's worth not touching for this.
-    ///
-    /// Run concurrently via `async let`, not sequentially — `AppState` is
-    /// `@MainActor`-isolated, so this doesn't parallelize CPU work, but it
-    /// does let all three network requests be in flight at once instead of
-    /// waiting for each in turn.
+    /// The rule sync also publishes its freshly fetched dashboard reports
+    /// and persists a snapshot only when all required inputs succeeded.
     public func syncDashboard() async {
-        async let syncTask: Void = syncAndEvaluate()
-        async let balanceSheetTask: Void = loadBalanceSheet()
-        async let profitAndLossTask: Void = loadProfitAndLoss()
-        _ = await (syncTask, balanceSheetTask, profitAndLossTask)
-
-        // Owner directive (2026-09-28): `voiceledger-mcp`'s
-        // get_chart_of_accounts/get_recent_transactions/get_financial_summary
-        // tools read this local snapshot instead of requiring a live
-        // backend connection — see `FinancialSnapshot`'s own doc comment.
-        // `accounts`/`transactions`/`balanceSheetLines`/`profitAndLossLines`
-        // each already preserve their own last-known-good value on a
-        // transient fetch failure (see `loadBalanceSheet`/`loadProfitAndLoss`'s
-        // own doc comments), so persisting them here is always safe —
-        // this never overwrites a good snapshot with an empty one just
-        // because one of the three concurrent fetches above had a bad
-        // network moment. `try?`: a persistence hiccup must not fail the
-        // dashboard sync the bookkeeper is actually watching.
-        let snapshot = FinancialSnapshot(syncedAt: Date(), accounts: accounts, transactions: transactions, balanceSheetLines: balanceSheetLines, profitAndLossLines: profitAndLossLines)
-        try? await store.saveFinancialSnapshot(snapshot)
+        await syncAndEvaluate()
+        // A report failure is optional for rule evaluation. Preserve the
+        // dashboard's previous behavior by retrying only the report that is
+        // still empty; successful consolidated syncs make no duplicate calls.
+        async let balanceSheetFallback: Void = balanceSheetLines.isEmpty ? loadBalanceSheet() : ()
+        async let profitAndLossFallback: Void = profitAndLossLines.isEmpty ? loadProfitAndLoss() : ()
+        _ = await (balanceSheetFallback, profitAndLossFallback)
     }
 
     /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file
@@ -2954,7 +2918,7 @@ public final class AppState {
             fullInputs.activityLog = activityLog
             fullInputs.clientQuestions = ClientQuestionDrafter.threads(from: activityLog)
             let report = MonthlyReportBuilder.build(fullInputs)
-            let generated = try await MonthlyReportService.render(report: report, root: root, realmID: realmID) { stage in
+            let generated = try await MonthlyReportService.render(report: report, root: root, realmID: realmID) { [weak self] stage in
                 let text: String
                 switch stage {
                 case "charts": text = "Drawing charts…"

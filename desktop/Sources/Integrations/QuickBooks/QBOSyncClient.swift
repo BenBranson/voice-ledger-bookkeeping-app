@@ -92,11 +92,9 @@ public struct QBOSyncClient: Sendable {
     /// pagination (§2.6's checksum/offset-integrity machinery is specified
     /// but not wired in at this call site yet). This is the conservative
     /// direction to get wrong: a real gap could otherwise render green.
-    /// Accounts are read `activeOnly` and are not period-scoped (the chart
-    /// of accounts isn't a per-period concept), so an incomplete accounts
-    /// page does not independently affect coverage here — a client with
-    /// over 1000 active accounts would need real pagination on this call
-    /// too, not yet built.
+    /// Every single-page input, including accounts, vendors, deposits and
+    /// vendor credits, participates in the completeness check. Full pages
+    /// remain partial until pagination is implemented.
     /// Connection Page (step 1.3) support — connection-level info, not
     /// period-scoped, so kept separate from `sync(realmID:period:)`.
     public func fetchCompanyInfo(realmID: RealmID) async throws -> CompanyConnectionInfo {
@@ -548,36 +546,45 @@ public struct QBOSyncClient: Sendable {
         return ReportLine(label: label, amount: amount, depth: depth, isSummary: isSummary, accountID: accountID)
     }
 
+    /// All single-page inputs must be below the limit before claiming complete.
+    static func syncCoverage(pageCounts: [String: Int], maxResults: Int = 1000) -> Coverage {
+        let fullPages = pageCounts.filter { $0.value >= maxResults }.keys.sorted()
+        guard fullPages.isEmpty else {
+            return .partial(reason: "Full page returned for \(fullPages.joined(separator: ", ")) — completeness beyond \(maxResults) rows is unverified.")
+        }
+        return .complete
+    }
+
     public func sync(realmID: RealmID, period: AccountingPeriod) async throws -> NormalizedDataSet {
         let (startDate, endDate) = Self.dateRange(for: period)
         let maxResults = 1000
 
-        let purchasesData = try await backend.call(
+        async let purchasesRead = backend.call(
             .readPurchases,
             realmID: realmID,
             params: ReadPurchasesParams(startDate: startDate, endDate: endDate)
         )
-        let billsData = try await backend.call(
+        async let billsRead = backend.call(
             .readBills,
             realmID: realmID,
             params: ReadBillsParams(startDate: startDate, endDate: endDate)
         )
-        let accountsData = try await backend.call(
+        async let accountsRead = backend.call(
             .readAccounts,
             realmID: realmID,
             params: ReadAccountsParams()
         )
-        let vendorsData = try await backend.call(
+        async let vendorsRead = backend.call(
             .readVendors,
             realmID: realmID,
             params: ReadVendorsParams()
         )
-        let invoicesData = try await backend.call(
+        async let invoicesRead = backend.call(
             .readInvoices,
             realmID: realmID,
             params: ReadInvoicesParams(startDate: startDate, endDate: endDate)
         )
-        let paymentsData = try await backend.call(
+        async let paymentsRead = backend.call(
             .readPayments,
             realmID: realmID,
             params: ReadPaymentsParams(startDate: startDate, endDate: endDate)
@@ -587,22 +594,23 @@ public struct QBOSyncClient: Sendable {
         // outside this window won't be matched — VL-BS-UNDEP-001 accepts
         // this as a known limitation rather than widening every other
         // entity's window to compensate.
-        let depositsData = try await backend.call(
+        async let depositsRead = backend.call(
             .readDeposits,
             realmID: realmID,
             params: ReadDepositsParams(startDate: startDate, endDate: endDate)
         )
-        let vendorCreditsData = try await backend.call(
+        async let vendorCreditsRead = backend.call(
             .readVendorCredits,
             realmID: realmID,
             params: ReadVendorCreditsParams(startDate: startDate, endDate: endDate)
         )
-        let preferencesData = try await backend.call(
+        async let preferencesRead = backend.call(
             .readPreferences,
             realmID: realmID,
             params: EmptyParams()
         )
 
+        let (purchasesData, billsData, accountsData, vendorsData, invoicesData, paymentsData, depositsData, vendorCreditsData, preferencesData) = try await (purchasesRead, billsRead, accountsRead, vendorsRead, invoicesRead, paymentsRead, depositsRead, vendorCreditsRead, preferencesRead)
         let decoder = JSONDecoder()
         let purchasesResponse = try decoder.decode(QBOPurchaseQueryResponse.self, from: purchasesData)
         let billsResponse = try decoder.decode(QBOBillQueryResponse.self, from: billsData)
@@ -618,9 +626,14 @@ public struct QBOSyncClient: Sendable {
         let rawBills = billsResponse.queryResponse.bill ?? []
         let rawInvoices = invoicesResponse.queryResponse.invoice ?? []
         let rawPayments = paymentsResponse.queryResponse.payment ?? []
-        let coverage: Coverage = (rawPurchases.count < maxResults && rawBills.count < maxResults && rawInvoices.count < maxResults && rawPayments.count < maxResults)
-            ? .complete
-            : .partial(reason: "readPurchases, readBills, readInvoices, or readPayments returned a full page (\(rawPurchases.count) purchases, \(rawBills.count) bills, \(rawInvoices.count) invoices, \(rawPayments.count) payments, of \(maxResults) max) — pagination is not yet wired into this sync call, so completeness beyond one page is unverified.")
+        let coverage = Self.syncCoverage(pageCounts: [
+            "purchases": rawPurchases.count, "bills": rawBills.count,
+            "invoices": rawInvoices.count, "payments": rawPayments.count,
+            "accounts": accountsResponse.queryResponse.account?.count ?? 0,
+            "vendors": vendorsResponse.queryResponse.vendor?.count ?? 0,
+            "deposits": depositsResponse.queryResponse.deposit?.count ?? 0,
+            "vendor credits": vendorCreditsResponse.queryResponse.vendorCredit?.count ?? 0
+        ], maxResults: maxResults)
 
         let customTxnNumbers = preferencesResponse.queryResponse.preferences?.first?
             .vendorAndPurchasesPrefs?.useCustomTxnNumbers ?? false

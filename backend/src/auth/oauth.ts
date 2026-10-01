@@ -54,7 +54,8 @@ async function postTokenRequest(
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json"
     },
-    body
+    body,
+    signal: AbortSignal.timeout(30_000)
   });
 
   if (!response.ok) {
@@ -127,7 +128,8 @@ export async function revokeToken(credentials: QBOCredentials, refreshToken: str
       "Content-Type": "application/json",
       Accept: "application/json"
     },
-    body: JSON.stringify({ token: refreshToken })
+    body: JSON.stringify({ token: refreshToken }),
+    signal: AbortSignal.timeout(30_000)
   });
   if (!response.ok) {
     throw new OAuthError(`Revoke endpoint returned HTTP ${response.status}`, response.status);

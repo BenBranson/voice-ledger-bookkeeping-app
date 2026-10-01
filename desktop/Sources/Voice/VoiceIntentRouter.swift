@@ -17,6 +17,16 @@ import Foundation
 /// change nobody actually proposed. `context.pendingAction == nil` means
 /// confirm/reject words are ordinary conversation, not a yes/no answer.
 public enum VoiceIntentRouter {
+    /// Prevents short ASR noise from entering the slow reasoning path. Short
+    /// questions remain eligible because they can carry a real request.
+    public static func isLikelyShortNoise(_ text: String) -> Bool {
+        let words = text.split { $0.isWhitespace || $0.isPunctuation }
+        guard words.count <= 2 else { return false }
+        let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let questionLead = ["why", "what", "how", "where", "when", "which", "who", "can", "could", "would", "tell", "give", "find", "search"]
+        return !questionLead.contains { lower.hasPrefix($0 + " ") || lower == $0 }
+    }
+
     /// Owner-reported gap (2026-09-06): "pull up X" / "bring up X" — the
     /// user's own words for asking to navigate somewhere — were only ever
     /// handled for a bare "pull it up"/"bring that up" referring to
@@ -47,7 +57,7 @@ public enum VoiceIntentRouter {
         (.monthEndClose, [
             "month end close", "month end review", "month end", "monthly close",
             "end of month close", "close out the month", "close the month",
-            "close out the books", "close the books", "wrap up the books",
+            "close out the books", "close the books", "close books", "month close", "wrap up the books",
             "wrap up the month", "month end checklist",
             "end clothes" // Clipped ASR phrase covered by the navigation regression suite.
         ]),

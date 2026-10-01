@@ -121,6 +121,7 @@ public struct PDFPreviewSheet: View {
 }
 
 /// Saves a copy of an already-generated report PDF wherever the user picks.
+@MainActor
 public enum PDFExport {
     public static func save(_ url: URL, suggestedName: String) {
         let panel = NSSavePanel()

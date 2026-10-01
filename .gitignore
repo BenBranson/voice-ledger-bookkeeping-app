@@ -79,6 +79,8 @@ backend/test/.tmp/
 
 # Local scratch
 *.local
+__pycache__/
+*.py[cod]
 
 # Per-machine app signature produced by build-app-bundle.sh. Never commit
 # the Apple Development certificate's signature resources.

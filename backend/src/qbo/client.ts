@@ -37,7 +37,8 @@ export class QBOClient {
     private readonly credentials: QBOCredentials,
     private readonly tokenStore: TokenStore,
     private readonly fetchImpl: typeof fetch = fetch,
-    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
+    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+    private readonly requestTimeoutMs = 30_000
   ) {}
 
   /**
@@ -151,15 +152,18 @@ export class QBOClient {
     await this.acquireSlot(realmId);
     try {
       for (let attempt = 0; ; attempt++) {
-        const response = await this.fetchImpl(url, init);
+        // A stalled request must release its realm slot. Never automatically
+        // retry a timeout: for writes, the remote outcome may be unknown.
+        const response = await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(this.requestTimeoutMs) });
         if (response.status !== 429) return response;
+        await response.body?.cancel();
         logEvent("rate_limited", { realmId, httpStatus: 429 });
         if (attempt >= MAX_429_RETRIES) {
           throw new QBOApiError("QBO rate limit hit", 429, realmId);
         }
         const retryAfterSeconds = Number(response.headers.get("retry-after"));
         const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-          ? retryAfterSeconds * 1000
+          ? Math.min(retryAfterSeconds * 1000, 30_000)
           : BASE_BACKOFF_MS * 2 ** attempt + Math.floor(Math.random() * 250);
         await this.sleep(delayMs);
       }
