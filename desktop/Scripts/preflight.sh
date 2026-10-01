@@ -28,7 +28,7 @@ if [ "$SKIP_TESTS" = 0 ]; then
   grep -E "Test run with|Executed .* tests" "$WORK_DIR/tests.log" || true
 fi
 
-if ! curl -fsS -m 5 http://localhost:3000/health >/dev/null 2>&1; then
+if ! curl -fsS -m 5 http://localhost:3000/healthz >/dev/null 2>&1; then
   echo "preflight: backend not running on :3000 — open Voice Ledger Launcher first"; exit 1
 fi
 if ! swift build --product voiceledger-devtool >"$WORK_DIR/build.log" 2>&1; then
