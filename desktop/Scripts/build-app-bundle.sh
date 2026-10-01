@@ -23,6 +23,9 @@
 set -euo pipefail
 
 CONFIG="${1:-release}"
+# Always compile first: the bundle step only packages the existing binary,
+# so a stale one used to ship silently (found 2026-10-01).
+swift build -c "$CONFIG" --package-path "$(cd "$(dirname "$0")/.." && pwd)" 2>&1 | grep -E "error:|Build complete" || true
 # Regression gate (2026-09-30): a release bundle never ships numbers that
 # silently changed. Skip only deliberately: VL_SKIP_PREFLIGHT=1 (e.g. when
 # the backend is down) — the skip is printed so it can't go unnoticed.
