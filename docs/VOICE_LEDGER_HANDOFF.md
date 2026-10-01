@@ -1315,3 +1315,11 @@ Applied with `QBO_SPIKE_REALM_ID=… tsx spike/seed.ts apply operating-history` 
 
 ## 2026-10-01 — Voice verified live by the owner (v1.40)
 Owner tested by microphone (Maono PD200W): "go to <menu item>" navigates correctly, and "go back" returns to the page actually came from — started from the Dashboard it returned to the Dashboard; started from a different page it returned to that page. Confirms on-device recognition, the remembered USB mic, `CommandGrammar` navigation and the `AppState.navigationHistory` back stack end-to-end by voice. Still unmeasured: spoken response time end-to-end, and the data questions by voice ("balance of checking", "pull up the duplicates", "find $1,420").
+
+## 2026-10-01 — Voice verified by the owner (v1.40–v1.44)
+Verified live by microphone (Maono PD200W) or by hand: "go to <menu item>", "go back" (true history), "pull up the duplicates", "balance of the sweeper checking account", "find fourteen twenty" (explains the Payroll Clearing balance: 1 posting), "what do we owe/own Norton lumber" ($2,149.93 from aged payables, accepts the "own" mishearing), and **Tab = interrupt her and listen** (works; ignored while typing in a text field).
+Notes for next time:
+- The mic is deliberately OFF while she speaks (self-echo); spoken replies drop the data-scope sentence when data is < 15 min old (still shown on screen). True talk-over barge-in needs echo cancellation and is NOT built.
+- "Try again"/"that's wrong"/"never mind" voice phrases exist (`.retry`) but only work while she's listening; not yet confirmed by voice.
+- `build-app-bundle.sh` now compiles first (it once packaged a stale binary), and the preflight gate blocks the bundle if numbers drift from `desktop/Regression/` baselines. QuickBooks' CompanyInfo endpoint was failing on 2026-09-30; the app caches the company name.
+- Open ideas, not built: "2 records" label on duplicate-pair rows; auto re-sync when a voice question finds data > 15 min old; an always-listening wake word.
