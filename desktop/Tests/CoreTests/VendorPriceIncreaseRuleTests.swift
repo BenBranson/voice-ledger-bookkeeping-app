@@ -50,7 +50,31 @@ struct VendorPriceIncreaseRuleTests {
             return
         }
         #expect(findings[0].dollarExposure == Money(minorUnits: 20_000, currency: .usd))
+        #expect(findings[0].confidence == .low)   // one charge vs one charge: weak evidence (v1.1)
+    }
+
+    @Test("v1.1: several consistent charges that all rose is a medium-confidence finding")
+    func consistentRecurringChargesRise() {
+        let prior = [purchase(id: "p1", vendor: "Acme SaaS", amountMinorUnits: 50_000), purchase(id: "p2", vendor: "Acme SaaS", amountMinorUnits: 52_000)]
+        let current = [purchase(id: "c1", vendor: "Acme SaaS", amountMinorUnits: 66_000), purchase(id: "c2", vendor: "Acme SaaS", amountMinorUnits: 68_000)]
+        guard case .findings(let findings) = VendorPriceIncreaseRule.evaluate(dataSet(current: current, prior: prior), context: context()), findings.count == 1 else {
+            Issue.record("expected one finding"); return
+        }
         #expect(findings[0].confidence == .medium)
+    }
+
+    @Test("v1.1: a vendor whose charges naturally vary (hardware store) is not a price increase")
+    func variableVendorSkipped() {
+        let prior = [purchase(id: "p1", vendor: "Hardware", amountMinorUnits: 8_000), purchase(id: "p2", vendor: "Hardware", amountMinorUnits: 24_000)]
+        let current = [purchase(id: "c1", vendor: "Hardware", amountMinorUnits: 20_000), purchase(id: "c2", vendor: "Hardware", amountMinorUnits: 40_000)]
+        if case .findings = VendorPriceIncreaseRule.evaluate(dataSet(current: current, prior: prior), context: context()) { Issue.record("variable spending must not flag") }
+    }
+
+    @Test("v1.1: a big percentage on a small dollar change (under $50) does not flag")
+    func smallDollarsSkipped() {
+        let current = [purchase(id: "1", vendor: "Coffee", amountMinorUnits: 4_000)]
+        let prior = [purchase(id: "0", vendor: "Coffee", amountMinorUnits: 2_500)]   // +60%, +$15
+        if case .findings = VendorPriceIncreaseRule.evaluate(dataSet(current: current, prior: prior), context: context()) { Issue.record("under the dollar floor") }
     }
 
     @Test("A vendor charging the same amount produces .pass")

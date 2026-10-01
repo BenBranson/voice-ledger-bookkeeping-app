@@ -38,11 +38,21 @@ public enum VendorPriceIncreaseRule: Rule {
     /// price creep (a few percent here and there is normal and not worth
     /// a bookkeeper's attention every month) but well below what a
     /// genuine repricing or billing error looks like.
-    static let minimumIncreaseRatio: Double = 0.15
+    static let minimumIncreaseRatio: Double = 0.20
+
+    /// v1.1 (2026-10-01): an increase smaller than this never flags, whatever
+    /// the percentage. Small-dollar swings on ordinary purchases are noise.
+    static let minimumIncreaseDollars: Int64 = 5_000
+
+    /// v1.1: when a vendor billed several times in BOTH periods and the
+    /// charges within a period differ by more than this (largest/smallest),
+    /// the spending is variable by nature (a hardware store, a nursery), so a
+    /// higher average is not evidence of a price change.
+    static let maximumPriorSpread: Double = 1.25
 
     public static let identity = RuleIdentity(
         id: RuleID(rawValue: "VL-VEND-PRICE-001"),
-        version: RuleVersion(major: 1, minor: 0, patch: 0),
+        version: RuleVersion(major: 1, minor: 1, patch: 0),
         title: "Vendor is charging more per transaction than last period",
         category: .vendorPriceIncrease,
         ruleClass: .categorization,
@@ -77,7 +87,17 @@ public enum VendorPriceIncreaseRule: Rule {
             guard ratio >= minimumIncreaseRatio else { continue }
 
             let exposure = currentTotal - priorTotal
-            guard exposure >= context.materiality.absoluteFloor else { continue }
+            guard exposure >= context.materiality.absoluteFloor, exposure.minorUnits >= minimumIncreaseDollars else { continue }
+
+            // Several charges each period: skip vendors whose charges naturally vary.
+            if currentGroup.count >= 2 {
+                func spread(_ g: [LedgerTransaction]) -> Double {
+                    let amounts = g.map { abs($0.totalAmount.minorUnits) }.filter { $0 > 0 }
+                    guard let lo = amounts.min(), let hi = amounts.max(), lo > 0 else { return 1 }
+                    return Double(hi) / Double(lo)
+                }
+                if spread(priorGroup) > maximumPriorSpread || spread(currentGroup) > maximumPriorSpread { continue }
+            }
 
             let sortedIDs = currentGroup.map(\.id).sorted()
             let findingID = FindingIDGenerator.makeID(
@@ -125,7 +145,9 @@ public enum VendorPriceIncreaseRule: Rule {
                 period: input.period,
                 title: "\(vendorName) charged \(percentText) more than last period",
                 severity: Severity.derive(dollarExposure: exposure, materiality: context.materiality),
-                confidence: .medium,
+                // One charge compared with one charge is weak evidence of a price
+                // change; several consistent charges is stronger.
+                confidence: currentGroup.count >= 2 ? .medium : .low,
                 dollarExposure: exposure,
                 evidence: currentGroup.map { txn in
                     EvidenceItem(

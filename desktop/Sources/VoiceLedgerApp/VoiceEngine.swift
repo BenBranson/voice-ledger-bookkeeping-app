@@ -987,7 +987,8 @@ public final class VoiceEngine: NSObject {
         let list = ClientFacts.findings(data, category: group).value ?? []
         let total = ClientFacts.totalExposure(data, category: group).value
         let label = group.rawValue.replacingOccurrences(of: "_", with: " ")
-        var speech = "\(label.prefix(1).uppercased() + label.dropFirst()): \(list.count) open"
+        let noun = group == .duplicates ? "duplicate pair\(list.count == 1 ? "" : "s")" : "open"
+        var speech = "\(label.prefix(1).uppercased() + label.dropFirst()): \(list.count) \(noun)"
         if let total, list.count > 0 { speech += ", \(total.accountingDescription) in total" }
         speech += "."
         if let top = list.first, list.count > 0 { speech += " Largest: \(ClientText.polish(top.title))." }

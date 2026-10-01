@@ -76,7 +76,7 @@ struct CommandGrammarTests {
             if case .accountBalance = parse(p) {} else { Issue.record("\(p) → \(String(describing: parse(p)))") }
         }
         #expect(parse("what's the balance of the sweeper checking account") == .accountBalance("sweeper checking"))
-        #expect(parse("what do we owe norton lumber") == .searchVendor("norton lumber"))
+        #expect(parse("what do we owe norton lumber") == .vendorOwed("norton lumber"))
         #expect(parse("how much have we paid tania's nursery") == .searchVendor("tania's nursery"))
         #expect(parse("what's our revenue this month") == .kpi(.revenue, .current))
         #expect(parse("what was net income last month") == .kpi(.netIncome, .priorMonth))

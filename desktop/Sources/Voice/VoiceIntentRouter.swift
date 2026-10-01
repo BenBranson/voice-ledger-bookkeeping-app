@@ -73,6 +73,7 @@ public enum VoiceIntentRouter {
         (.agedReceivablesReport, ["aged receivables", "receivables", "accounts receivable"]),
         (.agedPayablesReport, ["aged payables", "payables", "accounts payable"]),
         (.generalLedgerReport, ["general ledger"]),
+        (.aiConversations, ["ai conversations", "conversations", "conversation history", "ai history"]),
         (.cashFlowForecast, ["cash flow forecast", "forecast"]),
         (.recurringVendors, ["recurring vendors", "recurring"]),
         (.amountSearch, ["search by amount", "amount search", "search"]),

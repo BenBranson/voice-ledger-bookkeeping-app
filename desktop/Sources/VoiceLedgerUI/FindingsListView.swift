@@ -600,6 +600,11 @@ private struct FindingRow: View {
                     Text("Confidence: \(finding.confidence.rawValue.capitalized)")
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textMuted)
+                    if let records = FindingRecordsLabel.text(for: finding) {
+                        Text(records)
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.cyan)
+                    }
                     if let action = finding.proposedActions.first {
                         ResolutionBadge(action: action, qboURL: qboURL)
                     }
