@@ -22,6 +22,8 @@ public enum VoiceIntentRouter {
     public static func isLikelyShortNoise(_ text: String) -> Bool {
         let words = text.split { $0.isWhitespace || $0.isPunctuation }
         guard words.count <= 2 else { return false }
+        // A recognized page name is a command, however short.
+        if matchDestination(normalize(text)) != nil { return false }
         let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let questionLead = ["why", "what", "how", "where", "when", "which", "who", "can", "could", "would", "tell", "give", "find", "search"]
         return !questionLead.contains { lower.hasPrefix($0 + " ") || lower == $0 }

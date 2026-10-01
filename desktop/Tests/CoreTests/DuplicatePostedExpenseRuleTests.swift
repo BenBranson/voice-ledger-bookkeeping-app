@@ -1037,8 +1037,8 @@ struct DuplicatePostedExpenseRuleTests {
         #expect(f3.first?.evidence.allSatisfy { !$0.highlightedFields.contains("vendor") } == true)
     }
 
-    @Test("GAUNTLET R4 (cross-cutting, documented in the handoff, not this rule's to fix): RuleContext.gatingTransactions silently resets asOfDate to 'now' instead of preserving the caller's supplied value — does not affect this rule (it never reads asOfDate), but would affect an age-based categorization rule (e.g. VL-BS-UNDEP-001) if it were ever given a non-default asOfDate and run through RuleEngine.evaluate alongside a relationship rule")
-    func gauntletR4GatingTransactionsDropsAsOfDate() {
+    @Test("GAUNTLET R4 — FIXED 2026-10-01: RuleContext.gatingTransactions now preserves asOfDate (it used to silently reset to today's real date; found when a pinned regression snapshot drifted by a day)")
+    func gauntletR4GatingTransactionsPreservesAsOfDate() {
         let fixedPast = AccountingDate(year: 2020, month: 1, day: 1)
         let original = RuleContext(
             period: period,
@@ -1048,7 +1048,7 @@ struct DuplicatePostedExpenseRuleTests {
         )
         #expect(original.asOfDate == fixedPast)
         let gated = original.gatingTransactions(["some-id"])
-        #expect(gated.asOfDate != fixedPast, "confirms the drop — gatingTransactions does not preserve asOfDate, silently resetting to today's real date")
+        #expect(gated.asOfDate == fixedPast)
     }
 
     // MARK: - Gauntlet Loop corpus, round 5 (2026-08-23) — a fifth fresh
