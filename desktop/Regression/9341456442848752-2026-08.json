@@ -117,12 +117,12 @@
       "VL Spike Sweeper Supplies" : "$0.00",
       "Workers Compensation" : "$0.00"
     },
-    "exposure.allOpen" : "$19,382.87",
+    "exposure.allOpen" : "$19,110.89",
     "exposure.balanceSheetIntegrity" : "$14,835.52",
-    "exposure.cleanupAssessment" : "$18,382.87",
+    "exposure.cleanupAssessment" : "$18,110.89",
     "netIncome" : "$3,817.09",
     "netIncomePrior" : "$1,845.15",
-    "openFindingCount" : 11,
+    "openFindingCount" : 10,
     "payablesTotal" : "$3,687.43",
     "profitAndLossTotals" : {
       "Gross Profit" : "$12,633.92",
@@ -234,7 +234,7 @@
     },
     {
       "amount" : "$76.33",
-      "confidence" : "medium",
+      "confidence" : "low",
       "evidence" : [
         "465"
       ],
@@ -244,24 +244,13 @@
     },
     {
       "amount" : "$101.88",
-      "confidence" : "medium",
+      "confidence" : "low",
       "evidence" : [
         "461"
       ],
       "rule" : "VL-VEND-PRICE-001",
       "severity" : "high",
       "title" : "Hicks Hardware charged 90% more than last period"
-    },
-    {
-      "amount" : "$271.98",
-      "confidence" : "medium",
-      "evidence" : [
-        "463",
-        "464"
-      ],
-      "rule" : "VL-VEND-PRICE-001",
-      "severity" : "high",
-      "title" : "Tania's Nursery charged 29% more than last period"
     }
   ],
   "period" : "2026-08",
