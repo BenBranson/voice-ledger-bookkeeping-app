@@ -105,11 +105,21 @@ public enum CommandGrammar {
             return .retry
         }
 
+        // Totals, no vendor named (the recognizer's "own" is accepted for "owe").
+        let totalOwedPhrases: Set<String> = ["what do we owe", "what do we own", "what do we oh", "how much do we owe", "how much do we own", "what do i owe", "how much do i owe",
+                                             "what do we owe in total", "what do we owe overall", "what do we owe vendors", "what do we owe our vendors", "what bills do we have",
+                                             "what bills are due", "what bills are open", "what bills do we owe", "what's our accounts payable", "whats our accounts payable",
+                                             "what is our accounts payable", "how much accounts payable", "total payables", "what are our payables", "what are our open bills", "what are we paying"]
+        if totalOwedPhrases.contains(t) { return .totalOwed }
+        let totalReceivablePhrases: Set<String> = ["what are we owed", "who owes us", "who owes us money", "how much are we owed", "what do customers owe", "what do customers owe us", "what's our accounts receivable",
+                                                   "whats our accounts receivable", "what is our accounts receivable", "total receivables", "what are our receivables", "how much do customers owe us", "what are our open invoices", "who hasn't paid", "who hasnt paid"]
+        if totalReceivablePhrases.contains(t) { return .totalReceivable }
+
         // What we owe a vendor. Recognizers hear "owe" as "own", "oh" and "ow", so accept those before a name.
         for lead in ["what do we owe ", "what do we own ", "what do we oh ", "how much do we owe ", "how much do we own ", "how much do we oh ", "what do i owe ", "what do i own ",
                      "how much do i owe ", "do we owe ", "what are we owing ", "what is owed to ", "what's owed to ", "how much is owed to ", "what do we owe to ", "what do we own to "] where t.hasPrefix(lead) {
             let name = strip(String(t.dropFirst(lead.count)), articles + ["to"])
-            if !name.isEmpty, SpokenNumber.amount(in: name) == nil { return .vendorOwed(name.replacingOccurrences(of: #" \?$"#, with: "", options: .regularExpression)) }
+            if !name.isEmpty, !["in total", "overall", "vendors", "our vendors", "everyone", "all vendors", "total"].contains(name), SpokenNumber.amount(in: name) == nil { return .vendorOwed(name.replacingOccurrences(of: #" \?$"#, with: "", options: .regularExpression)) }
         }
 
         // Vendor: "what do we owe <vendor>", "how much have we paid <vendor>", "transactions from/for/with <vendor>"

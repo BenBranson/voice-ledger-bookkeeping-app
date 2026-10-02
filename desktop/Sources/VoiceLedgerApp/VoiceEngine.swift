@@ -888,6 +888,29 @@ public final class VoiceEngine: NSObject {
             if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
             return VoiceTurn(speech: ClientText.polish(speech + ". " + fact.scope.sentence()))
 
+        case .totalOwed:
+            if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            let data = appState.clientData
+            guard let total = data.agedPayables.last(where: \.isSummary), let owed = total.total else {
+                return VoiceTurn(speech: "The aged payables report isn't loaded yet. " + ClientFacts.freshnessSentence(data), uiAction: .navigate(.agedPayablesReport))
+            }
+            let split = AgingSplit(total)
+            var speech = "We owe vendors \(owed.accountingDescription) in total"
+            if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days past due" }
+            if split.credits.minorUnits < 0 { speech += ", net of \(split.credits.accountingDescription) in credits" }
+            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
+
+        case .totalReceivable:
+            if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            guard let total = appState.agedReceivablesLines.last(where: \.isSummary), total.total != nil else {
+                return VoiceTurn(speech: "The aged receivables report isn't loaded yet. " + ClientFacts.freshnessSentence(appState.clientData), uiAction: .navigate(.agedReceivablesReport))
+            }
+            let split = AgingSplit(total)
+            var speech = "Customers owe us \(split.owed.accountingDescription)"
+            if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days old" }
+            if split.credits.minorUnits < 0 { speech += ", plus \(split.credits.accountingDescription) in customer credits to apply" }
+            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
+
         case .retry:
             dismissStatus()
             conversationMode = true

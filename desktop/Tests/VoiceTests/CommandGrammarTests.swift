@@ -94,7 +94,7 @@ struct CommandGrammarTests {
             #expect(parse(p) == .vendorOwed("norton lumber"), "\(p)")
         }
         for p in ["try again", "Try again.", "hey moneypenny try again", "that's wrong", "never mind", "scratch that"] { #expect(parse(p) == .retry, "\(p)") }
-        #expect(parse("what do we own") == nil)
+        #expect(parse("what do we own") == .totalOwed)   // "own" is how recognizers hear "owe"
     }
 
     @Test("Open-ended questions are left to the model")

@@ -43,6 +43,14 @@ struct VoiceGoldenPhrasesTests {
         #expect(route("when did we last sync") == .freshness)
     }
 
+    @Test("Totals with no vendor named: what we owe, what we're owed")
+    func totals() {
+        for p in ["what do we owe", "what do we own", "how much do we owe", "What do we owe?", "what bills are due", "what's our accounts payable"] { #expect(route(p) == .totalOwed, "\(p)") }
+        for p in ["what are we owed", "who owes us", "how much are we owed", "what do customers owe us"] { #expect(route(p) == .totalReceivable, "\(p)") }
+        #expect(route("what do we owe norton lumber") == .vendorOwed("norton lumber"))
+        #expect(route("what do we owe in total") == .totalOwed)
+    }
+
     @Test("Back, forward, hands-free correction")
     func control() {
         #expect(route("go back") == .goBack)

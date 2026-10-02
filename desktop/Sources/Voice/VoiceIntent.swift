@@ -133,6 +133,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case freshness
     /// "what do we owe Norton Lumber" — answered from aged payables.
     case vendorOwed(String)
+    /// "what do we owe" with no vendor — the total across all bills, plus the Aged Payables page.
+    case totalOwed
+    /// "what are we owed" / "who owes us" — total customer receivables, plus the Aged Receivables page.
+    case totalReceivable
     /// "try again" — dismiss the last answer and listen again, hands-free.
     case retry
     case chart(ChartKind)

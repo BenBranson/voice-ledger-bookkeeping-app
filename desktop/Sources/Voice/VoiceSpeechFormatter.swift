@@ -59,4 +59,14 @@ public enum VoiceSpeechFormatter {
         let shorter = String(text[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
         return shorter.isEmpty ? text : shorter
     }
+
+    /// True when model prose claims the app is navigating or opening
+    /// something. With no tool call behind it, nothing happened, so the
+    /// caller must not speak the promise.
+    public static func promisesAnAction(_ text: String) -> Bool {
+        let t = text.lowercased()
+        let leads = ["i'll pull up", "i will pull up", "i'll open", "i will open", "i'll take you", "i'll navigate", "i'll bring up", "i'll show you", "let me pull up", "let me open", "let me take you",
+                     "pulling up", "opening the", "opening your", "navigating to", "taking you to", "i'll go to", "i've opened", "i've pulled up", "i have pulled up", "i have opened"]
+        return leads.contains { t.contains($0) }
+    }
 }

@@ -104,6 +104,11 @@ extension VoiceEngine {
             if falseActionClaims.contains(where: lowered.contains) {
                 return VoiceTurn(speech: "I didn't change the screen. Try the command again, or name the page you want.")
             }
+            // A model that says "I'll pull up…/opening…" without a tool call did
+            // nothing. Never speak a promise the app didn't keep.
+            if VoiceSpeechFormatter.promisesAnAction(decision.answer) {
+                return VoiceTurn(speech: "I didn't catch a page or figure I can open from that. Try “go to” and a page name, or “what do we owe Norton Lumber.” Press Tab to try again.")
+            }
             let guarded = NumberGuard.check(decision.answer, source: context)
             if guarded.replacedSentences > 0 { await recordTranscript(speaker: .assistant, text: "[guard replaced \(guarded.replacedSentences) sentence(s) with unverified figures]") }
             return VoiceTurn(speech: guarded.text)

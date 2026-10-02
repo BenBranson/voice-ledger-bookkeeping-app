@@ -16,4 +16,12 @@ struct SpeechShorteningTests {
         #expect(VoiceSpeechFormatter.shortenForSpeech(full, dataIsFresh: false) == full)
         #expect(VoiceSpeechFormatter.shortenForSpeech("Balance is $5.00. July 2026, saved data from 2 hours ago — sync to refresh.", dataIsFresh: true).contains("saved data"))
     }
+
+    @Test("A promise to navigate is detected; plain explanations are not")
+    func promises() {
+        #expect(VoiceSpeechFormatter.promisesAnAction("To see what you owe, I'll pull up the accounts payable report for you."))
+        #expect(VoiceSpeechFormatter.promisesAnAction("Opening the Balance Sheet now."))
+        #expect(!VoiceSpeechFormatter.promisesAnAction("Opening Balance Equity carries a nonzero balance of $9,247.50."))
+        #expect(!VoiceSpeechFormatter.promisesAnAction("That finding is flagged because two invoices share an amount."))
+    }
 }
