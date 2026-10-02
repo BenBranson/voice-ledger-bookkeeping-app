@@ -881,6 +881,24 @@ public final class AppState {
         ComplianceCalendar.deadlines(for: practiceProfile, from: AccountingDate(date: Date()), days: 120)
     }
 
+    public var complianceChecks: [ComplianceCheck] { ComplianceCalendar.checks(for: practiceProfile) }
+
+    /// Invoices for the nexus screen: the 24-month history, else this month.
+    public var nexusRows: [NexusStateRow] {
+        let pool = (historySnapshot?.transactions ?? []) + (historySnapshot == nil ? transactions : [])
+        return EconomicNexusScreen.rows(sales: pool, homeState: practiceProfile.state, taxAgencyNames: taxAgencies.map(\.displayName), asOf: AccountingDate(date: Date()))
+    }
+
+    /// Why the nexus screen may be incomplete, or nil when it has what it needs.
+    public var nexusNote: String? {
+        guard let history = historySnapshot else { return "Only this month's invoices are loaded. Load the 24-month history for a full 12 months." }
+        let invoices = history.transactions.filter { $0.entityKind == .invoice }
+        if !invoices.isEmpty && invoices.allSatisfy({ $0.customerState == nil }) {
+            return "The saved history predates state tracking. Reload the 24-month history to read customer states."
+        }
+        return nil
+    }
+
     public var thirteenWeekForecast: ThirteenWeekForecast? {
         guard let cash = FinancialKPIs.cashBalance(from: balanceSheetLines) else { return nil }
         return ThirteenWeekForecastEngine.compute(currentCash: cash, agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines,

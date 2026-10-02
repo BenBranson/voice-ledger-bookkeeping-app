@@ -8,12 +8,12 @@ struct ComplianceCalendarTests {
 
     @Test("Quarterly Texas sales tax, franchise PIR, 1099s and payroll land on the right dates")
     func deadlines() {
-        let p = ClientPracticeProfile(salesTaxFrequency: .quarterly, texasEntity: true, files1099s: true, hasEmployees: true)
+        let p = ClientPracticeProfile(state: "TX", entityType: .singleMemberLLC, salesTaxFrequency: .quarterly, files1099s: true, hasEmployees: true)
         let d = ComplianceCalendar.deadlines(for: p, from: start, days: 240)
         func date(_ key: String) -> [String] { d.filter { $0.key.hasPrefix(key) }.map(\.date.formatted) }
         #expect(date("sales-tax").contains("2026-10-20"))
         #expect(date("sales-tax").contains("2027-1-20"))
-        #expect(date("franchise") == ["2027-5-17"])          // May 15, 2027 is a Saturday
+        #expect(date("annual-report") == ["2027-5-17"])      // Texas PIR; May 15, 2027 is a Saturday
         #expect(date("1099") == ["2027-2-1"])                // Jan 31, 2027 is a Sunday
         #expect(date("941").contains("2026-11-2"))           // Oct 31, 2026 is a Saturday
     }
@@ -30,6 +30,58 @@ struct ComplianceCalendarTests {
         #expect(ComplianceCalendar.nextBusinessDay(AccountingDate(year: 2026, month: 7, day: 4)).formatted == "2026-7-6")   // Sat, observed Fri 3rd
         #expect(ComplianceCalendar.nextBusinessDay(AccountingDate(year: 2026, month: 12, day: 25)).formatted == "2026-12-28")
         #expect(ComplianceCalendar.businessDay(15, year: 2026, month: 11).formatted == "2026-11-23")   // Veterans Day skipped
+    }
+}
+
+@Suite("Compliance calendar by state")
+struct StateComplianceTests {
+    let start = AccountingDate(year: 2026, month: 10, day: 2)
+    func keys(_ d: [ComplianceDeadline], _ k: String) -> [String] { d.filter { $0.key == k }.map(\.date.formatted) }
+
+    @Test("California quarterly: last day of the month after the quarter; $800 LLC tax April 15; SOI in formation month every 2 years")
+    func california() {
+        let p = ClientPracticeProfile(state: "CA", entityType: .singleMemberLLC, formationMonth: 3, formationYear: 2023, salesTaxFrequency: .quarterly)
+        let d = ComplianceCalendar.deadlines(for: p, from: start, days: 365)
+        #expect(keys(d, "sales-tax").contains("2026-11-2"))     // Oct 31, 2026 is a Saturday
+        #expect(keys(d, "ca-llc-tax") == ["2027-4-15"])
+        #expect(keys(d, "annual-report") == ["2027-3-31"])       // formed 2023: 2025, 2027
+        #expect(keys(d, "federal-return") == ["2027-4-15"])      // Schedule C
+    }
+
+    @Test("New York quarters run March–May; due the 20th after")
+    func newYork() {
+        let d = ComplianceCalendar.deadlines(for: ClientPracticeProfile(state: "NY", salesTaxFrequency: .quarterly), from: start, days: 200)
+        #expect(keys(d, "sales-tax") == ["2026-12-21", "2027-3-22"])   // Dec 20, 2026 Sun; Mar 20, 2027 Sat
+    }
+
+    @Test("Florida corporation: annual report May 1; S corp return March 15")
+    func florida() {
+        let d = ComplianceCalendar.deadlines(for: ClientPracticeProfile(state: "FL", entityType: .sCorporation, salesTaxFrequency: .monthly), from: start, days: 240)
+        #expect(keys(d, "annual-report") == ["2027-5-3"])         // May 1, 2027 is a Saturday
+        #expect(keys(d, "federal-return") == ["2027-3-15"])
+        #expect(keys(d, "sales-tax").first == "2026-10-20")
+    }
+
+    @Test("An unchecked state gets no state dates, only a check to verify")
+    func unchecked() {
+        let p = ClientPracticeProfile(state: "OK", salesTaxFrequency: .monthly, hasEmployees: true)
+        #expect(ComplianceCalendar.deadlines(for: p, from: start, days: 120).allSatisfy { $0.key != "sales-tax" && $0.key != "annual-report" })
+        let checks = ComplianceCalendar.checks(for: p).map(\.title)
+        #expect(checks.contains("Oklahoma rules not checked yet"))
+        #expect(checks.contains("Oklahoma payroll filings"))
+    }
+
+    @Test("Anniversary-based reports ask for the formation month")
+    func needsFormationMonth() {
+        let p = ClientPracticeProfile(state: "WA", entityType: .multiMemberLLC)
+        #expect(ComplianceCalendar.checks(for: p).contains { $0.title == "Add the formation month" })
+    }
+
+    @Test("Profiles saved by v1.59 still load")
+    func legacyDecode() throws {
+        let json = #"{"salesTaxFrequency":"quarterly","texasEntity":false,"files1099s":true,"hasEmployees":false,"filesIFTA":false,"filesForm2290":false,"statementsDueDay":10,"reportBusinessDay":15,"industry":"hotShotTrucking","reviewed":true}"#
+        let p = try JSONDecoder().decode(ClientPracticeProfile.self, from: Data(json.utf8))
+        #expect(p.state == "TX" && p.entityType == .soleProprietor && p.salesTaxFrequency == .quarterly && p.industry == .hotShotTrucking && p.reviewed)
     }
 }
 
@@ -103,5 +155,36 @@ struct NewAccountWatchTests {
         #expect(second.newAlerts.map(\.name) == ["New Amex"])
         let third = NewAccountWatch.check(baseline: second.baseline, accounts: [a1, a2, exp])
         #expect(third.newAlerts.isEmpty)
+    }
+}
+
+@Suite("Economic nexus screen")
+struct EconomicNexusTests {
+    func inv(_ id: String, _ state: String?, _ dollars: Int64, _ m: Int = 6) -> LedgerTransaction {
+        LedgerTransaction(id: id, entityKind: .invoice, vendorName: "C", txnDate: AccountingDate(year: 2026, month: m, day: 1),
+                          totalAmount: Money(minorUnits: dollars * 100, currency: .usd), paymentAccountID: nil, docNumber: nil, isVoided: false,
+                          memo: nil, provenance: .qboAPI(readAt: Date()), customerState: state)
+    }
+    let asOf = AccountingDate(year: 2026, month: 10, day: 2)
+
+    @Test("Over a checked threshold with no agency is flagged; home state and agency states are not")
+    func flags() {
+        let sales = [inv("1", "AZ", 120_000), inv("2", "CA", 600_000), inv("3", "TX", 900_000), inv("4", "FL", 50_000), inv("5", "NV", 85_000)]
+        let rows = EconomicNexusScreen.rows(sales: sales, homeState: "TX", taxAgencyNames: ["California Department of Tax and Fee Administration"], asOf: asOf)
+        func row(_ s: String) -> NexusStateRow { rows.first { $0.state == s }! }
+        #expect(row("AZ").needsReview && row("AZ").overThreshold && !row("AZ").thresholdChecked)
+        #expect(!row("CA").needsReview)            // agency set up
+        #expect(!row("TX").needsReview)            // home state
+        #expect(!row("FL").needsReview)            // under 80%
+        #expect(row("NV").needsReview && row("NV").approaching)
+    }
+
+    @Test("New York needs both the dollars and more than 100 sales; old invoices are outside the window")
+    func newYork() {
+        let rows = EconomicNexusScreen.rows(sales: [inv("1", "NY", 700_000), inv("2", "NY", 5, 1)], homeState: "TX", taxAgencyNames: [], asOf: asOf)
+        #expect(rows.first?.overThreshold == false)
+        #expect(rows.first?.transactionCount == 2)
+        let old = EconomicNexusScreen.rows(sales: [inv("9", "AZ", 200_000, 1)].map { _ in LedgerTransaction(id: "9", entityKind: .invoice, vendorName: nil, txnDate: AccountingDate(year: 2025, month: 8, day: 1), totalAmount: Money(minorUnits: 20_000_000, currency: .usd), paymentAccountID: nil, docNumber: nil, isVoided: false, memo: nil, provenance: .qboAPI(readAt: Date()), customerState: "AZ") }, homeState: "TX", taxAgencyNames: [], asOf: asOf)
+        #expect(old.isEmpty)
     }
 }

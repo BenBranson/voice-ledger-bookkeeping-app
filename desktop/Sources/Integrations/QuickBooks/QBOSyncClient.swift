@@ -182,6 +182,14 @@ public struct QBOSyncClient: Sendable {
         return (purchasesResponse.queryResponse.purchase ?? []).map { Self.normalize($0) }
     }
 
+    /// Invoices for one month (customer state included), for the
+    /// economic-nexus screen and the dev tool's invoice-states check.
+    public func fetchInvoices(realmID: RealmID, period: AccountingPeriod) async throws -> [LedgerTransaction] {
+        let (startDate, endDate) = Self.dateRange(for: period)
+        let data = try await backend.call(.readInvoices, realmID: realmID, params: ReadInvoicesParams(startDate: startDate, endDate: endDate))
+        return (try JSONDecoder().decode(QBOInvoiceQueryResponse.self, from: data).queryResponse.invoice ?? []).map { Self.normalize($0) }
+    }
+
     /// Aged Receivables — verified live 2026-08-18. See `AgingLine`'s doc
     /// comment: 6 money columns per row, and leaf rows appear in TWO
     /// different shapes within the same real report (bare, untagged
@@ -750,7 +758,8 @@ public struct QBOSyncClient: Sendable {
             isVoided: raw.isVoided,
             memo: raw.privateNote,
             lineAccountIDs: [],
-            provenance: .qboAPI(readAt: Date())
+            provenance: .qboAPI(readAt: Date()),
+            customerState: raw.customerState
         )
     }
 

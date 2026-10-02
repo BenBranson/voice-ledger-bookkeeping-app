@@ -2232,9 +2232,14 @@ struct RootView: View {
                 clientName: state.displayCompanyName,
                 profile: state.practiceProfile,
                 deadlines: state.complianceDeadlines,
+                checks: state.complianceChecks,
+                nexusRows: state.nexusRows,
+                nexusNote: state.nexusNote,
+                onLoadHistory: { Task { await state.loadHistory() } },
                 onSave: { profile in Task { await state.updatePracticeProfile(profile) } }
             )
             .id(state.realmID.rawValue)
+            .task { if state.taxAgencies.isEmpty && !state.isLoadingSalesTax { await state.loadSalesTaxProfile() } }
 
         case .scopeRequests:
             ScopeRequestsView(

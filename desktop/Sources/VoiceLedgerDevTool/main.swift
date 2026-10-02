@@ -18,7 +18,7 @@ import Exporting
 //   swift run voiceledger-devtool sync-check <year> <month>
 
 let arguments = CommandLine.arguments
-guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "sync-check", "history-check", "chart-samples", "balances-check", "agreement-sample", "facts", "facts-diff", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
+guard arguments.count >= 2, ["health", "tax-check", "connections-check", "switch-session-check", "ask-ai-check", "invoice-states", "sync-check", "history-check", "chart-samples", "balances-check", "agreement-sample", "facts", "facts-diff", "sample-report", "monthly-report", "csv-import-check", "export-sample", "xlsx-import-check", "ocr-import-check", "voice-service-check"].contains(arguments[1]) else {
     print("""
     voiceledger-devtool — gate-verification CLI, not the app.
 
@@ -574,6 +574,23 @@ case "facts-diff":
     } catch {
         FileHandle.standardError.write("facts-diff failed: \(error)\n".data(using: .utf8)!)
         exit(2)
+    }
+
+case "invoice-states":
+    guard arguments.count >= 4, let year = Int(arguments[2]), let month = Int(arguments[3]) else {
+        FileHandle.standardError.write("Usage: invoice-states <year> <month>\n".data(using: .utf8)!)
+        exit(64)
+    }
+    do {
+        let configuration = try BackendConfiguration.fromEnvironment()
+        let syncClient = QBOSyncClient(backend: BackendClient(configuration: configuration))
+        let invoices = try await syncClient.fetchInvoices(realmID: realmID, period: AccountingPeriod(year: year, month: month))
+        var byState: [String: Int] = [:]
+        for invoice in invoices { byState[invoice.customerState ?? "(none)", default: 0] += 1 }
+        print("\(invoices.count) invoices; by customer state: \(byState.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ", "))")
+    } catch {
+        FileHandle.standardError.write("invoice-states failed: \(error)\n".data(using: .utf8)!)
+        exit(1)
     }
 
 case "sync-check":

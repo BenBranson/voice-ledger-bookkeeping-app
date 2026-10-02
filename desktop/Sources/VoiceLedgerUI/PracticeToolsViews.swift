@@ -7,7 +7,7 @@ import DesignSystem
 // forecast, industry setup, scope requests, new-account alerts. Every figure
 // here is computed in Core; these views only show it.
 
-private func pageHeader(_ title: String, _ environment: VLEnvironmentTone, _ subtitle: String) -> some View {
+@MainActor private func pageHeader(_ title: String, _ environment: VLEnvironmentTone, _ subtitle: String) -> some View {
     VStack(alignment: .leading, spacing: VLSpacing.xs) {
         HStack {
             Text(title).font(VLTypography.pageTitle()).foregroundStyle(VLColor.textPrimary)
@@ -156,14 +156,23 @@ public struct ComplianceCalendarView: View {
     let environment: VLEnvironmentTone
     let clientName: String
     let deadlines: [ComplianceDeadline]
+    let checks: [ComplianceCheck]
+    let nexusRows: [NexusStateRow]
+    let nexusNote: String?
+    let onLoadHistory: () -> Void
     let onSave: (ClientPracticeProfile) -> Void
     @State private var draft: ClientPracticeProfile
     private let saved: ClientPracticeProfile
 
-    public init(environment: VLEnvironmentTone, clientName: String, profile: ClientPracticeProfile, deadlines: [ComplianceDeadline], onSave: @escaping (ClientPracticeProfile) -> Void) {
+    public init(environment: VLEnvironmentTone, clientName: String, profile: ClientPracticeProfile, deadlines: [ComplianceDeadline], checks: [ComplianceCheck],
+                nexusRows: [NexusStateRow], nexusNote: String?, onLoadHistory: @escaping () -> Void, onSave: @escaping (ClientPracticeProfile) -> Void) {
         self.environment = environment
         self.clientName = clientName
         self.deadlines = deadlines
+        self.checks = checks
+        self.nexusRows = nexusRows
+        self.nexusNote = nexusNote
+        self.onLoadHistory = onLoadHistory
         self.onSave = onSave
         self.saved = profile
         _draft = State(initialValue: profile)
@@ -177,25 +186,45 @@ public struct ComplianceCalendarView: View {
         }
     }
 
+    private static let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
     public var body: some View {
+        let checked = Set(StateComplianceRules.verifiedStates)
         ScrollView {
             VStack(alignment: .leading, spacing: VLSpacing.md) {
-                pageHeader("Compliance Calendar", environment, "Every filing and delivery date for \(clientName) over the next 120 days, from the profile below. Dates on a weekend or federal holiday move to the next business day. Filing stays the client's or CPA's job under the engagement agreement; this keeps you ahead of it.")
+                pageHeader("Compliance Calendar", environment, "Every filing and delivery date for \(clientName) over the next 120 days, from the profile below. Federal dates apply in every state; state dates appear only for states whose rules Voice Ledger has checked on the state's own websites (\(checked.count) so far). Dates on a weekend or federal holiday move to the next business day. Filing stays the client's or CPA's job under the engagement agreement.")
                 if !saved.reviewed {
                     VLCard(accentRail: .orange) {
-                        Text("This client's profile hasn't been reviewed. Set which filings apply, then save, so the dates below are right.")
+                        Text("This client's profile hasn't been reviewed. Set the state, entity type and filings, then save.")
                             .font(VLTypography.body()).foregroundStyle(.orange)
                     }
                 }
                 VLCard {
                     VStack(alignment: .leading, spacing: VLSpacing.sm) {
                         eyebrow("CLIENT PROFILE")
-                        Picker("Texas sales tax", selection: $draft.salesTaxFrequency) {
+                        Picker("State", selection: $draft.state) {
+                            ForEach(StateComplianceRules.allStates, id: \.code) { s in
+                                Text("\(s.name)\(checked.contains(s.code) ? "  ✓ checked" : "")").tag(s.code)
+                            }
+                        }.frame(maxWidth: 360)
+                        Picker("Entity type", selection: $draft.entityType) {
+                            ForEach(ClientPracticeProfile.EntityType.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }.frame(maxWidth: 360)
+                        if draft.entityType.isRegisteredEntity {
+                            HStack {
+                                Picker("Formed in", selection: Binding(get: { draft.formationMonth ?? 0 }, set: { draft.formationMonth = $0 == 0 ? nil : $0 })) {
+                                    Text("Month unknown").tag(0)
+                                    ForEach(1...12, id: \.self) { Text(Self.months[$0 - 1]).tag($0) }
+                                }.frame(maxWidth: 260)
+                                TextField("Year", value: Binding(get: { draft.formationYear }, set: { draft.formationYear = $0 }), format: .number.grouping(.never))
+                                    .textFieldStyle(.roundedBorder).frame(width: 80)
+                            }
+                        }
+                        Picker("Sales tax filing", selection: $draft.salesTaxFrequency) {
                             ForEach(ClientPracticeProfile.SalesTaxFrequency.allCases, id: \.self) { Text($0.label).tag($0) }
                         }.frame(maxWidth: 360)
-                        Toggle("LLC, corporation or partnership in Texas (franchise tax report, May 15)", isOn: $draft.texasEntity)
                         Toggle("Pays contractors (1099-NEC, January 31)", isOn: $draft.files1099s)
-                        Toggle("Has employees (941, TWC wage report, W-2, 940)", isOn: $draft.hasEmployees)
+                        Toggle("Has employees (941, W-2, 940, state payroll reports)", isOn: $draft.hasEmployees)
                         Toggle("Interstate trucking (IFTA quarterly)", isOn: $draft.filesIFTA)
                         Toggle("Truck 55,000 lb or more (Form 2290, August 31)", isOn: $draft.filesForm2290)
                         Stepper("Statements due from client: day \(draft.statementsDueDay) of the month", value: $draft.statementsDueDay, in: 1...28)
@@ -203,6 +232,19 @@ public struct ComplianceCalendarView: View {
                         HStack {
                             Button("Save profile") { onSave(draft) }.buttonStyle(.borderedProminent)
                             if draft != saved { Text("Unsaved changes").font(VLTypography.caption()).foregroundStyle(.orange) }
+                        }
+                    }
+                }
+                if !checks.isEmpty {
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                            eyebrow("VERIFY WITH THE STATE OR CPA")
+                            ForEach(checks) { c in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(c.title).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
+                                    Text(c.detail).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                         }
                     }
                 }
@@ -221,6 +263,37 @@ public struct ComplianceCalendarView: View {
                                 }
                                 Spacer()
                                 Text(who(d.responsible)).font(VLTypography.caption()).foregroundStyle(VLColor.textSecondary)
+                            }
+                            Divider().overlay(VLColor.border)
+                        }
+                    }
+                }
+                VLCard(accentRail: nexusRows.contains(where: \.needsReview) ? .orange : nil) {
+                    VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                        eyebrow("SALES BY CUSTOMER STATE — LAST 12 MONTHS (ECONOMIC NEXUS SCREEN)")
+                        Text("A business can owe sales tax in a state where it has no office once its sales into that state pass the state's threshold. This screens QuickBooks invoices by ship-to (else bill-to) state against each threshold; sales receipts and marketplace sales aren't included. Flagged states need a closer look with the CPA, not automatic registration.")
+                            .font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                        if let nexusNote {
+                            HStack {
+                                Text(nexusNote).font(VLTypography.caption()).foregroundStyle(.orange)
+                                Button("Load 24-month history", action: onLoadHistory).controlSize(.small)
+                            }
+                        }
+                        ForEach(nexusRows) { row in
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(row.stateName)\(row.isHomeState ? " (home state)" : "")").font(VLTypography.body()).foregroundStyle(VLColor.textPrimary)
+                                    Text("\(row.transactionCount) invoice\(row.transactionCount == 1 ? "" : "s") · threshold: \(row.threshold.description)\(row.thresholdChecked ? "" : " (screen only)")")
+                                        .font(VLTypography.caption()).foregroundStyle(VLColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                                    if row.needsReview {
+                                        Text(row.overThreshold ? "Over the threshold and no \(row.stateName) tax agency is set up in QuickBooks. Review with the CPA." : "Within 80% of the threshold. Watch it.")
+                                            .font(VLTypography.caption()).foregroundStyle(row.overThreshold ? .red : .orange)
+                                    } else if row.hasTaxAgency && !row.isHomeState {
+                                        Text("Tax agency set up in QuickBooks.").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                                    }
+                                }
+                                Spacer()
+                                Text(row.sales.accountingDescription).font(VLTypography.tabularNumeric()).foregroundStyle(VLColor.textPrimary)
                             }
                             Divider().overlay(VLColor.border)
                         }

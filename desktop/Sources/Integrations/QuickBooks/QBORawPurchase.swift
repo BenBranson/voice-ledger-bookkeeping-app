@@ -226,6 +226,8 @@ public struct QBORawInvoice: Decodable, Sendable {
     public let privateNote: String?
     public let customerRef: QBORawRef?
     public let status: String?
+    public let shipAddr: QBORawAddress?
+    public let billAddr: QBORawAddress?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
@@ -235,10 +237,35 @@ public struct QBORawInvoice: Decodable, Sendable {
         case privateNote = "PrivateNote"
         case customerRef = "CustomerRef"
         case status
+        case shipAddr = "ShipAddr"
+        case billAddr = "BillAddr"
     }
 
     public var isVoided: Bool {
         status == "Voided"
+    }
+
+    /// Ship-to state if present (where the sale is delivered, which is
+    /// what most states use for sales tax), else bill-to.
+    public var customerState: String? {
+        (shipAddr?.stateCode ?? billAddr?.stateCode)
+    }
+}
+
+/// QBO's PhysicalAddress; only the state is read.
+public struct QBORawAddress: Decodable, Sendable {
+    public let countrySubDivisionCode: String?
+    public let country: String?
+
+    enum CodingKeys: String, CodingKey {
+        case countrySubDivisionCode = "CountrySubDivisionCode"
+        case country = "Country"
+    }
+
+    /// Two-letter US state code, or nil when missing or not a US state.
+    public var stateCode: String? {
+        guard let raw = countrySubDivisionCode?.trimmingCharacters(in: .whitespaces).uppercased(), raw.count == 2, raw.allSatisfy(\.isLetter) else { return nil }
+        return raw
     }
 }
 

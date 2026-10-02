@@ -270,6 +270,10 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
     /// an empty string.
     public let syncToken: String?
     public let provenance: Provenance
+    /// Two-letter state of the customer on a sales transaction (ship-to
+    /// address, else bill-to), for the economic-nexus screen. Nil when
+    /// QBO has no address or for purchases. Added 2026-10-02.
+    public let customerState: String?
 
     public init(
         id: String,
@@ -284,8 +288,10 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
         lineAccountIDs: [String] = [],
         lines: [LedgerTransactionLine] = [],
         syncToken: String? = nil,
-        provenance: Provenance
+        provenance: Provenance,
+        customerState: String? = nil
     ) {
+        self.customerState = customerState
         self.id = id
         self.entityKind = entityKind
         self.vendorName = vendorName
@@ -313,7 +319,7 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
     // and needs no fix — Swift's synthesis already defaults it to `nil`.
     private enum CodingKeys: String, CodingKey {
         case id, entityKind, vendorName, txnDate, totalAmount, paymentAccountID
-        case docNumber, isVoided, memo, lineAccountIDs, lines, syncToken, provenance
+        case docNumber, isVoided, memo, lineAccountIDs, lines, syncToken, provenance, customerState
     }
 
     public init(from decoder: Decoder) throws {
@@ -331,6 +337,7 @@ public struct LedgerTransaction: Identifiable, Hashable, Codable, Sendable {
         lines = try container.decodeIfPresent([LedgerTransactionLine].self, forKey: .lines) ?? []
         syncToken = try container.decodeIfPresent(String.self, forKey: .syncToken)
         provenance = try container.decode(Provenance.self, forKey: .provenance)
+        customerState = try container.decodeIfPresent(String.self, forKey: .customerState)
     }
 }
 
