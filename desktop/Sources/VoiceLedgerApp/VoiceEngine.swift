@@ -895,7 +895,7 @@ public final class VoiceEngine: NSObject {
                 return VoiceTurn(speech: "The aged payables report isn't loaded yet. " + ClientFacts.freshnessSentence(data), uiAction: .navigate(.agedPayablesReport))
             }
             let split = AgingSplit(total)
-            var speech = "We owe vendors \(owed.accountingDescription) in total"
+            var speech = "We owe vendors \(owed.accountingDescription) in total"   // `owed` is the page's TOTAL (net of credits)
             if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days past due" }
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
@@ -906,9 +906,16 @@ public final class VoiceEngine: NSObject {
                 return VoiceTurn(speech: "The aged receivables report isn't loaded yet. " + ClientFacts.freshnessSentence(appState.clientData), uiAction: .navigate(.agedReceivablesReport))
             }
             let split = AgingSplit(total)
-            var speech = "Customers owe us \(split.owed.accountingDescription)"
-            if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days old" }
-            if split.credits.minorUnits < 0 { speech += ", plus \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in customer credits to apply" }
+            // The page's TOTAL is net of credits; say the gross, the credits, and the page's net so the
+            // spoken numbers can always be matched to the screen.
+            var speech: String
+            if split.credits.minorUnits < 0 {
+                let credits = Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency)
+                speech = "Customers owe us \(split.owed.accountingDescription) before \(credits.accountingDescription) in credits, which is \(split.net.accountingDescription) net"
+            } else {
+                speech = "Customers owe us \(split.owed.accountingDescription)"
+            }
+            if split.over60Owed.minorUnits > 0 { speech += ". \(split.over60Owed.accountingDescription) of it is more than 60 days old" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
 
         case .retry:
