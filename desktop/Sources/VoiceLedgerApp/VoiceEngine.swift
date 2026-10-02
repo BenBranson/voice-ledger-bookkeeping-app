@@ -195,6 +195,16 @@ public final class VoiceEngine: NSObject {
     public func installTabShortcut() {
         guard tabMonitor == nil else { return }
         tabMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // ` (the key left of 1) closes an open card, so cards can be flipped
+            // through one-handed: click a card, scroll, `, click the next (owner, 2026-10-02).
+            if event.keyCode == 50, event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty {
+                let closed = MainActor.assumeIsolated { () -> Bool in
+                    guard let self, self.appState.presentedChart != nil else { return false }
+                    self.appState.presentedChart = nil
+                    return true
+                }
+                if closed { return nil }
+            }
             guard event.keyCode == 48, event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
             if NSApp.keyWindow?.firstResponder is NSTextView { return event }
             MainActor.assumeIsolated { self?.interruptAndListen() }

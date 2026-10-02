@@ -2,7 +2,7 @@
 Benjamin Branson Bookkeeping · Voice Ledger · kept in step with the app (a test fails if any phrase below stops working)
 
 **How to talk to her:** press the microphone button (top left), then speak normally. Filler is fine — "hey Moneypenny", "please", "can you", "the" are ignored. Say numbers as digits or words: "$1,420", "fourteen twenty", "twelve hundred dollars". She hears "owe" as "own" sometimes; both work.
-**Keyboard:** **Tab** = cut her off and listen again. **Tab** or "try again" after a wrong answer. The red mic button turns the microphone off.
+**Keyboard:** **Tab** = cut her off and listen again. **Tab** or "try again" after a wrong answer. The red mic button turns the microphone off. **`** (the key left of 1) closes a pop-up card.
 **Every number she says comes straight from your books — the same figures as the pages.** She also tells you if the data is stale ("saved data from 2 hours ago — sync to refresh").
 
 ---
@@ -138,6 +138,7 @@ Say **"start month-end"** (also "start the monthly routine", "walk me through th
 | **"try again"** · **"that's wrong"** · **"never mind"** · **"scratch that"** | Clears her last answer and says Go ahead — then listens. |
 | **"hi"** · **"status update"** · **"how are things"** | A short overview: open findings and dollars. |
 | **Tab key** | Cuts her off mid-sentence and starts listening. |
+| **` key** (left of 1) | Closes the open card, so you can click the next one right away. |
 
 ---
 ### Things she will **not** do by voice

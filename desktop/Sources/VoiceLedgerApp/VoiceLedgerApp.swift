@@ -380,23 +380,39 @@ private struct ConfigErrorView: View {
             Text(recoveryError ?? message)
                 .font(VLTypography.caption())
                 .foregroundStyle(VLColor.textMuted)
-            if let path = Bundle.main.object(forInfoDictionaryKey: "VoiceLedgerLauncherPath") as? String {
-                Button("Restart with Launcher") {
-                    let process = Process()
-                    process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                    process.arguments = [path]
-                    var environment = ProcessInfo.processInfo.environment
-                    environment["VOICE_LEDGER_RELAUNCH_PID"] = String(ProcessInfo.processInfo.processIdentifier)
-                    process.environment = environment
-                    do {
-                        try process.run()
-                        NSApplication.shared.terminate(nil)
-                    } catch { recoveryError = "Couldn't open Launcher: \(error.localizedDescription)" }
-                }
+            if Self.launcherPath != nil {
+                Button("Restart with Launcher") { restart() }
             }
         }
         .padding(VLSpacing.pageGutter)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VLColor.background)
+        // Owner (2026-10-02): "when the app opens I have to press this button."
+        // Press it automatically. Once per minute at most, so a Launcher that can't
+        // supply a session shows this screen instead of looping.
+        .onAppear {
+            let key = "launcherAutoRestartAt"
+            let last = UserDefaults.standard.double(forKey: key)
+            let now = Date().timeIntervalSince1970
+            guard Self.launcherPath != nil, now - last > 60 else { return }
+            UserDefaults.standard.set(now, forKey: key)
+            restart()
+        }
+    }
+
+    private static var launcherPath: String? { Bundle.main.object(forInfoDictionaryKey: "VoiceLedgerLauncherPath") as? String }
+
+    private func restart() {
+        guard let path = Self.launcherPath else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["VOICE_LEDGER_RELAUNCH_PID"] = String(ProcessInfo.processInfo.processIdentifier)
+        process.environment = environment
+        do {
+            try process.run()
+            NSApplication.shared.terminate(nil)
+        } catch { recoveryError = "Couldn't open Launcher: \(error.localizedDescription)" }
     }
 }

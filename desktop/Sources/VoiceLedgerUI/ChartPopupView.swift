@@ -37,6 +37,9 @@ public struct ChartPopupView: View {
                     .font(VLTypography.pageTitle())
                     .foregroundStyle(VLColor.textPrimary)
                 Spacer()
+                Text("Press ` to close")
+                    .font(.caption)
+                    .foregroundStyle(VLColor.textMuted)
                 Button {
                     onClose()
                 } label: {
