@@ -137,4 +137,4 @@ Say the page name ("go to …"), or a number ("find 1420"), or a question from t
 Ask in your own words, for example how to record a vendor credit, clear payments stuck in Undeposited Funds, merge duplicate vendors, or whether a contractor needs a 1099. She answers from a reference library of QuickBooks Online notes written from Intuit's ProAdvisor training and help pages. If the notes don't cover it, she says so rather than guessing a menu path. These go to the AI model, so they take 10–30 seconds.
 
 ### Memory
-She remembers the last 20 exchanges, including what she opened for you. When she offers something , such as pulling something up, just say yes.
+She remembers the last 20 exchanges, including what she opened for you. When she offers something, such as pulling something up, just say yes.

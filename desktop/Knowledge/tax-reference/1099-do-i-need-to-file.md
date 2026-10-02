@@ -14,8 +14,8 @@ Quick answers on whether a business must file 1099-NEC or 1099-MISC, when, and h
 
 ## Key points (as stated)
 Who gets one:
-- 1099-NEC: non-employees (contractors, freelancers, some vendors) paid $600 or more in the prior year, and anyone subject to backup withholding.
-- 1099-MISC: miscellaneous payments of $600 or more in the prior year.
+- 1099-NEC: non-employees (contractors, freelancers, some vendors) paid $600 or more in the prior year ($2,000 for payments made in 2026 onward), and anyone subject to backup withholding.
+- 1099-MISC: miscellaneous payments of $600 or more in the prior year ($2,000 for payments made in 2026 onward).
 
 Deadlines:
 - 1099-NEC: January 31 (to the IRS and to the contractor).

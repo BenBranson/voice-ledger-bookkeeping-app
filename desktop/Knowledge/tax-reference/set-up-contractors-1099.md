@@ -25,7 +25,7 @@ QuickBooks then tracks payments to them in the background for 1099 preparation.
 - The 1099 e-file service only supports contractors with US addresses.
 
 ## Thresholds (as stated, no year given)
-- A 1099 is needed for contractors paid $600 or more in a year.
+- A 1099 is needed for contractors paid $600 or more in a year (payments through 2025). For payments made in 2026 onward the threshold is $2,000 (IRS, One Big Beautiful Bill Act).
 - Payments made electronically through QuickBooks Payments / by credit card do not count toward that amount.
 
 ## Pitfalls
