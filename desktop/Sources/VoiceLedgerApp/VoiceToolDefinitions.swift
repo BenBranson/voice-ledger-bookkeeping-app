@@ -92,11 +92,11 @@ extension VoiceEngine {
         ),
         tool(
             name: "generate_chart",
-            description: "Generate and display a chart popup for this client, using real already-computed data. \"expense_drivers\" and \"pareto_cost_drivers\" chart expense categories for the loaded period; \"vendor_spend\" charts top vendors by spend for the loaded period; \"income_vs_expenses\" charts revenue vs. expenses vs. net income as a waterfall.",
+            description: "Generate and display a chart popup for this client, using real already-computed data. \"expense_drivers\" and \"pareto_cost_drivers\" chart expense categories for the loaded period; \"vendor_spend\" charts top vendors by spend for the loaded period; \"income_vs_expenses\" charts revenue vs. expenses vs. net income as a waterfall; \"receivables\" and \"payables\" show who owes us and what we owe by age; \"cash_outlook\" shows the 13-week cash projection; \"revenue_trend\" and \"net_income_trend\" show the last 12 months.",
             properties: [
                 "kind": .object([
                     "type": .string("string"),
-                    "enum": .array(["expense_drivers", "pareto_cost_drivers", "vendor_spend", "income_vs_expenses"].map { .string($0) })
+                    "enum": .array(["expense_drivers", "pareto_cost_drivers", "vendor_spend", "income_vs_expenses", "receivables", "payables", "cash_outlook", "revenue_trend", "net_income_trend"].map { .string($0) })
                 ])
             ],
             required: ["kind"]

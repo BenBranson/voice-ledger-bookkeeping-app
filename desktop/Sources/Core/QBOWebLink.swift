@@ -22,6 +22,12 @@ public enum QBOWebLink {
         }
     }
 
+    /// A transaction by its entity kind (for card rows).
+    public static func transaction(id: String, kind: QBOEntityKind, isSandbox: Bool) -> URL? {
+        guard let route = route(for: kind) else { return nil }
+        return URL(string: "\(base(isSandbox: isSandbox))/\(route)?txnId=\(id)")
+    }
+
     public static func url(forRecordID id: String, transactions: [LedgerTransaction], accounts: [LedgerAccount], isSandbox: Bool) -> URL? {
         let base = base(isSandbox: isSandbox)
         if let account = accounts.first(where: { $0.id == id }) {

@@ -465,7 +465,8 @@ public struct QBOSyncClient: Sendable {
                 // header's own row carries no real amount (its Summary row,
                 // appended after the children below, has the true rolled-up
                 // total) even though QBO's raw JSON happens to echo one.
-                lines.append(AgingLine(label: header.colData.first?.value ?? "", current: nil, days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: nil, depth: depth, isSummary: false))
+                lines.append(AgingLine(label: header.colData.first?.value ?? "", current: nil, days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: nil, depth: depth, isSummary: false,
+                                       entityID: header.colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }))
             }
             if let nested = row.rows {
                 lines.append(contentsOf: flattenAging(nested, depth: depth + 1))

@@ -26,6 +26,7 @@ public struct ChartPopupView: View {
         case .vendorSpend(let title, _): return title
         case .paretoCostDrivers(let title, _): return title
         case .incomeVsExpenses(let title, _): return title
+        case .insight(let card): return card.title
         }
     }
 
@@ -56,8 +57,8 @@ public struct ChartPopupView: View {
         // `.infinity` gives the sheet a flexible dimension to grow along,
         // so it can be dragged larger instead of being stuck at its
         // minimum size with no resize affordance.
-        .frame(minWidth: 520, idealWidth: 620, maxWidth: .infinity,
-               minHeight: 380, idealHeight: 460, maxHeight: .infinity)
+        .frame(minWidth: 560, idealWidth: 720, maxWidth: .infinity,
+               minHeight: 420, idealHeight: 640, maxHeight: .infinity)
         .background(VLColor.background)
     }
 
@@ -75,6 +76,8 @@ public struct ChartPopupView: View {
             RankedMoneyBarChart(title: "Biggest Cost Drivers", entries: Self.paretoEntries(from: drivers))
         case .incomeVsExpenses(_, let segments):
             ProfitAndLossWaterfallChart(segments: segments)
+        case .insight(let card):
+            InsightCardView(card: card)
         }
     }
 

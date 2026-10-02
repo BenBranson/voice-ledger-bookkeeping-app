@@ -563,7 +563,63 @@
     });
   }
 
-  const builders = { breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars, moneyFlow, sparklines, trendMixed, postingCalendar, expenseTreemap };
+  /**
+   * General chart for Voice Ledger's pop-up insight cards (2026-10-02).
+   * data: { type: "bar" | "stackedBar" | "hbar" | "hstackedBar" | "line", categories: [string],
+   *         series: [{ name, values: [number|null], valueTexts: [string] }], ids: [string],
+   *         markZero: bool }
+   * Every number arrives computed by Swift; this only draws it.
+   */
+  function insightChart(data, theme, opts) {
+    opts = opts || {};
+    const horizontal = data.type === "hbar" || data.type === "hstackedBar";
+    const stacked = data.type === "stackedBar" || data.type === "hstackedBar";
+    const isLine = data.type === "line";
+    const cats = horizontal ? data.categories.slice().reverse() : data.categories;
+    const series = data.series.map(function (s, si) {
+      const vals = horizontal ? s.values.slice().reverse() : s.values;
+      const texts = horizontal ? (s.valueTexts || []).slice().reverse() : (s.valueTexts || []);
+      const color = data.series.length === 1 ? theme.palette[0] : theme.palette[si % theme.palette.length];
+      return {
+        name: s.name,
+        type: isLine ? "line" : "bar",
+        stack: stacked ? "total" : undefined,
+        smooth: isLine ? 0.25 : undefined,
+        symbolSize: isLine ? 6 : undefined,
+        barMaxWidth: horizontal ? 18 : 22,
+        itemStyle: { color: color, borderRadius: stacked ? 0 : (horizontal ? [0, 4, 4, 0] : [3, 3, 0, 0]) },
+        lineStyle: isLine ? { width: 2.5, color: color } : undefined,
+        areaStyle: isLine && data.series.length === 1 ? { color: color, opacity: 0.08 } : undefined,
+        label: (!stacked && data.series.length === 1 && !isLine && (horizontal || cats.length <= 8)) ? { show: true, position: horizontal ? "right" : "top", color: theme.text, fontSize: 10, fontWeight: 600,
+                 formatter: function (p) { return texts[p.dataIndex] || ""; } } : undefined,
+        markLine: data.markZero ? { silent: true, symbol: "none", lineStyle: { color: theme.negative, type: "dashed" }, data: [{ yAxis: 0 }], label: { show: false } } : undefined,
+        data: vals.map(function (v, i) {
+          return { value: v, itemStyle: (v != null && v < 0 && !isLine) ? { color: theme.negative } : undefined };
+        })
+      };
+    });
+    const valueAx = valueAxis(theme);
+    const catAx = categoryAxis(theme, cats.map(function (c) { return truncate(c, horizontal ? 30 : 14); }),
+      horizontal ? { axisLine: { show: false }, axisLabel: { color: theme.text, fontFamily: theme.font, width: 180, overflow: "truncate" } }
+                 : { axisLabel: { color: theme.muted, fontFamily: theme.font, interval: cats.length > 13 ? 1 : 0, hideOverlap: true } });
+    return Object.assign(base(theme, opts.reducedMotion), {
+      grid: { left: 8, right: horizontal ? 84 : 16, top: data.series.length > 1 ? 30 : 16, bottom: 8, containLabel: true },
+      legend: data.series.length > 1 ? { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8 } : undefined,
+      tooltip: tooltip(theme, function (params) {
+        const list = Array.isArray(params) ? params : [params];
+        const idx = list[0].dataIndex;
+        const i = horizontal ? cats.length - 1 - idx : idx;
+        return "<b>" + esc(data.categories[i]) + "</b><br/>" + data.series.map(function (s) {
+          return esc(s.name) + ": " + esc((s.valueTexts && s.valueTexts[i]) || money(s.values[i]));
+        }).join("<br/>");
+      }, "axis"),
+      xAxis: horizontal ? Object.assign({}, valueAx, { show: false }) : catAx,
+      yAxis: horizontal ? catAx : valueAx,
+      series: series
+    });
+  }
+
+  const builders = { insightChart, breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars, moneyFlow, sparklines, trendMixed, postingCalendar, expenseTreemap };
 
   return { themes, builders, colorFor, esc, money, NEGATIVE_CATEGORIES };
 });

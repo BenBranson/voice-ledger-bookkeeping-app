@@ -40,6 +40,17 @@ public struct QBOLinks: Sendable, Equatable {
         id.flatMap { QBOWebLink.transaction(id: $0, reportTypeName: typeName, isSandbox: isSandbox) }
     }
 
+    /// Resolves a card row's target to its exact record, or nil.
+    public func url(for target: QBOTarget) -> URL? {
+        switch target {
+        case .finding(let id): return finding(id)
+        case .account(let id): return accountURLs[id]
+        case .vendor(let id, let name): return vendor(id: id) ?? vendor(named: name)
+        case .customer(let id, _): return customer(id: id)
+        case .transaction(let id, let kind): return QBOWebLink.transaction(id: id, kind: kind, isSandbox: isSandbox)
+        }
+    }
+
     static func key(_ name: String) -> String { name.trimmingCharacters(in: .whitespaces).lowercased() }
 }
 

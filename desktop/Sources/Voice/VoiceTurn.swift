@@ -53,6 +53,8 @@ public enum ChartRequest: Equatable, Sendable {
     case vendorSpend(title: String, vendors: [VendorSpendSummary.VendorTotal])
     case paretoCostDrivers(title: String, drivers: [TopExpenseDrivers.Driver])
     case incomeVsExpenses(title: String, segments: [ProfitAndLossWaterfall.Segment])
+    /// A card with chart, rows, QBO links and recommendations (2026-10-02).
+    case insight(InsightCard)
 }
 
 /// `speech` is always shown/spoken verbatim from whichever path (router or

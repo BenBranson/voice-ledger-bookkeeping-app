@@ -182,7 +182,7 @@ extension VoiceEngine {
             guard !accountName.isEmpty else { return ("Please provide an account name.", nil) }
             let fact = ClientFacts.accountBalance(appState.clientData, name: accountName)
             guard let account = fact.value else { return (fact.note ?? "Account not found.", nil) }
-            return ("\(account.name) (\(account.type.rawValue)) currently shows \(account.balance.accountingDescription). \(fact.note ?? "") \(fact.scope.sentence())", nil)
+            return ("\(ClientFacts.balanceSentence(name: account.name, type: account.type, rawBalance: account.balance)) (\(account.type.rawValue).) \(fact.note ?? "") \(fact.scope.sentence())", nil)
 
         case "get_vendor_details":
             let vendorName = call.arguments["vendor_name"]?.stringValue ?? ""
@@ -387,10 +387,31 @@ extension VoiceEngine {
             return ("Showing a Pareto chart of the biggest cost drivers for the loaded period.", action)
         case "vendor_spend":
             let vendors = VendorSpendSummary.top(10, from: appState.transactions)
-            guard !vendors.isEmpty else { return ("No vendor spend data available to chart for the loaded period.", nil) }
-            let request: ChartRequest = .vendorSpend(title: "Spend by Vendor", vendors: vendors)
-            let action: VoiceUIAction = .presentChart(request)
-            return ("Showing vendor spend for the loaded period.", action)
+            guard let card = InsightCards.vendorSpend(vendors, footnote: ClientFacts.freshnessSentence(appState.clientData)) else { return ("No vendor spend data available to chart for the loaded period.", nil) }
+            let top = vendors[0]
+            return ("Showing vendor spend for \(ClientFacts.periodLabel(appState.period)). The largest is \(top.vendorName) at \(top.total.accountingDescription).", .presentChart(.insight(card)))
+        case "receivables", "payables":
+            let isAR = kind == "receivables"
+            if isAR && appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            if !isAR && appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            guard let card = InsightCards.aging(isAR ? appState.agedReceivablesLines : appState.agedPayablesLines, receivables: isAR, footnote: ClientFacts.freshnessSentence(appState.clientData)) else {
+                return ("The aged \(isAR ? "receivables" : "payables") report has nothing open.", nil)
+            }
+            return ("\(isAR ? "Customers owe" : "We owe vendors") \(card.headline ?? "") on the aging report.", .presentChart(.insight(card)))
+        case "cash_outlook":
+            if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+            if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+            guard let f = appState.thirteenWeekForecast else { return ("Today's cash balance isn't loaded; sync first.", nil) }
+            let card = InsightCards.cashOutlook(f, receivablesOver60: nil, footnote: ClientFacts.freshnessSentence(appState.clientData))
+            return ("Today's cash is \(f.startingCash.accountingDescription); the lowest projected week is \(f.lowestWeek.map { "week \($0.number) at \($0.endingCash.accountingDescription)" } ?? "not available").", .presentChart(.insight(card)))
+        case "revenue_trend", "net_income_trend":
+            let metric: InsightCards.TrendMetric = kind == "revenue_trend" ? .revenue : .netIncome
+            guard let card = InsightCards.trend(metric, monthly: appState.historySnapshot?.monthlyProfitAndLoss ?? [], focus: appState.period, footnote: ClientFacts.freshnessSentence(appState.clientData)) else {
+                return ("The monthly trend needs the 24-month history; load it on Client Diagnostics.", nil)
+            }
+            return ("Showing \(metric == .revenue ? "revenue" : "net income") by month.", .presentChart(.insight(card)))
         case "income_vs_expenses":
             guard let segments = ProfitAndLossWaterfall.segments(from: appState.profitAndLossLines) else {
                 return ("Income vs. expenses data isn't available to chart for the loaded period.", nil)

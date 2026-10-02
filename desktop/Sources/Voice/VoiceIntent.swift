@@ -160,6 +160,8 @@ public enum VoiceIntent: Equatable, Sendable {
     case upcomingDeadlines
     /// "any new accounts" — bank, card or loan accounts new in QuickBooks.
     case newAccounts
+    /// "will we run out of cash" — the 13-week outlook card.
+    case cashOutlook
 }
 
 public enum KPIMetric: String, Equatable, Sendable {
@@ -181,4 +183,8 @@ public enum KPIMetric: String, Equatable, Sendable {
         }
     }
 }
-public enum ChartKind: String, Equatable, Sendable { case expenseDrivers = "expense_drivers", vendorSpend = "vendor_spend", incomeVsExpenses = "income_vs_expenses", pareto = "pareto_cost_drivers" }
+public enum ChartKind: String, Equatable, Sendable {
+    case expenseDrivers = "expense_drivers", vendorSpend = "vendor_spend", incomeVsExpenses = "income_vs_expenses", pareto = "pareto_cost_drivers"
+    // Insight cards (2026-10-02).
+    case receivables = "receivables", payables = "payables", cashOutlook = "cash_outlook", revenueTrend = "revenue_trend", netIncomeTrend = "net_income_trend"
+}

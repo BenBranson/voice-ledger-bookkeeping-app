@@ -85,3 +85,22 @@ struct PracticeToolsVoiceTests {
         #expect(route("any new accounts") == .newAccounts)
     }
 }
+
+@Suite("Insight card phrases (2026-10-02)")
+struct InsightCardPhraseTests {
+    func route(_ s: String) -> VoiceIntent { VoiceIntentRouter.match(text: s, context: .empty) }
+
+    @Test("Chart and card phrases route; bare KPI questions still answer as numbers")
+    func phrases() {
+        #expect(route("revenue by month") == .chart(.revenueTrend))
+        #expect(route("chart revenue") == .chart(.revenueTrend))
+        #expect(route("net income trend") == .chart(.netIncomeTrend))
+        #expect(route("receivables chart") == .chart(.receivables))
+        #expect(route("payables aging") == .chart(.payables))
+        #expect(route("will we run out of cash") == .cashOutlook)
+        #expect(route("cash outlook") == .cashOutlook)
+        #expect(route("what's our revenue") == .kpi(.revenue, .current))
+        #expect(route("go to aged receivables") == .navigate(.agedReceivablesReport))
+        #expect(route("cash flow forecast") == .navigate(.cashFlowForecast))
+    }
+}

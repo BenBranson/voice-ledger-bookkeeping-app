@@ -147,6 +147,11 @@ public enum VoiceIntentRouter {
         "what deadlines are coming up", "upcoming deadlines", "next deadline", "what's the next deadline", "whats the next deadline",
         "when is sales tax due", "when is the sales tax due", "what filings are due", "what's due this month", "whats due this month"
     ]
+    private static let cashOutlookPhrases: Set<String> = [
+        "cash outlook", "cash forecast", "13 week forecast", "thirteen week forecast", "13 week cash forecast", "thirteen week cash forecast",
+        "will we run out of cash", "are we going to run out of cash", "will we run out of money", "are we going to run out of money",
+        "what's our cash outlook", "whats our cash outlook", "how does cash look", "how is cash looking", "cash projection", "project our cash"
+    ]
     private static let newAccountPhrases: Set<String> = [
         "any new accounts", "are there any new accounts", "new accounts", "did they open any new accounts", "did the client open any new accounts",
         "any new bank accounts", "any new credit cards", "new bank accounts", "new credit cards"
@@ -165,7 +170,7 @@ public enum VoiceIntentRouter {
         for d in VoiceDestination.allCases { all += spokenForms(of: d.menuTitle).map { "go to \($0)" } }
         all += Array(goBackPhrases) + Array(nextPhrases) + Array(recapPhrases) + Array(startReviewPhrases) + Array(anomalyPhrases)
             + Array(recheckPhrases) + Array(explainPhrases) + Array(openInQuickBooksPhrases) + Array(checkFixedPhrases)
-            + Array(deadlinePhrases) + Array(newAccountPhrases)
+            + Array(deadlinePhrases) + Array(newAccountPhrases) + Array(cashOutlookPhrases)
         all += CommandGrammar.knownPhrases
         return all
     }
@@ -294,6 +299,7 @@ public enum VoiceIntentRouter {
         if checkFixedPhrases.contains(normalized) { return .checkCurrentFixed }
         if deadlinePhrases.contains(normalized) { return .upcomingDeadlines }
         if newAccountPhrases.contains(normalized) { return .newAccounts }
+        if cashOutlookPhrases.contains(normalized) { return .cashOutlook }
 
         // The command grammar (2026-09-30) takes everything that used to fall
         // through to the model: finding groups, amounts, balances, vendors,

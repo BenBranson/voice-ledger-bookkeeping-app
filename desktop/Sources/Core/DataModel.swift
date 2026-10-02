@@ -443,3 +443,24 @@ public struct NormalizedDataSet: Sendable {
         self.companyFacts = companyFacts
     }
 }
+
+
+extension LedgerAccount {
+    /// Liabilities, equity and income carry credit balances. QBO's
+    /// `CurrentBalance` (stored as-is) is NEGATIVE for these when normal:
+    /// Accounts Payable owed $3,523.60 reads -3523.60 (verified against the
+    /// aging report, owner test 2026-10-02; `NegativeBalanceRule` relies on
+    /// the same convention).
+    public var isCreditNormal: Bool {
+        switch accountType {
+        case .accountsPayable, .creditCard, .otherCurrentLiability, .longTermLiability, .equity, .income, .otherIncome: return true
+        default: return false
+        }
+    }
+
+    /// The balance as the Balance Sheet shows it: positive when normal
+    /// (cash on hand, money owed on a card), negative when on the wrong side.
+    public var presentedBalance: Money { isCreditNormal ? Money(minorUnits: -currentBalance.minorUnits, currency: currentBalance.currency) : currentBalance }
+
+    public var hasAbnormalBalance: Bool { presentedBalance.minorUnits < 0 }
+}

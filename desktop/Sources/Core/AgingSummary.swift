@@ -38,8 +38,42 @@ public enum AgingSummary {
         public let total: Money?
     }
 
+    /// One row per top-level customer or vendor. A parent with sub-customers
+    /// becomes a single row from its "Total <name>" line, because QBO puts the
+    /// PARENT'S OWN open invoices only on that total line, not on a leaf row
+    /// (owner test 2026-10-02: Freeman Sporting Goods' own $2,169.61 was
+    /// missing from every sum built from leaf rows). The grand TOTAL row is
+    /// excluded.
+    public static func topLevelRows(_ lines: [AgingLine]) -> [AgingLine] {
+        var out: [AgingLine] = []
+        var openHeader: AgingLine?          // outermost open group
+        for line in lines {
+            let isHeader = !line.isSummary && line.total == nil && line.current == nil && line.days91AndOver == nil
+            if let header = openHeader {
+                // Inside a group: wait for the summary that closes it.
+                if line.isSummary && line.depth == header.depth && line.label == "Total \(header.label)" {
+                    out.append(AgingLine(label: header.label, current: line.current, days1to30: line.days1to30, days31to60: line.days31to60,
+                                         days61to90: line.days61to90, days91AndOver: line.days91AndOver, total: line.total, depth: header.depth,
+                                         isSummary: false, entityID: header.entityID))
+                    openHeader = nil
+                }
+                continue
+            }
+            if isHeader { openHeader = line; continue }
+            if line.isSummary { continue }      // grand TOTAL or a stray subtotal
+            out.append(line)
+        }
+        return out
+    }
+
     public static func bucketTotals(_ lines: [AgingLine]) -> BucketTotals? {
-        let leaves = lines.filter { !$0.isSummary }
+        // The report's own TOTAL row is authoritative (it includes parents'
+        // own invoices that no leaf row carries).
+        if let grand = lines.last(where: { $0.isSummary && $0.label.uppercased() == "TOTAL" }), grand.total != nil {
+            return BucketTotals(current: grand.current, days1to30: grand.days1to30, days31to60: grand.days31to60,
+                                days61to90: grand.days61to90, days91AndOver: grand.days91AndOver, total: grand.total)
+        }
+        let leaves = topLevelRows(lines)
         guard !leaves.isEmpty else { return nil }
         guard let currency = leaves.compactMap({ $0.total?.currency ?? $0.current?.currency }).first else { return nil }
 

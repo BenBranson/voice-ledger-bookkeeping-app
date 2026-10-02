@@ -97,6 +97,15 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 	<string>15.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Voice Ledger developer test hook (sandbox only)</string>
+			<key>CFBundleURLSchemes</key>
+			<array><string>voiceledger-dev</string></array>
+		</dict>
+	</array>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Voice Ledger transcribes your voice commands on this Mac using Apple's on-device speech recognition. Audio is never sent to Apple or anyone else.</string>
 	<key>NSMicrophoneUsageDescription</key>

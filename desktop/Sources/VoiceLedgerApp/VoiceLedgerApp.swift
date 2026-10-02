@@ -59,6 +59,18 @@ struct VoiceLedgerApp: App {
                 }
             }
             .frame(minWidth: 720, minHeight: 480)
+            // Developer test hook (2026-10-02): voiceledger-dev://ask?q=...&silent=1
+            // runs a question through the same path as the typed command box,
+            // so Moneypenny can be tested end to end. Sandbox companies only;
+            // voice never writes to QuickBooks either way.
+            .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+            .onOpenURL { url in
+                guard url.scheme == "voiceledger-dev", url.host == "ask", let appState, appState.environment != .production,
+                      let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+                      let q = items.first(where: { $0.name == "q" })?.value, !q.isEmpty else { return }
+                appState.voiceEngine.muteSpeech = items.contains { $0.name == "silent" && $0.value == "1" }
+                Task { await appState.voiceEngine.handleTypedCommand(q) }
+            }
             .onAppear {
                 // Confirmed live 2026-08-28: a raw (unbundled) executable
                 // launched via `nohup binary &` from a script — as the
@@ -83,6 +95,7 @@ struct VoiceLedgerApp: App {
                 appDelegate.onReopenWithNoWindows = { openWindow(id: Self.mainWindowID) }
             }
         }
+        .handlesExternalEvents(matching: ["*"])
         .commands {
             // File > "Export Page as PDF…" — a `Commands` scene builder has
             // no reference to the specific `RootView` instance currently on

@@ -600,6 +600,9 @@ public final class VoiceEngine: NSObject {
     /// rather than a separate, weaker text-only path. The only thing
     /// skipped is speech-to-text itself — everything downstream of having
     /// real text is identical.
+    /// Set by the developer test hook so automated questions don't speak aloud.
+    public var muteSpeech = false
+
     public func handleTypedCommand(_ text: String) async {
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         commandTask?.cancel()
@@ -635,9 +638,10 @@ public final class VoiceEngine: NSObject {
         }
         NSLog("Voice timing: command to screen %.2fs", Date().timeIntervalSince(commandStarted))
         await appState.saveVoiceSessionContext(context)
-        let actionDescription: String
+        var actionDescription: String
         if let uiAction = turn.uiAction { actionDescription = describe(uiAction) }
         else { actionDescription = "No screen action" }
+        if let card = cardShownThisTurn { actionDescription += " + card: \(card)"; cardShownThisTurn = nil }
         await recordTranscript(speaker: .assistant, text: "COMMAND RESULT\nHEARD: \(text)\nSOURCE: \(transcriptSource.isEmpty ? "typed" : transcriptSource)\nACTION: \(actionDescription) → \(appState.voiceLogLabel)\nRESPONSE: \(turn.speech)")
         guard !Task.isCancelled else { return }
         // Fresh data: the scope sentence stays on screen but isn't read aloud.
@@ -654,7 +658,9 @@ public final class VoiceEngine: NSObject {
         case .openFindings(let ids): return ids.count == 1 ? "Opened one finding" : "Opened \(ids.count) findings for comparison"
         case .goBack: return "Went back"
         case .goForward: return "Went forward"
-        case .presentChart: return "Displayed chart"
+        case .presentChart(let request):
+            if case .insight(let card) = request { return "Displayed card: \(card.title)" }
+            return "Displayed chart"
         }
     }
 
@@ -671,7 +677,7 @@ public final class VoiceEngine: NSObject {
     // MARK: - Speaking
 
     private func speak(_ text: String) async {
-        guard !text.isEmpty else {
+        guard !text.isEmpty, !muteSpeech else {
             resumeListeningIfConversationMode()
             return
         }
@@ -883,7 +889,11 @@ public final class VoiceEngine: NSObject {
         case .accountBalance(let name):
             let fact = ClientFacts.accountBalance(appState.clientData, name: name)
             guard let account = fact.value else { return VoiceTurn(speech: fact.note ?? "I couldn't find that account.") }
-            return VoiceTurn(speech: ClientText.polish("\(account.name) currently shows \(account.balance.accountingDescription). \(fact.note ?? "") \(fact.scope.sentence())"))
+            let data = appState.clientData
+            if let ledger = data.searchableAccounts.first(where: { $0.id == account.id }) {
+                showCard(InsightCards.account(ledger, postings: AmountSearch.transactions(for: ledger, in: data.searchableTransactions), footnote: cardFootnote))
+            }
+            return VoiceTurn(speech: ClientText.polish("\(ClientFacts.balanceSentence(name: account.name, type: account.type, rawBalance: account.balance)) \(fact.note ?? "") \(fact.scope.sentence())"))
 
         case .searchAmount(let amount):
             let result = await execute(AIToolCall(id: "grammar", name: "search_transactions", arguments: ["query": .string(amount.accountingDescription)]))
@@ -894,11 +904,23 @@ public final class VoiceEngine: NSObject {
         case .searchVendor(let name):
             let result = await execute(AIToolCall(id: "grammar", name: "get_vendor_details", arguments: ["vendor_name": .string(name)]))
             appState.searchQuery = name
+            showCard(InsightCards.counterparty(name, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction ?? .navigate(.amountSearch))
 
         case .kpi(let metric, let period):
             let metricName = metric.toolName
             let result = await execute(AIToolCall(id: "grammar", name: "get_financial_summary", arguments: ["metric": .string(metricName), "period": .string(period.rawValue)]))
+            if period == .current {
+                switch metric {
+                case .revenue, .netIncome:
+                    let monthly = appState.historySnapshot?.monthlyProfitAndLoss ?? []
+                    let current = metric == .revenue ? FinancialKPIs.totalIncome(from: appState.profitAndLossLines) : TaxEstimate.netIncome(from: appState.profitAndLossLines)
+                    showCard(InsightCards.trend(metric == .revenue ? .revenue : .netIncome, monthly: monthly, focus: appState.period, footnote: cardFootnote))
+                case .cashBalance:
+                    showCard(await cashOutlookCard())
+                default: break
+                }
+            }
             return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
 
         case .freshness:
@@ -911,6 +933,7 @@ public final class VoiceEngine: NSObject {
             var speech = "We owe \(owed.vendor) \(owed.total.accountingDescription)"
             if owed.overdue.minorUnits > 0 { speech += ": \(owed.current.accountingDescription) current and \(owed.overdue.accountingDescription) past due" }
             if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
+            showCard(InsightCards.counterparty(owed.vendor, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + ". " + fact.scope.sentence()))
 
         case .totalOwed:
@@ -923,6 +946,7 @@ public final class VoiceEngine: NSObject {
             var speech = "We owe vendors \(owed.accountingDescription) in total"   // `owed` is the page's TOTAL (net of credits)
             if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days past due" }
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
+            showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
 
         case .totalReceivable:
@@ -941,6 +965,7 @@ public final class VoiceEngine: NSObject {
                 speech = "Customers owe us \(split.owed.accountingDescription)"
             }
             if split.over60Owed.minorUnits > 0 { speech += ". \(split.over60Owed.accountingDescription) of it is more than 60 days old" }
+            showCard(InsightCards.aging(appState.agedReceivablesLines, receivables: true, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
 
         case .startRoutine:
@@ -1084,6 +1109,7 @@ public final class VoiceEngine: NSObject {
             }
             let lines = next.map { "\(ClientText.polish($0.date.formatted)): \($0.title)." }.joined(separator: " ")
             let note = appState.practiceProfile.reviewed ? "" : " This client's compliance profile hasn't been reviewed yet, so check which filings apply."
+            showCard(InsightCards.deadlines(appState.complianceDeadlines, checks: appState.complianceChecks, clientName: appState.displayCompanyName))
             return VoiceTurn(speech: "Next up. \(lines)\(note)", uiAction: .navigate(.complianceCalendar))
 
         case .newAccounts:
@@ -1092,7 +1118,19 @@ public final class VoiceEngine: NSObject {
                 return VoiceTurn(speech: "No new bank, card or loan accounts since the last sync.")
             }
             let names = open.map { "\($0.name), \($0.type.lowercased())" }.joined(separator: "; ")
+            showCard(InsightCards.newAccounts(open))
             return VoiceTurn(speech: "\(open.count) new account\(open.count == 1 ? "" : "s") in QuickBooks: \(names). Each needs statements and monthly reconciliation.", uiAction: .navigate(.dashboard))
+
+        case .cashOutlook:
+            guard let card = await cashOutlookCard() else {
+                return VoiceTurn(speech: "I need today's cash balance from the Balance Sheet first. Sync, then ask again.", uiAction: .navigate(.cashFlowForecast))
+            }
+            showCard(card)
+            let low = appState.thirteenWeekForecast?.lowestWeek
+            let neg = appState.thirteenWeekForecast?.firstNegativeWeek
+            let speech = neg.map { "Cash is projected below zero in week \($0.number), at \($0.endingCash.accountingDescription)." }
+                ?? low.map { "Cash stays above zero for 13 weeks. The lowest point is week \($0.number), at \($0.endingCash.accountingDescription)." } ?? ""
+            return VoiceTurn(speech: ClientText.polish("Today's cash is \(card.headline ?? ""). " + speech), uiAction: .navigate(.cashFlowForecast))
 
         case .unrecognized:
             // A near-miss of a real command ("vendor by spin") is answered in
@@ -1134,6 +1172,7 @@ public final class VoiceEngine: NSObject {
         if let total, list.count > 0 { speech += ", \(total.accountingDescription) in total" }
         speech += "."
         if let top = list.first, list.count > 0 { speech += " Largest: \(ClientText.polish(top.title))." }
+        showCard(InsightCards.findings(list, group: group, title: label.prefix(1).uppercased() + label.dropFirst(), footnote: cardFootnote))
         return VoiceTurn(speech: speech, uiAction: .showFindingGroup(group))
     }
 
@@ -1292,6 +1331,36 @@ public final class VoiceEngine: NSObject {
             let offer = pending.commandText ?? ""
             return await handleWithTools(rawText: "Yes, do it. My earlier request was: \"\(pending.summary)\". You replied: \"\(offer)\". Now do what you offered, using a tool.")
         }
+    }
+
+    /// Pops up a card after the turn's own navigation has landed, so closing
+    /// the card leaves the bookkeeper on the matching page.
+    /// The card this turn popped up, for the voice log.
+    private var cardShownThisTurn: String?
+
+    private func showCard(_ card: InsightCard?) {
+        guard let card else { return }
+        cardShownThisTurn = card.title
+        let request = ChartRequest.insight(card)
+        appState.presentedChart = nil
+        Task { @MainActor [appState] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            appState.presentedChart = request
+        }
+    }
+
+    private var cardFootnote: String { ClientFacts.freshnessSentence(appState.clientData) }
+
+    private func cashOutlookCard() async -> InsightCard? {
+        if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+        if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+        if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+        if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+        guard let forecast = appState.thirteenWeekForecast else { return nil }
+        // Money actually owed more than 60 days (credits not netted), the same figure "who owes us" speaks.
+        let over60 = Money(minorUnits: AgingSummary.topLevelRows(appState.agedReceivablesLines).reduce(0) { sum, row in
+            sum + max(0, InsightCards.m(row.days61to90).minorUnits) + max(0, InsightCards.m(row.days91AndOver).minorUnits) }, currency: .usd)
+        return InsightCards.cashOutlook(forecast, receivablesOver60: over60, footnote: cardFootnote)
     }
 
     /// The finding being worked on: the one on screen, else the last one opened.

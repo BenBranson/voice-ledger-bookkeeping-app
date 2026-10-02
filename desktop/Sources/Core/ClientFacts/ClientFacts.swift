@@ -225,6 +225,22 @@ public enum ClientFacts {
                     note: match == nil ? "No account named “\(q)” in the chart of accounts." : "Balances are QuickBooks' current balances, which include activity after \(periodLabel(d.period)).")
     }
 
+    /// One plain sentence for an account's balance, signed the way the
+    /// Balance Sheet reads (QBO stores liabilities as negative when normal).
+    public static func balanceSentence(name: String, type: LedgerAccountType, rawBalance: Money) -> String {
+        let probe = LedgerAccount(id: "", name: name, accountType: type, currentBalance: rawBalance)
+        let shown = probe.presentedBalance
+        let amount = Money(minorUnits: abs(shown.minorUnits), currency: shown.currency).accountingDescription
+        switch type {
+        case .bank:
+            return shown.minorUnits < 0 ? "\(name) is overdrawn by \(amount)." : "\(name) has \(amount)."
+        case .creditCard, .accountsPayable, .otherCurrentLiability, .longTermLiability:
+            return shown.minorUnits < 0 ? "\(name) shows \(amount) overpaid, which is unusual for a liability." : "We owe \(amount) on \(name)."
+        default:
+            return probe.hasAbnormalBalance ? "\(name) shows \(shown.accountingDescription), which is on the unusual side for this kind of account." : "\(name) shows \(shown.accountingDescription)."
+        }
+    }
+
     public static func chartOfAccounts(_ d: ClientData, types: Set<LedgerAccountType>? = nil) -> Fact<[AccountBalance]> {
         let list = d.searchableAccounts.filter { types?.contains($0.accountType) ?? true }
             .map { AccountBalance(id: $0.id, name: $0.name, type: $0.accountType, balance: $0.currentBalance) }

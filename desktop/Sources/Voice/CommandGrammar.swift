@@ -62,7 +62,12 @@ public enum CommandGrammar {
         (.vendorSpend, ["vendors", "vendor", "vendor spend", "spend by vendor", "top vendors", "vendor by spend", "vendors by spend", "top vendors by spend",
                         "vendor spending", "spending by vendor", "biggest vendors", "largest vendors", "who do we spend the most with", "who do we pay the most"]),
         (.incomeVsExpenses, ["income vs expenses", "income versus expenses", "income and expenses", "revenue vs expenses", "revenue versus expenses"]),
-        (.pareto, ["pareto", "cost drivers", "biggest cost drivers"])
+        (.pareto, ["pareto", "cost drivers", "biggest cost drivers"]),
+        (.receivables, ["receivables", "accounts receivable", "receivables aging", "aging of receivables", "customer aging", "who owes us chart", "receivables by customer"]),
+        (.payables, ["payables", "accounts payable", "payables aging", "aging of payables", "vendor aging", "bills by vendor", "payables by vendor"]),
+        (.revenueTrend, ["revenue", "sales", "revenue trend", "revenue by month", "monthly revenue", "sales by month", "sales trend", "income trend"]),
+        (.cashOutlook, ["cash", "cash balance", "cash outlook", "cash forecast", "cash projection"]),
+        (.netIncomeTrend, ["net income", "profit", "net income trend", "net income by month", "profit by month", "monthly profit", "profit trend", "monthly net income"])
     ]
 
     /// Bare phrases the grammar answers, for "did you mean" suggestions.

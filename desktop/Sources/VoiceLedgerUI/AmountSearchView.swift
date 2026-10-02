@@ -205,7 +205,7 @@ public struct AmountSearchView: View {
                         Link(destination: register) { Label("Open account in QBO", systemImage: "arrow.up.right.square") }.font(VLTypography.caption())
                     }
                 }
-                Text("\(account.name) currently shows \(account.currentBalance.accountingDescription). A balance is the running total of many postings, so no single transaction matches it. \(postings.isEmpty ? "No postings to this account are in the loaded data — load the 24-month history to see them." : "The \(postings.count) posting\(postings.count == 1 ? "" : "s") paid from or into it in the loaded data:")")
+                Text("\(ClientFacts.balanceSentence(name: account.name, type: account.accountType, rawBalance: account.currentBalance)) A balance is the running total of many postings, so no single transaction matches it. \(postings.isEmpty ? "No postings to this account are in the loaded data — load the 24-month history to see them." : "The \(postings.count) posting\(postings.count == 1 ? "" : "s") paid from or into it in the loaded data:")")
                     .font(VLTypography.caption()).foregroundStyle(VLColor.textSecondary)
                 ForEach(postings.suffix(25)) { transaction in
                     row(transaction)
