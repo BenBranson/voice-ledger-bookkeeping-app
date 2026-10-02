@@ -1985,6 +1985,7 @@ struct RootView: View {
                 },
                 clientQuestionThreads: ClientQuestionDrafter.threads(from: state.activityLog),
                 conversationHistory: state.conversationHistory.sorted { $0.askedAt > $1.askedAt },
+                currentOpenFindingCount: state.findings.filter { $0.status == .open }.count,
                 onExport: { format in
                     let status = MonthEndChecklist.completionStatus(completions: state.checklistCompletions, period: state.currentPeriod)
                     state.exportTable(

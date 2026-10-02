@@ -1408,7 +1408,8 @@ public final class AppState {
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format, model: model)
+            let raw = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format, model: model)
+            let answer = verifiedAnswer(raw, context: contextText, question: question, history: history)
             askAIAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: conversationTier, question: question, answer: answer, format: format)
         } catch {
@@ -1482,7 +1483,8 @@ public final class AppState {
         askingSecondOpinionContextKeys.insert(contextKey)
         if secondOpinionError?.contextKey == contextKey { secondOpinionError = nil }
         do {
-            let answer = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary, format: format)
+            let raw = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary, format: format)
+            let answer = verifiedAnswer(raw, context: contextText, question: question, history: [])
             secondOpinionAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: .secondary, question: question, answer: answer, format: format)
         } catch {
@@ -1589,12 +1591,27 @@ public final class AppState {
     /// real report generation (`format == .report`), not every incidental
     /// follow-up question — the file is meant to be a week-over-week/
     /// month-over-month report record, not a full chat transcript.
+    /// Every typed Ask AI answer passes through here (rule 1: the model never
+    /// supplies an authoritative number). A sentence citing a figure that is
+    /// not in the context the model was given, or in what the user typed, is
+    /// removed; the rest is shown with dollars formatted like the pages.
+    private func verifiedAnswer(_ raw: String, context: String, question: String, history: [AskAIHistoryTurn]) -> String {
+        let source = ([context, question] + history.map(\.content)).joined(separator: "\n")
+        let guarded = NumberGuard.scrubProse(ClientText.polish(raw), source: ClientText.polish(source))
+        return guarded.text
+    }
+
+    private var dataSnapshotPeriod: String { "\(period.year)-\(String(format: "%02d", period.month))" }
+    var openFindingTotal: Int { findings.filter { $0.status == .open }.count }
+
     private func recordConversation(contextKey: String, tier: AskAIConversationEntry.Tier, question: String, answer: String, format: AskAIFormat) async {
         let entry = AskAIConversationEntry(
             contextLabel: conversationLabel(for: contextKey),
             tier: tier,
             question: question,
-            answer: answer
+            answer: answer,
+            period: dataSnapshotPeriod,
+            openFindingCount: openFindingTotal
         )
         conversationHistory.append(entry)
         try? await store.appendAskAIConversationEntry(entry)

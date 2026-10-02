@@ -97,4 +97,39 @@ public enum NumberGuard {
         let text = (kept.isEmpty ? [] : [kept.joined(separator: " ")]) + [fallback]
         return Result(text: text.joined(separator: " "), replacedSentences: replaced)
     }
+
+    /// For typed Ask AI answers: same rule as `check` (a sentence citing a
+    /// figure that is not in `source` is removed), but paragraphs are kept
+    /// and nothing is substituted, so a report answer is never replaced by
+    /// raw context lines.
+    public struct ProseResult: Sendable, Equatable {
+        public let text: String
+        public let removedSentences: Int
+    }
+
+    public static func scrubProse(_ answer: String, source: String) -> ProseResult {
+        let allowed = Set(amounts(in: source).map(key))
+        var removed = 0
+        var paragraphs: [String] = []
+        for paragraph in answer.components(separatedBy: "\n") {
+            if paragraph.trimmingCharacters(in: .whitespaces).isEmpty { paragraphs.append(""); continue }
+            let sentences = paragraph.replacingOccurrences(of: #"(?<=[.!?])\s+"#, with: "\u{1F}", options: .regularExpression)
+                .split(separator: "\u{1F}").map { String($0) }
+            let kept = sentences.filter { sentence in
+                let bad = amounts(in: sentence).map(key).filter { !allowed.contains($0) }
+                if !bad.isEmpty { removed += 1 }
+                return bad.isEmpty
+            }
+            paragraphs.append(kept.joined(separator: " "))
+        }
+        if removed == 0 { return ProseResult(text: answer, removedSentences: 0) }
+        let text = paragraphs.joined(separator: "\n")
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty {
+            return ProseResult(text: "I could not verify the figures in that answer against this page's data, so I withheld it. Ask again, or ask about one specific item.", removedSentences: removed)
+        }
+        let note = "Note: \(removed) sentence\(removed == 1 ? "" : "s") removed because \(removed == 1 ? "it cited a figure" : "they cited figures") that is not in this page's data."
+        return ProseResult(text: text + "\n\n" + note, removedSentences: removed)
+    }
 }

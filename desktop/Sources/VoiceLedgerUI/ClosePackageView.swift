@@ -76,6 +76,8 @@ public struct ClosePackageView: View {
     /// passed through as-is (already sorted most-recent-first by the app
     /// layer, same convention as `recentActivity`).
     private let conversationHistory: [AskAIConversationEntry]
+    /// Open findings right now, so an older saved answer can be flagged.
+    private let currentOpenFindingCount: Int
     private let monthlyReportCard: AnyView?
     private let onExport: (ReportExportFormat) -> Void
     /// The designed, multi-section cover-page-plus-sections PDF
@@ -138,6 +140,7 @@ public struct ClosePackageView: View {
         carryForwardItems: [(mark: CarryForwardMark, findingTitle: String, dollarExposure: Money)] = [],
         clientQuestionThreads: [ClientQuestionDrafter.Thread] = [],
         conversationHistory: [AskAIConversationEntry] = [],
+        currentOpenFindingCount: Int = 0,
         onExport: @escaping (ReportExportFormat) -> Void = { _ in },
         onExportBrandedPDF: @escaping (String?) -> Void = { _ in },
         isSyncing: Bool = false,
@@ -179,6 +182,7 @@ public struct ClosePackageView: View {
         self.carryForwardItems = carryForwardItems
         self.clientQuestionThreads = clientQuestionThreads
         self.conversationHistory = conversationHistory
+        self.currentOpenFindingCount = currentOpenFindingCount
         self.onExport = onExport
         self.onExportBrandedPDF = onExportBrandedPDF
         self.isSyncing = isSyncing
@@ -597,6 +601,16 @@ public struct ClosePackageView: View {
                         Text("A: \(entry.answer)")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
+                        if let label = entry.dataLabel {
+                            Text("Answered using: \(label)")
+                                .font(VLTypography.caption())
+                                .foregroundStyle(VLColor.textMuted)
+                        }
+                        if let stale = entry.staleNote(currentPeriod: "\(period.year)-\(String(format: "%02d", period.month))", currentOpenCount: currentOpenFindingCount) {
+                            Text(stale)
+                                .font(VLTypography.caption())
+                                .foregroundStyle(Color.orange)
+                        }
                         if entry.id != conversationHistory.last?.id {
                             Divider().overlay(VLColor.border)
                         }
