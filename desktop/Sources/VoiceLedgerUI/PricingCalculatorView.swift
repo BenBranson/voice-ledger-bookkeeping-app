@@ -54,6 +54,10 @@ public struct PricingCalculatorView: View {
     @State private var salesTaxManagement = false
     @State private var multipleBankAccounts = false
     @State private var inventoryTracking = false
+    @State private var heavyInventory = false
+    @State private var multiStateSales = false
+    @State private var cashHeavy = false
+    @State private var multipleEntities = false
 
     // Cleanup project inputs
     @State private var monthsBehind: PricingCalculator.MonthsBehindTier = .threeToSix
@@ -131,7 +135,8 @@ public struct PricingCalculatorView: View {
     }
 
     private var monthlyFlags: PricingCalculator.MonthlyComplexityFlags {
-        .init(payrollProcessing: payrollProcessing, salesTaxManagement: salesTaxManagement, multipleBankAccounts: multipleBankAccounts, inventoryTracking: inventoryTracking)
+        .init(payrollProcessing: payrollProcessing, salesTaxManagement: salesTaxManagement, multipleBankAccounts: multipleBankAccounts, inventoryTracking: inventoryTracking,
+              heavyInventory: heavyInventory, multiStateSales: multiStateSales, cashHeavy: cashHeavy, multipleEntities: multipleEntities)
     }
 
     private var monthlyQuote: PricingCalculator.MonthlyQuote {
@@ -376,6 +381,18 @@ public struct PricingCalculatorView: View {
                 Toggle("Sales tax management (+1 hr/mo)", isOn: $salesTaxManagement)
                 Toggle("5+ bank/credit accounts (+1 hr/mo)", isOn: $multipleBankAccounts)
                 Toggle("Inventory tracking (+2 hrs/mo)", isOn: $inventoryTracking)
+                Text("HARD-TO-PRICE CLIENTS")
+                    .font(VLTypography.eyebrow())
+                    .tracking(VLTypography.eyebrowTracking)
+                    .foregroundStyle(.orange)
+                    .padding(.top, VLSpacing.xs)
+                Toggle("Heavy inventory, e.g. grocery or convenience (+4 hrs/mo)", isOn: $heavyInventory)
+                Toggle("Sells into several states (+1.5 hrs/mo)", isOn: $multiStateSales)
+                Toggle("Cash-heavy business (+1.5 hrs/mo)", isOn: $cashHeavy)
+                Toggle("Two or more related entities (+2 hrs/mo)", isOn: $multipleEntities)
+                ForEach(monthlyFlags.warnings, id: \.self) { warning in
+                    Text(warning).font(VLTypography.caption()).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

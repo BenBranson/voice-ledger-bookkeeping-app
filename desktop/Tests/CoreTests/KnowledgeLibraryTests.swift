@@ -48,4 +48,13 @@ struct KnowledgeLibraryTests {
         #expect(top("how do I book factoring fees for a hot shot trucker").contains("trucking"))
         #expect(top("oilfield service job costing by well and operator").contains("oilfield"))
     }
+
+    @Test("New industries and economic nexus are found")
+    func newIndustries() {
+        func top(_ q: String) -> String { library.search(q).first?.note.lowercased() ?? "" }
+        #expect(top("how do I book lottery and money order collections at a convenience store").contains("grocery"))
+        #expect(top("restaurant tips payable and daily sales journal from the point of sale").contains("restaurant"))
+        #expect(top("do I need to collect sales tax in another state economic nexus threshold").contains("nexus"))
+        #expect(top("tenant security deposits rental property").contains("rental"))
+    }
 }

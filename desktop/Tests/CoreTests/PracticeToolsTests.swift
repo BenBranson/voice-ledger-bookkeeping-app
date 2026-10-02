@@ -188,3 +188,58 @@ struct EconomicNexusTests {
         #expect(old.isEmpty)
     }
 }
+
+@Suite("Industry templates, all industries")
+struct IndustryCatalogTests {
+    @Test("Every industry has accounts, tracking advice and red flags; grocery is high complexity")
+    func complete() {
+        for kind in IndustryTemplate.Kind.allCases {
+            #expect(!IndustryTemplate.accounts(for: kind).isEmpty, "\(kind) accounts")
+            #expect(!IndustryTemplate.tracking(for: kind).isEmpty, "\(kind) tracking")
+            #expect(!IndustryTemplate.redFlags(for: kind).isEmpty, "\(kind) red flags")
+        }
+        #expect(IndustryTemplate.Kind.groceryConvenience.complexity == .high)
+        #expect(IndustryTemplate.Kind.groceryConvenience.usesInventory && IndustryTemplate.Kind.restaurant.usesInventory)
+        #expect(!IndustryTemplate.Kind.professionalServices.usesInventory)
+    }
+}
+
+@Suite("Hard-to-price intake flags")
+struct ComplexityFlagTests {
+    @Test("Flags add hours and warnings; both heavy inventory and cash-heavy adds the custom-engagement warning")
+    func flags() {
+        let f = PricingCalculator.MonthlyComplexityFlags(heavyInventory: true, cashHeavy: true)
+        let base = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: Money(minorUnits: 100_00, currency: .usd), flags: .init())
+        let quote = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: Money(minorUnits: 100_00, currency: .usd), flags: f)
+        #expect(quote.totalHours == base.totalHours + 5.5)
+        #expect(f.warnings.count == 3)
+    }
+
+    @Test("Intakes saved before the new flags still load")
+    func legacy() throws {
+        let json = #"{"payrollProcessing":true,"salesTaxManagement":false,"multipleBankAccounts":false,"inventoryTracking":true}"#
+        let f = try JSONDecoder().decode(PricingCalculator.MonthlyComplexityFlags.self, from: Data(json.utf8))
+        #expect(f.payrollProcessing && f.inventoryTracking && !f.heavyInventory && !f.multipleEntities)
+    }
+}
+
+@Suite("Inventory review")
+struct InventoryReviewTests {
+    func usd(_ d: Int64) -> Money { Money(minorUnits: d * 100, currency: .usd) }
+    func month(_ m: Int, sales: Int64, cogs: Int64) -> MonthlyReport {
+        MonthlyReport(period: AccountingPeriod(year: 2026, month: m), lines: [
+            ReportLine(label: "Total Income", amount: usd(sales), depth: 0, isSummary: true),
+            ReportLine(label: "Total Cost of Goods Sold", amount: usd(cogs), depth: 0, isSummary: true)])
+    }
+
+    @Test("Cost-of-goods share by month, shift flagged, books vs count")
+    func review() {
+        let r = InventoryReview.build(monthlyProfitAndLoss: [month(4, sales: 10_000, cogs: 3_000), month(5, sales: 10_000, cogs: 3_000), month(6, sales: 10_000, cogs: 4_000)],
+                                      accounts: [LedgerAccount(id: "1", name: "Inventory Asset", accountType: .otherCurrentAsset, accountSubType: "Inventory", currentBalance: usd(5_000))],
+                                      count: usd(4_200), countDate: AccountingDate(year: 2026, month: 6, day: 30))
+        #expect(r.months.map(\.percent) == [30, 30, 40])
+        #expect(r.ratioFlag)
+        #expect(r.countDifference == usd(800))
+        #expect(!r.negativeInventory && !r.noCostOfGoods)
+    }
+}

@@ -905,6 +905,20 @@ public final class AppState {
                                                   recurringVendors: recurringVendors, planned: plannedCashItems, asOf: AccountingDate(date: Date()))
     }
 
+    public var inventoryReview: InventoryReview? {
+        let known = accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts
+        guard historySnapshot != nil || !known.isEmpty else { return nil }
+        return InventoryReview.build(monthlyProfitAndLoss: historySnapshot?.monthlyProfitAndLoss ?? [], accounts: known,
+                                     count: practiceProfile.inventoryCount, countDate: practiceProfile.inventoryCountDate)
+    }
+
+    public func saveInventoryCount(_ amount: Money, on date: AccountingDate) async {
+        var p = practiceProfile
+        p.inventoryCount = amount
+        p.inventoryCountDate = date
+        await updatePracticeProfile(p)
+    }
+
     public var industryComparison: IndustryTemplate.Comparison {
         IndustryTemplate.compare(practiceProfile.industry, accounts: accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts)
     }

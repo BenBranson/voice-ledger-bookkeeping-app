@@ -58,12 +58,43 @@ public enum PricingCalculator {
         public var salesTaxManagement: Bool
         public var multipleBankAccounts: Bool
         public var inventoryTracking: Bool
+        // Hard-to-price clients (owner directive 2026-10-02).
+        /// Heavy inventory with many daily sales and deliveries (grocery, convenience, big retail).
+        public var heavyInventory: Bool
+        /// Sells into several states (sales tax nexus to watch).
+        public var multiStateSales: Bool
+        /// Large share of cash sales (drawer counts, over/short, deposits to match).
+        public var cashHeavy: Bool
+        /// Two or more related entities kept in separate books.
+        public var multipleEntities: Bool
 
-        public init(payrollProcessing: Bool = false, salesTaxManagement: Bool = false, multipleBankAccounts: Bool = false, inventoryTracking: Bool = false) {
+        public init(payrollProcessing: Bool = false, salesTaxManagement: Bool = false, multipleBankAccounts: Bool = false, inventoryTracking: Bool = false,
+                    heavyInventory: Bool = false, multiStateSales: Bool = false, cashHeavy: Bool = false, multipleEntities: Bool = false) {
             self.payrollProcessing = payrollProcessing
             self.salesTaxManagement = salesTaxManagement
             self.multipleBankAccounts = multipleBankAccounts
             self.inventoryTracking = inventoryTracking
+            self.heavyInventory = heavyInventory
+            self.multiStateSales = multiStateSales
+            self.cashHeavy = cashHeavy
+            self.multipleEntities = multipleEntities
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case payrollProcessing, salesTaxManagement, multipleBankAccounts, inventoryTracking, heavyInventory, multiStateSales, cashHeavy, multipleEntities
+        }
+
+        /// Older saved intakes lack the 2026-10-02 flags; they load as off.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            payrollProcessing = try c.decodeIfPresent(Bool.self, forKey: .payrollProcessing) ?? false
+            salesTaxManagement = try c.decodeIfPresent(Bool.self, forKey: .salesTaxManagement) ?? false
+            multipleBankAccounts = try c.decodeIfPresent(Bool.self, forKey: .multipleBankAccounts) ?? false
+            inventoryTracking = try c.decodeIfPresent(Bool.self, forKey: .inventoryTracking) ?? false
+            heavyInventory = try c.decodeIfPresent(Bool.self, forKey: .heavyInventory) ?? false
+            multiStateSales = try c.decodeIfPresent(Bool.self, forKey: .multiStateSales) ?? false
+            cashHeavy = try c.decodeIfPresent(Bool.self, forKey: .cashHeavy) ?? false
+            multipleEntities = try c.decodeIfPresent(Bool.self, forKey: .multipleEntities) ?? false
         }
 
         var addOnHours: Double {
@@ -72,7 +103,22 @@ public enum PricingCalculator {
             if salesTaxManagement { hours += 1.0 }
             if multipleBankAccounts { hours += 1.0 }
             if inventoryTracking { hours += 2.0 }
+            if heavyInventory { hours += 4.0 }
+            if multiStateSales { hours += 1.5 }
+            if cashHeavy { hours += 1.5 }
+            if multipleEntities { hours += 2.0 }
             return hours
+        }
+
+        /// What to tell the bookkeeper before quoting.
+        public var warnings: [String] {
+            var w: [String] = []
+            if heavyInventory { w.append("Heavy inventory: quote the top tier, require the point-of-sale system to post daily sales summaries to QuickBooks, and set a yearly physical count in the agreement. Decline if the client has no working point-of-sale system.") }
+            if multiStateSales { w.append("Multi-state sales: watch each state's sales threshold on the Compliance Calendar; sales tax registration in other states is the client's and CPA's decision.") }
+            if cashHeavy { w.append("Cash-heavy: require daily drawer reports and deposit slips; unexplained cash differences are a risk you report, not cover.") }
+            if multipleEntities { w.append("Multiple entities: each entity is its own QuickBooks company and its own monthly fee; inter-company transfers need matching entries on both sides.") }
+            if heavyInventory && cashHeavy { w.append("Both heavy inventory and cash-heavy: this is the profile that most often outgrows a flat fee. Consider declining or pricing it as a custom engagement.") }
+            return w
         }
     }
 

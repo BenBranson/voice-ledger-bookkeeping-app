@@ -2260,11 +2260,15 @@ struct RootView: View {
                 kind: state.practiceProfile.industry,
                 comparison: state.industryComparison,
                 accountsLoaded: !state.accounts.isEmpty || state.historySnapshot != nil,
+                inventory: state.inventoryReview,
+                historyLoaded: state.historySnapshot != nil,
                 onChangeIndustry: { kind in
                     var p = state.practiceProfile
                     p.industry = kind
                     Task { await state.updatePracticeProfile(p) }
-                }
+                },
+                onSaveCount: { amount, date in Task { await state.saveInventoryCount(amount, on: date) } },
+                onLoadHistory: { Task { await state.loadHistory() } }
             )
 
         case .intakeQuestions:

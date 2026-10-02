@@ -20,7 +20,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | Search by Amount | search |
 | Pricing Calculator | pricing |
 | Intake Questions | intake |
-| Compliance Calendar | compliance, deadlines, due dates, tax calendar |
+| Compliance Calendar | compliance, deadlines, due dates, tax calendar, sales by state, economic nexus |
 | Scope Requests | out of scope, add ons |
 | Industry Setup | industry |
 | Client Diagnostics | diagnostics |

@@ -80,7 +80,7 @@ public enum VoiceIntentRouter {
         (.clientDiagnostics, ["client diagnostics", "diagnostics"]),
         (.pricingCalculator, ["pricing calculator", "pricing"]),
         (.intakeQuestions, ["intake questions", "intake"]),
-        (.complianceCalendar, ["compliance calendar", "compliance", "deadlines", "due dates", "filing calendar", "tax calendar", "calendar"]),
+        (.complianceCalendar, ["compliance calendar", "compliance", "deadlines", "due dates", "filing calendar", "tax calendar", "calendar", "sales by state", "economic nexus", "nexus"]),
         (.scopeRequests, ["scope requests", "out of scope", "out of scope requests", "scope log", "add ons", "upsells"]),
         (.industrySetup, ["industry setup", "industry", "industry template", "chart of accounts template"])
     ]

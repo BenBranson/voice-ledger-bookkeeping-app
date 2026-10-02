@@ -356,6 +356,19 @@ public struct IntakeQuestionsView: View {
             }
             questionBlock(question: "Do you track inventory?") {
                 Toggle("Inventory tracking (+2 hrs/mo)", isOn: $intake.monthlyFlags.inventoryTracking)
+                Toggle("Heavy inventory with many daily sales, like a grocery or convenience store (+4 hrs/mo)", isOn: $intake.monthlyFlags.heavyInventory)
+            }
+            questionBlock(question: "Do you sell to customers in other states?") {
+                Toggle("Sells into several states (+1.5 hrs/mo)", isOn: $intake.monthlyFlags.multiStateSales)
+            }
+            questionBlock(question: "How much of your business is paid in cash?") {
+                Toggle("Cash-heavy business (+1.5 hrs/mo)", isOn: $intake.monthlyFlags.cashHeavy)
+            }
+            questionBlock(question: "Do you own other businesses or entities we'd keep books for?") {
+                Toggle("Two or more related entities (+2 hrs/mo)", isOn: $intake.monthlyFlags.multipleEntities)
+            }
+            ForEach(intake.monthlyFlags.warnings, id: \.self) { warning in
+                Text(warning).font(VLTypography.caption()).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

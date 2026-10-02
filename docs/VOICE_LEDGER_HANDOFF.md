@@ -1340,3 +1340,12 @@ Notes for next time:
 - Scope Requests page (CLIENT): firm-wide preset prices (UserDefaults `scopePresets.v1`, editable, resettable), per-realm request log with status, totals, and a drafted client reply. Payroll preset carries a Texas data-processing tax note.
 - New-account alert: `NewAccountWatch` baseline of bank/credit card/long-term-liability account IDs per realm; the first sync seeds silently; later new ones show on the Dashboard and Firm Cockpit until acknowledged. Voice: "any new accounts".
 - Knowledge: Texas franchise tax, Texas taxable services (bookkeeping vs data processing, 5% rule), scope boundaries, hot shot trucking, oilfield services.
+
+## 2026-10-02 — Nationwide clients (v1.60)
+- `StateComplianceRules`: sales tax schedules + LLC/corporation annual-report rules CHECKED on official sites for TX, CA, FL, NY, IL, PA, OH, GA, NC, MI, NJ, VA, WA, AZ, CO, TN (sources listed per state in code). Every other state: no state dates, only "verify" checks (rule 5). Add a state only after checking its revenue department and Secretary of State pages.
+- `ClientPracticeProfile` gained state, entity type, formation month/year, semiannual sales tax, inventory count; custom decoder keeps v1.59 profiles (legacy `texasEntity`).
+- Federal business return (1065/1120-S Mar 15, 1120/Schedule C Apr 15) and estimated tax dates by entity type.
+- Invoices carry `customerState` (ShipAddr else BillAddr; verified live: sandbox invoices are mostly CA, some AZ/NJ). `EconomicNexusScreen` over 12 months; checked thresholds CA/TX $500k, NY $500k AND >100 sales; others screened at $100k labeled "screen only". Saved histories from before need a reload (the page says so).
+- Industry templates: construction, restaurant, retail/e-commerce, professional services, property management, medical/dental, salon, home/field services, grocery/convenience (high complexity), with red flags and knowledge notes.
+- Pricing/Intake: heavy inventory (+4h), multi-state (+1.5h), cash-heavy (+1.5h), multiple entities (+2h) with warnings; tolerant decoding; CSV columns added.
+- `InventoryReview` on Industry Setup: COGS % by month (flag > 5 points off prior average), books vs the client's count, negative inventory.

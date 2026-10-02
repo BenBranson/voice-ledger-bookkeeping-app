@@ -313,15 +313,82 @@ public struct IndustrySetupView: View {
     let kind: IndustryTemplate.Kind
     let comparison: IndustryTemplate.Comparison
     let accountsLoaded: Bool
+    let inventory: InventoryReview?
+    let historyLoaded: Bool
     let onChangeIndustry: (IndustryTemplate.Kind) -> Void
+    let onSaveCount: (Money, AccountingDate) -> Void
+    let onLoadHistory: () -> Void
     @Environment(\.qboLinks) private var qboLinks
+    @State private var countText = ""
 
-    public init(environment: VLEnvironmentTone, kind: IndustryTemplate.Kind, comparison: IndustryTemplate.Comparison, accountsLoaded: Bool, onChangeIndustry: @escaping (IndustryTemplate.Kind) -> Void) {
+    public init(environment: VLEnvironmentTone, kind: IndustryTemplate.Kind, comparison: IndustryTemplate.Comparison, accountsLoaded: Bool,
+                inventory: InventoryReview?, historyLoaded: Bool, onChangeIndustry: @escaping (IndustryTemplate.Kind) -> Void,
+                onSaveCount: @escaping (Money, AccountingDate) -> Void, onLoadHistory: @escaping () -> Void) {
         self.environment = environment
         self.kind = kind
         self.comparison = comparison
         self.accountsLoaded = accountsLoaded
+        self.inventory = inventory
+        self.historyLoaded = historyLoaded
         self.onChangeIndustry = onChangeIndustry
+        self.onSaveCount = onSaveCount
+        self.onLoadHistory = onLoadHistory
+    }
+
+    private var inventorySection: some View {
+        VLCard(accentRail: (inventory?.ratioFlag ?? false) || (inventory?.negativeInventory ?? false) ? .orange : nil) {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                eyebrow("INVENTORY REVIEW")
+                if !historyLoaded {
+                    HStack {
+                        Text("Needs the 24-month history for monthly cost of goods.").font(VLTypography.caption()).foregroundStyle(.orange)
+                        Button("Load 24-month history", action: onLoadHistory).controlSize(.small)
+                    }
+                }
+                if let inv = inventory {
+                    if inv.noCostOfGoods {
+                        Text("No cost of goods sold is recorded in these months. A business that sells products should show it; purchases may be booked as ordinary expenses.")
+                            .font(VLTypography.body()).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                    }
+                    ForEach(inv.months) { m in
+                        HStack {
+                            Text("\(m.period.year)-\(String(format: "%02d", m.period.month))").font(VLTypography.tabularNumeric()).frame(width: 90, alignment: .leading)
+                            Text("Sales \(m.sales.accountingDescription)").frame(width: 170, alignment: .leading)
+                            Text("Cost of goods \(m.costOfGoods.accountingDescription)").frame(width: 210, alignment: .leading)
+                            Text(String(format: "%.1f%%", m.percent)).fontWeight(.semibold)
+                        }
+                        .font(VLTypography.caption()).foregroundStyle(VLColor.textSecondary)
+                    }
+                    if let shift = inv.ratioShift {
+                        Text(String(format: "Latest month is %.1f points %@ the prior average (%.1f%%).", abs(shift), shift >= 0 ? "above" : "below", inv.priorAverage ?? 0)
+                             + (inv.ratioFlag ? " That's a big move: check for missing sales, unrecorded purchases, price changes or shrinkage." : ""))
+                            .font(VLTypography.caption()).foregroundStyle(inv.ratioFlag ? .orange : VLColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Divider().overlay(VLColor.border)
+                    if let balance = inv.inventoryBalance {
+                        Text("Inventory on the books: \(balance.accountingDescription)").font(VLTypography.body()).foregroundStyle(inv.negativeInventory ? .red : VLColor.textPrimary)
+                        if inv.negativeInventory { Text("A negative inventory balance means items were sold that were never recorded as bought.").font(VLTypography.caption()).foregroundStyle(.red) }
+                    } else {
+                        Text("No inventory asset account found in the chart of accounts.").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                    }
+                    if let count = inv.count {
+                        Text("Client's count\(inv.countDate.map { " on " + ClientText.polish($0.formatted) } ?? ""): \(count.accountingDescription)").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
+                    }
+                    if let diff = inv.countDifference {
+                        Text(diff.minorUnits == 0 ? "The books match the count." : "Books minus count: \(diff.accountingDescription). Adjust the books to the count with an inventory adjustment once the client confirms the count.")
+                            .font(VLTypography.caption()).foregroundStyle(diff.minorUnits == 0 ? VLColor.textMuted : .orange).fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack {
+                        TextField("Client's physical count ($)", text: $countText).textFieldStyle(.roundedBorder).frame(width: 200)
+                        Button("Save count as of today") {
+                            guard let m = AmountSearch.parseAmount(countText) else { return }
+                            onSaveCount(Money(minorUnits: abs(m.minorUnits), currency: .usd), AccountingDate(date: Date()))
+                            countText = ""
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public var body: some View {
@@ -331,6 +398,8 @@ public struct IndustrySetupView: View {
                 Picker("Industry", selection: Binding(get: { kind }, set: { onChangeIndustry($0) })) {
                     ForEach(IndustryTemplate.Kind.allCases, id: \.self) { Text($0.label).tag($0) }
                 }.frame(maxWidth: 420)
+                Text(kind.complexity.pricingNote).font(VLTypography.caption())
+                    .foregroundStyle(kind.complexity == .high ? .red : kind.complexity == .elevated ? .orange : VLColor.textMuted)
                 if !accountsLoaded {
                     Text("Sync first; the chart of accounts isn't loaded.").font(VLTypography.caption()).foregroundStyle(.orange)
                 }
@@ -366,6 +435,17 @@ public struct IndustrySetupView: View {
                             Text("• \(tip)").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                }
+                VLCard {
+                    VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                        eyebrow("RED FLAGS IN THIS INDUSTRY")
+                        ForEach(IndustryTemplate.redFlags(for: kind), id: \.self) { flag in
+                            Text("• \(flag)").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                if kind.usesInventory || inventory?.inventoryBalance != nil {
+                    inventorySection
                 }
             }
             .padding(VLSpacing.pageGutter)
