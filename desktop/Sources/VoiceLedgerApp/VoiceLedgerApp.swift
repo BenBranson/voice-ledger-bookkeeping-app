@@ -144,6 +144,7 @@ struct VoiceLedgerApp: App {
                 // is what keeps `comparedFindingIDs` in sync when the
                 // window is closed that way instead of via the in-view "X".
                 .onDisappear { appState.comparedFindingIDs = [] }
+                .environment(\.qboLinks, appState.qboLinks)
             }
         }
         .windowResizability(.contentMinSize)

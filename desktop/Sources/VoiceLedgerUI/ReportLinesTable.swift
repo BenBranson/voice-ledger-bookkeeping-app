@@ -21,6 +21,7 @@ public extension EnvironmentValues {
 /// `ProfitAndLossReportView`) can show the exact same full detailed table
 /// underneath their new charts, rather than reimplementing it.
 public struct ReportLinesTable: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let lines: [ReportLine]
     @Environment(\.askAIAboutReportRow) private var askAI
     @State private var askedID: String?
@@ -63,6 +64,8 @@ public struct ReportLinesTable: View {
                     .font(VLTypography.tabularNumeric())
                     .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
             }
+            QBOLinkButton(qboLinks.account(id: line.accountID), compact: true)
+                .frame(width: 20)
         }
         if let askAI {
             content

@@ -113,6 +113,11 @@ public final class AppState {
     /// UI ask "which QBO account is this statement FOR?" (never inferred
     /// from the file). Empty until the first `syncAndEvaluate()` completes.
     public private(set) var accounts: [LedgerAccount] = []
+    /// The Search by Amount box. Voice fills it ("find 1420", "find Gusto")
+    /// before opening the page, so the results are already showing.
+    public var searchQuery = ""
+    /// Vendor IDs from the last sync, for exact "Open in QBO" vendor links.
+    public private(set) var vendors: [LedgerVendor] = []
     /// All synced (plus merged-in imported) transactions from the last
     /// sync — added for Page 2's period-lock warning
     /// (`PeriodLockCheck.transactionsInLockedPeriod`), which needs the same
@@ -201,6 +206,24 @@ public final class AppState {
         if let rows = try? await syncClient.fetchAccountLedger(realmID: realmID, accountID: accountID, through: AccountingDate(date: Date())) {
             accountLedgerRows[accountID] = rows
         }
+    }
+
+    /// Every exact-record QBO link the screens can show (see `QBOLinks`).
+    public var qboLinks: QBOLinks {
+        let isSandbox = environment != .production
+        let known = accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts
+        var accountURLs: [String: URL] = [:]
+        var accountIDsByName: [String: String] = [:]
+        for account in known {
+            if let url = QBOWebLink.url(forRecordID: account.id, transactions: [], accounts: [account], isSandbox: isSandbox) { accountURLs[account.id] = url }
+            accountIDsByName[account.name.lowercased()] = account.id
+            if let full = account.fullyQualifiedName { accountIDsByName[full.lowercased()] = account.id }
+        }
+        var findingURLs: [String: URL] = [:]
+        for finding in findings { if let url = qboWebURL(for: finding) { findingURLs[finding.id] = url } }
+        var vendorIDs: [String: String] = [:]
+        for vendor in vendors { vendorIDs[vendor.displayName.trimmingCharacters(in: .whitespaces).lowercased()] = vendor.id }
+        return QBOLinks(isSandbox: isSandbox, findingURLs: findingURLs, accountURLs: accountURLs, accountIDsByName: accountIDsByName, vendorIDsByName: vendorIDs)
     }
 
     public func qboWebURL(for finding: Finding) -> URL? {
@@ -1072,7 +1095,13 @@ public final class AppState {
     }
 
     public var missingRecurringVendors: [RecurringVendor] {
-        RecurringVendorDetector.missingAsOf(recurringVendors, asOf: AccountingDate(date: Date()))
+        // The scan covers the six months ENDING at the period being reviewed,
+        // so "overdue" is judged at that period's end (or today, if sooner).
+        // Judging a July review against October's date flagged every
+        // monthly vendor as overdue (owner screenshot 2026-10-02).
+        let periodEnd = AccountingDate(year: period.year, month: period.month, day: period.daysInMonth)
+        let today = AccountingDate(date: Date())
+        return RecurringVendorDetector.missingAsOf(recurringVendors, asOf: min(periodEnd, today))
     }
 
     /// Owner directive (2026-09-06): "build cash flow forecasting" — see
@@ -2034,6 +2063,7 @@ public final class AppState {
             let newActivityLog = try await store.loadActivityLog()
             coverage = syncedDataSet.coverage
             accounts = syncedDataSet.accounts
+            vendors = syncedDataSet.vendors
             transactions = dataSet.transactions
             findings = newFindings
             activityLog = newActivityLog

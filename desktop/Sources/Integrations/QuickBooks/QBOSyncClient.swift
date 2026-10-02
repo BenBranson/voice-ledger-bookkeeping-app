@@ -289,11 +289,13 @@ public struct QBOSyncClient: Sendable {
     static func agingFromDetail(_ rows: QBORawReportRowList) -> [AgingLine] {
         var buckets: [String: [Int64]] = [:]   // name -> [current, 1-30, 31-60, 61-90, 91+]
         var order: [String] = []
+        var ids: [String: String] = [:]
         func walk(_ list: QBORawReportRowList) {
             for row in list.row ?? [] {
                 if let nested = row.rows { walk(nested) }
                 guard row.header == nil, row.rows == nil, let cols = row.colData, cols.count >= 8 else { continue }
                 let name = cols[3].value.isEmpty ? "(no vendor)" : cols[3].value
+                if let id = cols[3].id, !id.isEmpty { ids[name] = id }
                 let pastDue = Int(cols[5].value) ?? 0
                 let open = Self.minorUnits(from: Decimal(string: cols[7].value) ?? 0)
                 guard open != 0 else { continue }
@@ -307,7 +309,7 @@ public struct QBOSyncClient: Sendable {
         func line(_ label: String, _ b: [Int64], summary: Bool) -> AgingLine {
             func m(_ v: Int64) -> Money { Money(minorUnits: v, currency: .usd) }
             return AgingLine(label: label, current: m(b[0]), days1to30: m(b[1]), days31to60: m(b[2]), days61to90: m(b[3]), days91AndOver: m(b[4]),
-                             total: m(b.reduce(0, +)), depth: 0, isSummary: summary)
+                             total: m(b.reduce(0, +)), depth: 0, isSummary: summary, entityID: summary ? nil : ids[label])
         }
         var lines = order.sorted().map { line($0, buckets[$0]!, summary: false) }
         let totals = (0..<5).map { i in order.map { buckets[$0]![i] }.reduce(0, +) }
@@ -435,7 +437,8 @@ public struct QBOSyncClient: Sendable {
             guard !value.isEmpty else { return nil }
             return Money(minorUnits: Self.minorUnits(from: Decimal(string: value) ?? 0), currency: .usd)
         }
-        return TrialBalanceLine(label: label, debit: amount(at: 1), credit: amount(at: 2), isSummary: isSummary)
+        let accountID = isSummary ? nil : colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }
+        return TrialBalanceLine(label: label, debit: amount(at: 1), credit: amount(at: 2), isSummary: isSummary, accountID: accountID)
     }
 
     /// Aged Receivables/Payables — same structural leaf rule as
@@ -486,7 +489,8 @@ public struct QBOSyncClient: Sendable {
             days91AndOver: amount(at: 5),
             total: amount(at: 6),
             depth: depth,
-            isSummary: isSummary
+            isSummary: isSummary,
+            entityID: isSummary ? nil : colData.first?.id.flatMap { $0.isEmpty ? nil : $0 }
         )
     }
 
@@ -534,7 +538,8 @@ public struct QBOSyncClient: Sendable {
             amount: amount(at: 6),
             balance: amount(at: 7),
             depth: depth,
-            isSummary: isSummary
+            isSummary: isSummary,
+            transactionID: isSummary ? nil : (colData.count > 1 ? colData[1].id.flatMap { $0.isEmpty ? nil : $0 } : nil)
         )
     }
 

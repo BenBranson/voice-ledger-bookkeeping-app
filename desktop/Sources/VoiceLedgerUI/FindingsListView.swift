@@ -388,7 +388,7 @@ public struct FindingsListView: View {
                                     FindingRow(finding: finding)
                                 }
                                 .buttonStyle(.plain)
-                                if let url = qboURL(finding), finding.proposedActions.first?.resolution == .manualQBO {
+                                if let url = qboURL(finding) {
                                     Link(destination: url) {
                                         Image(systemName: "arrow.up.right.square")
                                     }

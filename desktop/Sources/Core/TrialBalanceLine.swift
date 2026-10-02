@@ -16,8 +16,11 @@ public struct TrialBalanceLine: Identifiable, Hashable, Sendable {
     public let debit: Money?
     public let credit: Money?
     public let isSummary: Bool
+    /// QBO Account Id from the label column, for a link to the account in QBO.
+    public let accountID: String?
 
-    public init(label: String, debit: Money?, credit: Money?, isSummary: Bool) {
+    public init(label: String, debit: Money?, credit: Money?, isSummary: Bool, accountID: String? = nil) {
+        self.accountID = accountID
         self.id = "\(label)-\(isSummary)-\(UUID().uuidString.prefix(8))"
         self.label = label
         self.debit = debit

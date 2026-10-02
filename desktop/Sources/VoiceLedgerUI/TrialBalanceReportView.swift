@@ -9,6 +9,7 @@ import DesignSystem
 /// (verified live: no section nesting in a real trial balance), so there's
 /// no depth-based indentation here.
 public struct TrialBalanceReportView: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let sourceDescription: String
     private let environment: VLEnvironmentTone
     private let lines: [TrialBalanceLine]
@@ -126,6 +127,8 @@ public struct TrialBalanceReportView: View {
                                         .font(VLTypography.tabularNumeric())
                                         .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
                                         .frame(width: 120, alignment: .trailing)
+                                    QBOLinkButton(qboLinks.account(id: line.accountID), compact: true)
+                                        .frame(width: 24)
                                 }
                             }
                         }

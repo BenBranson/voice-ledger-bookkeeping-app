@@ -18,6 +18,7 @@ import DesignSystem
 /// rules already assert, not a new kind of claim.
 public struct FindingComparisonView: View {
     private let findings: [Finding]
+    @Environment(\.qboLinks) private var qboLinks
     private let onSelectFinding: (Finding) -> Void
     private let onClose: (Finding) -> Void
     private let onCloseAll: () -> Void
@@ -248,7 +249,21 @@ public struct FindingComparisonView: View {
                     Text(ClientText.polish(narrative))
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
-                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // The record's own details (date, account, amount...), so
+                // the card can be checked against QBO without opening it.
+                ForEach(Array(finding.evidence.enumerated()), id: \.offset) { _, item in
+                    let values = item.highlightedFields.compactMap { field in
+                        item.fieldValues[field].map { "\(field.capitalized): \(ClientText.polish($0))" }
+                    }
+                    if !values.isEmpty {
+                        Text(values.joined(separator: " · "))
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 if !finding.proposedActions.isEmpty {
@@ -264,8 +279,11 @@ public struct FindingComparisonView: View {
                     }
                 }
 
-                Button("View Full Detail") { onSelectFinding(finding) }
-                    .buttonStyle(.bordered)
+                HStack(spacing: VLSpacing.md) {
+                    Button("View Full Detail") { onSelectFinding(finding) }
+                        .buttonStyle(.bordered)
+                    QBOLinkButton(qboLinks.finding(finding.id))
+                }
             }
         }
     }

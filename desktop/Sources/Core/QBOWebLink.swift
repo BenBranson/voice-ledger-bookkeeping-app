@@ -25,9 +25,10 @@ public enum QBOWebLink {
     public static func url(forRecordID id: String, transactions: [LedgerTransaction], accounts: [LedgerAccount], isSandbox: Bool) -> URL? {
         let base = base(isSandbox: isSandbox)
         if let account = accounts.first(where: { $0.id == id }) {
-            guard account.accountType.isAssetOrLiability || account.accountType == .equity else {
-                return URL(string: "\(base)/chartofaccounts")
-            }
+            // Owner rule 2026-10-02: a link opens the exact record or nothing.
+            // Income/expense accounts have no register in QBO, and the chart
+            // of accounts is a general page, so they get no link here.
+            guard account.accountType.isAssetOrLiability || account.accountType == .equity else { return nil }
             return URL(string: "\(base)/register?accountId=\(account.id)")
         }
         guard let txn = transactions.first(where: { $0.id == id }), case .qboAPI = txn.provenance,
@@ -65,6 +66,39 @@ public enum QBOWebLink {
             }
         }
         return nil
+    }
+
+    /// A vendor's page in QBO (their transactions and open balance).
+    public static func vendor(id: String, isSandbox: Bool) -> URL? {
+        URL(string: "\(base(isSandbox: isSandbox))/vendordetail?nameId=\(id)")
+    }
+
+    /// A customer's page in QBO (their invoices, payments and open balance).
+    public static func customer(id: String, isSandbox: Bool) -> URL? {
+        URL(string: "\(base(isSandbox: isSandbox))/customerdetail?nameId=\(id)")
+    }
+
+    /// A transaction by the type name QBO's own reports print in their
+    /// Transaction Type column ("Expense", "Bill", "Invoice", ...).
+    public static func transaction(id: String, reportTypeName: String?, isSandbox: Bool) -> URL? {
+        let route: String?
+        switch (reportTypeName ?? "").lowercased() {
+        case "expense", "check", "credit card expense", "cash expense", "credit card credit": route = "expense"
+        case "bill": route = "bill"
+        case "invoice": route = "invoice"
+        case "payment": route = "recvpayment"
+        case let t where t.hasPrefix("bill payment"): route = "billpayment"
+        case "journal entry": route = "journal"
+        case "vendor credit": route = "vendorcredit"
+        case "deposit": route = "deposit"
+        case "transfer": route = "transfer"
+        case "sales receipt": route = "salesreceipt"
+        case "credit memo": route = "creditmemo"
+        case "refund", "refund receipt": route = "refundreceipt"
+        default: route = nil
+        }
+        guard let route, !id.isEmpty else { return nil }
+        return URL(string: "\(base(isSandbox: isSandbox))/\(route)?txnId=\(id)")
     }
 
     public static func salesTaxCenter(isSandbox: Bool) -> URL {

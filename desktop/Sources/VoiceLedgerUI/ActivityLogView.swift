@@ -105,6 +105,7 @@ public struct ActivityLogView: View {
 
 private struct EntryRow: View {
     let entry: ActivityLogEntry
+    @Environment(\.qboLinks) private var qboLinks
 
     var body: some View {
         VLCard {
@@ -122,9 +123,13 @@ private struct EntryRow: View {
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
                 if let summary = entry.findingSummary {
-                    Text(summary)
-                        .font(VLTypography.caption())
-                        .foregroundStyle(VLColor.textPrimary)
+                    HStack {
+                        Text(ClientText.polish(summary))
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Spacer()
+                        QBOLinkButton(qboLinks.finding(entry.findingID))
+                    }
                 }
                 if let note = entry.note {
                     Text(note)

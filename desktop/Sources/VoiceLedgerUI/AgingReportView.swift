@@ -8,6 +8,7 @@ import DesignSystem
 /// Vendor respectively. See `AgingLine`'s doc comment for the mixed
 /// leaf-row shape this had to be decoded around.
 public struct AgingReportView: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let title: String
     private let rowLabel: String
     private let sourceDescription: String
@@ -134,6 +135,8 @@ public struct AgingReportView: View {
                                                 .foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary)
                                                 .frame(width: Self.columnWidth, alignment: .trailing)
                                         }
+                                        QBOLinkButton(line.isSummary ? nil : (rowLabel == "Customer" ? qboLinks.customer(id: line.entityID) : qboLinks.vendor(id: line.entityID) ?? qboLinks.vendor(named: line.label)), compact: true)
+                                            .frame(width: 24)
                                     }
                                 }
                             }

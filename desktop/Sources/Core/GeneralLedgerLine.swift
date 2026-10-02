@@ -32,6 +32,9 @@ public struct GeneralLedgerLine: Identifiable, Hashable, Sendable {
     /// view from "no transactionType and depth 0," which would be a fragile
     /// heuristic a future column addition could silently break.
     public let isAccountHeader: Bool
+    /// QBO transaction Id from the Transaction Type column, for a link
+    /// straight to that transaction in QBO.
+    public let transactionID: String?
 
     public init(
         label: String,
@@ -44,8 +47,10 @@ public struct GeneralLedgerLine: Identifiable, Hashable, Sendable {
         balance: Money?,
         depth: Int,
         isSummary: Bool,
-        isAccountHeader: Bool = false
+        isAccountHeader: Bool = false,
+        transactionID: String? = nil
     ) {
+        self.transactionID = transactionID
         self.id = "\(depth)-\(label)-\(isSummary)-\(UUID().uuidString.prefix(8))"
         self.label = label
         self.transactionType = transactionType

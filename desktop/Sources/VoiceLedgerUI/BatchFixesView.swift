@@ -12,6 +12,7 @@ import DesignSystem
 /// consequences and before/after report impact are covered by each
 /// finding's own `Consequence` list, not a separate computed projection.
 public struct BatchFixesView: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let onEnableWriteAccess: (() -> Void)?
     @State private var isConfirmingWriteAccess = false
     private let environment: VLEnvironmentTone
@@ -218,6 +219,7 @@ public struct BatchFixesView: View {
                 .toggleStyle(.checkbox)
                 .disabled(isApplyingBatch)
                 Spacer()
+                QBOLinkButton(qboLinks.finding(item.findingID), compact: true)
                 Text(item.dollarExposure.accountingDescription)
                     .font(VLTypography.tabularNumeric())
                     .foregroundStyle(VLColor.textPrimary)

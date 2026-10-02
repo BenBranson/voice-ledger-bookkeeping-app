@@ -21,12 +21,23 @@ public struct AmountSearchView: View {
     private let qboURL: ((LedgerTransaction) -> URL?)?
     private let search: ((String) -> Fact<AmountSearchResult>)?
 
-    @State private var query = ""
+    @State private var localQuery = ""
+    /// Shared with the app so voice ("find 1420", "find Gusto") can fill
+    /// the box and land here with results already showing.
+    private let externalQuery: Binding<String>?
+    private var query: String {
+        get { externalQuery?.wrappedValue ?? localQuery }
+    }
+    private var queryBinding: Binding<String> { externalQuery ?? $localQuery }
+    private let textSearch: ((String) -> Fact<[LedgerTransaction]>)?
 
     public init(environment: VLEnvironmentTone, transactions: [LedgerTransaction], accounts: [LedgerAccount],
                 search: ((String) -> Fact<AmountSearchResult>)? = nil,
                 scopeDescription: String = "the last sync", hasHistory: Bool = false, isSynced: Bool = true,
-                onSync: (() -> Void)? = nil, onLoadHistory: (() -> Void)? = nil, qboURL: ((LedgerTransaction) -> URL?)? = nil) {
+                onSync: (() -> Void)? = nil, onLoadHistory: (() -> Void)? = nil, qboURL: ((LedgerTransaction) -> URL?)? = nil,
+                query: Binding<String>? = nil, textSearch: ((String) -> Fact<[LedgerTransaction]>)? = nil) {
+        self.externalQuery = query
+        self.textSearch = textSearch
         self.scopeDescription = scopeDescription
         self.hasHistory = hasHistory
         self.isSynced = isSynced
@@ -78,7 +89,7 @@ public struct AmountSearchView: View {
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
-                TextField("Amount (e.g. 142.50)", text: $query)
+                TextField(textSearch == nil ? "Amount (e.g. 142.50)" : "Amount or vendor (e.g. 142.50 or Gusto)", text: queryBinding)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 260)
 
@@ -98,7 +109,30 @@ public struct AmountSearchView: View {
                         .foregroundStyle(VLColor.textMuted)
                 }
 
-                if !query.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount == nil {
+                if !query.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount == nil, let textSearch {
+                    let hits = textSearch(query).value ?? []
+                    VLCard {
+                        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                            let total = hits.map(\.totalAmount).reduce(Money.zero, +)
+                            Text(verbatim: "\(hits.count) TRANSACTION\(hits.count == 1 ? "" : "S") MATCHING “\(query.uppercased())”\(hits.isEmpty ? "" : " · TOTAL \(total.accountingDescription)")")
+                                .font(VLTypography.eyebrow())
+                                .tracking(VLTypography.eyebrowTracking)
+                                .foregroundStyle(VLColor.textMuted)
+                            if hits.isEmpty {
+                                Text("No vendor name or memo in \(scopeDescription) contains “\(query)”.")
+                                    .font(VLTypography.caption())
+                                    .foregroundStyle(VLColor.textMuted)
+                            }
+                            ForEach(hits.prefix(100)) { transaction in
+                                row(transaction)
+                                Divider().overlay(VLColor.border)
+                            }
+                            if hits.count > 100 {
+                                Text("Showing the latest 100 of \(hits.count).").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                            }
+                        }
+                    }
+                } else if !query.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount == nil {
                     Text("Not a recognizable dollar amount — try something like 142.50 or 142.")
                         .font(VLTypography.caption())
                         .foregroundStyle(.red)

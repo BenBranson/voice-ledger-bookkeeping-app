@@ -16,6 +16,7 @@ import DesignSystem
 /// `ImportBankStatementView`, presented by the app layer after
 /// `onImportTapped` picks a file.
 public struct BankFeedCleanupView: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let environment: VLEnvironmentTone
     private let coverageStatus: VLStatus
     private let missingPostingOutcomeDetail: String
@@ -145,7 +146,8 @@ public struct BankFeedCleanupView: View {
                         if !findings.isEmpty {
                             Divider().overlay(VLColor.border)
                             ForEach(findings) { finding in
-                                Button {
+                                HStack {
+Button {
                                     onSelectFinding(finding)
                                 } label: {
                                     HStack {
@@ -159,6 +161,8 @@ public struct BankFeedCleanupView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                                QBOLinkButton(qboLinks.finding(finding.id), compact: true)
+                                }
                             }
                         }
                     }
@@ -180,7 +184,8 @@ public struct BankFeedCleanupView: View {
                                 .foregroundStyle(VLColor.textSecondary)
                             Divider().overlay(VLColor.border)
                             ForEach(ambiguousFindings) { finding in
-                                Button {
+                                HStack {
+Button {
                                     onSelectFinding(finding)
                                 } label: {
                                     HStack {
@@ -194,6 +199,8 @@ public struct BankFeedCleanupView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                                QBOLinkButton(qboLinks.finding(finding.id), compact: true)
+                                }
                             }
                         }
                     }
@@ -215,7 +222,8 @@ public struct BankFeedCleanupView: View {
                                 .foregroundStyle(VLColor.textSecondary)
                             Divider().overlay(VLColor.border)
                             ForEach(driftFindings) { finding in
-                                Button {
+                                HStack {
+Button {
                                     onSelectFinding(finding)
                                 } label: {
                                     HStack {
@@ -229,6 +237,8 @@ public struct BankFeedCleanupView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                                QBOLinkButton(qboLinks.finding(finding.id), compact: true)
+                                }
                             }
                         }
                     }

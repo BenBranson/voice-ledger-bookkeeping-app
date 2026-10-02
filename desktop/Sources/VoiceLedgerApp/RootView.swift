@@ -67,6 +67,7 @@ struct RootView: View {
             }
         }
         .environment(\.dataFreshness, state.freshness)
+        .environment(\.qboLinks, state.qboLinks)
         .environment(\.syncNow, { Task { await state.syncAndEvaluate() } })
         .task {
             await state.loadFromDiskOnly()
@@ -715,6 +716,13 @@ struct RootView: View {
                 reviewPeriod: state.period,
                 salesTaxCenterURL: QBOWebLink.salesTaxCenter(isSandbox: state.environment != .production)
             )
+            // Owner screenshot 2026-10-02: the page opened blank ("Tap
+            // Refresh"). Load it on open; it is a read, never a write.
+            .task {
+                if state.taxCodes.isEmpty && state.taxRates.isEmpty && state.taxAgencies.isEmpty && !state.isLoadingSalesTax {
+                    await state.loadSalesTaxProfile()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { state.screen = .list }
@@ -2176,7 +2184,9 @@ struct RootView: View {
                 isSynced: state.lastSyncedAt != nil,
                 onSync: { Task { await state.syncAndEvaluate() } },
                 onLoadHistory: { Task { await state.loadHistory() } },
-                qboURL: { txn in QBOWebLink.url(forRecordID: txn.id, transactions: [txn], accounts: [], isSandbox: state.environment != .production) }
+                qboURL: { txn in QBOWebLink.url(forRecordID: txn.id, transactions: [txn], accounts: [], isSandbox: state.environment != .production) },
+                query: $state.searchQuery,
+                textSearch: { ClientFacts.searchText(state.clientData, query: $0) }
             )
 
         case .pricingCalculator:

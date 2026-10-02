@@ -878,11 +878,14 @@ public final class VoiceEngine: NSObject {
 
         case .searchAmount(let amount):
             let result = await execute(AIToolCall(id: "grammar", name: "search_transactions", arguments: ["query": .string(amount.accountingDescription)]))
-            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
+            // Show the same matches on screen, not just in speech.
+            appState.searchQuery = amount.accountingDescription
+            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction ?? .navigate(.amountSearch))
 
         case .searchVendor(let name):
             let result = await execute(AIToolCall(id: "grammar", name: "get_vendor_details", arguments: ["vendor_name": .string(name)]))
-            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
+            appState.searchQuery = name
+            return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction ?? .navigate(.amountSearch))
 
         case .kpi(let metric, let period):
             let metricName = metric == .revenue ? "revenue" : metric == .netIncome ? "net_income" : "cash_balance"

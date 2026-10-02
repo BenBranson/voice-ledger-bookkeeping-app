@@ -7,6 +7,7 @@ import DesignSystem
 /// label+amount tree, so this renders a wide scrollable table rather than
 /// reusing `FinancialReportView`'s section-indent layout.
 public struct GeneralLedgerReportView: View {
+    @Environment(\.qboLinks) private var qboLinks
     private let sourceDescription: String
     private let environment: VLEnvironmentTone
     private let lines: [GeneralLedgerLine]
@@ -146,10 +147,13 @@ public struct GeneralLedgerReportView: View {
                                 }
                                 ForEach(filteredLines) { line in
                                     if line.isAccountHeader {
-                                        Text(line.label)
-                                            .font(VLTypography.cardTitle())
-                                            .foregroundStyle(VLColor.textPrimary)
-                                            .padding(.top, VLSpacing.xs)
+                                        HStack {
+                                            Text(line.label)
+                                                .font(VLTypography.cardTitle())
+                                                .foregroundStyle(VLColor.textPrimary)
+                                            QBOLinkButton(qboLinks.account(named: line.label), compact: true)
+                                        }
+                                        .padding(.top, VLSpacing.xs)
                                     } else {
                                         HStack {
                                             Text(line.label).font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
@@ -160,6 +164,8 @@ public struct GeneralLedgerReportView: View {
                                             Text(line.split ?? "").font(VLTypography.body()).foregroundStyle(VLColor.textSecondary).frame(width: 110, alignment: .leading)
                                             Text(line.amount?.accountingDescription ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
                                             Text(line.balance?.accountingDescription ?? "").font(VLTypography.tabularNumeric()).foregroundStyle(line.isSummary ? VLColor.textPrimary : VLColor.textSecondary).frame(width: 110, alignment: .leading)
+                                            QBOLinkButton(qboLinks.transaction(id: line.transactionID, typeName: line.transactionType), compact: true)
+                                                .frame(width: 24)
                                         }
                                     }
                                 }

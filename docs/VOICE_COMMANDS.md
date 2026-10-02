@@ -64,8 +64,8 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 ## 3. Look up an amount
 | Say | What happens |
 |---|---|
-| **"find $1,420"** · **"find fourteen twenty"** · **"search for $500"** · **"any transaction for 3,293.02"** | Searches the current month **and** the 24-month history for that exact amount. If the amount is an **account balance**, she says which account and how many postings make it up. If no single transaction matches, she looks for 2–3 that add up to it. |
-| **"find Hicks Hardware"** | Lists that vendor's transactions. |
+| **"find $1,420"** · **"find fourteen twenty"** · **"search for $500"** · **"any transaction for 3,293.02"** | Searches the current month **and** the 24-month history for that exact amount. If the amount is an **account balance**, she says which account and how many postings make it up. If no single transaction matches, she looks for 2–3 that add up to it. Opens **Search by Amount** with the matches on screen, each with an Open in QBO link. |
+| **"find Hicks Hardware"** | Says the vendor's transaction count and total, and opens **Search by Amount** listing every one of their transactions, each with an Open in QBO link. |
 
 ## 4. Balances and what we owe
 | Say | What happens |

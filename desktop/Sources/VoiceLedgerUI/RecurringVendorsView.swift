@@ -6,6 +6,7 @@ import DesignSystem
 /// see `RecurringVendorDetector`'s own doc comment in Core for the
 /// detection model and why it reads `Purchase` history specifically.
 public struct RecurringVendorsView: View {
+    @Environment(\.qboLinks) private var qboLinks
     public struct ViewState {
         public let environment: VLEnvironmentTone
         public let recurringVendors: [RecurringVendor]
@@ -101,9 +102,13 @@ public struct RecurringVendorsView: View {
                             VStack(alignment: .leading, spacing: VLSpacing.xs) {
                                 VLStatusPill(.reviewNeeded, label: "\(state.missingVendors.count) recurring vendor(s) overdue for their expected charge")
                                 ForEach(state.missingVendors) { vendor in
-                                    Text("\(vendor.vendorName) — expected \(vendor.expectedNextChargeDate.formatted), last charged \(vendor.lastAmount.accountingDescription) on \(vendor.lastChargeDate.formatted)")
+                                    HStack(alignment: .firstTextBaseline) {
+                                    Text("\(vendor.vendorName) — expected \(ClientText.polish(vendor.expectedNextChargeDate.formatted)), last charged \(vendor.lastAmount.accountingDescription) on \(ClientText.polish(vendor.lastChargeDate.formatted))")
                                         .font(VLTypography.caption())
                                         .foregroundStyle(VLColor.textSecondary)
+                                    Spacer()
+                                    QBOLinkButton(qboLinks.vendor(named: vendor.vendorName))
+                                    }
                                 }
                                 Text("Could mean a lapsed or cancelled subscription, a vendor who hasn't billed yet, or a charge not yet entered into QuickBooks — worth a quick check, not an automatic conclusion.")
                                     .font(VLTypography.caption())
@@ -147,17 +152,26 @@ public struct RecurringVendorsView: View {
                         .font(VLTypography.cardTitle())
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
-                    Text(vendor.averageAmount.accountingDescription)
-                        .font(VLTypography.tabularNumericEmphasis())
-                        .foregroundStyle(VLColor.textPrimary)
+                    // Owner screenshot 2026-10-02: an unlabeled average next
+                    // to the overdue list's "last charged" figure read as a
+                    // mismatch. Both are shown, each labeled.
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(vendor.averageAmount.accountingDescription)
+                            .font(VLTypography.tabularNumericEmphasis())
+                            .foregroundStyle(VLColor.textPrimary)
+                        Text("average · last \(vendor.lastAmount.accountingDescription)")
+                            .font(VLTypography.caption())
+                            .foregroundStyle(VLColor.textMuted)
+                    }
+                    QBOLinkButton(qboLinks.vendor(named: vendor.vendorName))
                 }
-                Text("Charged roughly every \(Int(vendor.averageIntervalDays.rounded())) days · \(vendor.occurrenceCount) charges seen · next expected \(vendor.expectedNextChargeDate.formatted)")
+                Text("Charged roughly every \(Int(vendor.averageIntervalDays.rounded())) days · \(vendor.occurrenceCount) charges seen · last \(ClientText.polish(vendor.lastChargeDate.formatted)) · next expected \(ClientText.polish(vendor.expectedNextChargeDate.formatted))")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
                 if vendor.lastAmountChanged {
                     HStack(spacing: VLSpacing.xxs) {
                         VLStatusPill(.reviewNeeded, label: "Amount changed")
-                        Text("Last charge was \(vendor.lastAmount.accountingDescription) on \(vendor.lastChargeDate.formatted) — outside this vendor's usual pattern.")
+                        Text("Last charge was \(vendor.lastAmount.accountingDescription) on \(ClientText.polish(vendor.lastChargeDate.formatted)) — outside this vendor's usual pattern.")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
                     }

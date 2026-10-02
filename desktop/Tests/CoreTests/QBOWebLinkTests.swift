@@ -18,16 +18,26 @@ struct QBOWebLinkTests {
         #expect(QBOWebLink.url(forRecordID: "9", transactions: txns, accounts: [], isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/invoice?txnId=9")
     }
 
-    @Test("Balance sheet accounts open their register; P&L accounts fall back to the chart of accounts")
+    @Test("Balance sheet accounts open their register; P&L accounts get no link (no general pages)")
     func accountRoutes() {
         let accounts = [LedgerAccount(id: "34", name: "Opening Balance Equity", accountType: .equity), LedgerAccount(id: "5", name: "Advertising", accountType: .expense)]
         #expect(QBOWebLink.url(forRecordID: "34", transactions: [], accounts: accounts, isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/register?accountId=34")
-        #expect(QBOWebLink.url(forRecordID: "5", transactions: [], accounts: accounts, isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/chartofaccounts")
+        #expect(QBOWebLink.url(forRecordID: "5", transactions: [], accounts: accounts, isSandbox: false) == nil)
     }
 
     @Test("Imported statement lines and unknown IDs get no link — there is no QBO record to open")
     func noLinkWithoutQBORecord() {
         #expect(QBOWebLink.url(forRecordID: "x", transactions: [txn("x", .purchase, imported: true)], accounts: [], isSandbox: false) == nil)
         #expect(QBOWebLink.url(forRecordID: "nope", transactions: [], accounts: [], isSandbox: false) == nil)
+    }
+
+    @Test("Vendor, customer and report-row transaction links open the exact record")
+    func exactRecordRoutes() {
+        #expect(QBOWebLink.vendor(id: "58", isSandbox: true)?.absoluteString == "https://app.sandbox.qbo.intuit.com/app/vendordetail?nameId=58")
+        #expect(QBOWebLink.customer(id: "3", isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/customerdetail?nameId=3")
+        #expect(QBOWebLink.transaction(id: "12", reportTypeName: "Bill Payment (Check)", isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/billpayment?txnId=12")
+        #expect(QBOWebLink.transaction(id: "12", reportTypeName: "Expense", isSandbox: false)?.absoluteString == "https://app.qbo.intuit.com/app/expense?txnId=12")
+        #expect(QBOWebLink.transaction(id: "12", reportTypeName: "Something New", isSandbox: false) == nil)
+        #expect(QBOWebLink.transaction(id: "", reportTypeName: "Bill", isSandbox: false) == nil)
     }
 }

@@ -7,6 +7,7 @@ import DesignSystem
 /// for why matching requires `FullyQualifiedName` and why the merge itself
 /// stays a guided manual procedure, never an automated write.
 public struct ChartOfAccountsCleanupView: View {
+    @Environment(\.qboLinks) private var qboLinks
     public struct ViewState {
         public let environment: VLEnvironmentTone
         public let totalAccountsCount: Int
@@ -122,6 +123,15 @@ public struct ChartOfAccountsCleanupView: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
 
+                    if state.groups.isEmpty {
+                        VLCard {
+                            Text("No duplicate accounts found. Every account was compared by its full parent path, type and detail type, and no two match. Nothing to merge.")
+                                .font(VLTypography.body())
+                                .foregroundStyle(VLColor.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
                     ForEach(state.groups) { group in
                         groupCard(group)
                     }
@@ -169,6 +179,7 @@ public struct ChartOfAccountsCleanupView: View {
                             Text(account.currentBalance.accountingDescription)
                                 .font(VLTypography.tabularNumeric())
                                 .foregroundStyle(VLColor.textMuted)
+                            QBOLinkButton(qboLinks.account(id: account.id), compact: true)
                         }
                     }
                 }

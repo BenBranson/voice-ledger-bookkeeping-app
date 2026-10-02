@@ -24,6 +24,9 @@ public struct AgingLine: Identifiable, Hashable, Sendable {
     public let total: Money?
     public let depth: Int
     public let isSummary: Bool
+    /// QBO Customer/Vendor Id from the report's name column, for a link to
+    /// that customer's or vendor's page in QBO. Nil when QBO omits it.
+    public let entityID: String?
 
     public init(
         label: String,
@@ -34,8 +37,10 @@ public struct AgingLine: Identifiable, Hashable, Sendable {
         days91AndOver: Money?,
         total: Money?,
         depth: Int,
-        isSummary: Bool
+        isSummary: Bool,
+        entityID: String? = nil
     ) {
+        self.entityID = entityID
         self.id = "\(depth)-\(label)-\(isSummary)-\(UUID().uuidString.prefix(8))"
         self.label = label
         self.current = current
