@@ -140,6 +140,8 @@ public enum VoiceIntent: Equatable, Sendable {
     /// "try again" — dismiss the last answer and listen again, hands-free.
     case retry
     case chart(ChartKind)
+    /// A bare "charts" — ask which one rather than guess.
+    case chartMenu
 }
 
 public enum KPIMetric: String, Equatable, Sendable { case revenue, netIncome, cashBalance }

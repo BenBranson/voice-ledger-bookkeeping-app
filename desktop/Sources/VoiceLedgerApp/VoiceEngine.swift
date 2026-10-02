@@ -918,6 +918,10 @@ public final class VoiceEngine: NSObject {
             if split.over60Owed.minorUnits > 0 { speech += ". \(split.over60Owed.accountingDescription) of it is more than 60 days old" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
 
+        case .chartMenu:
+            conversationMode = true
+            return VoiceTurn(speech: "Which chart? Expenses, vendors, income versus expenses, or cost drivers.")
+
         case .retry:
             dismissStatus()
             conversationMode = true

@@ -51,6 +51,16 @@ struct VoiceGoldenPhrasesTests {
         #expect(route("what do we owe in total") == .totalOwed)
     }
 
+    @Test("Charts: bare request asks which; named ones open")
+    func charts() {
+        for p in ["charts", "Charts.", "show me charts", "show me a chart"] { #expect(route(p) == .chartMenu, "\(p)") }
+        #expect(route("chart the expenses") == .chart(.expenseDrivers))
+        #expect(route("expense chart") == .chart(.expenseDrivers))
+        #expect(route("show me the vendors chart") == .chart(.vendorSpend))
+        #expect(route("show me a pie chart of expenses") == .chart(.expenseDrivers))
+        #expect(route("income vs expenses chart") == .chart(.incomeVsExpenses))
+    }
+
     @Test("Back, forward, hands-free correction")
     func control() {
         #expect(route("go back") == .goBack)

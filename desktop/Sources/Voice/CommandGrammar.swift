@@ -50,8 +50,8 @@ public enum CommandGrammar {
     ]
 
     static let chartPhrases: [(ChartKind, [String])] = [
-        (.expenseDrivers, ["expenses", "expense drivers", "expense categories", "top expenses", "spending", "where the money went"]),
-        (.vendorSpend, ["vendors", "vendor spend", "spend by vendor", "top vendors"]),
+        (.expenseDrivers, ["expenses", "expense", "expense drivers", "expense categories", "top expenses", "spending", "where the money went"]),
+        (.vendorSpend, ["vendors", "vendor", "vendor spend", "spend by vendor", "top vendors"]),
         (.incomeVsExpenses, ["income vs expenses", "income versus expenses", "income and expenses", "revenue vs expenses", "revenue versus expenses"]),
         (.pareto, ["pareto", "cost drivers", "biggest cost drivers"])
     ]
@@ -128,7 +128,18 @@ public enum CommandGrammar {
             if !name.isEmpty, SpokenNumber.amount(in: name) == nil { return .searchVendor(name) }
         }
 
-        // Charts
+        // Charts: a bare request asks which; "<thing> chart" / "chart of <thing>" picks one.
+        let bareChart: Set<String> = ["chart", "charts", "show charts", "show me charts", "show me a chart", "show a chart", "pull up charts", "pull up a chart", "graphs", "graph", "show me graphs", "open charts", "i want a chart", "make a chart", "draw a chart"]
+        if bareChart.contains(t) { return .chartMenu }
+        for (kind, phrases) in chartPhrases {
+            for ph in phrases {
+                for form in ["\(ph) chart", "\(ph) graph", "the \(ph) chart", "a \(ph) chart", "show me the \(ph) chart", "show me a \(ph) chart", "pull up the \(ph) chart", "show the \(ph) chart", "open the \(ph) chart"] where t == form { return .chart(kind) }
+            }
+        }
+        for lead in ["show me a pie chart of ", "show a pie chart of ", "pie chart of ", "show me a bar chart of ", "bar chart of "] where t.hasPrefix(lead) {
+            let what = strip(String(t.dropFirst(lead.count)), articles)
+            for (kind, phrases) in chartPhrases where phrases.contains(what) { return .chart(kind) }
+        }
         for lead in ["chart ", "graph ", "chart the ", "graph the ", "show me a chart of ", "show a chart of ", "show me a graph of ", "chart of ", "graph of ", "chart my ", "graph my "] where t.hasPrefix(lead) {
             let what = strip(String(t.dropFirst(lead.count)), articles)
             for (kind, phrases) in chartPhrases where phrases.contains(what) { return .chart(kind) }
