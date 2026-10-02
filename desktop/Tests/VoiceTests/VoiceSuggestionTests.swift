@@ -126,6 +126,31 @@ struct CardCatalogTests {
         #expect(VoiceIntentRouter.match(text: "who do we owe the most", context: .empty) == .topBalance(receivables: false))
     }
 
+    @Test("'how many open findings' answers with the count, not just the page")
+    func howMany() {
+        for p in ["how many open findings", "how many findings", "how many issues"] {
+            if case .findingsGroup = VoiceIntentRouter.match(text: p, context: .empty) {} else { Issue.record("\(p) -> \(VoiceIntentRouter.match(text: p, context: .empty))") }
+        }
+    }
+
+    @Test("Owner test batch 3 (2026-10-02): plain-English questions route to instant commands")
+    func batch3() {
+        func r(_ p: String) -> VoiceIntent { VoiceIntentRouter.match(text: p, context: .empty) }
+        #expect(r("how much did we make this month") == .kpi(.netIncome, .current))
+        #expect(r("how much did we make last month") == .kpi(.netIncome, .priorMonth))
+        #expect(r("are we profitable") == .kpi(.netIncome, .current))
+        #expect(r("how much does freeman sporting goods owe us") == .customerOwes("freeman sporting goods"))
+        #expect(r("what does video games by dan owe us") == .customerOwes("video games by dan"))
+        #expect(r("show me the biggest expenses") == .chart(.expenseDrivers))
+        #expect(r("what do we owe norton lumber") == .vendorOwed("norton lumber"))
+        #expect(r("is there anything unusual with VL Spike Permian Supply") == .nameFindings("vl spike permian supply"))
+        #expect(r("any issues with cool cars") == .nameFindings("cool cars"))
+        var ctx = VoiceSessionContext.empty
+        ctx.routineStep = 1
+        ctx.pendingAction = VoicePendingAction(kind: .runCommand, summary: "x", commandText: "top vendors")
+        #expect(VoiceIntentRouter.match(text: "stop", context: ctx) == .routineStop)
+    }
+
     @Test("'show <trend> chart' phrasing is a command; 'show vendors' is still a page")
     func showTrend() {
         #expect(VoiceIntentRouter.match(text: "show net income trend", context: .empty) == .chart(.netIncomeTrend))

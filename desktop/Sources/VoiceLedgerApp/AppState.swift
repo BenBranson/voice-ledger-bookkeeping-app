@@ -902,8 +902,17 @@ public final class AppState {
         return nil
     }
 
+    /// Cash in the bank right now: QuickBooks' current balance of every bank account.
+    /// The balance sheet's figure is as of the reviewed month's end, which is the
+    /// wrong start for a forecast that runs forward from today (owner test 2026-10-02).
+    public var currentBankCash: Money? {
+        let banks = accounts.filter { $0.accountType == .bank }
+        guard let first = banks.first else { return nil }
+        return Money(minorUnits: banks.reduce(0) { $0 + $1.currentBalance.minorUnits }, currency: first.currentBalance.currency)
+    }
+
     public var thirteenWeekForecast: ThirteenWeekForecast? {
-        guard let cash = FinancialKPIs.cashBalance(from: balanceSheetLines) else { return nil }
+        guard let cash = currentBankCash ?? FinancialKPIs.cashBalance(from: balanceSheetLines) else { return nil }
         return ThirteenWeekForecastEngine.compute(currentCash: cash, agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines,
                                                   recurringVendors: recurringVendors, planned: plannedCashItems, asOf: AccountingDate(date: Date()))
     }

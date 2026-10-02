@@ -285,11 +285,11 @@ public enum ClientFacts {
         let sc = scope(d, "the aged payables report")
         let q = name.trimmingCharacters(in: .whitespaces)
         guard !d.agedPayables.isEmpty else { return Fact(value: nil, scope: sc, note: "The aged payables report isn't loaded yet.") }
-        let rows = d.agedPayables.filter { !$0.isSummary && $0.label.localizedCaseInsensitiveContains(q) }
+        let rows = d.agedPayables.filter { !$0.isSummary && nameMatches($0.label, q) }
         guard let row = rows.first else {
             // Say WHY nothing is owed, so a paid-as-you-go vendor (payroll,
             // rent paid by check) doesn't read like a vendor the app missed.
-            let paid = d.searchableTransactions.filter { !$0.isVoided && $0.entityKind == .purchase && ($0.vendorName ?? "").localizedCaseInsensitiveContains(q) }
+            let paid = d.searchableTransactions.filter { !$0.isVoided && $0.entityKind == .purchase && nameMatches($0.vendorName ?? "", q) }
             if let name = paid.first?.vendorName {
                 return Fact(value: nil, scope: sc, note: "We owe \(name) nothing: no unpaid bills. Their \(paid.count) charge\(paid.count == 1 ? " was" : "s were") paid when recorded.")
             }
@@ -299,6 +299,27 @@ public enum ClientFacts {
         let current = m(row.current)
         let overdue = m(row.days1to30) + m(row.days31to60) + m(row.days61to90) + m(row.days91AndOver)
         return Fact(value: AmountOwed(vendor: row.label, total: m(row.total), current: current, overdue: overdue, over90: m(row.days91AndOver)), scope: sc, note: nil)
+    }
+
+    /// What one customer owes, from the Aged Receivables report. Uses the
+    /// report's top-level rows so a parent customer includes its sub-customers
+    /// and its own invoices (the "Total X" row).
+    public static func amountDue(receivables lines: [AgingLine], customer name: String) -> AmountOwed? {
+        let q = name.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty, let row = AgingSummary.topLevelRows(lines).first(where: { nameMatches($0.label, q) }) else { return nil }
+        func m(_ x: Money?) -> Money { x ?? .zero }
+        return AmountOwed(vendor: row.label, total: m(row.total), current: m(row.current),
+                          overdue: m(row.days1to30) + m(row.days31to60) + m(row.days61to90) + m(row.days91AndOver), over90: m(row.days91AndOver))
+    }
+
+    /// Spoken names vs QuickBooks names: "pg and e" / "pgande" match "PG&E",
+    /// "diegos" matches "Diego's". Compares letters and digits only, & read as "and".
+    public static func nameMatches(_ candidate: String, _ query: String) -> Bool {
+        func key(_ s: String) -> String {
+            s.lowercased().replacingOccurrences(of: "&", with: "and").filter { $0.isLetter || $0.isNumber }
+        }
+        let q = key(query)
+        return !q.isEmpty && key(candidate).contains(q)
     }
 
     // MARK: Reports

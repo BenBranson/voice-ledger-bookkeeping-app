@@ -942,6 +942,11 @@ public final class VoiceEngine: NSObject {
                     showCard(InsightCards.trend(metric == .revenue ? .revenue : .netIncome, monthly: monthly, focus: appState.period, footnote: cardFootnote))
                 case .cashBalance:
                     showCard(await cashOutlookCard())
+                    // The card starts from today's bank balances; say that figure too, so the
+                    // spoken month-end number and the card's headline never look like a mismatch.
+                    if let today = appState.currentBankCash, today != FinancialKPIs.cashBalance(from: appState.balanceSheetLines) {
+                        return VoiceTurn(speech: ClientText.polish(result.resultText + " Today the bank accounts total \(today.accountingDescription) in QuickBooks."), uiAction: result.uiAction)
+                    }
                 default: break
                 }
             }
@@ -953,10 +958,19 @@ public final class VoiceEngine: NSObject {
         case .vendorOwed(let name):
             if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
             let fact = ClientFacts.amountOwed(appState.clientData, vendor: name)
-            guard let owed = fact.value else { return VoiceTurn(speech: (fact.note ?? "I couldn't find that vendor.") + " " + fact.scope.sentence()) }
+            guard let owed = fact.value else {
+                // Said "what do we owe Freeman" about a customer: answer what they owe us instead.
+                if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+                if ClientFacts.amountDue(receivables: appState.agedReceivablesLines, customer: name) != nil { return await resolveTurn(for: .customerOwes(name), rawText: rawText) }
+                return VoiceTurn(speech: (fact.note ?? "I couldn't find that vendor.") + " " + fact.scope.sentence())
+            }
             var speech = "We owe \(owed.vendor) \(owed.total.accountingDescription)"
-            if owed.overdue.minorUnits > 0 { speech += ": \(owed.current.accountingDescription) current and \(owed.overdue.accountingDescription) past due" }
-            if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
+            if owed.overdue.minorUnits > 0, owed.current.minorUnits == 0 {
+                speech += owed.over90 == owed.overdue ? ", all of it over 90 days past due" : ", all of it past due"
+            } else {
+                if owed.overdue.minorUnits > 0 { speech += ": \(owed.current.accountingDescription) current and \(owed.overdue.accountingDescription) past due" }
+                if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
+            }
             showCard(InsightCards.counterparty(owed.vendor, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + ". " + fact.scope.sentence()))
 
@@ -972,6 +986,39 @@ public final class VoiceEngine: NSObject {
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
+
+        case .nameFindings(let name):
+            if name.contains("book") || name.contains("this month") || name.contains("everything") { return findingsGroupTurn(.allOpen) }
+            let hits = appState.findings.filter { $0.status == .open && (ClientFacts.nameMatches($0.vendorName ?? "", name) || ClientFacts.nameMatches($0.title, name)) }
+                .sorted { abs($0.dollarExposure.minorUnits) > abs($1.dollarExposure.minorUnits) }
+            guard !hits.isEmpty else {
+                return VoiceTurn(speech: ClientText.polish("No open findings mention “\(name)”. Say find and the name to see its transactions."))
+            }
+            let shown = hits.prefix(4).map { "\($0.title.components(separatedBy: " — ").first ?? $0.title), \(Money(minorUnits: abs($0.dollarExposure.minorUnits), currency: $0.dollarExposure.currency).accountingDescription)" }
+            let who = hits.first?.vendorName ?? name
+            var speech = "\(hits.count) open finding\(hits.count == 1 ? "" : "s") for \(who): " + shown.joined(separator: "; ")
+            if hits.count > 4 { speech += "; and \(hits.count - 4) more" }
+            showCard(InsightCards.findings(hits, group: .allOpen, title: who, footnote: cardFootnote))
+            return VoiceTurn(speech: ClientText.polish(speech + "."))
+
+        case .customerOwes(let name):
+            if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            guard let due = ClientFacts.amountDue(receivables: appState.agedReceivablesLines, customer: name) else {
+                if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+                if ClientFacts.amountOwed(appState.clientData, vendor: name).value != nil { return await resolveTurn(for: .vendorOwed(name), rawText: rawText) }
+                return VoiceTurn(speech: ClientText.polish("No customer matching “\(name)” has an open balance on the aged receivables report. " + ClientFacts.freshnessSentence(appState.clientData)))
+            }
+            var speech = "\(due.vendor) owes us \(due.total.accountingDescription)"
+            if due.total.minorUnits < 0 { speech = "\(due.vendor) has a credit of \(Money(minorUnits: -due.total.minorUnits, currency: due.total.currency).accountingDescription) with us" }
+            else if due.overdue.minorUnits > 0, due.current.minorUnits == 0 {
+                speech += due.over90 == due.overdue ? ", all of it over 90 days past due" : ", all of it past due"
+            } else {
+                if due.overdue.minorUnits > 0 { speech += ": \(due.current.accountingDescription) current and \(due.overdue.accountingDescription) past due" }
+                if due.over90.minorUnits > 0 { speech += ", of which \(due.over90.accountingDescription) is over 90 days" }
+            }
+            showCard(InsightCards.counterparty(due.vendor, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote)
+                     ?? InsightCards.aging(appState.agedReceivablesLines, receivables: true, footnote: cardFootnote))
+            return VoiceTurn(speech: ClientText.polish(speech + ". " + ClientFacts.freshnessSentence(appState.clientData)))
 
         case .topBalance(let receivables):
             if receivables, appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }

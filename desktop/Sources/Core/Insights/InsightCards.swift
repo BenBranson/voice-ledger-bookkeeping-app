@@ -72,7 +72,7 @@ public enum InsightCards {
     // MARK: Vendor or customer detail
 
     public static func counterparty(_ name: String, transactions: [LedgerTransaction], asOf: AccountingDate, footnote: String) -> InsightCard? {
-        let hits = transactions.filter { !$0.isVoided && ($0.vendorName ?? "").localizedCaseInsensitiveContains(name) }
+        let hits = transactions.filter { !$0.isVoided && ClientFacts.nameMatches($0.vendorName ?? "", name) }
             .sorted { $0.txnDate > $1.txnDate }
         guard let first = hits.first else { return nil }
         let displayName = first.vendorName ?? name

@@ -43,7 +43,8 @@ public enum CommandGrammar {
         (.vendorPriceIncrease, ["price increases", "vendor price increases", "price changes", "vendors charging more"]),
         (.balanceSheetIntegrity, ["balance sheet issues", "balance sheet problems", "balance sheet findings", "suspense", "suspense and clearing", "clearing accounts", "opening balance equity"]),
         (.cleanupAssessment, ["cleanup findings", "cleanup issues", "cleanup items"]),
-        (.allOpen, ["findings", "open findings", "all findings", "everything open", "open items", "issues", "problems", "exceptions", "what's open", "whats open", "what is open"])
+        (.allOpen, ["findings", "open findings", "all findings", "everything open", "open items", "issues", "problems", "exceptions", "what's open", "whats open", "what is open",
+                   "how many open findings", "how many findings", "how many findings are open", "how many issues", "how many problems", "how many open items", "how many exceptions"])
     ]
 
     static let kpiPhrases: [(KPIMetric, [String])] = [
@@ -58,7 +59,8 @@ public enum CommandGrammar {
     ]
 
     static let chartPhrases: [(ChartKind, [String])] = [
-        (.expenseDrivers, ["expenses", "expense", "expense drivers", "expense categories", "top expenses", "spending", "where the money went"]),
+        (.expenseDrivers, ["expenses", "expense", "expense drivers", "expense categories", "top expenses", "spending", "where the money went", "biggest expenses", "largest expenses",
+                           "top expense categories", "biggest expense categories", "what are we spending the most on", "where is the money going", "where's the money going"]),
         (.vendorSpend, ["vendors", "vendor", "vendor spend", "spend by vendor", "top vendors", "vendor by spend", "vendors by spend", "top vendors by spend",
                         "vendor spending", "spending by vendor", "biggest vendors", "largest vendors", "who do we spend the most with", "who do we pay the most"]),
         (.incomeVsExpenses, ["income vs expenses", "income versus expenses", "income and expenses", "revenue vs expenses", "revenue versus expenses"]),
@@ -107,6 +109,13 @@ public enum CommandGrammar {
             return .kpi(metric, period)
         }
 
+        // Plain-English profit questions (owner test 2026-10-02: "how much did we make this month"
+        // went to the AI model and came back about credit cards).
+        if ["how much did we make", "how much money did we make", "how much profit did we make", "what did we make", "are we profitable", "were we profitable",
+            "did we make money", "are we making money", "did we make a profit", "did we turn a profit", "how did we do", "how are we doing", "what's our profit", "whats our profit"].contains(q) {
+            return .kpi(.netIncome, period)
+        }
+
         // "how much cash do we have" and friends
         if ["how much cash do we have", "how much cash have we got", "how much money do we have", "how much money is in the bank", "how much do we have in the bank", "how much is in the bank"].contains(t) { return .kpi(.cashBalance, .current) }
 
@@ -117,7 +126,7 @@ public enum CommandGrammar {
         for verb in openVerbs where t.hasPrefix(verb + " ") {
             let rest = strip(String(t.dropFirst(verb.count + 1)), ["the", "my", "our"])
             for (kind, phrases) in chartPhrases where phrases.contains(rest)
-                && ["trend", "by month", "monthly", "outlook", "forecast", "projection"].contains(where: { rest.contains($0) }) { return .chart(kind) }
+                && ["trend", "by month", "monthly", "outlook", "forecast", "projection", "biggest", "largest", "top "].contains(where: { rest.contains($0) }) { return .chart(kind) }
         }
 
         // Account balance: "balance of/in/on <account>", "<account> balance", "how much is in <account>"
@@ -156,6 +165,21 @@ public enum CommandGrammar {
                                          "who owes us the most money", "biggest receivable", "largest receivable", "who is our biggest debtor", "which customer has the biggest balance",
                                          "which customer has the largest balance", "who has the biggest balance", "top customer balance", "biggest customer balance"]
         if topCustomer.contains(t) { return .topBalance(receivables: true) }
+        // "anything unusual with Permian Supply" — the open findings for one name, listed by
+        // code (owner test 2026-10-02: the AI model paired a real amount with the wrong issue).
+        for lead in ["is there anything unusual with ", "anything unusual with ", "is anything unusual with ", "anything unusual about ", "is there anything wrong with ",
+                     "is anything wrong with ", "anything wrong with ", "what's wrong with ", "whats wrong with ", "any issues with ", "any problems with ",
+                     "are there any issues with ", "are there any problems with ", "issues with ", "problems with ", "findings for ", "open findings for "] where t.hasPrefix(lead) {
+            let n = strip(String(t.dropFirst(lead.count)), articles)
+            if !n.isEmpty { return .nameFindings(n) }
+        }
+        // "what does Freeman owe us", "how much does Video Games by Dan owe"
+        if let r = t.range(of: #"^(?:what does|what do|how much does|how much do|what is|whats|what's|how much is) (.+?) (?:owe|own|owes|owing)(?: us)?(?: in total| right now| now)?$"#, options: .regularExpression) {
+            let name = t[r].replacingOccurrences(of: #"^(?:what does|what do|how much does|how much do|what is|whats|what's|how much is) "#, with: "", options: .regularExpression)
+                .replacingOccurrences(of: #" (?:owe|own|owes|owing)(?: us)?(?: in total| right now| now)?$"#, with: "", options: .regularExpression)
+            let n = strip(name, articles)
+            if !n.isEmpty, !["we", "i", "our customers", "customers", "everyone", "everybody"].contains(n) { return .customerOwes(n) }
+        }
         let topVendor: Set<String> = ["who do we owe the most", "which vendor do we owe the most", "what vendor do we owe the most", "who do we owe the most money", "biggest payable",
                                       "largest payable", "which vendor has the biggest balance", "which bill is the biggest", "biggest vendor balance", "who do we own the most", "which vendor do we own the most"]
         if topVendor.contains(t) { return .topBalance(receivables: false) }

@@ -147,6 +147,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case totalReceivable
     /// "who owes us the most" / "which vendor do we owe the most" — the largest open balance on the aging report.
     case topBalance(receivables: Bool)
+    /// "what does Freeman owe us" — one customer's open balance from Aged Receivables.
+    case customerOwes(String)
+    /// "anything unusual with Permian Supply" — that vendor's or customer's open findings, listed by code.
+    case nameFindings(String)
     /// "start month-end" — begin the guided walkthrough.
     case startRoutine
     /// Walkthrough controls (only produced while one is running).

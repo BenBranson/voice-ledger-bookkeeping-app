@@ -79,6 +79,9 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. For a vendor paid as each charge happens (like Gusto Payroll), she says nothing is owed and how many charges were paid. |
 | **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
 | **"who owes us the most"** · **"which customer owes us the most"** · **"who do we owe the most"** | Names the biggest customer (or vendor) balance, how much is over 60 days, and who is next; opens the aging page with a card. |
+| **"what does Freeman Sporting Goods owe us"** · **"how much does Kate Whelan owe us"** | One customer's open balance: current, past due, over 90 days. Pops up their card. |
+| **"is there anything unusual with Permian Supply"** · **"any issues with Cool Cars"** | Every open finding for that vendor or customer, largest first, with a card. |
+| **"how much did we make this month"** · **"are we profitable"** | Net income for the month, with the 12-month chart. |
 | **"how much have we paid Tania's Nursery"** · **"transactions from Hicks Hardware"** | Shows that vendor's count, total and last date. |
 
 ## 5. Quick numbers

@@ -243,6 +243,10 @@ public enum VoiceIntentRouter {
         let normalized = normalize(correctCommonRecognition(text))
         guard !normalized.isEmpty else { return .unrecognized(text) }
 
+        // "stop" while the month-end walkthrough runs ends the walkthrough, even when an
+        // offer is also pending (owner test 2026-10-02: it answered "Okay, I won't do that").
+        if context.routineStep != nil, MonthEndRoutine.command(for: text) == .stop { return .routineStop }
+
         if context.pendingAction != nil {
             if matchesLeading(normalized, any: confirmWords) { return .confirmPending }
             if matchesLeading(normalized, any: rejectWords) { return .rejectPending }
@@ -268,6 +272,11 @@ public enum VoiceIntentRouter {
             case .stop: return .routineStop
             case .where: return .routineWhere
             }
+        }
+
+        // "how many open findings / issues" wants the count spoken, not just the page.
+        if normalized.hasPrefix("how many "), ["finding", "issue", "problem", "open item", "exception"].contains(where: { normalized.contains($0) }) {
+            return .findingsGroup(.allOpen)
         }
 
         if let destination = matchDestination(normalized) {
