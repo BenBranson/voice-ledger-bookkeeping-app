@@ -897,7 +897,7 @@ public final class VoiceEngine: NSObject {
             let split = AgingSplit(total)
             var speech = "We owe vendors \(owed.accountingDescription) in total"
             if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days past due" }
-            if split.credits.minorUnits < 0 { speech += ", net of \(split.credits.accountingDescription) in credits" }
+            if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
 
         case .totalReceivable:
@@ -908,7 +908,7 @@ public final class VoiceEngine: NSObject {
             let split = AgingSplit(total)
             var speech = "Customers owe us \(split.owed.accountingDescription)"
             if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days old" }
-            if split.credits.minorUnits < 0 { speech += ", plus \(split.credits.accountingDescription) in customer credits to apply" }
+            if split.credits.minorUnits < 0 { speech += ", plus \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in customer credits to apply" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
 
         case .retry:
