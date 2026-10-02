@@ -741,7 +741,13 @@ public final class VoiceEngine: NSObject {
         case .goForward:
             appState.goForward()
         case .presentChart(let request):
-            appState.presentedChart = request
+            // Always reopen, even when the same chart was just shown and
+            // closed: assigning an equal value is not a change to SwiftUI.
+            appState.presentedChart = nil
+            Task { @MainActor [appState] in
+                try? await Task.sleep(nanoseconds: 80_000_000)
+                appState.presentedChart = request
+            }
         }
     }
 
@@ -888,7 +894,7 @@ public final class VoiceEngine: NSObject {
             return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction ?? .navigate(.amountSearch))
 
         case .kpi(let metric, let period):
-            let metricName = metric == .revenue ? "revenue" : metric == .netIncome ? "net_income" : "cash_balance"
+            let metricName = metric.toolName
             let result = await execute(AIToolCall(id: "grammar", name: "get_financial_summary", arguments: ["metric": .string(metricName), "period": .string(period.rawValue)]))
             return VoiceTurn(speech: ClientText.polish(result.resultText), uiAction: result.uiAction)
 

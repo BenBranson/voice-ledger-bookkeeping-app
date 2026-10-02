@@ -72,7 +72,7 @@ extension VoiceEngine {
             properties: [
                 "metric": .object([
                     "type": .string("string"),
-                    "enum": .array(["net_income", "revenue", "cash_balance", "uncategorized_count"].map { .string($0) })
+                    "enum": .array(["net_income", "revenue", "cash_balance", "working_capital", "current_ratio", "quick_ratio", "gross_margin", "net_margin", "uncategorized_count"].map { .string($0) })
                 ]),
                 "period": .object([
                     "type": .string("string"),

@@ -58,3 +58,25 @@ struct VendorSpendSummaryTests {
         #expect(VendorSpendSummary.top(5, from: []).isEmpty)
     }
 }
+
+@Suite("VendorSpendSummary counts vendors only")
+struct VendorSpendVendorsOnlyTests {
+    func txn(_ id: String, _ kind: QBOEntityKind, _ name: String, _ cents: Int64) -> LedgerTransaction {
+        LedgerTransaction(id: id, entityKind: kind, vendorName: name, txnDate: AccountingDate(year: 2026, month: 7, day: 1),
+                          totalAmount: Money(minorUnits: cents, currency: .usd), paymentAccountID: nil, docNumber: nil,
+                          isVoided: false, memo: nil, provenance: .qboAPI(readAt: Date()))
+    }
+
+    @Test("Invoices (customer names) and bill payments are not vendor spend")
+    func excludesCustomersAndPayments() {
+        let rows = VendorSpendSummary.top(10, from: [
+            txn("1", .purchase, "Gusto Payroll", 100_00),
+            txn("2", .invoice, "Kate Whelan", 900_00),
+            txn("3", .bill, "Norton Lumber", 50_00),
+            txn("4", .billPayment, "Norton Lumber", 50_00),
+            txn("5", .vendorCredit, "Norton Lumber", 10_00),
+        ])
+        #expect(rows.map(\.vendorName) == ["Gusto Payroll", "Norton Lumber"])
+        #expect(rows.first { $0.vendorName == "Norton Lumber" }?.total.minorUnits == 40_00)
+    }
+}

@@ -72,7 +72,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 |---|---|
 | **"what's the balance of the sweeper checking account"** · **"how much is in savings"** · **"balance of Mastercard"** | Says the account's current QuickBooks balance (overdrawn = in parentheses). |
 | **"what do we owe"** · **"how much do we owe"** · **"what bills are due"** | Says total payables, how much is over 60 days past due, less credits; opens Aged Payables. |
-| **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. |
+| **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. For a vendor paid as each charge happens (like Gusto Payroll), she says nothing is owed and how many charges were paid. |
 | **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
 | **"how much have we paid Tania's Nursery"** · **"transactions from Hicks Hardware"** | Shows that vendor's count, total and last date. |
 
@@ -82,6 +82,9 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what's our revenue this month"** · **"what was revenue last month"** | Says revenue (total income) for the loaded month, or the month before. |
 | **"what's our net income"** · **"what's our profit"** | Says net income. |
 | **"what's our cash balance"** · **"how much cash do we have"** | Says total bank balances. |
+| **"working capital"** · **"what's our working capital"** | Says working capital, the same figure as the Dashboard card. |
+| **"current ratio"** · **"quick ratio"** | Says the ratio, the same figure as the Dashboard card. |
+| **"gross margin"** · **"net margin"** · **"net margin last month"** | Says the margin as a percent, the same figure as the Dashboard card. |
 | **"when did we last sync"** · **"is this current"** | Says how fresh the data is. |
 
 ## 6. Charts
@@ -89,7 +92,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 |---|---|
 | **"charts"** | She asks which chart you want and waits for the name. |
 | **"expenses"** (after she asks, or any time) or **"chart the expenses"** · **"expense chart"** · **"show me a pie chart of expenses"** | Pops up the top expense categories. |
-| **"vendors chart"** | Spend by vendor. |
+| **"vendors chart"** · **"top vendors"** · **"vendor by spend"** · **"who do we pay the most"** | Spend by vendor for the month: expenses and bills only, never customers. |
 | **"income vs expenses chart"** | Revenue to net income, step by step. |
 | **"cost drivers chart"** · **"pareto"** | The biggest cost drivers. |
 

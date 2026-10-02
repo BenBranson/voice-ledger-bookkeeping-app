@@ -17,6 +17,9 @@ public enum CommandGrammar {
         t = t.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "&", with: "and")
         for tail in [" please", " thanks", " thank you", " for me", " now", " right now"] where t.hasSuffix(tail) { t = String(t.dropLast(tail.count)) }
         t = t.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        // The recognizer hears "spend" as "spin" (owner, 2026-10-02: "vendor by
+        // spin"). No command uses the word "spin", so read it as "spend".
+        t = t.replacingOccurrences(of: #"\bspin\b"#, with: "spend", options: .regularExpression)
         var changed = true
         while changed {
             changed = false
@@ -46,12 +49,18 @@ public enum CommandGrammar {
     static let kpiPhrases: [(KPIMetric, [String])] = [
         (.revenue, ["revenue", "sales", "income", "total income", "top line"]),
         (.netIncome, ["net income", "profit", "net profit", "bottom line", "net loss", "the loss"]),
-        (.cashBalance, ["cash", "cash balance", "bank balance", "cash in the bank", "money in the bank", "cash on hand", "total bank"])
+        (.cashBalance, ["cash", "cash balance", "bank balance", "cash in the bank", "money in the bank", "cash on hand", "total bank"]),
+        (.workingCapital, ["working capital", "net working capital"]),
+        (.currentRatio, ["current ratio"]),
+        (.quickRatio, ["quick ratio", "acid test", "acid test ratio"]),
+        (.grossMargin, ["gross margin", "gross profit margin", "gross margin percent"]),
+        (.netMargin, ["net margin", "net profit margin", "profit margin", "net margin percent"])
     ]
 
     static let chartPhrases: [(ChartKind, [String])] = [
         (.expenseDrivers, ["expenses", "expense", "expense drivers", "expense categories", "top expenses", "spending", "where the money went"]),
-        (.vendorSpend, ["vendors", "vendor", "vendor spend", "spend by vendor", "top vendors"]),
+        (.vendorSpend, ["vendors", "vendor", "vendor spend", "spend by vendor", "top vendors", "vendor by spend", "vendors by spend", "top vendors by spend",
+                        "vendor spending", "spending by vendor", "biggest vendors", "largest vendors", "who do we spend the most with", "who do we pay the most"]),
         (.incomeVsExpenses, ["income vs expenses", "income versus expenses", "income and expenses", "revenue vs expenses", "revenue versus expenses"]),
         (.pareto, ["pareto", "cost drivers", "biggest cost drivers"])
     ]

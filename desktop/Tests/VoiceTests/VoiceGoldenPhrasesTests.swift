@@ -89,3 +89,19 @@ struct VoiceGoldenPhrasesTests {
         } }
     }
 }
+
+@Suite("Golden phrases from the owner's 2026-10-02 test")
+struct OwnerTestPhrasesOct2 {
+    func route(_ s: String) -> VoiceIntent { VoiceIntentRouter.match(text: s, context: .empty) }
+
+    @Test("Phrases that failed or misfired in the owner's test now route")
+    func routes() {
+        #expect(route("Working capital") == .kpi(.workingCapital, .current))
+        #expect(route("Vendor by spin") == .chart(.vendorSpend))
+        #expect(route("Vendor by spend") == .chart(.vendorSpend))
+        #expect(route("How much cash do we have") == .kpi(.cashBalance, .current))
+        #expect(route("What's our revenue") == .kpi(.revenue, .current))
+        #expect(route("Who owes us") == .totalReceivable)
+        #expect(route("What do we owe gusto") == .vendorOwed("gusto"))
+    }
+}

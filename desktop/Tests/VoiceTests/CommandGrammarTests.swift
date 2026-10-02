@@ -105,3 +105,26 @@ struct CommandGrammarTests {
         #expect(parse("what does opening balance equity mean") == nil)
     }
 }
+
+@Suite("CommandGrammar — dashboard measures and vendor spend (owner test 2026-10-02)")
+struct DashboardMeasureGrammarTests {
+    @Test("Every dashboard card can be asked for")
+    func dashboardMeasures() {
+        #expect(CommandGrammar.parse("working capital") == .kpi(.workingCapital, .current))
+        #expect(CommandGrammar.parse("what's our working capital") == .kpi(.workingCapital, .current))
+        #expect(CommandGrammar.parse("what is the current ratio") == .kpi(.currentRatio, .current))
+        #expect(CommandGrammar.parse("quick ratio") == .kpi(.quickRatio, .current))
+        #expect(CommandGrammar.parse("what's our gross margin") == .kpi(.grossMargin, .current))
+        #expect(CommandGrammar.parse("net margin last month") == .kpi(.netMargin, .priorMonth))
+        #expect(CommandGrammar.parse("what's our net income") == .kpi(.netIncome, .current))
+    }
+
+    @Test("Vendor spend, including the recognizer's 'spin'")
+    func vendorSpend() {
+        #expect(CommandGrammar.parse("vendor by spend") == .chart(.vendorSpend))
+        #expect(CommandGrammar.parse("vendor by spin") == .chart(.vendorSpend))
+        #expect(CommandGrammar.parse("vendors by spin") == .chart(.vendorSpend))
+        #expect(CommandGrammar.parse("top vendors") == .chart(.vendorSpend))
+        #expect(CommandGrammar.parse("who do we pay the most") == .chart(.vendorSpend))
+    }
+}

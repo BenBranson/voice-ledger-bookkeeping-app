@@ -175,7 +175,7 @@ public enum ClientFacts {
     static let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
     public static func periodLabel(_ p: AccountingPeriod) -> String { "\(months[p.month - 1]) \(p.year)" }
 
-    private static func scope(_ d: ClientData, _ source: String, prior: Bool = false) -> FactScope {
+    public static func scope(_ d: ClientData, _ source: String, prior: Bool = false) -> FactScope {
         FactScope(period: prior ? d.period.previousMonth : d.period, source: source, freshness: d.freshness)
     }
     private static var currentSource: String { "the loaded month" }
@@ -207,6 +207,12 @@ public enum ClientFacts {
     public static func netIncome(_ d: ClientData, _ period: PeriodChoice = .current) -> Fact<Money> {
         let v = TaxEstimate.netIncome(from: period == .current ? d.profitAndLoss : d.priorProfitAndLoss)
         return Fact(value: v, scope: scope(d, currentSource, prior: period == .priorMonth), note: v == nil ? "The Profit & Loss isn't loaded for this month." : nil)
+    }
+
+    /// The Dashboard's Working Capital card, same function and input.
+    public static func workingCapital(_ d: ClientData, _ period: PeriodChoice = .current) -> Fact<Money> {
+        let v = FinancialKPIs.workingCapital(from: period == .current ? d.balanceSheet : d.priorBalanceSheet)
+        return Fact(value: v, scope: scope(d, currentSource, prior: period == .priorMonth), note: v == nil ? "The Balance Sheet isn't loaded for this month." : nil)
     }
 
     // MARK: Accounts
@@ -265,7 +271,13 @@ public enum ClientFacts {
         guard !d.agedPayables.isEmpty else { return Fact(value: nil, scope: sc, note: "The aged payables report isn't loaded yet.") }
         let rows = d.agedPayables.filter { !$0.isSummary && $0.label.localizedCaseInsensitiveContains(q) }
         guard let row = rows.first else {
-            return Fact(value: nil, scope: sc, note: "No open bills for a vendor matching “\(q)”. We owe them nothing on the books.")
+            // Say WHY nothing is owed, so a paid-as-you-go vendor (payroll,
+            // rent paid by check) doesn't read like a vendor the app missed.
+            let paid = d.searchableTransactions.filter { !$0.isVoided && $0.entityKind == .purchase && ($0.vendorName ?? "").localizedCaseInsensitiveContains(q) }
+            if let name = paid.first?.vendorName {
+                return Fact(value: nil, scope: sc, note: "We owe \(name) nothing: no unpaid bills. Their \(paid.count) charge\(paid.count == 1 ? " was" : "s were") paid when recorded.")
+            }
+            return Fact(value: nil, scope: sc, note: "No open bills for a vendor matching “\(q)”, and no transactions with that name. Check the spelling, or say “find” and the name.")
         }
         func m(_ x: Money?) -> Money { x ?? .zero }
         let current = m(row.current)

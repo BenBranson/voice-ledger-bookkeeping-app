@@ -41,9 +41,21 @@ public enum VendorSpendSummary {
     /// silently summed together.
     public static func top(_ count: Int, from transactions: [LedgerTransaction]) -> [VendorTotal] {
         var totals: [String: [Money]] = [:]
+        // Only money paid or owed TO a vendor: expenses (`Purchase`) and
+        // bills. Invoices carry the CUSTOMER's name in `vendorName`, so
+        // counting every named transaction listed customers as "vendors"
+        // (owner screenshot 2026-10-02). Bill payments are skipped because
+        // the bill they pay is already counted; vendor credits reduce spend.
         for transaction in transactions where !transaction.isVoided {
             guard let vendorName = transaction.vendorName, !vendorName.isEmpty else { continue }
-            totals[vendorName, default: []].append(transaction.totalAmount)
+            switch transaction.entityKind {
+            case .purchase, .bill:
+                totals[vendorName, default: []].append(transaction.totalAmount)
+            case .vendorCredit:
+                totals[vendorName, default: []].append(Money(minorUnits: -abs(transaction.totalAmount.minorUnits), currency: transaction.totalAmount.currency))
+            default:
+                continue
+            }
         }
 
         return totals.compactMap { vendorName, amounts -> VendorTotal? in

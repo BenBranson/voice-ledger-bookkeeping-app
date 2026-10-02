@@ -148,5 +148,23 @@ public enum VoiceIntent: Equatable, Sendable {
     case chartMenu
 }
 
-public enum KPIMetric: String, Equatable, Sendable { case revenue, netIncome, cashBalance }
+public enum KPIMetric: String, Equatable, Sendable {
+    case revenue, netIncome, cashBalance
+    // The dashboard's other cards, read from the same calculations (2026-10-02).
+    case workingCapital, currentRatio, quickRatio, grossMargin, netMargin
+
+    /// The `get_financial_summary` tool's metric name.
+    public var toolName: String {
+        switch self {
+        case .revenue: return "revenue"
+        case .netIncome: return "net_income"
+        case .cashBalance: return "cash_balance"
+        case .workingCapital: return "working_capital"
+        case .currentRatio: return "current_ratio"
+        case .quickRatio: return "quick_ratio"
+        case .grossMargin: return "gross_margin"
+        case .netMargin: return "net_margin"
+        }
+    }
+}
 public enum ChartKind: String, Equatable, Sendable { case expenseDrivers = "expense_drivers", vendorSpend = "vendor_spend", incomeVsExpenses = "income_vs_expenses", pareto = "pareto_cost_drivers" }

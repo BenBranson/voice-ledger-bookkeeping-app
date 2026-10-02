@@ -339,6 +339,24 @@ extension VoiceEngine {
         case "net_income": return say("Net income", ClientFacts.netIncome(data, choice))
         case "revenue": return say("Revenue", ClientFacts.revenue(data, choice))
         case "cash_balance": return say("Cash balance (total bank accounts)", ClientFacts.cashBalance(data, choice))
+        // Same functions and inputs as the Dashboard cards, so the spoken
+        // figure always equals the card.
+        case "working_capital":
+            return say("Working capital", ClientFacts.workingCapital(data, choice))
+        case "current_ratio", "quick_ratio":
+            let lines = choice == .current ? data.balanceSheet : data.priorBalanceSheet
+            let value = metric == "current_ratio" ? FinancialKPIs.currentRatio(from: lines) : FinancialKPIs.quickRatio(from: lines)
+            let label = metric == "current_ratio" ? "Current ratio" : "Quick ratio"
+            let sc = ClientFacts.scope(data, "the Balance Sheet", prior: choice == .priorMonth)
+            guard let value else { return ("\(label) isn't available. The Balance Sheet isn't loaded for this month. \(sc.sentence())", nil) }
+            return ("\(label): \(String(format: "%.2f", value)) to 1. \(sc.sentence())", nil)
+        case "gross_margin", "net_margin":
+            let lines = choice == .current ? data.profitAndLoss : data.priorProfitAndLoss
+            let value = metric == "gross_margin" ? FinancialKPIs.grossMarginPercent(from: lines) : FinancialKPIs.netMarginPercent(from: lines)
+            let label = metric == "gross_margin" ? "Gross margin" : "Net margin"
+            let sc = ClientFacts.scope(data, "the Profit & Loss", prior: choice == .priorMonth)
+            guard let value else { return ("\(label) isn't available. The Profit & Loss isn't loaded for this month. \(sc.sentence())", nil) }
+            return ("\(label): \(String(format: "%.1f", value)) percent. \(sc.sentence())", nil)
         case "uncategorized_count":
             let count = ClientFacts.findings(data, category: .miscategorizedOrUncategorized).value?.filter { $0.ruleID.rawValue == "VL-CAT-UNCAT-001" }.count ?? 0
             return ("\(count) transaction(s) still uncategorized. \(ClientFacts.freshnessSentence(data))", nil)
