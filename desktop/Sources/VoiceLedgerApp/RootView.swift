@@ -87,11 +87,28 @@ struct RootView: View {
         // capability (`VoiceUIAction.presentChart`) — global, not
         // per-page, matching the voice status panel above: a chart can be
         // requested from any screen.
-        .sheet(isPresented: Binding(get: { state.presentedChart != nil }, set: { if !$0 { state.presentedChart = nil } })) {
+        //
+        // Owner-reported (2026-10-02): as a `.sheet` on the full-screen window,
+        // macOS slid the whole app sideways before the card appeared. The card is
+        // now drawn inside the window: the page stays still and the card fades in.
+        .overlay {
             if let request = state.presentedChart {
-                ChartPopupView(request: request) { state.presentedChart = nil }
+                GeometryReader { geo in
+                    ZStack {
+                        Color.black.opacity(0.35)
+                            .ignoresSafeArea()
+                            .onTapGesture { state.presentedChart = nil }
+                        ChartPopupView(request: request) { state.presentedChart = nil }
+                            .frame(width: min(900, geo.size.width * 0.9), height: min(760, geo.size.height * 0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .shadow(color: .black.opacity(0.3), radius: 24, y: 8)
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                }
+                .transition(.opacity)
             }
         }
+        .animation(.easeOut(duration: 0.15), value: state.presentedChart != nil)
         // Owner-reported bug (2026-09-06): a macOS `.sheet` doesn't offer a
         // resize grip regardless of frame flexibility. Comparing findings —
         // "pull up two transactions... side by side," later "shouldn't be

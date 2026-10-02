@@ -765,13 +765,8 @@ public final class VoiceEngine: NSObject {
         case .goForward:
             appState.goForward()
         case .presentChart(let request):
-            // Always reopen, even when the same chart was just shown and
-            // closed: assigning an equal value is not a change to SwiftUI.
-            appState.presentedChart = nil
-            Task { @MainActor [appState] in
-                try? await Task.sleep(nanoseconds: 80_000_000)
-                appState.presentedChart = request
-            }
+            // The card is an in-window overlay (RootView), so it can be swapped directly.
+            appState.presentedChart = request
         }
     }
 
@@ -1379,11 +1374,7 @@ public final class VoiceEngine: NSObject {
         guard let card else { return }
         cardShownThisTurn = card.title
         let request = ChartRequest.insight(card)
-        appState.presentedChart = nil
-        Task { @MainActor [appState] in
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            appState.presentedChart = request
-        }
+        appState.presentedChart = request
     }
 
     private var cardFootnote: String { ClientFacts.freshnessSentence(appState.clientData) }

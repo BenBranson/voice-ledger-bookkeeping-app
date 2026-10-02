@@ -319,12 +319,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var onReopenWithNoWindows: (() -> Void)?
     var onDevAsk: ((String, Bool) -> Void)?
 
-    func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.scheme == "voiceledger-dev" && url.host == "ask" {
-            guard let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
-                  let q = items.first(where: { $0.name == "q" })?.value, !q.isEmpty else { continue }
-            onDevAsk?(q, items.contains { $0.name == "silent" && $0.value == "1" })
-        }
+    // The dev test link is caught as a raw Apple Event, before SwiftUI sees it.
+    // Verified 2026-10-02: left to SwiftUI, every link opened another window
+    // (a hidden tab, or the Comparing Findings window when the main one refused).
+    private func installURLHandler() {
+        NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleGetURL(_:reply:)),
+                                                     forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+    }
+
+    @objc private func handleGetURL(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        guard let s = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue, let url = URL(string: s),
+              url.scheme == "voiceledger-dev", url.host == "ask",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let q = items.first(where: { $0.name == "q" })?.value, !q.isEmpty else { return }
+        onDevAsk?(q, items.contains { $0.name == "silent" && $0.value == "1" })
     }
     /// Defensive guard, live-verified 2026-08-29: without this, a reopen
     /// callback that fires before launch has actually settled could open a
@@ -338,6 +346,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         didFinishLaunching = true
+        // One window, no tab bar: duplicates must never hide as tabs.
+        NSWindow.allowsAutomaticWindowTabbing = false
+        // After launch, so it replaces SwiftUI's own handler rather than being replaced by it.
+        installURLHandler()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
