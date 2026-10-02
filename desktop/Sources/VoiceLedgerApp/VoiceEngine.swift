@@ -803,7 +803,7 @@ public final class VoiceEngine: NSObject {
         var exposureClause = ""
         if sameCurrency {
             let total = open.dropFirst().reduce(open[0].dollarExposure) { $0 + $1.dollarExposure }
-            exposureClause = " totaling \(total.description) in exposure"
+            exposureClause = " totaling \(total.accountingDescription) in exposure"
         }
         return VoiceTurn(
             speech: "Connected to QuickBooks. You have \(open.count) open finding\(open.count == 1 ? "" : "s")\(exposureClause). Ready when you are.",
