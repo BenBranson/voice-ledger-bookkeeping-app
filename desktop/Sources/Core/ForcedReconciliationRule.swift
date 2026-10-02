@@ -51,6 +51,21 @@ public enum ForcedReconciliationRule: Rule {
             return .pass(coverage: input.coverage, checkedCount: 1)
         }
 
+        // Re-checked 2026-10-02: the forced reconciliation's adjustment DOES come back through
+        // the API, as a Purchase (memo "Reconcile Adjustment", DocNumber "ADJ") whose line posts
+        // to this account. The 2026-08-18 note above only ruled out JournalEntry. Those Purchases
+        // are the exact records to open in QBO, so they lead the evidence. The finding ID still
+        // keys on the line label, so existing findings and dismissals keep their identity.
+        let accountID = discrepancyLine.accountID ?? input.accounts.first { $0.name == discrepancyLineLabel }?.id
+        let adjustments = input.transactions.filter { txn in
+            guard !txn.isVoided, let id = accountID else { return false }
+            return txn.lineAccountIDs.contains(id) || txn.lines.contains { $0.accountID == id }
+        }
+        let adjustmentEvidence = adjustments.map {
+            EvidenceItem(transactionID: $0.id, highlightedFields: ["amount", "date"],
+                         fieldValues: ["amount": $0.totalAmount.description, "date": "\($0.txnDate.year)-\($0.txnDate.month)-\($0.txnDate.day)", "memo": $0.memo ?? ""])
+        }
+
         let severity = Severity.derive(dollarExposure: exposure, materiality: context.materiality)
         let findingID = FindingIDGenerator.makeID(
             ruleID: identity.id,
@@ -101,7 +116,7 @@ public enum ForcedReconciliationRule: Rule {
             severity: severity,
             confidence: .high,
             dollarExposure: exposure,
-            evidence: [EvidenceItem(transactionID: discrepancyLineLabel, highlightedFields: ["amount"], fieldValues: ["amount": exposure.description])],
+            evidence: adjustmentEvidence + [EvidenceItem(transactionID: discrepancyLineLabel, highlightedFields: ["amount"], fieldValues: ["amount": exposure.description])],
             proposedActions: [action],
             provenance: [.qboAPI(readAt: Date())],
             narrative: TranspositionHint.appending(to: "The Profit & Loss report shows \(exposure) in Reconciliation Discrepancies — a reconciliation was finished with a difference that QBO papered over with an adjustment rather than the underlying cause being found.", difference: exposure),

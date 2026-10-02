@@ -219,7 +219,7 @@ public enum ClientFacts {
     public static func accountBalance(_ d: ClientData, name: String) -> Fact<AccountBalance> {
         let q = name.trimmingCharacters(in: .whitespaces)
         let accounts = d.searchableAccounts
-        let match = accounts.first { $0.name.caseInsensitiveCompare(q) == .orderedSame } ?? accounts.first { $0.name.localizedCaseInsensitiveContains(q) }
+        let match = accounts.first { $0.name.caseInsensitiveCompare(q) == .orderedSame } ?? accounts.first { nameMatches($0.name, q) }
         let value = match.map { AccountBalance(id: $0.id, name: $0.name, type: $0.accountType, balance: $0.currentBalance) }
         return Fact(value: value, scope: scope(d, "the chart of accounts as of the last sync"),
                     note: match == nil ? "No account named “\(q)” in the chart of accounts." : "Balances are QuickBooks' current balances, which include activity after \(periodLabel(d.period)).")
@@ -262,14 +262,14 @@ public enum ClientFacts {
     /// Vendor-name / memo search over the same pool as the amount search.
     public static func searchText(_ d: ClientData, query: String) -> Fact<[LedgerTransaction]> {
         let q = query.trimmingCharacters(in: .whitespaces)
-        let hits = d.searchableTransactions.filter { ($0.vendorName ?? "").localizedCaseInsensitiveContains(q) || ($0.memo ?? "").localizedCaseInsensitiveContains(q) }
+        let hits = d.searchableTransactions.filter { nameMatches($0.vendorName ?? "", q) || ($0.memo ?? "").localizedCaseInsensitiveContains(q) }
             .sorted { $0.txnDate > $1.txnDate }
         return Fact(value: hits, scope: scope(d, searchScope(d)), note: d.history == nil ? "Only the current month is loaded." : nil)
     }
 
     // MARK: Vendors
     public static func vendor(_ d: ClientData, name: String) -> Fact<VendorSummary> {
-        let hits = d.searchableTransactions.filter { !$0.isVoided && ($0.vendorName ?? "").localizedCaseInsensitiveContains(name) }
+        let hits = d.searchableTransactions.filter { !$0.isVoided && nameMatches($0.vendorName ?? "", name) }
         guard let first = hits.first else { return Fact(value: nil, scope: scope(d, searchScope(d)), note: "No transactions for a vendor matching “\(name)”.") }
         let total = hits.map(\.totalAmount).reduce(Money.zero, +)
         let summary = VendorSummary(name: first.vendorName ?? name, transactionCount: hits.count, total: total, lastDate: hits.map(\.txnDate).max())

@@ -95,3 +95,81 @@ struct PresentedBalanceTests {
         #expect(card.headline == "$1,222.70" && card.recommendations.first?.hasPrefix("Normal balance") == true)
     }
 }
+
+@Suite("Statement cards (expenses, income vs expenses, financial health)")
+struct StatementCardsTests {
+    func usd(_ d: Int64) -> Money { Money(minorUnits: d * 100, currency: .usd) }
+    let jul = AccountingPeriod(year: 2026, month: 7)
+    var pl: [ReportLine] {
+        [ReportLine(label: "Sales", amount: usd(10_000), depth: 1, isSummary: false),
+         ReportLine(label: "Total Income", amount: usd(10_000), depth: 0, isSummary: true),
+         ReportLine(label: "Gross Profit", amount: usd(10_000), depth: 0, isSummary: true),
+         ReportLine(label: "Rent", amount: usd(3_000), depth: 1, isSummary: false, accountID: "50"),
+         ReportLine(label: "Fuel", amount: usd(1_000), depth: 1, isSummary: false, accountID: "51"),
+         ReportLine(label: "Reconciliation Discrepancies", amount: usd(2_000), depth: 1, isSummary: false, accountID: "52"),
+         ReportLine(label: "Net Income", amount: usd(4_000), depth: 0, isSummary: true)]
+    }
+    var prior: [ReportLine] {
+        [ReportLine(label: "Total Income", amount: usd(9_000), depth: 0, isSummary: true),
+         ReportLine(label: "Gross Profit", amount: usd(9_000), depth: 0, isSummary: true),
+         ReportLine(label: "Rent", amount: usd(3_000), depth: 1, isSummary: false),
+         ReportLine(label: "Fuel", amount: usd(500), depth: 1, isSummary: false),
+         ReportLine(label: "Net Income", amount: usd(5_500), depth: 0, isSummary: true)]
+    }
+
+    @Test("Expense card: category links open its largest transaction; holding accounts and big movers get advice")
+    func expenses() {
+        let t = [LedgerTransaction(id: "900", entityKind: .purchase, vendorName: "Chevron", txnDate: AccountingDate(year: 2026, month: 7, day: 3), totalAmount: usd(600),
+                                   paymentAccountID: nil, docNumber: nil, isVoided: false, memo: nil, lineAccountIDs: ["51"], provenance: .qboAPI(readAt: Date())),
+                 LedgerTransaction(id: "901", entityKind: .purchase, vendorName: "Shell", txnDate: AccountingDate(year: 2026, month: 7, day: 9), totalAmount: usd(400),
+                                   paymentAccountID: nil, docNumber: nil, isVoided: false, memo: nil, lineAccountIDs: ["51"], provenance: .qboAPI(readAt: Date()))]
+        let card = InsightCards.expenses(pl, prior: prior, transactions: t, pareto: false, period: jul, footnote: "f")!
+        #expect(card.headline == "$6,000.00")
+        let fuel = card.rows.first { $0.label == "Fuel" }!
+        #expect(fuel.link == .transaction(id: "900", kind: .purchase))
+        #expect(fuel.detail.contains("last month $500.00"))
+        #expect(card.rows.first { $0.label == "Rent" }!.link == nil)        // no transactions loaded → no link, never a general page
+        #expect(card.rows.first { $0.label == "Reconciliation Discrepancies" }!.warn)
+        #expect(card.recommendations.contains { $0.contains("Reconciliation Discrepancies") && $0.contains("isn't real spending") })
+        #expect(card.recommendations.contains { $0.contains("Fuel rose from $500.00 to $1,000.00") })
+        let pareto = InsightCards.expenses(pl, prior: prior, transactions: t, pareto: true, period: jul, footnote: "f")!
+        #expect(pareto.recommendations.contains { $0.contains("2 of 3 categories make up 80%") })
+    }
+
+    @Test("Income vs expenses: this month vs last, figures add up")
+    func incomeVsExpenses() {
+        let card = InsightCards.incomeVsExpenses(pl, prior: prior, period: jul, footnote: "f")!
+        #expect(card.headline == "$4,000.00")
+        #expect(card.rows.first { $0.id == "exp" }!.amountText == "$6,000.00")
+        #expect(card.chart?.series.count == 2)
+        #expect(card.recommendations.contains { $0.contains("fell from $5,500.00 to $4,000.00") })
+    }
+
+    @Test("Financial health: ratios computed by code, thresholds explained, register links on balance-sheet accounts")
+    func health() {
+        let bs = [ReportLine(label: "Total Bank Accounts", amount: usd(1_000), depth: 1, isSummary: true),
+                  ReportLine(label: "Total Accounts Receivable", amount: usd(2_000), depth: 1, isSummary: true),
+                  ReportLine(label: "Total Current Assets", amount: usd(3_000), depth: 0, isSummary: true),
+                  ReportLine(label: "Total Accounts Payable", amount: usd(2_500), depth: 1, isSummary: true),
+                  ReportLine(label: "Total Current Liabilities", amount: usd(4_000), depth: 0, isSummary: true)]
+        let accounts = [LedgerAccount(id: "35", name: "Checking", accountType: .bank, currentBalance: usd(1_000))]
+        let card = InsightCards.financialHealth(balanceSheet: bs, profitAndLoss: pl, accounts: accounts, focus: .currentRatio, period: jul, footnote: "f")!
+        #expect(card.headline == "0.75 to 1")
+        #expect(card.rows.first { $0.id == "wc" }!.amountText == "($1,000.00)")
+        #expect(card.rows.first { $0.id == "cash" }!.link == .account("35"))
+        #expect(card.recommendations.contains { $0.contains("exceed short-term assets") })
+    }
+}
+
+@Suite("Spoken names match QuickBooks names")
+struct NameMatchTests {
+    @Test("& as 'and', punctuation and spaces ignored, case ignored")
+    func matches() {
+        #expect(ClientFacts.nameMatches("PG&E", "pg and e"))
+        #expect(ClientFacts.nameMatches("PG&E", "pgande"))
+        #expect(ClientFacts.nameMatches("Diego's Road Warrior Bodyshop", "diegos road warrior"))
+        #expect(ClientFacts.nameMatches("VL Spike Permian Supply, Inc.", "permian supply inc"))
+        #expect(!ClientFacts.nameMatches("Hicks Hardware", "norton"))
+        #expect(!ClientFacts.nameMatches("Hicks Hardware", ""))
+    }
+}

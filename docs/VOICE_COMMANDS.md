@@ -82,6 +82,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what does Freeman Sporting Goods owe us"** · **"how much does Kate Whelan owe us"** | One customer's open balance: current, past due, over 90 days. Pops up their card. |
 | **"is there anything unusual with Permian Supply"** · **"any issues with Cool Cars"** | Every open finding for that vendor or customer, largest first, with a card. |
 | **"how much did we make this month"** · **"are we profitable"** | Net income for the month, with the 12-month chart. |
+| **"working capital"** · **"current ratio"** · **"quick ratio"** · **"gross margin"** · **"net margin"** | Says the figure and pops up the Financial Health card: what makes it up, what it means, what to check. |
 | **"how much have we paid Tania's Nursery"** · **"transactions from Hicks Hardware"** | Shows that vendor's count, total and last date. |
 
 ## 5. Quick numbers

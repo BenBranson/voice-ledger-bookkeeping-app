@@ -940,6 +940,12 @@ public final class VoiceEngine: NSObject {
                     let monthly = appState.historySnapshot?.monthlyProfitAndLoss ?? []
                     let current = metric == .revenue ? FinancialKPIs.totalIncome(from: appState.profitAndLossLines) : TaxEstimate.netIncome(from: appState.profitAndLossLines)
                     showCard(InsightCards.trend(metric == .revenue ? .revenue : .netIncome, monthly: monthly, focus: appState.period, footnote: cardFootnote))
+                case .workingCapital, .currentRatio, .quickRatio, .grossMargin, .netMargin:
+                    if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
+                    let focus: InsightCards.HealthFocus = [.workingCapital: .workingCapital, .currentRatio: .currentRatio, .quickRatio: .quickRatio,
+                                                           .grossMargin: .grossMargin, .netMargin: .netMargin][metric] ?? .workingCapital
+                    showCard(InsightCards.financialHealth(balanceSheet: appState.balanceSheetLines, profitAndLoss: appState.profitAndLossLines,
+                                                          accounts: appState.clientData.searchableAccounts, focus: focus, period: appState.period, footnote: cardFootnote))
                 case .cashBalance:
                     showCard(await cashOutlookCard())
                     // The card starts from today's bank balances; say that figure too, so the

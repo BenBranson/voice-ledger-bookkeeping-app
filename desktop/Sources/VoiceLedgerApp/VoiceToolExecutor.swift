@@ -123,7 +123,7 @@ extension VoiceEngine {
         case "switch_client":
             let name = call.arguments["name"]?.stringValue ?? ""
             if appState.firmCockpitSummaries.isEmpty { await appState.loadFirmCockpit() }
-            guard let match = appState.firmCockpitSummaries.first(where: { ($0.client.companyName ?? "").localizedCaseInsensitiveContains(name) }) else {
+            guard let match = appState.firmCockpitSummaries.first(where: { ClientFacts.nameMatches($0.client.companyName ?? "", name) }) else {
                 return ("No connected client matching \"\(name)\" was found.", nil)
             }
             await appState.switchActiveClient(to: match.client.realmID, environment: match.client.environment)
@@ -373,13 +373,20 @@ extension VoiceEngine {
         if appState.profitAndLossLines.isEmpty { await appState.loadProfitAndLoss() }
 
         switch kind {
-        case "expense_drivers":
+        case "expense_drivers", "pareto_cost_drivers":
+            let pareto = kind == "pareto_cost_drivers"
+            if let card = InsightCards.expenses(appState.profitAndLossLines, prior: appState.priorPeriodProfitAndLossLines, transactions: appState.transactions,
+                                                pareto: pareto, period: appState.period, footnote: ClientFacts.freshnessSentence(appState.clientData)) {
+                return ("\(pareto ? "Biggest cost drivers" : "Top expense categories") for \(ClientFacts.periodLabel(appState.period)): \(card.headline ?? "") in total. The largest is \(card.rows.first.map { "\($0.label) at \($0.amountText)" } ?? "not available").",
+                        .presentChart(.insight(card)))
+            }
+            if pareto { return await generateChart(kind: "pareto_fallback") }
             let drivers = TopExpenseDrivers.top(8, from: appState.profitAndLossLines)
             guard !drivers.isEmpty else { return ("No expense data available to chart for the loaded period.", nil) }
             let request: ChartRequest = .expenseDrivers(title: "Top Expense Categories", drivers: drivers)
             let action: VoiceUIAction = .presentChart(request)
             return ("Showing the top expense categories for the loaded period.", action)
-        case "pareto_cost_drivers":
+        case "pareto_fallback":
             let drivers = TopExpenseDrivers.top(15, from: appState.profitAndLossLines)
             guard !drivers.isEmpty else { return ("No expense data available to chart for the loaded period.", nil) }
             let request: ChartRequest = .paretoCostDrivers(title: "Biggest Cost Drivers", drivers: drivers)
@@ -413,6 +420,11 @@ extension VoiceEngine {
             }
             return ("Showing \(metric == .revenue ? "revenue" : "net income") by month.", .presentChart(.insight(card)))
         case "income_vs_expenses":
+            if let card = InsightCards.incomeVsExpenses(appState.profitAndLossLines, prior: appState.priorPeriodProfitAndLossLines, period: appState.period,
+                                                        footnote: ClientFacts.freshnessSentence(appState.clientData)) {
+                let rev = card.rows.first { $0.id == "inc" }?.amountText ?? "", exp = card.rows.first { $0.id == "exp" }?.amountText ?? ""
+                return ("\(ClientFacts.periodLabel(appState.period)): revenue \(rev), expenses \(exp), net income \(card.headline ?? "").", .presentChart(.insight(card)))
+            }
             guard let segments = ProfitAndLossWaterfall.segments(from: appState.profitAndLossLines) else {
                 return ("Income vs. expenses data isn't available to chart for the loaded period.", nil)
             }

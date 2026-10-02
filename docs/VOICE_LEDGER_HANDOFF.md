@@ -1364,3 +1364,8 @@ Notes for next time:
   - `ClientFacts.nameMatches` compares letters and digits only, with & read as "and" ("pg&e", "diegos").
   - "stop" during month-end stops the walkthrough even with an offer pending.
   - App shows 20 open findings vs devtool 17: the 3 extra are VL-RECON-MISSING-001 from the imported bank statement (devtool doesn't load imports). Expected.
+- **v1.71–1.72 (2026-10-02):** expense, cost-driver and income-vs-expenses charts became insight cards (`InsightCards+Statements.swift`). Each expense category links to its largest transaction this month, because P&L accounts have no register. Holding accounts (Reconciliation Discrepancies, Ask My Accountant, Uncategorized, Suspense) are flagged. Month-over-month movers are flagged at ≥25% and ≥$250. New Financial Health card for the ratio KPIs: a total links only when exactly one account makes it up.
+- **Root causes fixed, not patched:**
+  - The card overlay (v1.65) sat outside `.environment(\.qboLinks)`, so every card got `QBOLinks.none`: no account or finding links, and sandbox URLs in production. The overlay now passes the links explicitly. Anything presented outside RootView's environment chain must do the same.
+  - VL-FORCED-RECON-001 used the account NAME as evidence. The forced reconciliation's adjustment does come through the API, as a Purchase (memo "Reconcile Adjustment", DocNumber "ADJ") posting to the account. The 2026-08-18 note had only ruled out JournalEntry. Those Purchases now lead the evidence; the finding ID is unchanged.
+  - Every name lookup uses `ClientFacts.nameMatches`.

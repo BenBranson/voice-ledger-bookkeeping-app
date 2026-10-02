@@ -104,4 +104,24 @@ struct ForcedReconciliationRuleTests {
             Issue.record("rule must not report .pass on partial coverage")
         }
     }
+
+    @Test("The adjustment transaction QBO posted (live 2026-10-02: Purchase 228, memo 'Reconcile Adjustment') leads the evidence, so the link opens it")
+    func adjustmentTransactionIsEvidence() {
+        let adj = LedgerTransaction(id: "228", entityKind: .purchase, vendorName: nil, txnDate: AccountingDate(year: 2026, month: 7, day: 31),
+                                    totalAmount: Money(minorUnits: 426_476, currency: .usd), paymentAccountID: "35", docNumber: "ADJ", isVoided: false,
+                                    memo: "Reconcile Adjustment", lineAccountIDs: ["91"], provenance: .qboAPI(readAt: Date()))
+        let other = LedgerTransaction(id: "300", entityKind: .purchase, vendorName: "Chevron", txnDate: AccountingDate(year: 2026, month: 7, day: 3),
+                                      totalAmount: Money(minorUnits: 5_000, currency: .usd), paymentAccountID: "35", docNumber: nil, isVoided: false,
+                                      memo: nil, lineAccountIDs: ["60"], provenance: .qboAPI(readAt: Date()))
+        let data = NormalizedDataSet(realmID: realm, period: period, transactions: [adj, other],
+                                     profitAndLossLines: [ReportLine(label: "Reconciliation Discrepancies", amount: Money(minorUnits: 426_476, currency: .usd), depth: 1, isSummary: false, accountID: "91")],
+                                     coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        guard case .findings(let findings) = ForcedReconciliationRule.evaluate(data, context: context()), let f = findings.first else {
+            Issue.record("expected one finding"); return
+        }
+        #expect(f.evidence.map(\.transactionID) == ["228", "Reconciliation Discrepancies"])
+        // Identity unchanged by the new evidence: same ID as a data set with no transactions.
+        guard case .findings(let bare) = ForcedReconciliationRule.evaluate(dataSet(profitAndLossLines: data.profitAndLossLines), context: context()) else { return }
+        #expect(bare.first?.id == f.id)
+    }
 }

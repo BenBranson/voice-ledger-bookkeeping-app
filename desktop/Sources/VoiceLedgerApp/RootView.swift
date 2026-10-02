@@ -98,7 +98,12 @@ struct RootView: View {
                         Color.black.opacity(0.35)
                             .ignoresSafeArea()
                             .onTapGesture { state.presentedChart = nil }
+                        // The overlay is attached outside the `.environment(\.qboLinks, …)` above, so
+                        // it must be handed the links itself. Without this every card fell back to
+                        // `QBOLinks.none`: no account or finding links, and sandbox URLs even for a
+                        // production company (found 2026-10-02).
                         ChartPopupView(request: request) { state.presentedChart = nil }
+                            .environment(\.qboLinks, state.qboLinks)
                             .frame(width: min(900, geo.size.width * 0.9), height: min(760, geo.size.height * 0.9))
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                             .shadow(color: .black.opacity(0.3), radius: 24, y: 8)
