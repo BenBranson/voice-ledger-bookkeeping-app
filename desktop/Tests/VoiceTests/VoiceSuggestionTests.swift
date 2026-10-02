@@ -41,3 +41,27 @@ struct VoiceSuggestionTests {
         #expect(VoiceIntentRouter.match(text: "I fixed it", context: .empty) == .checkCurrentFixed)
     }
 }
+
+@Suite("Offers the model makes are remembered")
+struct OfferMemoryTests {
+    @Test("Offer wording is recognized, plain answers are not")
+    func offerWording() {
+        #expect(VoiceIntentRouter.isOffer("Do you want me to pull this up?"))
+        #expect(VoiceIntentRouter.isOffer("I can pull up the chart if you want."))
+        #expect(VoiceIntentRouter.isOffer("Would you like me to open that finding?"))
+        #expect(!VoiceIntentRouter.isOffer("Revenue was higher because of three large invoices."))
+    }
+
+    @Test("Only a yes accepts; no, cancel and stop never do")
+    func yesOnly() {
+        #expect(VoiceIntentRouter.isBareYes("yes") && VoiceIntentRouter.isBareYes("Yeah.") && VoiceIntentRouter.isBareYes("sure"))
+        #expect(!VoiceIntentRouter.isBareYes("no") && !VoiceIntentRouter.isBareYes("cancel") && !VoiceIntentRouter.isBareYes("stop"))
+    }
+
+    @Test("A pending offer is confirmed by yes")
+    func pendingOffer() {
+        var context = VoiceSessionContext.empty
+        context.pendingAction = VoicePendingAction(kind: .acceptOffer, summary: "show me that", commandText: "Do you want me to pull this up?")
+        #expect(VoiceIntentRouter.match(text: "yes", context: context) == .confirmPending)
+    }
+}

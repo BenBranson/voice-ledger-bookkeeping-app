@@ -173,6 +173,12 @@ public enum VoiceIntentRouter {
         return nil
     }
 
+    /// True when the AI's reply ends by offering to do something.
+    public static func isOffer(_ answer: String) -> Bool {
+        let lowered = answer.lowercased()
+        return ["if you want", "if you'd like", "would you like", "do you want", "want me to", "should i ", "shall i ", "i can pull", "i can open", "i can show"].contains(where: lowered.contains)
+    }
+
     /// A command the AI's prose OFFERED to run ("I can pull up the vendor
     /// spend chart if you want"), so a "yes" can run it. Only offers count.
     public static func offeredCommand(in answer: String) -> String? {
@@ -195,6 +201,8 @@ public enum VoiceIntentRouter {
         let t = normalize(text)
         return confirmWords.contains(t) || rejectWords.contains(t)
     }
+
+    public static func isBareYes(_ text: String) -> Bool { confirmWords.contains(normalize(text)) }
 
     static func editDistance(_ a: String, _ b: String) -> Int {
         let a = Array(a), b = Array(b)

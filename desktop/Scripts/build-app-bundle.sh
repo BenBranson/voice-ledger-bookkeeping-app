@@ -50,6 +50,12 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/VoiceLedgerApp"
 
+# Moneypenny's QuickBooks/bookkeeping reference notes (from Talking Buddy).
+if [ -d "$(dirname "$0")/../Knowledge" ]; then
+    mkdir -p "$APP_BUNDLE/Contents/Resources/knowledge"
+    rsync -a "$(dirname "$0")/../Knowledge/" "$APP_BUNDLE/Contents/Resources/knowledge/"
+fi
+
 # Interactive chart assets (local only — no CDN): ECharts, the shared option
 # builders also used by the PDF renderer, and the chart host page.
 RENDERER_DIR="$(cd "$(dirname "$0")/../../report-renderer" 2>/dev/null && pwd)"

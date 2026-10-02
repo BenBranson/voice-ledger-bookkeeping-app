@@ -1079,6 +1079,11 @@ public final class VoiceEngine: NSObject {
             // code, instantly, with a yes/no the next "yes" will act on. Only
             // genuinely new questions go on to the slower AI model.
             if VoiceIntentRouter.isBareYesOrNo(rawText) {
+                // Backstop: if her last reply offered something, a "yes" accepts it.
+                if let lastReply = recentHistory(maxTurns: 2).last(where: { $0.role == "assistant" })?.content,
+                   VoiceIntentRouter.isOffer(lastReply), VoiceIntentRouter.isBareYes(rawText) {
+                    return await handleWithTools(rawText: "Yes, do it. You just offered: \"\(lastReply)\". Now do what you offered, using a tool.")
+                }
                 return VoiceTurn(speech: "I wasn't waiting on a yes or no. What would you like to do?")
             }
             if let suggestion = VoiceIntentRouter.suggestion(for: rawText) {
@@ -1166,10 +1171,26 @@ public final class VoiceEngine: NSObject {
     /// `internal`, not `private` — `VoiceToolLoop.swift` reuses this for
     /// the same reason (conversation continuity across tool-calling turns,
     /// not just the reasoning fallback).
+    /// The conversation so far, as the model's memory: what was said and
+    /// what the app did. Microphone notes and errors are left out so they
+    /// don't crowd real exchanges out of the window.
     func recentHistory(maxTurns: Int = 12) -> [AskAIHistoryTurn] {
-        transcriptHistory.dropLast().suffix(maxTurns).map { entry in
-            AskAIHistoryTurn(role: entry.speaker == .user ? "user" : "assistant", content: entry.text)
+        let meaningful = transcriptHistory.dropLast().compactMap { entry -> AskAIHistoryTurn? in
+            let text = entry.text
+            if text.hasPrefix("VOICE ERROR") || text.hasPrefix("VOICE NOTE") || text.hasPrefix("[guard") { return nil }
+            guard entry.speaker == .assistant, text.hasPrefix("COMMAND RESULT") else {
+                return AskAIHistoryTurn(role: entry.speaker == .user ? "user" : "assistant", content: text)
+            }
+            // "COMMAND RESULT / HEARD / SOURCE / ACTION / RESPONSE" → what she did and said.
+            var action = "", response = ""
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+                if line.hasPrefix("ACTION: ") { action = String(line.dropFirst(8)) }
+                else if line.hasPrefix("RESPONSE: ") { response = String(line.dropFirst(10)) }
+                else if !response.isEmpty { response += "\n" + line }
+            }
+            return AskAIHistoryTurn(role: "assistant", content: (action.isEmpty || action.hasPrefix("No screen action") ? "" : "[\(action)] ") + response)
         }
+        return Array(meaningful.suffix(maxTurns))
     }
 
     /// "Why is this flagged" et al. — grounded ENTIRELY in the current
@@ -1247,6 +1268,9 @@ public final class VoiceEngine: NSObject {
             // Never loop back into another suggestion or the AI from a "yes".
             if case .unrecognized = intent { return VoiceTurn(speech: "I couldn't run “\(command)”. Say it again in your own words.") }
             return await resolveTurn(for: intent, rawText: command)
+        case .acceptOffer:
+            let offer = pending.commandText ?? ""
+            return await handleWithTools(rawText: "Yes, do it. My earlier request was: \"\(pending.summary)\". You replied: \"\(offer)\". Now do what you offered, using a tool.")
         }
     }
 

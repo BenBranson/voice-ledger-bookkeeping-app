@@ -1437,8 +1437,9 @@ public final class AppState {
         askingAIContextKeys.insert(contextKey)
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
-            let raw = try await backend.askAI(realmID: realmID, question: question, context: contextText, history: history, format: format, model: model)
-            let answer = verifiedAnswer(raw, context: contextText, question: question, history: history)
+            let fullContext = Self.contextWithKnowledge(contextText, question: question)
+            let raw = try await backend.askAI(realmID: realmID, question: question, context: fullContext, history: history, format: format, model: model)
+            let answer = verifiedAnswer(raw, context: fullContext, question: question, history: history)
             askAIAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: conversationTier, question: question, answer: answer, format: format)
         } catch {
@@ -1512,8 +1513,9 @@ public final class AppState {
         askingSecondOpinionContextKeys.insert(contextKey)
         if secondOpinionError?.contextKey == contextKey { secondOpinionError = nil }
         do {
-            let raw = try await backend.askAI(realmID: realmID, question: question, context: contextText, tier: .secondary, format: format)
-            let answer = verifiedAnswer(raw, context: contextText, question: question, history: [])
+            let fullContext = Self.contextWithKnowledge(contextText, question: question)
+            let raw = try await backend.askAI(realmID: realmID, question: question, context: fullContext, tier: .secondary, format: format)
+            let answer = verifiedAnswer(raw, context: fullContext, question: question, history: [])
             secondOpinionAnswers[contextKey] = answer
             await recordConversation(contextKey: contextKey, tier: .secondary, question: question, answer: answer, format: format)
         } catch {
@@ -1620,6 +1622,26 @@ public final class AppState {
     /// real report generation (`format == .report`), not every incidental
     /// follow-up question — the file is meant to be a week-over-week/
     /// month-over-month report record, not a full chat transcript.
+    /// QuickBooks and bookkeeping reference notes (ProAdvisor training,
+    /// Intuit help pages, Voice Ledger's workflow), ported from the Talking
+    /// Buddy project 2026-10-02. In the built app they sit in the bundle's
+    /// Resources/knowledge; in a dev build, in desktop/Knowledge.
+    public static let knowledge: KnowledgeLibrary = {
+        var candidates: [URL] = []
+        if let resources = Bundle.main.resourceURL { candidates.append(resources.appendingPathComponent("knowledge")) }
+        candidates.append(URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Knowledge"))
+        guard let root = candidates.first(where: { FileManager.default.fileExists(atPath: $0.path) }) else { return KnowledgeLibrary(notes: []) }
+        return KnowledgeLibrary.load(from: root)
+    }()
+
+    /// The page's own context plus any reference notes that fit the question.
+    /// Kept under the backend's context limit; the page data always wins room.
+    public static func contextWithKnowledge(_ context: String, question: String, limit: Int = 23_000) -> String {
+        let room = limit - context.count - 200
+        guard room > 600, let block = KnowledgeLibrary.referenceBlock(knowledge.search(question, limit: 3, budget: min(3000, room - 500))) else { return context }
+        return context + "\n\n" + block
+    }
+
     /// Every typed Ask AI answer passes through here (rule 1: the model never
     /// supplies an authoritative number). A sentence citing a figure that is
     /// not in the context the model was given, or in what the user typed, is

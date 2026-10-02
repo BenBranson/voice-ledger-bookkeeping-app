@@ -132,3 +132,9 @@ Say **"start month-end"** (also "start the monthly routine", "walk me through th
 She never changes your books by voice. Anything that would write to QuickBooks needs the on-screen confirmation. Voice only opens pages and reads figures.
 ### If she says "I didn't recognize that"
 Say the page name ("go to …"), or a number ("find 1420"), or a question from the tables above. Open-ended questions the table doesn't cover go to the AI model, which may be slower (10–30 seconds).
+
+### QuickBooks how-to questions
+Ask in your own words, for example how to record a vendor credit, clear payments stuck in Undeposited Funds, merge duplicate vendors, or whether a contractor needs a 1099. She answers from a reference library of QuickBooks Online notes written from Intuit's ProAdvisor training and help pages. If the notes don't cover it, she says so rather than guessing a menu path. These go to the AI model, so they take 10–30 seconds.
+
+### Memory
+She remembers the last 20 exchanges, including what she opened for you. When she offers something , such as pulling something up, just say yes.

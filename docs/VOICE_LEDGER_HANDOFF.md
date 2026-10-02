@@ -1323,3 +1323,11 @@ Notes for next time:
 - "Try again"/"that's wrong"/"never mind" voice phrases exist (`.retry`) but only work while she's listening; not yet confirmed by voice.
 - `build-app-bundle.sh` now compiles first (it once packaged a stale binary), and the preflight gate blocks the bundle if numbers drift from `desktop/Regression/` baselines. QuickBooks' CompanyInfo endpoint was failing on 2026-09-30; the app caches the company name.
 - Open ideas, not built: "2 records" label on duplicate-pair rows; auto re-sync when a voice question finds data > 15 min old; an always-listening wake word.
+
+## 2026-10-02 — Moneypenny memory, offers, QuickBooks knowledge (v1.53–v1.57)
+- Typed Ask AI answers go through `NumberGuard.scrubProse`; saved answers carry period + open-finding count and show "Older data" on Close Package.
+- "Open in QBO" on nearly every record via the `QBOLinks` environment. Owner rule: a link opens the exact record or there is no link (income/expense accounts no longer open the chart of accounts). Vendor/customer/deposit/transfer/etc. web routes are owner-verify-by-click, not API-verified.
+- `VendorSpendSummary` counts purchases and bills only (invoices carry CUSTOMER names in `vendorName`).
+- Recurring Vendors' "overdue" is judged at the reviewed period's end, not today.
+- Voice: dashboard measures (working capital, ratios, margins) from the cards' own functions; "spin" normalized to "spend"; instant code-side "Did you mean X?" (edit distance over every known command, verified to route); offers from the AI model are remembered (`VoicePendingAction.runCommand` / `.acceptOffer`) so "yes" works; "open it in QuickBooks" and "is it fixed" for the two-monitor cleanup loop; model history = last 20 exchanges with mic notes/errors filtered out.
+- Knowledge: `desktop/Knowledge/` (64 notes) copied from ~/Documents/ChatGPT/Talking Buddy/assets/knowledge (ProAdvisor Level 1 notes, Intuit help, 1099 reference, rule catalog). `Core/Knowledge/KnowledgeLibrary.swift` is that project's BM25 search, ported. Matching sections ride along on voice and typed Ask AI questions; client figures still come only from client data. Some ProAdvisor notes are flagged in their own files as written from domain knowledge where the course player closed. Refresh by re-copying that folder.

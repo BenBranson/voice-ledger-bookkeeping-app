@@ -46,6 +46,9 @@ public struct VoicePendingAction: Codable, Sendable, Equatable {
         /// "Did you mean …?" — a "yes" runs `commandText` as if it had been
         /// said. Navigation and read-only answers only (it re-enters the router).
         case runCommand
+        /// The AI model offered something ("do you want me to pull this up?").
+        /// A "yes" goes back to the model with the offer spelled out.
+        case acceptOffer
     }
     public let kind: Kind
     public let findingID: String?

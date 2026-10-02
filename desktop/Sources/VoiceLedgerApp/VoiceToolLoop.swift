@@ -76,6 +76,11 @@ extension VoiceEngine {
             if allOpenFindings.count > 40 { lines.append("...and \(allOpenFindings.count - 40) more") }
             context += "\n" + lines.joined(separator: "\n")
         }
+        // QuickBooks/bookkeeping how-to notes that fit this question (ProAdvisor
+        // training, Intuit help), so "how do I…" answers use real menu paths.
+        if let block = KnowledgeLibrary.referenceBlock(AppState.knowledge.search(rawText, limit: 2, budget: 2200)) {
+            context += "\n\n" + block
+        }
         // Stated last so it is the most salient: bare "this"/"it" means the
         // open finding, but a named amount/vendor/title overrides it.
         if let entityRef = self.context.currentEntity, entityRef.type == .finding, let finding = appState.finding(id: entityRef.id) {
@@ -87,7 +92,9 @@ extension VoiceEngine {
             decision = try await appState.askAIWithTools(
                 question: rawText,
                 context: context,
-                history: recentHistory(),
+                // Owner, 2026-10-02: "she should have full working memory."
+                // The last 20 exchanges (commands answered in code included).
+                history: recentHistory(maxTurns: 20),
                 model: Self.toolLoopModel,
                 tools: tools
             )
@@ -110,6 +117,14 @@ extension VoiceEngine {
             if let offered = VoiceIntentRouter.offeredCommand(in: decision.answer) {
                 return VoiceTurn(speech: "Did you mean “\(offered)”? Say yes or no.",
                                  newPendingAction: VoicePendingAction(kind: .runCommand, summary: offered, commandText: offered))
+            }
+            // Any other offer ("do you want me to pull this up?"): remember it,
+            // so "yes" goes back to the model with the offer spelled out instead
+            // of arriving with nothing to refer to.
+            if VoiceIntentRouter.isOffer(decision.answer) {
+                let guardedOffer = NumberGuard.check(decision.answer, source: context).text
+                return VoiceTurn(speech: guardedOffer,
+                                 newPendingAction: VoicePendingAction(kind: .acceptOffer, summary: rawText, commandText: guardedOffer))
             }
             // A model that says "I'll pull up…/opening…" without a tool call did
             // nothing. Never speak a promise the app didn't keep.
