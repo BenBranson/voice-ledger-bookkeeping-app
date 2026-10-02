@@ -102,6 +102,12 @@ public actor ClientStore {
     private let historySnapshotKey = "history-snapshot"
     private let lastSyncedAtKey = "last-synced-at"
     private let unreconciledMonthsKey = "diagnostics-unreconciled-months"
+    // Practice tools (2026-10-02): compliance calendar, forecast, scope log, new-account watch.
+    private let practiceProfileKey = "practice-profile"
+    private let plannedCashItemsKey = "planned-cash-items"
+    private let scopeRequestsKey = "scope-requests"
+    private let knownAccountsKey = "known-accounts-baseline"
+    private let newAccountAlertsKey = "new-account-alerts"
 
     /// Hard cap on stored transcript entries — `appendVoiceTranscriptEntry`
     /// trims to this length so an unattended conversation-mode session left
@@ -564,6 +570,19 @@ public actor ClientStore {
     }
 
     // MARK: - Helpers
+
+    // MARK: - Practice tools (2026-10-02)
+
+    public func loadPracticeProfile() throws -> ClientPracticeProfile { try load(ClientPracticeProfile.self, key: practiceProfileKey, default: ClientPracticeProfile()) }
+    public func savePracticeProfile(_ v: ClientPracticeProfile) throws { try save(v, key: practiceProfileKey) }
+    public func loadPlannedCashItems() throws -> [PlannedCashItem] { try load([PlannedCashItem].self, key: plannedCashItemsKey, default: []) }
+    public func savePlannedCashItems(_ v: [PlannedCashItem]) throws { try save(v, key: plannedCashItemsKey) }
+    public func loadScopeRequests() throws -> [ScopeRequest] { try load([ScopeRequest].self, key: scopeRequestsKey, default: []) }
+    public func saveScopeRequests(_ v: [ScopeRequest]) throws { try save(v, key: scopeRequestsKey) }
+    public func loadKnownAccountsBaseline() throws -> KnownAccountsBaseline { try load(KnownAccountsBaseline.self, key: knownAccountsKey, default: KnownAccountsBaseline()) }
+    public func saveKnownAccountsBaseline(_ v: KnownAccountsBaseline) throws { try save(v, key: knownAccountsKey) }
+    public func loadNewAccountAlerts() throws -> [NewAccountAlert] { try load([NewAccountAlert].self, key: newAccountAlertsKey, default: []) }
+    public func saveNewAccountAlerts(_ v: [NewAccountAlert]) throws { try save(v, key: newAccountAlertsKey) }
 
     private func load<T: Decodable>(_ type: T.Type, key: String, default defaultValue: T) throws -> T {
         guard let text = try db.getValue(forKey: key), let data = text.data(using: .utf8), !data.isEmpty else { return defaultValue }

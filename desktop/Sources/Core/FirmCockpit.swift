@@ -60,6 +60,12 @@ public struct ClientCockpitSummary: Identifiable, Sendable {
     /// last history load; `nil` when no history has been loaded.
     public let staleBankFeeds: [String]?
     public let staleBankFeedsAsOf: AccountingDate?
+    /// Next filing or delivery from this client's compliance calendar.
+    public var nextDeadline: ComplianceDeadline?
+    /// Bank, card or loan accounts that appeared in QuickBooks and haven't been acknowledged.
+    public var newAccountsCount: Int = 0
+    /// False until the bookkeeper reviewed the client's compliance profile.
+    public var profileReviewed: Bool = false
 
     public var id: String { client.id }
 
@@ -90,13 +96,16 @@ public enum FirmCockpit {
         period: AccountingPeriod,
         importedStatementLineCount: Int,
         activityLog: [ActivityLogEntry],
-        history: HistorySnapshot? = nil
+        history: HistorySnapshot? = nil,
+        practiceProfile: ClientPracticeProfile? = nil,
+        newAccountAlerts: [NewAccountAlert] = [],
+        today: AccountingDate = AccountingDate(date: Date())
     ) -> ClientCockpitSummary {
         let openFindings = findings.filter { $0.status == .open }
         let urgentCount = openFindings.filter { $0.severity == .high }.count
         let checklistStatus = MonthEndChecklist.completionStatus(completions: checklistCompletions, period: period)
         let lastActivity = activityLog.map(\.recordedAt).max()
-        return ClientCockpitSummary(
+        var summary = ClientCockpitSummary(
             client: client,
             openFindingsCount: openFindings.count,
             urgentFindingsCount: urgentCount,
@@ -107,5 +116,11 @@ public enum FirmCockpit {
             staleBankFeeds: history.map { ClientDiagnostics.bankFeedActivity(history: $0, asOf: $0.through).filter(\.isStale).map(\.accountName) },
             staleBankFeedsAsOf: history?.through
         )
+        if let practiceProfile {
+            summary.nextDeadline = ComplianceCalendar.deadlines(for: practiceProfile, from: today, days: 120).first
+            summary.profileReviewed = practiceProfile.reviewed
+        }
+        summary.newAccountsCount = newAccountAlerts.filter { $0.acknowledgedAt == nil }.count
+        return summary
     }
 }

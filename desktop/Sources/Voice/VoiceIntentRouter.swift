@@ -79,7 +79,10 @@ public enum VoiceIntentRouter {
         (.amountSearch, ["search by amount", "amount search", "search"]),
         (.clientDiagnostics, ["client diagnostics", "diagnostics"]),
         (.pricingCalculator, ["pricing calculator", "pricing"]),
-        (.intakeQuestions, ["intake questions", "intake"])
+        (.intakeQuestions, ["intake questions", "intake"]),
+        (.complianceCalendar, ["compliance calendar", "compliance", "deadlines", "due dates", "filing calendar", "tax calendar", "calendar"]),
+        (.scopeRequests, ["scope requests", "out of scope", "out of scope requests", "scope log", "add ons", "upsells"]),
+        (.industrySetup, ["industry setup", "industry", "industry template", "chart of accounts template"])
     ]
 
     private static let confirmWords = ["yes", "yeah", "yep", "yup", "confirm", "do it", "go ahead", "sounds good", "sure", "okay", "ok"]
@@ -139,6 +142,15 @@ public enum VoiceIntentRouter {
         "open in qbo", "open it in qbo", "open the record", "open the transaction", "go to quickbooks", "open it in quick books",
         "open in quick books", "open quick books", "take me to quick books"
     ]
+    private static let deadlinePhrases: Set<String> = [
+        "what's due", "whats due", "what is due", "what's coming due", "whats coming due", "what's due next", "whats due next", "any deadlines",
+        "what deadlines are coming up", "upcoming deadlines", "next deadline", "what's the next deadline", "whats the next deadline",
+        "when is sales tax due", "when is the sales tax due", "what filings are due", "what's due this month", "whats due this month"
+    ]
+    private static let newAccountPhrases: Set<String> = [
+        "any new accounts", "are there any new accounts", "new accounts", "did they open any new accounts", "did the client open any new accounts",
+        "any new bank accounts", "any new credit cards", "new bank accounts", "new credit cards"
+    ]
     private static let checkFixedPhrases: Set<String> = [
         "is it fixed", "is that fixed", "is this fixed", "did that fix it", "did it fix it", "did that work", "check it", "check this one",
         "check that one", "is it cleared", "did it clear", "did that clear", "i fixed it", "i fixed that", "it's fixed", "its fixed",
@@ -153,6 +165,7 @@ public enum VoiceIntentRouter {
         for d in VoiceDestination.allCases { all += spokenForms(of: d.menuTitle).map { "go to \($0)" } }
         all += Array(goBackPhrases) + Array(nextPhrases) + Array(recapPhrases) + Array(startReviewPhrases) + Array(anomalyPhrases)
             + Array(recheckPhrases) + Array(explainPhrases) + Array(openInQuickBooksPhrases) + Array(checkFixedPhrases)
+            + Array(deadlinePhrases) + Array(newAccountPhrases)
         all += CommandGrammar.knownPhrases
         return all
     }
@@ -279,6 +292,8 @@ public enum VoiceIntentRouter {
         if explainPhrases.contains(normalized) { return .explainCurrent }
         if openInQuickBooksPhrases.contains(normalized) { return .openInQuickBooks }
         if checkFixedPhrases.contains(normalized) { return .checkCurrentFixed }
+        if deadlinePhrases.contains(normalized) { return .upcomingDeadlines }
+        if newAccountPhrases.contains(normalized) { return .newAccounts }
 
         // The command grammar (2026-09-30) takes everything that used to fall
         // through to the model: finding groups, amounts, balances, vendors,

@@ -172,6 +172,17 @@ public struct FirmCockpitView: View {
                     metric(label: "Checklist", value: "\(summary.checklistCompleted)/\(summary.checklistTotal)", emphasize: false)
                     metric(label: "Statement lines imported", value: "\(summary.importedStatementLineCount)", emphasize: false)
                     metric(label: "Stale bank feeds", value: summary.staleBankFeeds.map { "\($0.count)" } ?? "—", emphasize: (summary.staleBankFeeds?.count ?? 0) > 0)
+                    metric(label: "New accounts", value: "\(summary.newAccountsCount)", emphasize: summary.newAccountsCount > 0)
+                }
+                if let next = summary.nextDeadline {
+                    Text("Next deadline: \(ClientText.polish(next.date.formatted)) — \(next.title)\(summary.profileReviewed ? "" : " (compliance profile not reviewed yet)")")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.textSecondary)
+                }
+                if summary.newAccountsCount > 0 {
+                    Text("\(summary.newAccountsCount) new bank, card or loan account\(summary.newAccountsCount == 1 ? "" : "s") appeared in QuickBooks. Add to the reconciliation list and request statements.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(.orange)
                 }
                 if let stale = summary.staleBankFeeds, !stale.isEmpty, let asOf = summary.staleBankFeedsAsOf {
                     Text("No postings in 5+ days as of \(asOf.formatted): \(stale.joined(separator: ", ")) — check the bank feed connection in QBO.")

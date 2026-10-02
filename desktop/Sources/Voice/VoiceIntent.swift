@@ -37,6 +37,9 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case clientDiagnostics
     case pricingCalculator
     case intakeQuestions
+    case complianceCalendar
+    case scopeRequests
+    case industrySetup
     case aiConversations
     case connection
     case scopeAndPeriodLock
@@ -52,6 +55,9 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
         case .amountSearch: return "Search by Amount"
         case .pricingCalculator: return "Pricing Calculator"
         case .intakeQuestions: return "Intake Questions"
+        case .complianceCalendar: return "Compliance Calendar"
+        case .scopeRequests: return "Scope Requests"
+        case .industrySetup: return "Industry Setup"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
         case .clientDiagnostics: return "Client Diagnostics"
@@ -150,6 +156,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case openInQuickBooks
     /// "is it fixed" — re-sync and say whether the current finding cleared.
     case checkCurrentFixed
+    /// "what's due" — the next dates on this client's compliance calendar.
+    case upcomingDeadlines
+    /// "any new accounts" — bank, card or loan accounts new in QuickBooks.
+    case newAccounts
 }
 
 public enum KPIMetric: String, Equatable, Sendable {

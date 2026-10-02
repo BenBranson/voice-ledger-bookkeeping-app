@@ -783,6 +783,9 @@ public final class VoiceEngine: NSObject {
         case .clientDiagnostics: return .diagnostics
         case .pricingCalculator: return .pricingCalculator
         case .intakeQuestions: return .intakeQuestions
+        case .complianceCalendar: return .complianceCalendar
+        case .scopeRequests: return .scopeRequests
+        case .industrySetup: return .industrySetup
         case .aiConversations: return .voiceHistory
         case .connection: return .connection
         case .scopeAndPeriodLock: return .scopeAndPeriodLock
@@ -1073,6 +1076,23 @@ public final class VoiceEngine: NSObject {
 
         case .checkCurrentFixed:
             return await checkCurrentFixed()
+
+        case .upcomingDeadlines:
+            let next = appState.complianceDeadlines.prefix(3)
+            guard !next.isEmpty else {
+                return VoiceTurn(speech: "Nothing is due in the next 120 days for this client.", uiAction: .navigate(.complianceCalendar))
+            }
+            let lines = next.map { "\(ClientText.polish($0.date.formatted)): \($0.title)." }.joined(separator: " ")
+            let note = appState.practiceProfile.reviewed ? "" : " This client's compliance profile hasn't been reviewed yet, so check which filings apply."
+            return VoiceTurn(speech: "Next up. \(lines)\(note)", uiAction: .navigate(.complianceCalendar))
+
+        case .newAccounts:
+            let open = appState.openNewAccountAlerts
+            guard !open.isEmpty else {
+                return VoiceTurn(speech: "No new bank, card or loan accounts since the last sync.")
+            }
+            let names = open.map { "\($0.name), \($0.type.lowercased())" }.joined(separator: "; ")
+            return VoiceTurn(speech: "\(open.count) new account\(open.count == 1 ? "" : "s") in QuickBooks: \(names). Each needs statements and monthly reconciliation.", uiAction: .navigate(.dashboard))
 
         case .unrecognized:
             // A near-miss of a real command ("vendor by spin") is answered in

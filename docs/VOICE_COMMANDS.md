@@ -20,6 +20,9 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | Search by Amount | search |
 | Pricing Calculator | pricing |
 | Intake Questions | intake |
+| Compliance Calendar | compliance, deadlines, due dates, tax calendar |
+| Scope Requests | out of scope, add ons |
+| Industry Setup | industry |
 | Client Diagnostics | diagnostics |
 | Cleanup Assessment | cleanup |
 | Balance Sheet Integrity | — |
@@ -82,6 +85,8 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what's our revenue this month"** · **"what was revenue last month"** | Says revenue (total income) for the loaded month, or the month before. |
 | **"what's our net income"** · **"what's our profit"** | Says net income. |
 | **"what's our cash balance"** · **"how much cash do we have"** | Says total bank balances. |
+| **"what's due"** · **"next deadline"** · **"when is sales tax due"** | Reads the next three dates on this client's compliance calendar and opens it. |
+| **"any new accounts"** | Says which bank, credit card or loan accounts appeared in QuickBooks since an earlier sync. |
 | **"working capital"** · **"what's our working capital"** | Says working capital, the same figure as the Dashboard card. |
 | **"current ratio"** · **"quick ratio"** | Says the ratio, the same figure as the Dashboard card. |
 | **"gross margin"** · **"net margin"** · **"net margin last month"** | Says the margin as a percent, the same figure as the Dashboard card. |

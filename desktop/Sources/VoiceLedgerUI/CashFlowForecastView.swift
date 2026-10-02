@@ -36,6 +36,9 @@ public struct CashFlowForecastView: View {
     private let onAskSecondOpinion: (String) -> Void
     private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
 
+    /// The 13-week forecast (2026-10-02), shown above Ask AI.
+    private let weeklySection: AnyView?
+
     public init(
         state: ViewState,
         isSyncing: Bool = false,
@@ -50,8 +53,10 @@ public struct CashFlowForecastView: View {
         isAskingSecondOpinion: Bool = false,
         secondOpinionError: String? = nil,
         onAskSecondOpinion: @escaping (String) -> Void = { _ in },
-        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = []
+        alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier] = [],
+        weeklySection: AnyView? = nil
     ) {
+        self.weeklySection = weeklySection
         self.state = state
         self.isSyncing = isSyncing
         self.onSync = onSync
@@ -140,6 +145,8 @@ public struct CashFlowForecastView: View {
                         }
                     }
                 }
+
+                if let weeklySection { weeklySection }
 
                 TwoTierAskAIPanel(
                     aiStatus: aiStatus,

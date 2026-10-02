@@ -65,3 +65,23 @@ struct OfferMemoryTests {
         #expect(VoiceIntentRouter.match(text: "yes", context: context) == .confirmPending)
     }
 }
+
+@Suite("Practice tools by voice (2026-10-02)")
+struct PracticeToolsVoiceTests {
+    func route(_ s: String) -> VoiceIntent { VoiceIntentRouter.match(text: s, context: .empty) }
+
+    @Test("New pages open by name")
+    func pages() {
+        #expect(route("go to compliance calendar") == .navigate(.complianceCalendar))
+        #expect(route("open scope requests") == .navigate(.scopeRequests))
+        #expect(route("industry setup") == .navigate(.industrySetup))
+        #expect(route("go to scope and period lock") == .navigate(.scopeAndPeriodLock))
+    }
+
+    @Test("Deadlines and new accounts are answered in code")
+    func questions() {
+        #expect(route("what's due") == .upcomingDeadlines)
+        #expect(route("When is sales tax due?") == .upcomingDeadlines)
+        #expect(route("any new accounts") == .newAccounts)
+    }
+}

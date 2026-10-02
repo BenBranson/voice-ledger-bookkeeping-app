@@ -161,6 +161,9 @@ public struct ClientDashboardView: View {
     private let onAskSecondOpinion: (String) -> Void
     private let alternateModelTiers: [TwoTierAskAIPanel.AlternateModelTier]
 
+    /// Alerts shown above the KPIs (new bank/card/loan accounts, 2026-10-02).
+    private let alerts: AnyView?
+
     public init(
         state: ViewState,
         onOpenFinding: @escaping (Finding) -> Void,
@@ -183,8 +186,10 @@ public struct ClientDashboardView: View {
         accountTypes: [String: LedgerAccountType] = [:],
         chartActions: ChartAccountActions = .none,
         trend: TrendData? = nil,
-        sparklines: SparklineData? = nil
+        sparklines: SparklineData? = nil,
+        alerts: AnyView? = nil
     ) {
+        self.alerts = alerts
         self.accountTypes = accountTypes
         self.chartActions = chartActions
         self.trend = trend
@@ -234,6 +239,8 @@ public struct ClientDashboardView: View {
                     exceptions: state.exceptionsStatus,
                     exceptionsDetail: state.exceptionsDetail
                 )
+
+                if let alerts { alerts }
 
                 if state.balanceSheetLines.isEmpty && state.profitAndLossLines.isEmpty {
                     VLCard {

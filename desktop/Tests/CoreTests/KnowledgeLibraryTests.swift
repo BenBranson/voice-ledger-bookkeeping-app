@@ -39,4 +39,13 @@ struct KnowledgeLibraryTests {
         #expect(top("should this equipment purchase be capitalized or expensed de minimis").contains("capitalize"))
         #expect(top("what is the normal balance of accounts payable liability").contains("normal balance") || top("what is the normal balance of accounts payable liability").contains("double-entry"))
     }
+
+    @Test("Texas and industry notes answer their questions")
+    func texasAndIndustries() {
+        func top(_ q: String) -> String { library.search(q).first?.note.lowercased() ?? "" }
+        #expect(top("texas franchise tax public information report no tax due threshold").contains("franchise"))
+        #expect(top("is bookkeeping taxable data processing in texas sales tax").contains("taxable"))
+        #expect(top("how do I book factoring fees for a hot shot trucker").contains("trucking"))
+        #expect(top("oilfield service job costing by well and operator").contains("oilfield"))
+    }
 }

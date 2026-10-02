@@ -269,6 +269,9 @@ struct RootView: View {
                 case .diagnostics: return .diagnostics
                 case .recurringVendors: return .recurringVendors
                 case .intakeQuestions: return .intakeQuestions
+                case .complianceCalendar: return .complianceCalendar
+                case .scopeRequests: return .scopeRequests
+                case .industrySetup: return .industrySetup
                 }
             },
             set: { newValue in
@@ -305,6 +308,9 @@ struct RootView: View {
                 case .diagnostics: state.screen = .diagnostics
                 case .recurringVendors: state.screen = .recurringVendors
                 case .intakeQuestions: state.screen = .intakeQuestions
+                case .complianceCalendar: state.screen = .complianceCalendar
+                case .scopeRequests: state.screen = .scopeRequests
+                case .industrySetup: state.screen = .industrySetup
                 }
             }
         )
@@ -403,7 +409,8 @@ struct RootView: View {
                 accountTypes: state.accountTypesByID,
                 chartActions: chartAccountActions,
                 trend: state.historyTrend,
-                sparklines: state.historySparklines
+                sparklines: state.historySparklines,
+                alerts: state.openNewAccountAlerts.isEmpty ? nil : AnyView(NewAccountAlertsCard(alerts: state.openNewAccountAlerts, onAcknowledge: { id in Task { await state.acknowledgeNewAccount(id: id) } }))
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
@@ -2219,6 +2226,42 @@ struct RootView: View {
                 onSaveAsClient: { state.carryPricingToIntake($0) }
             )
 
+        case .complianceCalendar:
+            ComplianceCalendarView(
+                environment: state.environment == .production ? .production : .sandbox,
+                clientName: state.displayCompanyName,
+                profile: state.practiceProfile,
+                deadlines: state.complianceDeadlines,
+                onSave: { profile in Task { await state.updatePracticeProfile(profile) } }
+            )
+            .id(state.realmID.rawValue)
+
+        case .scopeRequests:
+            ScopeRequestsView(
+                environment: state.environment == .production ? .production : .sandbox,
+                clientName: state.displayCompanyName,
+                presets: state.scopePresets,
+                requests: state.scopeRequests,
+                onAdd: { r in Task { await state.addScopeRequest(r) } },
+                onUpdate: { r in Task { await state.updateScopeRequest(r) } },
+                onRemove: { id in Task { await state.removeScopeRequest(id: id) } },
+                onSavePresets: { state.updateScopePresets($0) },
+                onResetPresets: { state.resetScopePresets() }
+            )
+
+        case .industrySetup:
+            IndustrySetupView(
+                environment: state.environment == .production ? .production : .sandbox,
+                kind: state.practiceProfile.industry,
+                comparison: state.industryComparison,
+                accountsLoaded: !state.accounts.isEmpty || state.historySnapshot != nil,
+                onChangeIndustry: { kind in
+                    var p = state.practiceProfile
+                    p.industry = kind
+                    Task { await state.updatePracticeProfile(p) }
+                }
+            )
+
         case .intakeQuestions:
             // Same wiring shape as `.pricingCalculator` just above — this
             // page also owns its numbers as bound state (`state
@@ -2346,7 +2389,13 @@ struct RootView: View {
                     error: state.askAIError?.contextKey == "\(cashFlowAskAIKey)-claude" ? state.askAIError?.message : nil,
                     onAsk: { question in Task { await state.askAI(contextKey: "\(cashFlowAskAIKey)-claude", contextText: cashFlowContext, question: question, model: "claude-haiku-4-5") } }
                 ) : nil
-                ].compactMap { $0 }
+                ].compactMap { $0 },
+                weeklySection: AnyView(ThirteenWeekForecastCard(
+                    forecast: state.thirteenWeekForecast,
+                    planned: state.plannedCashItems,
+                    onAdd: { item in Task { await state.addPlannedCashItem(item) } },
+                    onRemove: { id in Task { await state.removePlannedCashItem(id: id) } }
+                ))
             )
             .task {
                 if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }

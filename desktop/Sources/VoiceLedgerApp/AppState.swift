@@ -73,6 +73,10 @@ public final class AppState {
         /// grouped separately at the top. Also how a new prospect gets
         /// saved into the roster (`IntakeRosterStore`).
         case intakeQuestions
+        /// Practice tools (owner directive 2026-10-02).
+        case complianceCalendar
+        case scopeRequests
+        case industrySetup
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -313,6 +317,9 @@ public final class AppState {
         case .diagnostics: return "Client Diagnostics"
         case .recurringVendors: return "Recurring Vendors"
         case .intakeQuestions: return "Intake Questions"
+        case .complianceCalendar: return "Compliance Calendar"
+        case .scopeRequests: return "Scope Requests"
+        case .industrySetup: return "Industry Setup"
         }
     }
 
@@ -848,10 +855,104 @@ public final class AppState {
             historySnapshot = newHistorySnapshot ?? nil
             cachedSyncedAt = newCachedSyncedAt
             unreconciledMonths = newUnreconciledMonths
+            practiceProfile = (try? await store.loadPracticeProfile()) ?? ClientPracticeProfile()
+            plannedCashItems = (try? await store.loadPlannedCashItems()) ?? []
+            scopeRequests = (try? await store.loadScopeRequests()) ?? []
+            newAccountAlerts = (try? await store.loadNewAccountAlerts()) ?? []
             loadState = .loaded
         } catch {
             loadState = .failed(error.localizedDescription)
         }
+    }
+
+    // MARK: - Practice tools (owner directive 2026-10-02)
+
+    /// This client's filings and industry (per realm).
+    public private(set) var practiceProfile = ClientPracticeProfile()
+    public private(set) var plannedCashItems: [PlannedCashItem] = []
+    public private(set) var scopeRequests: [ScopeRequest] = []
+    public private(set) var newAccountAlerts: [NewAccountAlert] = []
+    /// Firm-wide preset prices for the Scope Requests buttons.
+    public private(set) var scopePresets: [ScopePreset] = AppState.loadScopePresets()
+
+    public var openNewAccountAlerts: [NewAccountAlert] { newAccountAlerts.filter { $0.acknowledgedAt == nil } }
+
+    public var complianceDeadlines: [ComplianceDeadline] {
+        ComplianceCalendar.deadlines(for: practiceProfile, from: AccountingDate(date: Date()), days: 120)
+    }
+
+    public var thirteenWeekForecast: ThirteenWeekForecast? {
+        guard let cash = FinancialKPIs.cashBalance(from: balanceSheetLines) else { return nil }
+        return ThirteenWeekForecastEngine.compute(currentCash: cash, agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines,
+                                                  recurringVendors: recurringVendors, planned: plannedCashItems, asOf: AccountingDate(date: Date()))
+    }
+
+    public var industryComparison: IndustryTemplate.Comparison {
+        IndustryTemplate.compare(practiceProfile.industry, accounts: accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts)
+    }
+
+    public func updatePracticeProfile(_ profile: ClientPracticeProfile) async {
+        var p = profile
+        p.reviewed = true
+        practiceProfile = p
+        try? await store.savePracticeProfile(p)
+    }
+
+    public func addPlannedCashItem(_ item: PlannedCashItem) async {
+        plannedCashItems.append(item)
+        try? await store.savePlannedCashItems(plannedCashItems)
+    }
+
+    public func removePlannedCashItem(id: String) async {
+        plannedCashItems.removeAll { $0.id == id }
+        try? await store.savePlannedCashItems(plannedCashItems)
+    }
+
+    public func addScopeRequest(_ request: ScopeRequest) async {
+        scopeRequests.insert(request, at: 0)
+        try? await store.saveScopeRequests(scopeRequests)
+    }
+
+    public func updateScopeRequest(_ request: ScopeRequest) async {
+        guard let i = scopeRequests.firstIndex(where: { $0.id == request.id }) else { return }
+        scopeRequests[i] = request
+        try? await store.saveScopeRequests(scopeRequests)
+    }
+
+    public func removeScopeRequest(id: String) async {
+        scopeRequests.removeAll { $0.id == id }
+        try? await store.saveScopeRequests(scopeRequests)
+    }
+
+    private static let scopePresetsDefaultsKey = "scopePresets.v1"
+
+    static func loadScopePresets() -> [ScopePreset] {
+        guard let data = UserDefaults.standard.data(forKey: scopePresetsDefaultsKey),
+              let saved = try? JSONDecoder().decode([ScopePreset].self, from: data), !saved.isEmpty else { return ScopePreset.defaults }
+        return saved
+    }
+
+    public func updateScopePresets(_ presets: [ScopePreset]) {
+        scopePresets = presets
+        if let data = try? JSONEncoder().encode(presets) { UserDefaults.standard.set(data, forKey: Self.scopePresetsDefaultsKey) }
+    }
+
+    public func resetScopePresets() { updateScopePresets(ScopePreset.defaults) }
+
+    /// After each sync: record watched accounts, alert on ones not seen before.
+    private func checkForNewAccounts(_ synced: [LedgerAccount]) async {
+        let baseline = (try? await store.loadKnownAccountsBaseline()) ?? KnownAccountsBaseline()
+        let result = NewAccountWatch.check(baseline: baseline, accounts: synced)
+        try? await store.saveKnownAccountsBaseline(result.baseline)
+        guard !result.newAlerts.isEmpty else { return }
+        newAccountAlerts += result.newAlerts
+        try? await store.saveNewAccountAlerts(newAccountAlerts)
+    }
+
+    public func acknowledgeNewAccount(id: String) async {
+        guard let i = newAccountAlerts.firstIndex(where: { $0.accountID == id }) else { return }
+        newAccountAlerts[i].acknowledgedAt = Date()
+        try? await store.saveNewAccountAlerts(newAccountAlerts)
     }
 
     public func setUnreconciledMonths(_ months: Int) async {
@@ -1288,6 +1389,8 @@ public final class AppState {
                 async let activityResult = try? clientStore.loadActivityLog()
                 async let historyResult = try? clientStore.loadHistorySnapshot()
                 let (f, c, imported, activity, history) = await (findingsResult, checklistResult, importedResult, activityResult, historyResult)
+                let profile = try? await clientStore.loadPracticeProfile()
+                let alerts = (try? await clientStore.loadNewAccountAlerts()) ?? []
                 summaries.append(FirmCockpit.summarize(
                     client: connection,
                     findings: f ?? [],
@@ -1295,7 +1398,9 @@ public final class AppState {
                     period: period,
                     importedStatementLineCount: (imported ?? []).count,
                     activityLog: activity ?? [],
-                    history: history ?? nil
+                    history: history ?? nil,
+                    practiceProfile: profile,
+                    newAccountAlerts: alerts
                 ))
             }
             firmCockpitSummaries = summaries
@@ -2086,6 +2191,7 @@ public final class AppState {
             coverage = syncedDataSet.coverage
             accounts = syncedDataSet.accounts
             vendors = syncedDataSet.vendors
+            await checkForNewAccounts(syncedDataSet.accounts)
             transactions = dataSet.transactions
             findings = newFindings
             activityLog = newActivityLog
@@ -3453,6 +3559,20 @@ public final class AppState {
 
         case .intakeQuestions:
             return "Page: Intake Questions (discovery call script for prospect qualification and client onboarding)."
+
+        case .complianceCalendar:
+            var lines = ["Page: Compliance Calendar (filing and delivery dates for this client, next 120 days)."]
+            lines += complianceDeadlines.prefix(12).map { "- \($0.date.formatted): \($0.title) — \($0.detail)" }
+            return lines.joined(separator: "\n")
+
+        case .scopeRequests:
+            var lines = ["Page: Scope Requests (out-of-scope requests and their prices for this client)."]
+            lines += scopeRequests.prefix(20).map { "- \($0.title): \($0.priceText), \($0.status.label)" }
+            return lines.joined(separator: "\n")
+
+        case .industrySetup:
+            let c = industryComparison
+            return (["Page: Industry Setup (\(practiceProfile.industry.label) chart of accounts comparison).", "Missing recommended accounts: " + c.missing.map(\.name).joined(separator: ", ")]).joined(separator: "\n")
 
         case .diagnostics:
             guard let history = historySnapshot else {
