@@ -152,6 +152,18 @@ public enum VoiceIntentRouter {
             }
         }
 
+        // The month-end walkthrough: its control words only mean something while it's running.
+        if MonthEndRoutine.isStart(text) { return .startRoutine }
+        if context.routineStep != nil, let command = MonthEndRoutine.command(for: text) {
+            switch command {
+            case .advance: return .routineAdvance
+            case .repeat: return .routineRepeat
+            case .previous: return .routinePrevious
+            case .stop: return .routineStop
+            case .where: return .routineWhere
+            }
+        }
+
         if let destination = matchDestination(normalized) {
             return .navigate(destination)
         }

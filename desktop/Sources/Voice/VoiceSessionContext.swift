@@ -89,6 +89,8 @@ public struct VoiceSessionContext: Codable, Sendable, Equatable {
     public var lastViewedEntities: [VoiceEntityRef]
     public var pendingAction: VoicePendingAction?
     public var conversationGoal: VoiceConversationGoal
+    /// Index of the current month-end walkthrough step; nil when none is running.
+    public var routineStep: Int?
 
     public init(
         currentEntity: VoiceEntityRef? = nil,
@@ -96,8 +98,10 @@ public struct VoiceSessionContext: Codable, Sendable, Equatable {
         reviewQueueIndex: Int? = nil,
         lastViewedEntities: [VoiceEntityRef] = [],
         pendingAction: VoicePendingAction? = nil,
-        conversationGoal: VoiceConversationGoal = .general
+        conversationGoal: VoiceConversationGoal = .general,
+        routineStep: Int? = nil
     ) {
+        self.routineStep = routineStep
         self.currentEntity = currentEntity
         self.reviewQueue = reviewQueue
         self.reviewQueueIndex = reviewQueueIndex

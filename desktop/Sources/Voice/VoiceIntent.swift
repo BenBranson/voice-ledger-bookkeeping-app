@@ -137,6 +137,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case totalOwed
     /// "what are we owed" / "who owes us" — total customer receivables, plus the Aged Receivables page.
     case totalReceivable
+    /// "start month-end" — begin the guided walkthrough.
+    case startRoutine
+    /// Walkthrough controls (only produced while one is running).
+    case routineAdvance, routineRepeat, routinePrevious, routineStop, routineWhere
     /// "try again" — dismiss the last answer and listen again, hands-free.
     case retry
     case chart(ChartKind)

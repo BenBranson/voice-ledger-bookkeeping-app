@@ -3,6 +3,7 @@ Benjamin Branson Bookkeeping · first draft 2026-10-01 · mark it up after a few
 
 **The rule of the order:** get the data in → categorize → reconcile → review exceptions → report. Findings come *after* the bank work, because many findings disappear once the bank activity is entered.
 **Every number she says comes from the client's books. [YOU] = a step you do yourself (she can't).**
+**Hands-free version: say "start month-end" and she walks you through section A step by step (see Voice Commands, section 8).**
 
 ---
 

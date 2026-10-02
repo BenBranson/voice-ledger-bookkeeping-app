@@ -104,7 +104,18 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what were we doing"** | Reminds you what you were looking at. |
 | **"yes"** · **"no"** | Answers a question she just asked (only when she's waiting for an answer). |
 
-## 8. Control
+## 8. Guided month-end walkthrough (she walks you through the routine, one step at a time)
+Say **"start month-end"** (also "start the monthly routine", "walk me through the month"). She goes through 16 steps in the order on the Monthly Routine sheet: for each one she opens the page, reads the numbers, and waits. Steps 3 and 5 are **yours to do in QuickBooks** (matching bank lines, reconciling); she tells you what to do, then re-syncs automatically when you say next. **Nothing in this mode changes your books.**
+
+| Say (only while the walkthrough is running) | What happens |
+|---|---|
+| **"next"** · **"done"** · **"I did that"** · **"continue"** · **"skip"** | Moves to the next step (after a QuickBooks step it syncs first so the numbers are fresh). |
+| **"repeat"** · **"say that again"** | Does the current step again. |
+| **"previous step"** | Goes back one step. |
+| **"where are we"** · **"how much is left"** | Says the step number and how many remain. |
+| **"stop"** · **"end the routine"** · **"pause"** | Ends the walkthrough. |
+
+## 9. Control
 | Say | What happens |
 |---|---|
 | **"try again"** · **"that's wrong"** · **"never mind"** · **"scratch that"** | Clears her last answer and says Go ahead — then listens. |

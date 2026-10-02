@@ -41,7 +41,7 @@ struct VoiceCommandsDocTests {
         }
         _ = re
         // Phrases that need session state or are answers to a question — documented, not routable cold.
-        let stateful: Set<String> = ["next", "skip", "what's left", "how many are left", "yes", "no", "that one", "open it"]
+        let stateful: Set<String> = ["next", "skip", "what's left", "how many are left", "yes", "no", "that one", "open it", "done", "i did that", "continue", "repeat", "say that again", "previous step", "where are we", "how much is left", "stop", "end the routine", "pause"]
         #expect(phrases.count > 40)
         for p in phrases.sorted() where !stateful.contains(p.lowercased()) {
             let intent = VoiceIntentRouter.match(text: p, context: .empty)

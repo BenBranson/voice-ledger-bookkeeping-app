@@ -832,6 +832,19 @@ public final class VoiceEngine: NSObject {
         )
     }
 
+    /// One walkthrough step: she does what the step says (or tells you what
+    /// to do in QuickBooks), then waits for "next".
+    private func routineStepTurn(_ index: Int) async -> VoiceTurn {
+        let step = MonthEndRoutine.steps[index]
+        let heading = MonthEndRoutine.heading(index)
+        if let manual = step.manual {
+            return VoiceTurn(speech: "\(heading) \(manual) Say next when you're done.")
+        }
+        guard let intent = step.intent else { return VoiceTurn(speech: heading) }
+        let inner = await resolveTurn(for: intent, rawText: "")
+        return VoiceTurn(speech: "\(heading) \(inner.speech) Say next, repeat, or stop.", uiAction: inner.uiAction)
+    }
+
     private func resolveTurn(for intent: VoiceIntent, rawText: String) async -> VoiceTurn {
         switch intent {
         case .chooseFinding(let index):
@@ -917,6 +930,51 @@ public final class VoiceEngine: NSObject {
             }
             if split.over60Owed.minorUnits > 0 { speech += ". \(split.over60Owed.accountingDescription) of it is more than 60 days old" }
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
+
+        case .startRoutine:
+            conversationMode = true
+            context.routineStep = 0
+            let name = appState.displayCompanyName
+            let intro = "Starting month-end for \(name), \(ClientFacts.periodLabel(appState.period)). \(MonthEndRoutine.count) steps. Say next to move on, repeat, previous, or stop. Nothing here changes your books."
+            let first = await routineStepTurn(0)
+            return VoiceTurn(speech: intro + " " + first.speech, uiAction: first.uiAction)
+
+        case .routineAdvance:
+            guard let current = context.routineStep else { return VoiceTurn(speech: "There's no month-end walkthrough running. Say start month-end.") }
+            let next = current + 1
+            guard next < MonthEndRoutine.count else {
+                context.routineStep = nil
+                return VoiceTurn(speech: "That's the whole month-end routine. Nothing was changed in your books.")
+            }
+            context.routineStep = next
+            var prefix = ""
+            if MonthEndRoutine.steps[current].manual != nil {
+                // The books just changed in QuickBooks — read fresh numbers.
+                await appState.syncDashboard()
+                prefix = "Synced with QuickBooks. "
+            }
+            let turn = await routineStepTurn(next)
+            return VoiceTurn(speech: prefix + turn.speech, uiAction: turn.uiAction)
+
+        case .routineRepeat:
+            guard let current = context.routineStep else { return VoiceTurn(speech: "There's no month-end walkthrough running. Say start month-end.") }
+            return await routineStepTurn(current)
+
+        case .routinePrevious:
+            guard let current = context.routineStep else { return VoiceTurn(speech: "There's no month-end walkthrough running. Say start month-end.") }
+            let previous = max(0, current - 1)
+            context.routineStep = previous
+            return await routineStepTurn(previous)
+
+        case .routineStop:
+            let at = (context.routineStep ?? 0) + 1
+            context.routineStep = nil
+            return VoiceTurn(speech: "Stopping the month-end walkthrough at step \(at) of \(MonthEndRoutine.count). Say start month-end to begin again.")
+
+        case .routineWhere:
+            guard let current = context.routineStep else { return VoiceTurn(speech: "There's no month-end walkthrough running.") }
+            let left = MonthEndRoutine.count - current - 1
+            return VoiceTurn(speech: "\(MonthEndRoutine.heading(current)) \(left) step\(left == 1 ? "" : "s") left.")
 
         case .chartMenu:
             conversationMode = true
