@@ -59,18 +59,6 @@ struct VoiceLedgerApp: App {
                 }
             }
             .frame(minWidth: 720, minHeight: 480)
-            // Developer test hook (2026-10-02): voiceledger-dev://ask?q=...&silent=1
-            // runs a question through the same path as the typed command box,
-            // so Moneypenny can be tested end to end. Sandbox companies only;
-            // voice never writes to QuickBooks either way.
-            .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
-            .onOpenURL { url in
-                guard url.scheme == "voiceledger-dev", url.host == "ask", let appState, appState.environment != .production,
-                      let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
-                      let q = items.first(where: { $0.name == "q" })?.value, !q.isEmpty else { return }
-                appState.voiceEngine.muteSpeech = items.contains { $0.name == "silent" && $0.value == "1" }
-                Task { await appState.voiceEngine.handleTypedCommand(q) }
-            }
             .onAppear {
                 // Confirmed live 2026-08-28: a raw (unbundled) executable
                 // launched via `nohup binary &` from a script — as the
@@ -93,9 +81,17 @@ struct VoiceLedgerApp: App {
                 // reopen behavior wasn't enough on its own, confirmed via
                 // an actual Dock-icon click leaving the app at zero windows.
                 appDelegate.onReopenWithNoWindows = { openWindow(id: Self.mainWindowID) }
+                // Developer test hook (2026-10-02): voiceledger-dev://ask?q=...&silent=1
+                // runs a question through the same path as the typed command box.
+                // Handled by the app delegate so SwiftUI never opens a new window
+                // for it. Sandbox companies only; voice never writes to QuickBooks.
+                appDelegate.onDevAsk = { q, silent in
+                    guard let appState, appState.environment != .production else { return }
+                    appState.voiceEngine.muteSpeech = silent
+                    Task { await appState.voiceEngine.handleTypedCommand(q) }
+                }
             }
         }
-        .handlesExternalEvents(matching: ["*"])
         .commands {
             // File > "Export Page as PDF…" — a `Commands` scene builder has
             // no reference to the specific `RootView` instance currently on
@@ -321,6 +317,15 @@ struct VoiceLedgerApp: App {
 /// a default that demonstrably wasn't firing here.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var onReopenWithNoWindows: (() -> Void)?
+    var onDevAsk: ((String, Bool) -> Void)?
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.scheme == "voiceledger-dev" && url.host == "ask" {
+            guard let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+                  let q = items.first(where: { $0.name == "q" })?.value, !q.isEmpty else { continue }
+            onDevAsk?(q, items.contains { $0.name == "silent" && $0.value == "1" })
+        }
+    }
     /// Defensive guard, live-verified 2026-08-29: without this, a reopen
     /// callback that fires before launch has actually settled could open a
     /// window before `WindowGroup`'s own initial one is up, risking a

@@ -45,6 +45,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case complianceCalendar
     case scopeRequests
     case industrySetup
+    case chartsGallery
     case firmCockpit
     /// Owner directive (2026-09-06): "build cash flow forecasting."
     case cashFlowForecast
@@ -89,6 +90,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .complianceCalendar: return "Compliance Calendar"
         case .scopeRequests: return "Scope Requests"
         case .industrySetup: return "Industry Setup"
+        case .chartsGallery: return "Charts & Cards"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
         case .diagnostics: return "Client Diagnostics"
@@ -128,6 +130,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .complianceCalendar: return "calendar"
         case .scopeRequests: return "dollarsign.square"
         case .industrySetup: return "wrench.and.screwdriver"
+        case .chartsGallery: return "rectangle.stack"
         case .firmCockpit: return "square.grid.2x2"
         case .cashFlowForecast: return "chart.line.uptrend.xyaxis.circle"
         case .diagnostics: return "stethoscope"
@@ -165,7 +168,7 @@ struct SidebarSection: Identifiable {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "OVERVIEW", items: [.dashboard, .findings, .firmCockpit, .complianceCalendar, .cashFlowForecast, .amountSearch, .pricingCalculator, .intakeQuestions]),
+    SidebarSection(title: "OVERVIEW", items: [.dashboard, .chartsGallery, .findings, .firmCockpit, .complianceCalendar, .cashFlowForecast, .amountSearch, .pricingCalculator, .intakeQuestions]),
     SidebarSection(title: "CLEANUP", items: [.diagnostics, .cleanupAssessment, .balanceSheetIntegrity, .chartOfAccountsCleanup, .bankFeedCleanup, .batchFixes, .salesTaxReview, .recurringVendors]),
     SidebarSection(title: "CLOSE", items: [.monthEndClose, .closePackage, .activityLog]),
     SidebarSection(title: "REPORTS", items: [.balanceSheetReport, .profitAndLossReport, .cashFlowReport, .trialBalanceReport, .agedReceivablesReport, .agedPayablesReport, .generalLedgerReport, .taxes]),
@@ -237,7 +240,7 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
-                Text("v1.62")
+                Text("v1.64")
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(VLColor.textMuted)
                 voiceMicButton

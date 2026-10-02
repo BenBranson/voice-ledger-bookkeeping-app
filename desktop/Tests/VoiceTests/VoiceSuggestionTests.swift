@@ -104,3 +104,33 @@ struct InsightCardPhraseTests {
         #expect(route("cash flow forecast") == .navigate(.cashFlowForecast))
     }
 }
+
+@Suite("Charts & Cards page entries are real commands")
+struct CardCatalogTests {
+    @Test("Every clickable entry routes to a command (never to the AI model)")
+    func allRoute() {
+        for section in CardCatalog.sections {
+            for item in section.items {
+                let intent = VoiceIntentRouter.match(text: item.phrase, context: .empty)
+                if case .unrecognized = intent { Issue.record("\(item.phrase) is not a command") }
+            }
+        }
+        #expect(VoiceIntentRouter.match(text: CardCatalog.vendorPhrase("Hicks Hardware"), context: .empty) == .searchVendor("hicks hardware"))
+        #expect(VoiceIntentRouter.match(text: CardCatalog.accountPhrase("Mastercard"), context: .empty) == .accountBalance("mastercard"))
+    }
+
+    @Test("'who owes us the most' and 'who do we owe the most' are instant commands")
+    func topBalance() {
+        #expect(VoiceIntentRouter.match(text: "which customer owes us the most", context: .empty) == .topBalance(receivables: true))
+        #expect(VoiceIntentRouter.match(text: "Who owes us the most?", context: .empty) == .topBalance(receivables: true))
+        #expect(VoiceIntentRouter.match(text: "who do we owe the most", context: .empty) == .topBalance(receivables: false))
+    }
+
+    @Test("'show <trend> chart' phrasing is a command; 'show vendors' is still a page")
+    func showTrend() {
+        #expect(VoiceIntentRouter.match(text: "show net income trend", context: .empty) == .chart(.netIncomeTrend))
+        #expect(VoiceIntentRouter.match(text: "pull up revenue by month", context: .empty) == .chart(.revenueTrend))
+        #expect(VoiceIntentRouter.match(text: "show me the cash outlook", context: .empty) == .chart(.cashOutlook))
+        if case .chart = VoiceIntentRouter.match(text: "show vendors", context: .empty) { Issue.record("show vendors became a chart") }
+    }
+}

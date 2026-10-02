@@ -40,6 +40,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case complianceCalendar
     case scopeRequests
     case industrySetup
+    case chartsGallery
     case aiConversations
     case connection
     case scopeAndPeriodLock
@@ -58,6 +59,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
         case .complianceCalendar: return "Compliance Calendar"
         case .scopeRequests: return "Scope Requests"
         case .industrySetup: return "Industry Setup"
+        case .chartsGallery: return "Charts & Cards"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
         case .clientDiagnostics: return "Client Diagnostics"
@@ -143,6 +145,8 @@ public enum VoiceIntent: Equatable, Sendable {
     case totalOwed
     /// "what are we owed" / "who owes us" — total customer receivables, plus the Aged Receivables page.
     case totalReceivable
+    /// "who owes us the most" / "which vendor do we owe the most" — the largest open balance on the aging report.
+    case topBalance(receivables: Bool)
     /// "start month-end" — begin the guided walkthrough.
     case startRoutine
     /// Walkthrough controls (only produced while one is running).

@@ -112,6 +112,13 @@ public enum CommandGrammar {
 
         // The answer to "Which chart?" — a bare chart name.
         for (kind, phrases) in chartPhrases where phrases.contains(t) && t != "income" { return .chart(kind) }
+        // "show net income trend", "pull up revenue by month" — only chart-only phrases
+        // (trend / by month / outlook), so "show vendors" still opens the Vendors page.
+        for verb in openVerbs where t.hasPrefix(verb + " ") {
+            let rest = strip(String(t.dropFirst(verb.count + 1)), ["the", "my", "our"])
+            for (kind, phrases) in chartPhrases where phrases.contains(rest)
+                && ["trend", "by month", "monthly", "outlook", "forecast", "projection"].contains(where: { rest.contains($0) }) { return .chart(kind) }
+        }
 
         // Account balance: "balance of/in/on <account>", "<account> balance", "how much is in <account>"
         if let range = t.range(of: #"^(?:what's |whats |what is |what was |tell me |give me |read me )?(?:the )?(?:current )?balance (?:of|in|on|for) (?:the )?(.+?)(?: account)?$"#, options: .regularExpression) {
@@ -145,6 +152,13 @@ public enum CommandGrammar {
         let totalReceivablePhrases: Set<String> = ["what are we owed", "who owes us", "who owes us money", "how much are we owed", "what do customers owe", "what do customers owe us", "what's our accounts receivable",
                                                    "whats our accounts receivable", "what is our accounts receivable", "total receivables", "what are our receivables", "how much do customers owe us", "what are our open invoices", "who hasn't paid", "who hasnt paid"]
         if totalReceivablePhrases.contains(t) { return .totalReceivable }
+        let topCustomer: Set<String> = ["who owes us the most", "who owes the most", "which customer owes us the most", "which customer owes the most", "what customer owes us the most",
+                                         "who owes us the most money", "biggest receivable", "largest receivable", "who is our biggest debtor", "which customer has the biggest balance",
+                                         "which customer has the largest balance", "who has the biggest balance", "top customer balance", "biggest customer balance"]
+        if topCustomer.contains(t) { return .topBalance(receivables: true) }
+        let topVendor: Set<String> = ["who do we owe the most", "which vendor do we owe the most", "what vendor do we owe the most", "who do we owe the most money", "biggest payable",
+                                      "largest payable", "which vendor has the biggest balance", "which bill is the biggest", "biggest vendor balance", "who do we own the most", "which vendor do we own the most"]
+        if topVendor.contains(t) { return .topBalance(receivables: false) }
 
         // What we owe a vendor. Recognizers hear "owe" as "own", "oh" and "ow", so accept those before a name.
         for lead in ["what do we owe ", "what do we own ", "what do we oh ", "how much do we owe ", "how much do we own ", "how much do we oh ", "what do i owe ", "what do i own ",

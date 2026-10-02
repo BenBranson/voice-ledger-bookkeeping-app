@@ -602,6 +602,18 @@ public final class VoiceEngine: NSObject {
     /// real text is identical.
     /// Set by the developer test hook so automated questions don't speak aloud.
     public var muteSpeech = false
+    /// A click on the Charts & Cards page: show the card, but don't speak or
+    /// move off the page.
+    private var galleryRun = false
+
+    public func runFromGallery(_ phrase: String) async {
+        let wasMuted = muteSpeech
+        muteSpeech = true
+        galleryRun = true
+        await handleTypedCommand(phrase)
+        galleryRun = false
+        muteSpeech = wasMuted
+    }
 
     public func handleTypedCommand(_ text: String) async {
         guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -634,7 +646,13 @@ public final class VoiceEngine: NSObject {
             context.pendingAction = newPending
         }
         if let uiAction = turn.uiAction {
-            apply(uiAction)
+            var movesPage = false
+            switch uiAction {
+            case .navigate, .showFindingGroup, .goBack, .goForward, .openFinding: movesPage = true
+            default: break
+            }
+            // A Charts & Cards click stays on that page; the card carries the answer.
+            if !(galleryRun && movesPage) { apply(uiAction) }
         }
         NSLog("Voice timing: command to screen %.2fs", Date().timeIntervalSince(commandStarted))
         await appState.saveVoiceSessionContext(context)
@@ -792,6 +810,7 @@ public final class VoiceEngine: NSObject {
         case .complianceCalendar: return .complianceCalendar
         case .scopeRequests: return .scopeRequests
         case .industrySetup: return .industrySetup
+        case .chartsGallery: return .chartsGallery
         case .aiConversations: return .voiceHistory
         case .connection: return .connection
         case .scopeAndPeriodLock: return .scopeAndPeriodLock
@@ -948,6 +967,24 @@ public final class VoiceEngine: NSObject {
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
+
+        case .topBalance(let receivables):
+            if receivables, appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
+            if !receivables, appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
+            let lines = receivables ? appState.agedReceivablesLines : appState.clientData.agedPayables
+            let page: VoiceDestination = receivables ? .agedReceivablesReport : .agedPayablesReport
+            let ranked = AgingSummary.topLevelRows(lines).filter { ($0.total?.minorUnits ?? 0) > 0 }
+                .sorted { ($0.total?.minorUnits ?? 0) > ($1.total?.minorUnits ?? 0) }
+            guard let top = ranked.first, let amount = top.total else {
+                return VoiceTurn(speech: (receivables ? "No customer has an open balance on the aged receivables report. " : "No vendor has an open balance on the aged payables report. ")
+                                 + ClientFacts.freshnessSentence(appState.clientData), uiAction: .navigate(page))
+            }
+            var speech = receivables ? "\(top.label) owes us the most: \(amount.accountingDescription)" : "We owe \(top.label) the most: \(amount.accountingDescription)"
+            let late = [top.days61to90, top.days91AndOver].compactMap { $0?.minorUnits }.filter { $0 > 0 }.reduce(0, +)
+            if late > 0 { speech += ", \(Money(minorUnits: late, currency: amount.currency).accountingDescription) of it more than 60 days old" }
+            if ranked.count > 1, let next = ranked[1].total { speech += ". Next is \(ranked[1].label) at \(next.accountingDescription)" }
+            showCard(InsightCards.aging(lines, receivables: receivables, footnote: cardFootnote))
+            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(page))
 
         case .totalReceivable:
             if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }

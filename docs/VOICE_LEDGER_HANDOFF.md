@@ -1349,3 +1349,9 @@ Notes for next time:
 - Industry templates: construction, restaurant, retail/e-commerce, professional services, property management, medical/dental, salon, home/field services, grocery/convenience (high complexity), with red flags and knowledge notes.
 - Pricing/Intake: heavy inventory (+4h), multi-state (+1.5h), cash-heavy (+1.5h), multiple entities (+2h) with warnings; tolerant decoding; CSV columns added.
 - `InventoryReview` on Industry Setup: COGS % by month (flag > 5 points off prior average), books vs the client's count, negative inventory.
+
+## 2026-10-02 — v1.64: Charts & Cards page, dev test hook, top balances
+
+- **Charts & Cards page** (sidebar; voice "charts and cards"): `CardCatalog` (Sources/Voice) lists every card with what it shows and the phrase it runs; `ChartsGalleryView` tiles run that phrase through `VoiceEngine.runFromGallery`, which stays on the page and is silent. `CardCatalogTests` proves every phrase routes to a command (never to the AI model).
+- **Dev test hook** `voiceledger-dev://ask?q=...&silent=1` is handled in `AppDelegate.application(_:open:)`, not `.onOpenURL`. SwiftUI's `.onOpenURL`/`.handlesExternalEvents` opened a new window per URL (verified 2026-10-02). Sandbox only (ignored when environment is production).
+- New instant commands: "who owes us the most" / "who do we owe the most" (`.topBalance`, ranked from `AgingSummary.topLevelRows`), and "show/pull up <trend|by month|outlook chart>" (only chart-only phrases, so "show vendors" still opens the page).

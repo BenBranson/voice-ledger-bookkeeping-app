@@ -272,6 +272,7 @@ struct RootView: View {
                 case .complianceCalendar: return .complianceCalendar
                 case .scopeRequests: return .scopeRequests
                 case .industrySetup: return .industrySetup
+                case .chartsGallery: return .chartsGallery
                 }
             },
             set: { newValue in
@@ -311,6 +312,7 @@ struct RootView: View {
                 case .complianceCalendar: state.screen = .complianceCalendar
                 case .scopeRequests: state.screen = .scopeRequests
                 case .industrySetup: state.screen = .industrySetup
+                case .chartsGallery: state.screen = .chartsGallery
                 }
             }
         )
@@ -2253,6 +2255,10 @@ struct RootView: View {
                 onSavePresets: { state.updateScopePresets($0) },
                 onResetPresets: { state.resetScopePresets() }
             )
+
+        case .chartsGallery:
+            ChartsGalleryView(environment: state.environment == .production ? .production : .sandbox,
+                              onRun: { phrase in Task { await state.voiceEngine.runFromGallery(phrase) } })
 
         case .industrySetup:
             IndustrySetupView(

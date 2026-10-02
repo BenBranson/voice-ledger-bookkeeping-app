@@ -14,6 +14,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | Page you can name | Also works as |
 |---|---|
 | Dashboard | home |
+| Charts & Cards | all charts, all cards, chart gallery |
 | Findings | findings list |
 | Firm Cockpit | cockpit |
 | Cash Flow Forecast | forecast |
@@ -77,6 +78,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what do we owe"** · **"how much do we owe"** · **"what bills are due"** | Says total payables, how much is over 60 days past due, less credits; opens Aged Payables. |
 | **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. For a vendor paid as each charge happens (like Gusto Payroll), she says nothing is owed and how many charges were paid. |
 | **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
+| **"who owes us the most"** · **"which customer owes us the most"** · **"who do we owe the most"** | Names the biggest customer (or vendor) balance, how much is over 60 days, and who is next; opens the aging page with a card. |
 | **"how much have we paid Tania's Nursery"** · **"transactions from Hicks Hardware"** | Shows that vendor's count, total and last date. |
 
 ## 5. Quick numbers
@@ -100,6 +102,11 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"vendors chart"** · **"top vendors"** · **"vendor by spend"** · **"who do we pay the most"** | Spend by vendor for the month: expenses and bills only, never customers. |
 | **"income vs expenses chart"** | Revenue to net income, step by step. |
 | **"cost drivers chart"** · **"pareto"** | The biggest cost drivers. |
+| **"revenue by month"** · **"revenue trend"** · **"chart revenue"** | A card with 12 months of revenue, centered on the month you're reviewing. |
+| **"net income by month"** · **"profit trend"** | A card with 12 months of profit or loss, loss months flagged. |
+| **"receivables chart"** · **"payables aging"** | Who owes us or what we owe, by customer or vendor and age, with QuickBooks links and what to do. |
+| **"show net income trend"** · **"pull up revenue by month"** · **"show me the cash outlook"** | "Show" or "pull up" in front of a trend, by-month or outlook chart opens that chart instantly. |
+| **"will we run out of cash"** · **"cash outlook"** | A card with the 13-week cash projection and the lowest week. |
 
 ## 7. Review mode (work through findings one at a time)
 | Say | What happens |
@@ -140,6 +147,9 @@ Say the page name ("go to …"), or a number ("find 1420"), or a question from t
 
 ### QuickBooks how-to questions
 Ask in your own words, for example how to record a vendor credit, clear payments stuck in Undeposited Funds, merge duplicate vendors, or whether a contractor needs a 1099. She answers from a reference library of QuickBooks Online notes written from Intuit's ProAdvisor training and help pages. If the notes don't cover it, she says so rather than guessing a menu path. These go to the AI model, so they take 10–30 seconds.
+
+### Cards
+Most answers about money now pop up a card next to her spoken answer: a chart, the records behind it with Open in QBO links, and what to do. "Who owes us", "what do we owe", "find" a vendor, "balance of" an account, revenue, net income, cash, finding groups like duplicates, "what's due" and "any new accounts" all show one. Every card is also on the Charts & Cards page, one click each.
 
 ### Memory
 She remembers the last 20 exchanges, including what she opened for you. When she offers something, such as pulling something up, just say yes.

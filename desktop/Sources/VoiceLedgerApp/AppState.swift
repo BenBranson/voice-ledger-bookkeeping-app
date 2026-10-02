@@ -77,6 +77,8 @@ public final class AppState {
         case complianceCalendar
         case scopeRequests
         case industrySetup
+        /// Clickable list of every card Moneypenny can show (2026-10-02).
+        case chartsGallery
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -320,6 +322,7 @@ public final class AppState {
         case .complianceCalendar: return "Compliance Calendar"
         case .scopeRequests: return "Scope Requests"
         case .industrySetup: return "Industry Setup"
+        case .chartsGallery: return "Charts & Cards"
         }
     }
 
@@ -3601,6 +3604,9 @@ public final class AppState {
             var lines = ["Page: Scope Requests (out-of-scope requests and their prices for this client)."]
             lines += scopeRequests.prefix(20).map { "- \($0.title): \($0.priceText), \($0.status.label)" }
             return lines.joined(separator: "\n")
+
+        case .chartsGallery:
+            return "Page: Charts & Cards (a clickable list of every card and chart Moneypenny can show)."
 
         case .industrySetup:
             let c = industryComparison
