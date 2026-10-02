@@ -65,6 +65,17 @@ public enum CommandGrammar {
         (.pareto, ["pareto", "cost drivers", "biggest cost drivers"])
     ]
 
+    /// Bare phrases the grammar answers, for "did you mean" suggestions.
+    static var knownPhrases: [String] {
+        var all: [String] = []
+        for (_, p) in groupAliases { all += p + p.map { "pull up the " + $0 } + p.map { "show me the " + $0 } }
+        for (_, p) in kpiPhrases { all += p + p.map { "what's our " + $0 } + p.map { "what is the " + $0 } }
+        for (_, p) in chartPhrases { all += p + p.map { $0 + " chart" } + p.map { "chart the " + $0 } }
+        all += ["who owes us", "what do we owe", "what are we owed", "how much cash do we have", "when did we last sync", "is this current",
+                "try again", "start month end", "charts", "go back", "go forward"]
+        return all
+    }
+
     /// nil = the grammar doesn't cover this; let the caller fall back.
     public static func parse(_ raw: String) -> VoiceIntent? {
         let t = normalize(raw)

@@ -1068,7 +1068,23 @@ public final class VoiceEngine: NSObject {
         case .rejectPending:
             return await resolvePendingAction(approved: false)
 
+        case .openInQuickBooks:
+            return openCurrentInQuickBooks()
+
+        case .checkCurrentFixed:
+            return await checkCurrentFixed()
+
         case .unrecognized:
+            // A near-miss of a real command ("vendor by spin") is answered in
+            // code, instantly, with a yes/no the next "yes" will act on. Only
+            // genuinely new questions go on to the slower AI model.
+            if VoiceIntentRouter.isBareYesOrNo(rawText) {
+                return VoiceTurn(speech: "I wasn't waiting on a yes or no. What would you like to do?")
+            }
+            if let suggestion = VoiceIntentRouter.suggestion(for: rawText) {
+                return VoiceTurn(speech: "Did you mean “\(suggestion)”? Say yes or no.",
+                                 newPendingAction: VoicePendingAction(kind: .runCommand, summary: suggestion, commandText: suggestion))
+            }
             // Owner directive (2026-09-06): "move away from phrase matching
             // and move to understand me no matter how I say it." Anything
             // `VoiceIntentRouter`'s exact-phrase matches didn't catch now
@@ -1225,7 +1241,51 @@ public final class VoiceEngine: NSObject {
             guard let itemID = pending.checklistItemID else { return VoiceTurn(speech: "I lost track of which item that was — say it again.") }
             await appState.completeChecklistItem(ChecklistItemID(rawValue: itemID), actorName: actorName, note: "Marked complete by voice command")
             return VoiceTurn(speech: "Marked complete.")
+        case .runCommand:
+            guard let command = pending.commandText else { return VoiceTurn(speech: "I lost track of what that was — say it again.") }
+            let intent = VoiceIntentRouter.match(text: command, context: context)
+            // Never loop back into another suggestion or the AI from a "yes".
+            if case .unrecognized = intent { return VoiceTurn(speech: "I couldn't run “\(command)”. Say it again in your own words.") }
+            return await resolveTurn(for: intent, rawText: command)
         }
+    }
+
+    /// The finding being worked on: the one on screen, else the last one opened.
+    private var workingFinding: Finding? {
+        syncCurrentEntityWithScreen()
+        if let id = context.currentEntity?.id, let f = appState.finding(id: id) { return f }
+        if let id = context.lastViewedEntities.first?.id, let f = appState.finding(id: id) { return f }
+        return nil
+    }
+
+    /// "Open it in QuickBooks" — the exact record, for the second monitor.
+    private func openCurrentInQuickBooks() -> VoiceTurn {
+        guard let finding = workingFinding else {
+            return VoiceTurn(speech: "Open a finding first, then say “open it in QuickBooks.”")
+        }
+        guard let url = appState.qboWebURL(for: finding) else {
+            return VoiceTurn(speech: "This finding has no single QuickBooks record to open. \(finding.proposedActions.first.map { "Suggested fix: \($0.title)." } ?? "")")
+        }
+        NSWorkspace.shared.open(url)
+        return VoiceTurn(speech: "Opened it in QuickBooks. Fix it there, then say “is it fixed” and I'll re-check.")
+    }
+
+    /// "Is it fixed" — re-sync from QuickBooks and say whether this finding
+    /// cleared. The finding's status after the sync decides; never a guess.
+    private func checkCurrentFixed() async -> VoiceTurn {
+        guard let before = workingFinding else {
+            return VoiceTurn(speech: "Open the finding you fixed first, then say “is it fixed.”")
+        }
+        await appState.syncAndEvaluate()
+        let openLeft = appState.findings.filter { $0.status == .open }.count
+        let after = appState.finding(id: before.id)
+        if after == nil || after?.status != .open {
+            let nextCommand = context.reviewQueue.isEmpty ? "start review" : "next"
+            return VoiceTurn(speech: "Fixed. It cleared after re-syncing with QuickBooks. \(openLeft) open finding\(openLeft == 1 ? "" : "s") left. Want the next one?",
+                             newPendingAction: openLeft == 0 ? nil : VoicePendingAction(kind: .runCommand, summary: nextCommand, commandText: nextCommand))
+        }
+        let fix = before.proposedActions.first.map { " Suggested fix: \($0.title)." } ?? ""
+        return VoiceTurn(speech: "Still open after re-syncing: \(ClientText.polish(before.title)). QuickBooks still shows the same problem.\(fix) Say “open it in QuickBooks” to go back to it.")
     }
 }
 

@@ -105,7 +105,9 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"check again"** · **"recheck"** · **"are we done"** | Re-syncs from QuickBooks and rebuilds the queue. |
 | **"that one"** · **"open it"** | Reopens the last finding you looked at. |
 | **"what were we doing"** | Reminds you what you were looking at. |
-| **"yes"** · **"no"** | Answers a question she just asked (only when she's waiting for an answer). |
+| **"open it in QuickBooks"** · **"show me in QuickBooks"** | Opens the finding you're on at its exact QuickBooks record, in your browser on the other monitor. |
+| **"is it fixed"** · **"I fixed it"** · **"check it"** | Re-syncs from QuickBooks and tells you whether that finding cleared. If it did, she says how many are left and offers the next one; say **"yes"**. If not, she says what QuickBooks still shows and the suggested fix. |
+| **"yes"** · **"no"** | Answers a question she just asked. If she misheard you, she instantly asks whether you meant the closest command; **"yes"** runs it. |
 
 ## 8. Guided month-end walkthrough (she walks you through the routine, one step at a time)
 Say **"start month-end"** (also "start the monthly routine", "walk me through the month"). She goes through 16 steps in the order on the Monthly Routine sheet: for each one she opens the page, reads the numbers, and waits. Steps 3 and 5 are **yours to do in QuickBooks** (matching bank lines, reconciling); she tells you what to do, then re-syncs automatically when you say next. **Nothing in this mode changes your books.**

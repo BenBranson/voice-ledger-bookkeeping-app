@@ -43,6 +43,9 @@ public struct VoicePendingAction: Codable, Sendable, Equatable {
     public enum Kind: String, Codable, Sendable {
         case dismissFinding
         case completeChecklistItem
+        /// "Did you mean …?" — a "yes" runs `commandText` as if it had been
+        /// said. Navigation and read-only answers only (it re-enters the router).
+        case runCommand
     }
     public let kind: Kind
     public let findingID: String?
@@ -51,8 +54,10 @@ public struct VoicePendingAction: Codable, Sendable, Equatable {
     /// this finding" — composed once when the pending action is created,
     /// not reconstructed at confirm time.
     public let summary: String
+    public let commandText: String?
 
-    public init(kind: Kind, findingID: String? = nil, checklistItemID: String? = nil, summary: String) {
+    public init(kind: Kind, findingID: String? = nil, checklistItemID: String? = nil, summary: String, commandText: String? = nil) {
+        self.commandText = commandText
         self.kind = kind
         self.findingID = findingID
         self.checklistItemID = checklistItemID

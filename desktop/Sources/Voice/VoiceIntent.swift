@@ -146,6 +146,10 @@ public enum VoiceIntent: Equatable, Sendable {
     case chart(ChartKind)
     /// A bare "charts" — ask which one rather than guess.
     case chartMenu
+    /// "open it in QuickBooks" — the current finding's exact record, in the browser.
+    case openInQuickBooks
+    /// "is it fixed" — re-sync and say whether the current finding cleared.
+    case checkCurrentFixed
 }
 
 public enum KPIMetric: String, Equatable, Sendable {

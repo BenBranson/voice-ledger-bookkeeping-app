@@ -1,0 +1,43 @@
+import Testing
+@testable import Voice
+
+@Suite("Did-you-mean suggestions and remembered offers (owner test 2026-10-02)")
+struct VoiceSuggestionTests {
+    @Test("Near-misses of real commands get a suggestion")
+    func nearMisses() {
+        #expect(VoiceIntentRouter.suggestion(for: "vendor by spinned") != nil)
+        #expect(VoiceIntentRouter.suggestion(for: "working capitol") == "working capital")
+        #expect(VoiceIntentRouter.suggestion(for: "go to balance shit") != nil)
+    }
+
+    @Test("Real questions are left for the AI, not 'corrected'")
+    func noFalseSuggestions() {
+        #expect(VoiceIntentRouter.suggestion(for: "why did expenses jump this month compared to last") == nil)
+        #expect(VoiceIntentRouter.suggestion(for: "summarize the month for the client") == nil)
+        #expect(VoiceIntentRouter.suggestion(for: "hi") == nil)
+    }
+
+    @Test("An AI offer to run a command is captured; a plain answer is not")
+    func offers() {
+        #expect(VoiceIntentRouter.offeredCommand(in: "I think you said vendor by spend. I can pull up the chart if you want.") == "vendor by spend")
+        #expect(VoiceIntentRouter.offeredCommand(in: "Would you like me to open “top vendors”?") == "top vendors")
+        #expect(VoiceIntentRouter.offeredCommand(in: "Revenue rose because of more invoices in July.") == nil)
+    }
+
+    @Test("A yes with a pending suggestion confirms it; a bare yes answers instantly")
+    func yes() {
+        var context = VoiceSessionContext.empty
+        #expect(VoiceIntentRouter.match(text: "yes", context: context) != .confirmPending)
+        #expect(VoiceIntentRouter.isBareYesOrNo("yes"))
+        context.pendingAction = VoicePendingAction(kind: .runCommand, summary: "top vendors", commandText: "top vendors")
+        #expect(VoiceIntentRouter.match(text: "yeah", context: context) == .confirmPending)
+        #expect(VoiceIntentRouter.match(text: "no", context: context) == .rejectPending)
+    }
+
+    @Test("Cleanup loop commands")
+    func cleanupLoop() {
+        #expect(VoiceIntentRouter.match(text: "open it in QuickBooks", context: .empty) == .openInQuickBooks)
+        #expect(VoiceIntentRouter.match(text: "is it fixed", context: .empty) == .checkCurrentFixed)
+        #expect(VoiceIntentRouter.match(text: "I fixed it", context: .empty) == .checkCurrentFixed)
+    }
+}

@@ -104,6 +104,13 @@ extension VoiceEngine {
             if falseActionClaims.contains(where: lowered.contains) {
                 return VoiceTurn(speech: "I didn't change the screen. Try the command again, or name the page you want.")
             }
+            // The model OFFERED a real command ("I can pull up the vendor spend
+            // chart if you want"). Remember it, so "yes" runs it in code
+            // (owner, 2026-10-02: "I replied yes and it didn't recognize it").
+            if let offered = VoiceIntentRouter.offeredCommand(in: decision.answer) {
+                return VoiceTurn(speech: "Did you mean “\(offered)”? Say yes or no.",
+                                 newPendingAction: VoicePendingAction(kind: .runCommand, summary: offered, commandText: offered))
+            }
             // A model that says "I'll pull up…/opening…" without a tool call did
             // nothing. Never speak a promise the app didn't keep.
             if VoiceSpeechFormatter.promisesAnAction(decision.answer) {

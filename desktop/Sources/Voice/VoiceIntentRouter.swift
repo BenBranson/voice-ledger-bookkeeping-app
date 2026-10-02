@@ -133,6 +133,85 @@ public enum VoiceIntentRouter {
         "hi", "hello", "hey", "status update", "give me a status update", "how are things", "what's the status"
     ]
 
+    private static let openInQuickBooksPhrases: Set<String> = [
+        "open it in quickbooks", "open in quickbooks", "open this in quickbooks", "open that in quickbooks", "show me in quickbooks",
+        "show it in quickbooks", "open quickbooks", "take me to quickbooks", "pull it up in quickbooks", "fix it in quickbooks",
+        "open in qbo", "open it in qbo", "open the record", "open the transaction", "go to quickbooks", "open it in quick books",
+        "open in quick books", "open quick books", "take me to quick books"
+    ]
+    private static let checkFixedPhrases: Set<String> = [
+        "is it fixed", "is that fixed", "is this fixed", "did that fix it", "did it fix it", "did that work", "check it", "check this one",
+        "check that one", "is it cleared", "did it clear", "did that clear", "i fixed it", "i fixed that", "it's fixed", "its fixed",
+        "fixed it", "i'm done with that one", "im done with that one", "done with this one", "that's fixed", "thats fixed", "all fixed", "is it clean"
+    ]
+
+    /// Every phrase the app knows, for "did you mean". Each is a real
+    /// command (the suggestion is verified to route before it is offered).
+    static var knownPhrases: [String] {
+        var all: [String] = []
+        for (_, aliases) in destinationAliases { all += aliases.map { "go to \($0)" } + Array(aliases) }
+        for d in VoiceDestination.allCases { all += spokenForms(of: d.menuTitle).map { "go to \($0)" } }
+        all += Array(goBackPhrases) + Array(nextPhrases) + Array(recapPhrases) + Array(startReviewPhrases) + Array(anomalyPhrases)
+            + Array(recheckPhrases) + Array(explainPhrases) + Array(openInQuickBooksPhrases) + Array(checkFixedPhrases)
+        all += CommandGrammar.knownPhrases
+        return all
+    }
+
+    /// The closest known command to something that wasn't recognized, when
+    /// it is close enough to be a mishearing ("vendor by spin" → "vendor by
+    /// spend"). Nil when nothing is close, so real questions still reach the AI.
+    public static func suggestion(for text: String) -> String? {
+        let heard = CommandGrammar.normalize(text)
+        guard heard.count >= 5 else { return nil }
+        var best: (phrase: String, distance: Int)?
+        for phrase in Set(knownPhrases) where abs(phrase.count - heard.count) <= max(3, heard.count / 4) {
+            let d = editDistance(heard, phrase)
+            if best == nil || d < best!.distance { best = (phrase, d) }
+        }
+        guard let best, best.distance > 0, Double(best.distance) <= max(2, Double(heard.count) * 0.2) else { return nil }
+        guard case .unrecognized = match(text: best.phrase, context: .empty) else { return best.phrase }
+        return nil
+    }
+
+    /// A command the AI's prose OFFERED to run ("I can pull up the vendor
+    /// spend chart if you want"), so a "yes" can run it. Only offers count.
+    public static func offeredCommand(in answer: String) -> String? {
+        let lowered = answer.lowercased()
+        let offerWords = ["if you want", "if you'd like", "would you like", "do you want", "want me to", "should i", "shall i", "i can "]
+        guard offerWords.contains(where: lowered.contains) else { return nil }
+        // A quoted phrase first: "did you mean “vendor by spend”".
+        let quoted = answer.matches(of: /[“"']([^”"']{3,60})[”"']/).map { String($0.output.1) }
+        for q in quoted { if case .unrecognized = match(text: q, context: .empty) { continue } else { return q } }
+        let normalizedAnswer = CommandGrammar.normalize(lowered)
+        for phrase in Set(knownPhrases).sorted(by: { $0.count > $1.count }) where phrase.count >= 8 && normalizedAnswer.contains(phrase) {
+            if case .unrecognized = match(text: phrase, context: .empty) { continue }
+            return phrase
+        }
+        return nil
+    }
+
+    /// A bare "yes"/"no" said when nothing is waiting on an answer.
+    public static func isBareYesOrNo(_ text: String) -> Bool {
+        let t = normalize(text)
+        return confirmWords.contains(t) || rejectWords.contains(t)
+    }
+
+    static func editDistance(_ a: String, _ b: String) -> Int {
+        let a = Array(a), b = Array(b)
+        if a.isEmpty { return b.count }
+        if b.isEmpty { return a.count }
+        var prev = Array(0...b.count)
+        var cur = [Int](repeating: 0, count: b.count + 1)
+        for i in 1...a.count {
+            cur[0] = i
+            for j in 1...b.count {
+                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1))
+            }
+            swap(&prev, &cur)
+        }
+        return prev[b.count]
+    }
+
     public static func match(text: String, context: VoiceSessionContext) -> VoiceIntent {
         let normalized = normalize(correctCommonRecognition(text))
         guard !normalized.isEmpty else { return .unrecognized(text) }
@@ -190,6 +269,8 @@ public enum VoiceIntentRouter {
         if recheckPhrases.contains(normalized) { return .recheckAnomalies }
         if startReviewPhrases.contains(normalized) || anomalyPhrases.contains(normalized) { return .startReviewQueue }
         if explainPhrases.contains(normalized) { return .explainCurrent }
+        if openInQuickBooksPhrases.contains(normalized) { return .openInQuickBooks }
+        if checkFixedPhrases.contains(normalized) { return .checkCurrentFixed }
 
         // The command grammar (2026-09-30) takes everything that used to fall
         // through to the model: finding groups, amounts, balances, vendors,
@@ -289,24 +370,6 @@ public enum VoiceIntentRouter {
         let words = phrase.split(separator: " ").map(String.init)
         guard words.count == 3, words[0] == "month" else { return false }
         return editDistance(words[1], "end") <= 2 && editDistance(words[2], "close") <= 3
-    }
-
-    private static func editDistance(_ lhs: String, _ rhs: String) -> Int {
-        let left = Array(lhs)
-        let right = Array(rhs)
-        var previous = Array(0...right.count)
-        for row in 1...left.count {
-            var current = [row] + Array(repeating: 0, count: right.count)
-            for column in 1...right.count {
-                current[column] = min(
-                    previous[column] + 1,
-                    current[column - 1] + 1,
-                    previous[column - 1] + (left[row - 1] == right[column - 1] ? 0 : 1)
-                )
-            }
-            previous = current
-        }
-        return previous[right.count]
     }
 
     private static func exactDestination(_ phrase: String) -> VoiceDestination? {
