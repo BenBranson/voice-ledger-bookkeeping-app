@@ -82,6 +82,12 @@ public enum CommandGrammar {
             return .kpi(metric, period)
         }
 
+        // "how much cash do we have" and friends
+        if ["how much cash do we have", "how much cash have we got", "how much money do we have", "how much money is in the bank", "how much do we have in the bank", "how much is in the bank"].contains(t) { return .kpi(.cashBalance, .current) }
+
+        // The answer to "Which chart?" — a bare chart name.
+        for (kind, phrases) in chartPhrases where phrases.contains(t) && t != "income" { return .chart(kind) }
+
         // Account balance: "balance of/in/on <account>", "<account> balance", "how much is in <account>"
         if let range = t.range(of: #"^(?:what's |whats |what is |what was |tell me |give me |read me )?(?:the )?(?:current )?balance (?:of|in|on|for) (?:the )?(.+?)(?: account)?$"#, options: .regularExpression) {
             _ = range

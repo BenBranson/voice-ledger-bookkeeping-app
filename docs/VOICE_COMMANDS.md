@@ -1,0 +1,118 @@
+# Moneypenny — Voice Commands
+Benjamin Branson Bookkeeping · Voice Ledger · kept in step with the app (a test fails if any phrase below stops working)
+
+**How to talk to her:** press the microphone button (top left), then speak normally. Filler is fine — "hey Moneypenny", "please", "can you", "the" are ignored. Say numbers as digits or words: "$1,420", "fourteen twenty", "twelve hundred dollars". She hears "owe" as "own" sometimes; both work.
+**Keyboard:** **Tab** = cut her off and listen again. **Tab** or "try again" after a wrong answer. The red mic button turns the microphone off.
+**Every number she says comes straight from your books — the same figures as the pages.** She also tells you if the data is stale ("saved data from 2 hours ago — sync to refresh").
+
+---
+
+## 1. Go to any page
+Say: **go to / open / pull up / take me to / show me + the page name.**
+Example: *"go to profit and loss"* → opens the Profit & Loss page and says its name.
+
+| Page you can name | Also works as |
+|---|---|
+| Dashboard | home |
+| Findings | findings list |
+| Firm Cockpit | cockpit |
+| Cash Flow Forecast | forecast |
+| Search by Amount | search |
+| Pricing Calculator | pricing |
+| Intake Questions | intake |
+| Client Diagnostics | diagnostics |
+| Cleanup Assessment | cleanup |
+| Balance Sheet Integrity | — |
+| Chart of Accounts | chart of accounts cleanup |
+| Bank Feed Cleanup | bank feed, bank |
+| Batch Fixes | batch fix |
+| Sales Tax Review | sales tax |
+| Recurring Vendors | recurring |
+| Month-End Close | month end, monthly close, close the books |
+| Close Package | — |
+| Activity Log | correction log |
+| Balance Sheet | — |
+| Profit & Loss | p and l, profit and loss |
+| Cash Flow | cash flow report |
+| Trial Balance | — |
+| Aged Receivables | receivables, accounts receivable |
+| Aged Payables | payables, accounts payable |
+| General Ledger | — |
+| Taxes | tax |
+| Client Memory | — |
+| Voice History | AI conversations |
+| Connection | — |
+| Scope & Period Lock | scope and period lock |
+| Audio Settings | — |
+
+**"Go back"** → returns to the page you were just on (it remembers up to 50 steps). **"Go forward"** → undoes a go-back.
+
+## 2. Findings (the problems the app found)
+| Say | What happens |
+|---|---|
+| **"pull up the duplicates"** (also "show me duplicates", "open duplicate transactions") | Opens Cleanup Assessment and says how many duplicate **pairs** are open, the total dollars at risk, and the largest. |
+| **"show me the uncategorized transactions"** (also "miscategorized") | Opens Cleanup Assessment; says the count and total. |
+| **"pull up the negative balances"** (also "overdrawn accounts") | Opens Balance Sheet Integrity; says count and total. |
+| **"show me the personal expenses"** (also "owner draws") | Opens Cleanup Assessment; says count and total. |
+| **"show me the late fees"** · **"price increases"** | Same, for fee findings and vendor price-increase findings. |
+| **"balance sheet issues"** · **"suspense"** | Opens Balance Sheet Integrity. |
+| **"show me all open findings"** (also "what's open", "everything open") | Opens Findings; says the total open and dollars. |
+| **"open the $1,420 one"** · **"pull up the fourteen twenty finding"** | Opens the one finding with that exact dollar amount. If several match, she lists them and asks which. |
+| **"pull up the Cool Cars payment"** · **"open the duplicate invoice"** | Opens the finding that matches the name or words. |
+| **"why is this flagged"** · **"what should I do"** · **"fix it"** | Explains the finding that's open on screen and what the app recommends. (The only answer that uses the AI model; its figures are checked against your data.) |
+
+## 3. Look up an amount
+| Say | What happens |
+|---|---|
+| **"find $1,420"** · **"find fourteen twenty"** · **"search for $500"** · **"any transaction for 3,293.02"** | Searches the current month **and** the 24-month history for that exact amount. If the amount is an **account balance**, she says which account and how many postings make it up. If no single transaction matches, she looks for 2–3 that add up to it. |
+| **"find Hicks Hardware"** | Lists that vendor's transactions. |
+
+## 4. Balances and what we owe
+| Say | What happens |
+|---|---|
+| **"what's the balance of the sweeper checking account"** · **"how much is in savings"** · **"balance of Mastercard"** | Says the account's current QuickBooks balance (overdrawn = in parentheses). |
+| **"what do we owe"** · **"how much do we owe"** · **"what bills are due"** | Says total payables, how much is over 60 days past due, less credits; opens Aged Payables. |
+| **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. |
+| **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
+| **"how much have we paid Tania's Nursery"** · **"transactions from Hicks Hardware"** | Shows that vendor's count, total and last date. |
+
+## 5. Quick numbers
+| Say | What happens |
+|---|---|
+| **"what's our revenue this month"** · **"what was revenue last month"** | Says revenue (total income) for the loaded month, or the month before. |
+| **"what's our net income"** · **"what's our profit"** | Says net income. |
+| **"what's our cash balance"** · **"how much cash do we have"** | Says total bank balances. |
+| **"when did we last sync"** · **"is this current"** | Says how fresh the data is. |
+
+## 6. Charts
+| Say | What happens |
+|---|---|
+| **"charts"** | She asks which chart you want and waits for the name. |
+| **"expenses"** (after she asks, or any time) or **"chart the expenses"** · **"expense chart"** · **"show me a pie chart of expenses"** | Pops up the top expense categories. |
+| **"vendors chart"** | Spend by vendor. |
+| **"income vs expenses chart"** | Revenue to net income, step by step. |
+| **"cost drivers chart"** · **"pareto"** | The biggest cost drivers. |
+
+## 7. Review mode (work through findings one at a time)
+| Say | What happens |
+|---|---|
+| **"start review"** · **"show me anomalies"** · **"what needs my attention"** | Builds a queue of open findings and opens the first. |
+| **"next"** · **"skip"** | Opens the next finding in the queue. |
+| **"what's left"** · **"how many are left"** | Says progress. |
+| **"check again"** · **"recheck"** · **"are we done"** | Re-syncs from QuickBooks and rebuilds the queue. |
+| **"that one"** · **"open it"** | Reopens the last finding you looked at. |
+| **"what were we doing"** | Reminds you what you were looking at. |
+| **"yes"** · **"no"** | Answers a question she just asked (only when she's waiting for an answer). |
+
+## 8. Control
+| Say | What happens |
+|---|---|
+| **"try again"** · **"that's wrong"** · **"never mind"** · **"scratch that"** | Clears her last answer and says Go ahead — then listens. |
+| **"hi"** · **"status update"** · **"how are things"** | A short overview: open findings and dollars. |
+| **Tab key** | Cuts her off mid-sentence and starts listening. |
+
+---
+### Things she will **not** do by voice
+She never changes your books by voice. Anything that would write to QuickBooks needs the on-screen confirmation. Voice only opens pages and reads figures.
+### If she says "I didn't recognize that"
+Say the page name ("go to …"), or a number ("find 1420"), or a question from the tables above. Open-ended questions the table doesn't cover go to the AI model, which may be slower (10–30 seconds).
