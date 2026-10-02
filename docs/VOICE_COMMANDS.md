@@ -105,7 +105,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"revenue by month"** · **"revenue trend"** · **"chart revenue"** | A card with 12 months of revenue, centered on the month you're reviewing. |
 | **"net income by month"** · **"profit trend"** | A card with 12 months of profit or loss, loss months flagged. |
 | **"receivables chart"** · **"payables aging"** | Who owes us or what we owe, by customer or vendor and age, with QuickBooks links and what to do. |
-| **"show net income trend"** · **"pull up revenue by month"** · **"show me the cash outlook"** | "Show" or "pull up" in front of a trend, by-month or outlook chart opens that chart instantly. |
+| **"show net income trend"** · **"pull up revenue by month"** · **"show me the cash outlook"** | Saying show or pull up in front of a trend, by-month or outlook chart opens that chart instantly. |
 | **"will we run out of cash"** · **"cash outlook"** | A card with the 13-week cash projection and the lowest week. |
 
 ## 7. Review mode (work through findings one at a time)
