@@ -76,6 +76,14 @@ struct VoiceLedgerApp: App {
                 // otherwise silently stays background-only.
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
+                // Owner (2026-10-02): open full screen. Short delay so the window
+                // exists and is on screen before it is asked to go full screen.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    for window in NSApp.windows where window.identifier?.rawValue.hasPrefix(Self.mainWindowID) == true
+                        && window.isVisible && !window.styleMask.contains(.fullScreen) {
+                        window.toggleFullScreen(nil)
+                    }
+                }
                 // Hands the AppDelegate a real way to open a fresh window —
                 // see `AppDelegate`'s own doc comment for why the default
                 // reopen behavior wasn't enough on its own, confirmed via
