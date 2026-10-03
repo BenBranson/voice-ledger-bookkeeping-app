@@ -42,12 +42,19 @@ export VOICE_LEDGER_BACKEND_URL=http://localhost:3000 VOICE_LEDGER_SESSION_TOKEN
 rm -f "$TOK"
 
 status=0
+tie_failed=0
 mkdir -p Regression
 for period in $PERIODS; do
   y="${period%-*}"; m="${period#*-}"; m="${m#0}"
   base="Regression/$REALM-$period.json"; cur="$WORK_DIR/$period.json"
   echo "preflight: facts $period (as of $AS_OF)"
   .build/debug/voiceledger-devtool facts "$y" "$m" --as-of "$AS_OF" --out "$cur" >/dev/null || { echo "preflight: facts failed for $period"; status=1; continue; }
+  # Self-checking math: a number that doesn't tie fails, and --accept-baseline can't wave it through.
+  if grep -q "DOES NOT TIE" "$cur"; then
+    echo "preflight: $period — numbers DON'T TIE:" >&2
+    grep -o '"[a-z-]*" : "DOES NOT TIE[^"]*"' "$cur" >&2
+    tie_failed=1
+  fi
   if [ ! -f "$base" ]; then
     if [ "$ACCEPT" = 1 ]; then
       cp "$cur" "$base"
@@ -64,4 +71,5 @@ for period in $PERIODS; do
   fi
 done
 if [ "$status" != 0 ]; then echo "preflight: numbers changed vs. the baseline. Read the diff; if it's intended, rerun with --accept-baseline."; fi
+if [ "$tie_failed" != 0 ]; then echo "preflight: FAILED — a tie-out check doesn't tie. Fix the calculation; this can't be accepted." >&2; exit 1; fi
 exit $status

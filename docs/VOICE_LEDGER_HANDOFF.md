@@ -1387,3 +1387,27 @@ Notes for next time:
 5. **PersonalExpense, AvoidableFee and LoanPayment read only the Memo (PrivateNote).** Line Descriptions are now synced (`LedgerTransactionLine.description`), and the rules read `LedgerTransaction.noteText`.
 6. **VendorAnomaly judged "normal" from the same month, including the charge itself.** It now uses the prior 12 months (`NormalizedDataSet.historyTransactions`, fed by the app's history snapshot AND the devtool's `syncHistory`), excludes the charge and its exact duplicates, and only looks at purchases and bills.
 - `FinancialSnapshot` records its `period`; the MCP tools report it.
+
+## 2026-10-02 — v1.74: self-checking math (`Core/TieOut.swift`)
+
+Nine exact, to-the-cent checks run on every sync:
+- balance sheet balances
+- trial balance debits = credits
+- each aging report's rows sum to its TOTAL, for A/R and A/P (catches parse bugs like the parent-customer one)
+- each aging TOTAL equals A/R or A/P on the same date: the period balance sheet for a finished month, today's account balance for the month in progress
+- P&L math step by step against QBO's own subtotals
+- this month's P&L net income equals the change in the balance sheet's YTD Net Income line (a fiscal-year reset is detected when the BS line equals the month's NI)
+- cash flow ending cash = Total Bank Accounts + Undeposited Funds (QBO's convention, verified on July/August/September)
+
+How results surface:
+- Dashboard: CHECKS COMPLETED shows the result, a `TieOutPanel` sits below it, and any tile whose figure fails shows gray "Doesn't tie".
+- Moneypenny: every answer passes through `resolveTurn`, which prefixes a warning when a figure it states fails a check. Voice "do the numbers tie".
+- `facts` emits `tieOut.*`, and `preflight.sh` FAILS on any "DOES NOT TIE"; --accept-baseline can't override it.
+- `TieOutTests` proves each break is caught by exactly the right check, with the exact difference.
+
+All 9 tie on July, August and September (finished months) and October (in progress).
+
+**Fixed along the way:**
+- **Aging as-of date.** The sync read aging at month end for the rules, while pages and voice read today's: two answers to "who owes us". There is now one `AppState.agingAsOf` (month end for a finished month, today while in progress), the sync publishes its aging, and voice says "As of September 30". The 13-week forecast reads its own today's aging through `prepareForecast()`, which replaced three copy-pasted load blocks.
+- **Empty months.** QBO sends `NoReportData=true` for a month with no activity, with summary rows that have no amount. `fetchReport` now reads that header flag and sets those totals to $0.00 (October revenue is $0.00, not "not loaded").
+- `RootView` gets `.id(ObjectIdentifier(appState))`, so a client or month change reruns its startup work.

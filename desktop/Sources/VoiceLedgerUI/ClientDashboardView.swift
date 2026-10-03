@@ -74,6 +74,8 @@ public struct ClientDashboardView: View {
         /// `FindingsListView`'s row components.
         public let topFindings: [Finding]
         public let openFindingsCount: Int
+        /// Self-checking math (2026-10-02). Empty = not computed yet.
+        public var tieOut: [TieOut.Check] = []
 
         public init(
             companyName: String,
@@ -93,7 +95,8 @@ public struct ClientDashboardView: View {
             cashFlowForecast: CashFlowForecast? = nil,
             missingRecurringVendorsCount: Int = 0,
             topFindings: [Finding],
-            openFindingsCount: Int
+            openFindingsCount: Int,
+            tieOut: [TieOut.Check] = []
         ) {
             self.companyName = companyName
             self.environment = environment
@@ -113,6 +116,7 @@ public struct ClientDashboardView: View {
             self.missingRecurringVendorsCount = missingRecurringVendorsCount
             self.topFindings = topFindings
             self.openFindingsCount = openFindingsCount
+            self.tieOut = tieOut
         }
 
         // Same derivation `FindingsListView.ViewState.exceptionsStatus`
@@ -234,13 +238,15 @@ public struct ClientDashboardView: View {
                 VLCoverageStrip(
                     dataAvailable: state.coverageStatus,
                     dataDetail: state.coverageDetail,
-                    checksCompleted: state.coverageStatus,
-                    checksDetail: "\(state.openFindingsCount) open finding\(state.openFindingsCount == 1 ? "" : "s")",
+                    checksCompleted: tieStatus,
+                    checksDetail: tieDetail,
                     exceptions: state.exceptionsStatus,
                     exceptionsDetail: state.exceptionsDetail
                 )
 
                 if let alerts { alerts }
+
+                if !state.tieOut.isEmpty { TieOutPanel(checks: state.tieOut) }
 
                 if state.balanceSheetLines.isEmpty && state.profitAndLossLines.isEmpty {
                     VLCard {
@@ -364,6 +370,25 @@ public struct ClientDashboardView: View {
         }
     }
 
+    // MARK: Self-checking math
+
+    /// Green only when every check ran and tied; any break is urgent; otherwise gray.
+    private var tieStatus: VLStatus {
+        let c = state.tieOut
+        if c.isEmpty { return .notChecked }
+        if c.contains(where: { if case .doesNotTie = $0.status { return true }; return false }) { return .urgent }
+        return c.allSatisfy(\.status.tied) ? .verified : .notChecked
+    }
+    private var tieDetail: String {
+        let c = state.tieOut
+        guard !c.isEmpty else { return "Numbers not checked yet" }
+        let broken = c.filter { if case .doesNotTie = $0.status { return true }; return false }.count
+        if broken > 0 { return "\(broken) number\(broken == 1 ? "" : "s") don't tie" }
+        let tied = c.filter(\.status.tied).count
+        return tied == c.count ? "All \(c.count) numbers tie" : "\(tied) of \(c.count) numbers tie"
+    }
+    private var failingFigures: Set<TieOut.Figure> { TieOut.failing(state.tieOut) }
+
     private var balanceSheetKPICards: [KPICardRow.CardData] {
         [
             kpiCard(
@@ -371,25 +396,25 @@ public struct ClientDashboardView: View {
                 money: FinancialKPIs.cashBalance(from: state.balanceSheetLines),
                 trend: moneyTrend(current: FinancialKPIs.cashBalance(from: state.balanceSheetLines), prior: FinancialKPIs.cashBalance(from: state.priorBalanceSheetLines)),
                 onTap: { onNavigateToReport(.balanceSheet) }
-            ),
+            ).gate(failingFigures, [.cash, .balanceSheet]),
             kpiCard(
                 label: "Working Capital",
                 money: FinancialKPIs.workingCapital(from: state.balanceSheetLines),
                 trend: moneyTrend(current: FinancialKPIs.workingCapital(from: state.balanceSheetLines), prior: FinancialKPIs.workingCapital(from: state.priorBalanceSheetLines)),
                 onTap: { onNavigateToReport(.balanceSheet) }
-            ),
+            ).gate(failingFigures, [.balanceSheet, .receivables, .payables]),
             kpiCard(
                 label: "Current Ratio",
                 ratio: FinancialKPIs.currentRatio(from: state.balanceSheetLines),
                 trend: pointsTrend(current: FinancialKPIs.currentRatio(from: state.balanceSheetLines), prior: FinancialKPIs.currentRatio(from: state.priorBalanceSheetLines), suffix: "x"),
                 onTap: { onNavigateToReport(.balanceSheet) }
-            ),
+            ).gate(failingFigures, [.balanceSheet, .receivables, .payables]),
             kpiCard(
                 label: "Quick Ratio",
                 ratio: FinancialKPIs.quickRatio(from: state.balanceSheetLines),
                 trend: pointsTrend(current: FinancialKPIs.quickRatio(from: state.balanceSheetLines), prior: FinancialKPIs.quickRatio(from: state.priorBalanceSheetLines), suffix: "x"),
                 onTap: { onNavigateToReport(.balanceSheet) }
-            )
+            ).gate(failingFigures, [.balanceSheet, .cash, .receivables])
         ]
     }
 
@@ -400,19 +425,19 @@ public struct ClientDashboardView: View {
                 percent: FinancialKPIs.grossMarginPercent(from: state.profitAndLossLines),
                 trend: pointsTrend(current: FinancialKPIs.grossMarginPercent(from: state.profitAndLossLines), prior: FinancialKPIs.grossMarginPercent(from: state.priorProfitAndLossLines), suffix: "pts"),
                 onTap: { onNavigateToReport(.profitAndLoss) }
-            ),
+            ).gate(failingFigures, [.revenue, .netIncome]),
             kpiCard(
                 label: "Net Margin",
                 percent: FinancialKPIs.netMarginPercent(from: state.profitAndLossLines),
                 trend: pointsTrend(current: FinancialKPIs.netMarginPercent(from: state.profitAndLossLines), prior: FinancialKPIs.netMarginPercent(from: state.priorProfitAndLossLines), suffix: "pts"),
                 onTap: { onNavigateToReport(.profitAndLoss) }
-            ),
+            ).gate(failingFigures, [.revenue, .netIncome]),
             kpiCard(
                 label: "Net Income",
                 money: TaxEstimate.netIncome(from: state.profitAndLossLines),
                 trend: moneyTrend(current: TaxEstimate.netIncome(from: state.profitAndLossLines), prior: TaxEstimate.netIncome(from: state.priorProfitAndLossLines)),
                 onTap: { onNavigateToReport(.profitAndLoss) }
-            )
+            ).gate(failingFigures, [.netIncome])
         ]
     }
 
@@ -433,7 +458,7 @@ public struct ClientDashboardView: View {
                 isAvailable: receivables.totalAmount != nil,
                 detail: receivables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedReceivables) }
-            ))
+            ).gate(failingFigures, [.receivables]))
             cards.append(kpiCard(
                 label: "Days Sales Outstanding (approx.)",
                 value: AgingSummary.daysOutstanding(balance: receivables.totalAmount, periodAmount: FinancialKPIs.totalIncome(from: state.profitAndLossLines), daysInPeriod: state.period.daysInMonth).map { String(format: "%.0f days", $0) },
@@ -447,7 +472,7 @@ public struct ClientDashboardView: View {
                 isAvailable: payables.totalAmount != nil,
                 detail: payables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedPayables) }
-            ))
+            ).gate(failingFigures, [.payables]))
             cards.append(kpiCard(
                 label: "Days Payable Outstanding (approx.)",
                 value: AgingSummary.daysOutstanding(balance: payables.totalAmount, periodAmount: FinancialKPIs.totalExpenses(from: state.profitAndLossLines), daysInPeriod: state.period.daysInMonth).map { String(format: "%.0f days", $0) },
@@ -575,5 +600,70 @@ public struct ClientDashboardView: View {
         let delta = current - prior
         let direction: KPICardRow.Trend.Direction = delta > 0.05 ? .up : (delta < -0.05 ? .down : .flat)
         return KPICardRow.Trend(direction: direction, label: String(format: "%.2f\(suffix) vs last month", abs(delta)))
+    }
+}
+
+
+extension KPICardRow.CardData {
+    /// A tile whose figure fails a tie-out shows gray "Doesn't tie" instead of a number.
+    fileprivate func gate(_ failing: Set<TieOut.Figure>, _ figures: [TieOut.Figure]) -> KPICardRow.CardData {
+        guard !failing.isDisjoint(with: figures) else { return self }
+        return KPICardRow.CardData(label: label, value: "Doesn't tie", isAvailable: false, detail: "QuickBooks totals disagree; see checks above")
+    }
+}
+
+/// The nine tie-out checks as a compact grid: a check mark per number that ties,
+/// the exact difference for one that doesn't, a dash for one not checked yet.
+struct TieOutPanel: View {
+    let checks: [TieOut.Check]
+    @State private var expanded = false
+
+    var body: some View {
+        let broken = checks.contains { if case .doesNotTie = $0.status { return true }; return false }
+        VLCard {
+            VStack(alignment: .leading, spacing: VLSpacing.sm) {
+                Button { withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() } } label: {
+                    HStack {
+                        Text("NUMBERS TIE TO QUICKBOOKS").font(VLTypography.eyebrow()).tracking(VLTypography.eyebrowTracking).foregroundStyle(VLColor.textMuted)
+                        Spacer()
+                        HStack(spacing: 4) {
+                            ForEach(checks) { c in
+                                Circle().fill(color(c.status)).frame(width: 8, height: 8).help(c.title)
+                            }
+                        }
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 10)).foregroundStyle(VLColor.textMuted)
+                    }
+                }
+                .buttonStyle(.plain)
+                if expanded || broken {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: VLSpacing.sm)], alignment: .leading, spacing: VLSpacing.xs) {
+                        ForEach(checks) { c in row(c) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func color(_ s: TieOut.Status) -> Color {
+        switch s { case .ties: return VLStatus.verified.color; case .doesNotTie: return VLStatus.urgent.color; case .notChecked: return VLColor.textMuted }
+    }
+
+    private func row(_ c: TieOut.Check) -> some View {
+        HStack(alignment: .top, spacing: VLSpacing.xs) {
+            Image(systemName: { switch c.status { case .ties: return "checkmark.circle.fill"; case .doesNotTie: return "xmark.octagon.fill"; case .notChecked: return "minus.circle" } }())
+                .foregroundStyle(color(c.status))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(c.title).font(VLTypography.label()).foregroundStyle(VLColor.textPrimary)
+                switch c.status {
+                case .ties:
+                    Text("\(c.right?.accountingDescription ?? "") · \(c.compares)").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                case .doesNotTie(let d):
+                    Text("Off by \(d.accountingDescription): \(c.leftLabel) \(c.left?.accountingDescription ?? "—") vs \(c.rightLabel) \(c.right?.accountingDescription ?? "—")")
+                        .font(VLTypography.caption()).foregroundStyle(VLStatus.urgent.color)
+                case .notChecked(let why):
+                    Text(why).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                }
+            }
+        }
     }
 }

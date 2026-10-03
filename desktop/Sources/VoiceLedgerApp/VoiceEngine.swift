@@ -884,7 +884,39 @@ public final class VoiceEngine: NSObject {
         return VoiceTurn(speech: "\(heading) \(inner.speech) Say next, repeat, or stop.", uiAction: inner.uiAction)
     }
 
+    /// Every answer passes through here (2026-10-02): an answer that states a figure
+    /// whose tie-out fails is prefixed with the exact problem, never stated as fact.
     private func resolveTurn(for intent: VoiceIntent, rawText: String) async -> VoiceTurn {
+        let turn = await resolveTurnCore(for: intent, rawText: rawText)
+        let figures = Self.figures(for: intent)
+        guard !figures.isEmpty else { return turn }
+        let broken = appState.tieOut.filter { c in
+            if case .doesNotTie = c.status { return !Set(c.affects).isDisjoint(with: figures) }
+            return false
+        }
+        guard let first = broken.first, case .doesNotTie(let diff) = first.status else { return turn }
+        let warning = "Careful: \(first.title.lowercased()) is off by \(diff.accountingDescription), so this figure isn't verified. "
+        return VoiceTurn(speech: warning + turn.speech, uiAction: turn.uiAction, newPendingAction: turn.newPendingAction)
+    }
+
+    /// The figures an answer states, for the tie-out warning.
+    static func figures(for intent: VoiceIntent) -> Set<TieOut.Figure> {
+        switch intent {
+        case .totalReceivable, .customerOwes: return [.receivables]
+        case .totalOwed, .vendorOwed: return [.payables]
+        case .topBalance(let receivables): return receivables ? [.receivables] : [.payables]
+        case .kpi(let metric, _):
+            switch metric {
+            case .revenue: return [.revenue]
+            case .netIncome, .grossMargin, .netMargin: return [.netIncome, .revenue]
+            case .cashBalance: return [.cash]
+            case .workingCapital, .currentRatio, .quickRatio: return [.balanceSheet, .receivables, .payables]
+            }
+        default: return []
+        }
+    }
+
+    private func resolveTurnCore(for intent: VoiceIntent, rawText: String) async -> VoiceTurn {
         switch intent {
         case .chooseFinding(let index):
             guard let ids = context.candidateFindingIDs, ids.indices.contains(index), let finding = appState.finding(id: ids[index]) else {
@@ -978,7 +1010,7 @@ public final class VoiceEngine: NSObject {
                 if owed.over90.minorUnits > 0 { speech += ", of which \(owed.over90.accountingDescription) is over 90 days" }
             }
             showCard(InsightCards.counterparty(owed.vendor, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote))
-            return VoiceTurn(speech: ClientText.polish(speech + ". " + fact.scope.sentence()))
+            return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + ". " + fact.scope.sentence()))
 
         case .totalOwed:
             if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
@@ -991,7 +1023,19 @@ public final class VoiceEngine: NSObject {
             if split.over60Owed.minorUnits > 0 { speech += ", \(split.over60Owed.accountingDescription) of it more than 60 days past due" }
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
-            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
+            return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + "."), uiAction: .navigate(.agedPayablesReport))
+
+        case .tieOut:
+            let checks = appState.tieOut
+            showCard(InsightCards.tieOut(checks, period: appState.period, footnote: cardFootnote))
+            let broken = checks.filter { if case .doesNotTie = $0.status { return true }; return false }
+            let tied = checks.filter(\.status.tied).count
+            if let first = broken.first, case .doesNotTie(let d) = first.status {
+                return VoiceTurn(speech: ClientText.polish("\(broken.count) of \(checks.count) checks don't tie. \(first.title) is off by \(d.accountingDescription). The card shows exactly where."))
+            }
+            return VoiceTurn(speech: ClientText.polish(tied == checks.count
+                ? "All \(checks.count) checks tie to QuickBooks to the cent."
+                : "\(tied) of \(checks.count) checks tie; the rest couldn't run yet. Nothing is off."))
 
         case .reviewMonth(let p):
             guard p != appState.period else { return VoiceTurn(speech: "We're already on \(ReviewPeriod.label(p)).") }
@@ -1035,7 +1079,7 @@ public final class VoiceEngine: NSObject {
             }
             showCard(InsightCards.counterparty(due.vendor, transactions: appState.clientData.searchableTransactions, asOf: AccountingDate(date: Date()), footnote: cardFootnote)
                      ?? InsightCards.aging(appState.agedReceivablesLines, receivables: true, footnote: cardFootnote))
-            return VoiceTurn(speech: ClientText.polish(speech + ". " + ClientFacts.freshnessSentence(appState.clientData)))
+            return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + ". " + ClientFacts.freshnessSentence(appState.clientData)))
 
         case .topBalance(let receivables):
             if receivables, appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
@@ -1053,7 +1097,7 @@ public final class VoiceEngine: NSObject {
             if late > 0 { speech += ", \(Money(minorUnits: late, currency: amount.currency).accountingDescription) of it more than 60 days old" }
             if ranked.count > 1, let next = ranked[1].total { speech += ". Next is \(ranked[1].label) at \(next.accountingDescription)" }
             showCard(InsightCards.aging(lines, receivables: receivables, footnote: cardFootnote))
-            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(page))
+            return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + "."), uiAction: .navigate(page))
 
         case .totalReceivable:
             if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
@@ -1072,7 +1116,7 @@ public final class VoiceEngine: NSObject {
             }
             if split.over60Owed.minorUnits > 0 { speech += ". \(split.over60Owed.accountingDescription) of it is more than 60 days old" }
             showCard(InsightCards.aging(appState.agedReceivablesLines, receivables: true, footnote: cardFootnote))
-            return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedReceivablesReport))
+            return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + "."), uiAction: .navigate(.agedReceivablesReport))
 
         case .startRoutine:
             conversationMode = true
@@ -1451,13 +1495,16 @@ public final class VoiceEngine: NSObject {
         appState.presentedChart = request
     }
 
-    private var cardFootnote: String { ClientFacts.freshnessSentence(appState.clientData) }
+    private var cardFootnote: String { agingAsOfSentence + ClientFacts.freshnessSentence(appState.clientData) }
+
+    /// "As of September 30, 2026. " when a finished month is being reviewed (the aging
+    /// then ties to that month's balance sheet, not to today's QuickBooks), else "".
+    private var agingAsOfSentence: String {
+        appState.agingAsOf.map { "As of \(ClientText.polish($0.formatted)). " } ?? ""
+    }
 
     private func cashOutlookCard() async -> InsightCard? {
-        if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
-        if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
-        if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
-        if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+        await appState.prepareForecast()
         guard let forecast = appState.thirteenWeekForecast else { return nil }
         // Money actually owed more than 60 days (credits not netted), the same figure "who owes us" speaks.
         let over60 = Money(minorUnits: AgingSummary.topLevelRows(appState.agedReceivablesLines).reduce(0) { sum, row in

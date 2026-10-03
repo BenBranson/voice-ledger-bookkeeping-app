@@ -381,7 +381,8 @@ struct RootView: View {
                     cashFlowForecast: state.cashFlowForecast,
                     missingRecurringVendorsCount: state.missingRecurringVendors.count,
                     topFindings: dashboardTopFindings,
-                    openFindingsCount: dashboardOpenFindings.count
+                    openFindingsCount: dashboardOpenFindings.count,
+                    tieOut: state.tieOut
                 ),
                 onOpenFinding: { finding in state.screen = .detail(findingID: finding.id) },
                 onViewAllFindings: { state.screen = .list },
@@ -2436,12 +2437,7 @@ struct RootView: View {
                     onRemove: { id in Task { await state.removePlannedCashItem(id: id) } }
                 ))
             )
-            .task {
-                if state.balanceSheetLines.isEmpty { await state.loadBalanceSheet() }
-                if state.agedReceivablesLines.isEmpty { await state.loadAgedReceivables() }
-                if state.agedPayablesLines.isEmpty { await state.loadAgedPayables() }
-                if state.trailingPurchases.isEmpty { await state.loadTrailingPurchases() }
-            }
+            .task { await state.prepareForecast() }
 
         case .recurringVendors:
             let recurringVendorsAskAIKey = "page:recurring-vendors"

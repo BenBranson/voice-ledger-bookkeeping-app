@@ -521,6 +521,17 @@ case "facts":
             facts["receivables"] = ["owed": money(split.owed), "credits": money(split.credits), "over60": money(split.over60Owed), "net": money(split.net)]
         }
         if let apTotal = agedPayablesLines.last(where: \.isSummary) { facts["payablesTotal"] = money(apTotal.total) }
+        // Self-checking math (2026-10-02): every tie-out, so the regression check proves the numbers agree.
+        let tieOut = TieOut.run(TieOut.Input(period: period, balanceSheet: balanceSheetLines, priorBalanceSheet: priorBS, profitAndLoss: profitAndLossLines,
+                                             cashFlow: cashFlowLines, trialBalance: trialBalanceLines, agedReceivables: agedReceivablesLines,
+                                             agedPayables: agedPayablesLines, accounts: syncedDataSet.accounts, agingIsPeriodEnd: agingAsOf != nil))
+        facts["tieOut"] = Dictionary(tieOut.map { c -> (String, String) in
+            switch c.status {
+            case .ties: return (c.id, "ties")
+            case .doesNotTie(let d): return (c.id, "DOES NOT TIE by \(d.accountingDescription): \(c.leftLabel) \(money(c.left)) vs \(c.rightLabel) \(money(c.right))")
+            case .notChecked(let why): return (c.id, "not checked: \(why)")
+            }
+        }, uniquingKeysWith: { a, _ in a })
         let findingRows: [[String: Any]] = findings.map { f in
             ["rule": f.ruleID.rawValue, "title": f.title, "amount": f.dollarExposure.accountingDescription, "severity": f.severity.rawValue,
              "confidence": f.confidence.rawValue, "evidence": f.evidence.map(\.transactionID).sorted()]

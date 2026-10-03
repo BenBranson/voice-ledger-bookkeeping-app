@@ -125,6 +125,35 @@ extension InsightCards {
                            headline: net.accountingDescription, chart: chart, rows: rows, recommendations: recs, footnote: footnote)
     }
 
+    // MARK: Self-checking math
+
+    public static func tieOut(_ checks: [TieOut.Check], period: AccountingPeriod, footnote: String) -> InsightCard {
+        let tied = checks.filter(\.status.tied).count
+        let broken = checks.filter { if case .doesNotTie = $0.status { return true }; return false }
+        let rows = checks.map { c -> InsightRow in
+            switch c.status {
+            case .ties:
+                return InsightRow(id: c.id, label: "✓ " + c.title, detail: c.compares, amountText: c.right?.accountingDescription ?? "")
+            case .doesNotTie(let d):
+                return InsightRow(id: c.id, label: "✗ " + c.title,
+                                  detail: "\(c.leftLabel) \(c.left?.accountingDescription ?? "—") vs \(c.rightLabel) \(c.right?.accountingDescription ?? "—")",
+                                  amountText: "off \(d.accountingDescription)", warn: true)
+            case .notChecked(let why):
+                return InsightRow(id: c.id, label: "– " + c.title, detail: why, amountText: "not checked")
+            }
+        }
+        var recs: [String] = []
+        if broken.isEmpty {
+            recs.append(tied == checks.count ? "Every number ties to QuickBooks to the cent. Safe to report." : "Everything that could be checked ties. Sync again to run the rest.")
+        } else {
+            recs.append("Sync again first: a transaction entered while the reports were being read can cause a one-time difference.")
+            recs.append("If it stays, open both reports in QuickBooks for the same date and compare them line by line; the difference above is the amount to find.")
+            recs.append("Until it ties, the affected figures show gray on the dashboard and Moneypenny warns before using them.")
+        }
+        return InsightCard(title: "Numbers Tie-Out", subtitle: "\(ClientText.polish(ClientFacts.periodLabel(period))) · each figure proven against QuickBooks' own totals",
+                           headline: "\(tied) of \(checks.count) tie", rows: rows, recommendations: recs, footnote: footnote)
+    }
+
     // MARK: Financial health (working capital and ratios)
 
     public enum HealthFocus: Sendable { case workingCapital, currentRatio, quickRatio, grossMargin, netMargin }

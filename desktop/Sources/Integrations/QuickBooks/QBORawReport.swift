@@ -18,7 +18,17 @@ public struct QBORawReport: Decodable, Sendable {
     /// accounting basis ("Accrual"/"Cash") in its header.
     public struct Header: Decodable, Sendable {
         public let reportBasis: String?
-        enum CodingKeys: String, CodingKey { case reportBasis = "ReportBasis" }
+        /// QBO's `Option` list. `NoReportData = true` (verified live 2026-10-02 on a
+        /// month with no activity yet) means every total is zero; QBO still sends
+        /// the summary rows, but with no amount.
+        public let option: [Option]?
+        public struct Option: Decodable, Sendable {
+            public let name: String?
+            public let value: String?
+            enum CodingKeys: String, CodingKey { case name = "Name", value = "Value" }
+        }
+        public var noReportData: Bool { option?.contains { $0.name == "NoReportData" && $0.value == "true" } ?? false }
+        enum CodingKeys: String, CodingKey { case reportBasis = "ReportBasis", option = "Option" }
     }
 
     enum CodingKeys: String, CodingKey {

@@ -147,6 +147,17 @@
     },
     "revenue" : "$12,633.92",
     "revenuePrior" : "$16,019.16",
+    "tieOut" : {
+      "ap-rows" : "ties",
+      "ap-tie" : "ties",
+      "ar-rows" : "ties",
+      "ar-tie" : "ties",
+      "bs-balances" : "ties",
+      "cash-tie" : "ties",
+      "pl-math" : "ties",
+      "pl-to-bs" : "ties",
+      "tb-balances" : "ties"
+    },
     "transactionCount" : 45,
     "workingCapital" : "$25,574.48"
   },

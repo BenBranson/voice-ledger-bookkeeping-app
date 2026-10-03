@@ -923,7 +923,9 @@ public final class AppState {
 
     public var thirteenWeekForecast: ThirteenWeekForecast? {
         guard let cash = currentBankCash ?? FinancialKPIs.cashBalance(from: balanceSheetLines) else { return nil }
-        return ThirteenWeekForecastEngine.compute(currentCash: cash, agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines,
+        let ar = agingAsOf == nil ? agedReceivablesLines : forecastAgedReceivablesLines
+        let ap = agingAsOf == nil ? agedPayablesLines : forecastAgedPayablesLines
+        return ThirteenWeekForecastEngine.compute(currentCash: cash, agedReceivablesLines: ar, agedPayablesLines: ap,
                                                   recurringVendors: recurringVendors, planned: plannedCashItems, asOf: AccountingDate(date: Date()))
     }
 
@@ -1186,11 +1188,42 @@ public final class AppState {
         isLoadingTrialBalance = false
     }
 
+    /// The one as-of date for "who owes us" / "what we owe" (2026-10-02): a finished
+    /// month's last day, so the aging ties to that month's balance sheet; nil (today)
+    /// while the month is in progress. The sync used this for the rules while the
+    /// pages and Moneypenny read today's aging: two answers to one question.
+    public var agingAsOf: AccountingDate? { QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date())) }
+
+    /// Aging as of TODAY, for the 13-week forecast only: a forecast runs forward from
+    /// today even while a past month is being reviewed. Same as the review aging when
+    /// the reviewed month is in progress.
+    public private(set) var forecastAgedReceivablesLines: [AgingLine] = []
+    public private(set) var forecastAgedPayablesLines: [AgingLine] = []
+
+    /// Everything the 13-week forecast reads, loaded once in one place (the page,
+    /// the Cash Outlook card and Moneypenny all call this).
+    public func prepareForecast() async {
+        if balanceSheetLines.isEmpty { await loadBalanceSheet() }
+        if agedReceivablesLines.isEmpty { await loadAgedReceivables() }
+        if agedPayablesLines.isEmpty { await loadAgedPayables() }
+        if trailingPurchases.isEmpty { await loadTrailingPurchases() }
+        if agingAsOf != nil && forecastAgedReceivablesLines.isEmpty { await loadForecastAging() }
+    }
+
+    public func loadForecastAging() async {
+        guard agingAsOf != nil else { forecastAgedReceivablesLines = agedReceivablesLines; forecastAgedPayablesLines = agedPayablesLines; return }
+        async let ar = try? syncClient.fetchAgedReceivables(realmID: realmID)
+        async let ap = try? syncClient.fetchAgedPayables(realmID: realmID)
+        let (r, p) = await (ar, ap)
+        if let r { forecastAgedReceivablesLines = r }
+        if let p { forecastAgedPayablesLines = p }
+    }
+
     public func loadAgedReceivables() async {
         isLoadingAgedReceivables = true
         agedReceivablesError = nil
         do {
-            agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID)
+            agedReceivablesLines = try await syncClient.fetchAgedReceivables(realmID: realmID, asOf: agingAsOf)
         } catch {
             if !Self.isCancellation(error) {
                 agedReceivablesError = error.localizedDescription
@@ -1203,7 +1236,7 @@ public final class AppState {
         isLoadingAgedPayables = true
         agedPayablesError = nil
         do {
-            agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID)
+            agedPayablesLines = try await syncClient.fetchAgedPayables(realmID: realmID, asOf: agingAsOf)
         } catch {
             if !Self.isCancellation(error) {
                 agedPayablesError = error.localizedDescription
@@ -2255,6 +2288,10 @@ public final class AppState {
             importedStatementLineCount = importedLines.count
             if let bs { self.balanceSheetLines = bs }
             if let pl { self.profitAndLossLines = pl }
+            // Show the same aging the rules just used (same as-of date), not a second read.
+            if let ar { self.agedReceivablesLines = ar }
+            if let ap { self.agedPayablesLines = ap }
+            if let tb { self.trialBalanceLines = tb }
             balanceSheetError = bs == nil ? "Balance Sheet refresh failed; showing previously loaded data." : nil
             profitAndLossError = pl == nil ? "Profit & Loss refresh failed; showing previously loaded data." : nil
             let syncedAt = Date()
@@ -2279,8 +2316,23 @@ public final class AppState {
         // still empty; successful consolidated syncs make no duplicate calls.
         async let balanceSheetFallback: Void = balanceSheetLines.isEmpty ? loadBalanceSheet() : ()
         async let profitAndLossFallback: Void = profitAndLossLines.isEmpty ? loadProfitAndLoss() : ()
-        _ = await (balanceSheetFallback, profitAndLossFallback)
+        // Self-checking math needs these too, fresh on every sync (2026-10-02).
+        async let cashFlowRead: Void = loadCashFlow()
+        async let priorMonthRead: Void = loadVarianceAnalysis()
+        _ = await (balanceSheetFallback, profitAndLossFallback, cashFlowRead, priorMonthRead)
     }
+
+    /// Self-checking math (2026-10-02): every figure that matters, proven against
+    /// QuickBooks' own totals to the cent. See `TieOut`.
+    public var tieOut: [TieOut.Check] {
+        TieOut.run(TieOut.Input(period: period, balanceSheet: balanceSheetLines, priorBalanceSheet: priorPeriodBalanceSheetLines,
+                                profitAndLoss: profitAndLossLines, cashFlow: cashFlowLines, trialBalance: trialBalanceLines,
+                                agedReceivables: agedReceivablesLines, agedPayables: agedPayablesLines,
+                                accounts: clientData.searchableAccounts, agingIsPeriodEnd: agingAsOf != nil))
+    }
+
+    /// Figures that must not be shown as verified right now.
+    public var untiedFigures: Set<TieOut.Figure> { TieOut.failing(tieOut) }
 
     /// docs/phase-0/09_INGESTION_PIPELINE.md §9.0/§9.2: parses the file
     /// (Tier 1, deterministic) and stops there — this does NOT import

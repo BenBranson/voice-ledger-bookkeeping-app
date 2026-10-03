@@ -406,10 +406,7 @@ extension VoiceEngine {
             }
             return ("\(isAR ? "Customers owe" : "We owe vendors") \(card.headline ?? "") on the aging report.", .presentChart(.insight(card)))
         case "cash_outlook":
-            if appState.balanceSheetLines.isEmpty { await appState.loadBalanceSheet() }
-            if appState.agedReceivablesLines.isEmpty { await appState.loadAgedReceivables() }
-            if appState.agedPayablesLines.isEmpty { await appState.loadAgedPayables() }
-            if appState.trailingPurchases.isEmpty { await appState.loadTrailingPurchases() }
+            await appState.prepareForecast()
             guard let f = appState.thirteenWeekForecast else { return ("Today's cash balance isn't loaded; sync first.", nil) }
             let card = InsightCards.cashOutlook(f, receivablesOver60: nil, footnote: ClientFacts.freshnessSentence(appState.clientData))
             return ("Today's cash is \(f.startingCash.accountingDescription); the lowest projected week is \(f.lowestWeek.map { "week \($0.number) at \($0.endingCash.accountingDescription)" } ?? "not available").", .presentChart(.insight(card)))

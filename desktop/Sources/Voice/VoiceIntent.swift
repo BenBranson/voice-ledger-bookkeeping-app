@@ -153,6 +153,8 @@ public enum VoiceIntent: Equatable, Sendable {
     case nameFindings(String)
     /// "review September", "switch to August" — change the month being reviewed.
     case reviewMonth(AccountingPeriod)
+    /// "do the numbers tie?" — the self-checking math, spoken and as a card.
+    case tieOut
     /// "start month-end" — begin the guided walkthrough.
     case startRoutine
     /// Walkthrough controls (only produced while one is running).

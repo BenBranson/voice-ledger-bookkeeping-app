@@ -35,6 +35,7 @@ public enum CardCatalog {
             i("Expense categories", "This month's largest expense categories.", "expense chart", "chart.pie"),
             i("Income vs expenses", "Revenue down to net income, step by step.", "income vs expenses chart", "chart.bar.doc.horizontal"),
             i("Biggest cost drivers", "Expense categories ranked, with their running share of the total.", "cost drivers chart", "list.number"),
+            i("Numbers tie-out", "Every key figure proven against QuickBooks' own totals, to the cent.", "do the numbers tie", "checkmark.seal"),
             i("Financial health", "Working capital, current and quick ratios, margins — with what they mean.", "working capital", "heart.text.square"),
         ]),
         Section(title: "Problems to fix", items: [

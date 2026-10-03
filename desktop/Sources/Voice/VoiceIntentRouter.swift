@@ -283,6 +283,10 @@ public enum VoiceIntentRouter {
             if let p = ReviewPeriod.spoken(rest, today: AccountingDate(date: Date())) { return .reviewMonth(p) }
         }
 
+        if ["do the numbers tie", "do the numbers tie out", "does everything tie", "does everything tie out", "do the books tie", "check the math", "check the numbers",
+            "tie out", "run the tie out", "run a tie out", "are the numbers right", "is the math right", "are the numbers correct", "verify the numbers",
+            "do the numbers add up", "does it all add up", "numbers tie", "tie out the numbers"].contains(normalized) { return .tieOut }
+
         // "how many open findings / issues" wants the count spoken, not just the page.
         if normalized.hasPrefix("how many "), ["finding", "issue", "problem", "open item", "exception"].contains(where: { normalized.contains($0) }) {
             return .findingsGroup(.allOpen)

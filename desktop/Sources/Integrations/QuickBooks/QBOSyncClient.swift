@@ -333,7 +333,13 @@ public struct QBOSyncClient: Sendable {
             params: ReadReportParams(reportKind: reportKind, startDate: startDate, endDate: endDate)
         )
         let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
-        return Self.flatten(decoded.rows, depth: 0)
+        let lines = Self.flatten(decoded.rows, depth: 0)
+        // A month with no activity: QBO says so explicitly, and its totals are $0.00,
+        // not unknown. Only applied when QBO states it; a blank total otherwise stays nil.
+        guard decoded.header?.noReportData == true else { return lines }
+        return lines.map { $0.isSummary && $0.amount == nil
+            ? ReportLine(label: $0.label, amount: Money(minorUnits: 0, currency: .usd), depth: $0.depth, isSummary: true, accountID: $0.accountID)
+            : $0 }
     }
 
     public struct UpdatePurchaseLineAccountParams: Encodable, Sendable {
