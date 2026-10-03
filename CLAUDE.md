@@ -26,9 +26,9 @@ Full spec: `docs/VOICE_LEDGER_SPEC.md` — read it before any architectural deci
 
 ## Architecture boundaries
 
-- `/core` — platform-agnostic rules engine. Never imports from `/integrations`.
-- `/integrations/quickbooks` — QBO calls via the backend, normalized into `/core`'s shape.
-- `/integrations/imports` — file parsers + on-device OCR, normalized into the *same* shape.
+- `desktop/Sources/Core` — platform-agnostic rules engine. Never imports from `desktop/Sources/Integrations` (enforced by `desktop/Scripts/check-module-boundaries.sh`).
+- `desktop/Sources/Integrations/QuickBooks` — QBO calls via the backend, normalized into Core's shape.
+- `desktop/Sources/Integrations/Imports` — file parsers + on-device OCR, normalized into the *same* shape.
 - Adding Xero later must mean writing one adapter, not touching `/core`.
 
 ## Terminology (deliberate — do not "correct" these)
