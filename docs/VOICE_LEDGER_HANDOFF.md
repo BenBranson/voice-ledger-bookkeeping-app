@@ -1496,3 +1496,34 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - Each submission is saved as a QuoteRequest record and emailed to the firm address.
   - It carries a **third copy of the price list**, built in Base44 rather than read from `PriceBook`. Any price change must update `PriceBook.swift`, the Pricing page and this page together.
   - Math was tested in the preview: Growth plus advisory, sales tax, payroll bookkeeping, 2 extra accounts and 1 entity = $1,800/mo. Three catch-up months plus five 1099s = $1,150 one-time. Heavy inventory turns the total into "from".
+
+## 2026-10-03: Intuit production-keys application (in progress)
+
+**Website pages Intuit requires** (Base44, published 2026-10-03):
+- `/connected` is the production OAuth redirect. If `code`, `state` and `realmId` are present, it calls `location.replace("http://localhost:3000/oauth/callback" + search)` and stores nothing.
+  - Tested with a fake code: the backend's state check rejected it, as it should.
+  - Caveat: Base44's built-in analytics may record the URL. Low risk, because the code is single-use, short-lived and useless without the client secret.
+- `/disconnected` and `/connect` are explanatory pages.
+- `/Terms` gained a "Voice Ledger App: End-User License Agreement" section.
+
+**Intuit App details: 100%.**
+- License agreement `/Terms`, privacy policy `/Privacy`, host `benjaminbransonbookkeeping.com`.
+- Launch `/connected`, disconnect `/disconnected`, connect `/connect`.
+- Category Business Insights; regulated industries None; hosted in the US with no IP address.
+
+**Compliance questionnaire** (help.developer.intuit.com, 2 apps named "Voice Ledger"; the correct one is preselected from the portal link). Every tab is saved as a draft and **not submitted**.
+- **Owner attestations:** No complaints, no legal counsel, no sanctions, no breach. Owner confirmed "new business, no on all 3".
+- **Answered from the code:**
+  - Generative AI: YES, with a description. QuickBooks data is not used for training.
+  - Desktop app. Reads and writes; never deletes. Private app, used only by the connecting admin. No other platforms.
+  - Accounting API, daily, all QuickBooks Online versions; plan changes degrade to gray.
+  - US sales tax (TaxCode/Rate/Agency, verified live).
+  - No webhooks. **CDC = No**: `cdcSince` is in the catalog, but nothing in the app calls it.
+  - Tokens refresh only on expiry. Failed auth is not retried. The customer is asked to reconnect. Expired-token, invalid-grant and CSRF errors are handled. The OAuth Playground is not relied on.
+  - API-error handling tested, with logs. No in-app support contact (single-user app).
+  - Secrets stored securely. No MFA, CAPTCHA or WebSocket. Data is used only for the original customer.
+- **Deliberately left blank until made true:**
+  1. Auth Q1, "tested connect/disconnect/reconnect": Disconnect has never been clicked live.
+  2. Auth Q5, "uses the Intuit discovery document": `auth/oauth.ts` hard-codes the endpoints.
+  3. Error Q2, "captures `intuit_tid`": `qbo/client.ts` doesn't read the header.
+- **Still to do in Intuit settings:** add `https://benjaminbransonbookkeeping.com/connected` to the production Redirect URIs before switching to production.
