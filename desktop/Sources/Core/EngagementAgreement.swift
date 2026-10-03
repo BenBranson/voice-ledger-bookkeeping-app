@@ -23,7 +23,7 @@ public struct FirmProfile: Codable, Sendable, Equatable {
 
     public init(firmName: String = "Benjamin Branson Bookkeeping", ownerName: String = "Benjamin Branson", ownerTitle: String = "Owner",
                 city: String = "Odessa", state: String = "Texas", county: String = "Ector County",
-                email: String = "benjaminbransonbookkeeping@gmail.com", phone: String = "432-231-3049") {
+                email: String = "benjamin@benjaminbransonbookkeeping.com", phone: String = "432-231-3049") {
         self.firmName = firmName
         self.ownerName = ownerName
         self.ownerTitle = ownerTitle

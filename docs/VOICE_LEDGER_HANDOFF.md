@@ -1467,3 +1467,7 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
 - **Logging:** the voice log line now carries `PATH: instant|ai`, from `AppState.aiCallCount`, which counts every model call.
 - **First run (28/29) caught a real bug.** The expense card total excluded cost of goods sold (it split at "Gross Profit") and so disagreed with Income vs. Expenses by $160; it would also have counted Other Income as a cost. The new `TopExpenseDrivers.costLines` covers COGS + expenses + other expenses, skips Other Income, and is shared by both charts, the Pareto chart and the diagnosis. Now 29/29.
 - **Not yet enabled:** the "You should know" mod needs Claude Code 2.1.287+; this machine runs 2.1.286.
+
+## 2026-10-03 — v1.79: email drafts come forward; firm email
+- **Drafts opening behind the app.** "Email to Client…" (and "send signed copy") opened a Mail draft behind the full-screen app and its agreement window. The owner saw it as tabs stuck behind. `AgreementService.bringMailForward()` now activates the default mailto handler, retrying while it launches, after `NSSharingService.composeEmail.perform`.
+- **Firm email.** The default firm email is now benjamin@benjaminbransonbookkeeping.com (the owner's new Google Workspace address); no firm-profile.json had been saved, so the default was what agreements used.

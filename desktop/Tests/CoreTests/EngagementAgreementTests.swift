@@ -28,7 +28,7 @@ struct EngagementAgreementTests {
         #expect(a.terms.creditCards == 2) // "one" has no digits → default
         #expect(a.terms.cleanupKnownIssues == ["Accounts carrying negative balances"])
         #expect(a.problems.isEmpty)
-        #expect(a.firm.email == "benjaminbransonbookkeeping@gmail.com")
+        #expect(a.firm.email == "benjamin@benjaminbransonbookkeeping.com")
     }
 
     @Test("Scope follows what the client pays for: add-ons included, everything else excluded")

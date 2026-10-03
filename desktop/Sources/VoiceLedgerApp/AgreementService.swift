@@ -304,7 +304,27 @@ enum AgreementService {
         service.recipients = r.agreement.client.contactEmail.isEmpty ? [] : [r.agreement.client.contactEmail]
         service.subject = subject
         service.perform(withItems: items)
+        bringMailForward()
         return true
+    }
+
+    /// Owner report 2026-10-03: with Voice Ledger full screen and the agreement window on
+    /// top, the new Mail draft opened behind it and never came forward. After opening a
+    /// draft, hand focus to whichever app handles email (Mail by default); it may still be
+    /// launching, so try for a few seconds.
+    @MainActor
+    static func bringMailForward() {
+        guard let mailApp = NSWorkspace.shared.urlForApplication(toOpen: URL(string: "mailto:")!),
+              let bundleID = Bundle(url: mailApp)?.bundleIdentifier else { return }
+        Task { @MainActor in
+            for _ in 0..<10 {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+                    running.activate()
+                    return
+                }
+            }
+        }
     }
 
     static func executedCopyBody(_ r: AgreementRecord) -> String {
@@ -342,6 +362,7 @@ enum AgreementService {
             service.recipients = r.agreement.client.contactEmail.isEmpty ? [] : [r.agreement.client.contactEmail]
             service.subject = subject
             service.perform(withItems: [body, file])
+            bringMailForward()
             composed = true
         } else {
             NSPasteboard.general.clearContents()
