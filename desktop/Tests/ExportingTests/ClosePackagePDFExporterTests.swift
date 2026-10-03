@@ -144,4 +144,20 @@ struct ClosePackagePDFExporterTests {
         // otherwise have to keep re-tuning.
         #expect(abs(multiParagraphData.count - oneLineData.count) < 700)
     }
+
+    @Test("Internal close record: repeated activity is grouped with a count, amounts read as dollars")
+    func groupedActivity() {
+        let day = Date(timeIntervalSince1970: 1_790_000_000)
+        func e(_ kind: ActivityKind, _ summary: String? = nil, actor: Core.Actor = .system) -> ActivityLogEntry {
+            ActivityLogEntry(realmID: RealmID(rawValue: "realm-a"), recordedAt: day, actor: actor, kind: kind, findingID: nil, findingSummary: summary, note: nil)
+        }
+        let activity = Array(repeating: e(.findingDetected), count: 24)
+        let lines = ClosePackagePDFExporter.groupedLines(activity, detail: false)
+        #expect(lines.count == 1)
+        #expect(lines[0].hasSuffix("Finding detected × 24 (By Voice Ledger)"))
+        let fixes = Array(repeating: e(.manualCompletionAttested, "Expense with no vendor — USD 4264.76", actor: .user("Benjamin")), count: 3)
+        let fixLines = ClosePackagePDFExporter.groupedLines(fixes, detail: true)
+        #expect(fixLines.count == 1)
+        #expect(fixLines[0].contains("Expense with no vendor — $4,264.76 × 3"))
+    }
 }

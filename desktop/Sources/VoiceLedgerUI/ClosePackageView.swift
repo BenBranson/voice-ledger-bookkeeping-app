@@ -217,7 +217,7 @@ public struct ClosePackageView: View {
                         .foregroundStyle(VLColor.textPrimary)
                     Spacer()
                     SyncButton(isSyncing: isSyncing, onSync: onSync)
-                    Button("Export Branded PDF") {
+                    Button("Export Close Record (internal)") {
                         let trimmed = executiveSummaryDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                         onExportBrandedPDF(trimmed.isEmpty ? nil : executiveSummaryDraft)
                     }
@@ -226,7 +226,7 @@ public struct ClosePackageView: View {
                     VLEnvironmentBadge(environment)
                 }
 
-                Text(verbatim: "\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. \"Export Branded PDF\" produces a designed cover-page-plus-sections document; the Export menu's plain CSV/XLSX/PDF is the same raw data as a flat table.")
+                Text(verbatim: "\(period.year)-\(String(format: "%02d", period.month)) · A consolidated summary of this period's close, assembled from what's already been synced and recorded. Client PDFs: Generate Report below (2-page Client Summary + Full Report). \"Export Close Record (internal)\" is your own file copy of the close, marked INTERNAL, not for clients.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
 
@@ -315,7 +315,7 @@ public struct ClosePackageView: View {
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)
-                Text("Optional. AI-drafted from the report summaries and activity below, grounded strictly in what's already on this page — edit freely below. Left blank, \"Export Branded PDF\" omits this section entirely rather than including an empty one.")
+                Text("Optional. AI-drafted from the report summaries and activity below, grounded strictly in what's already on this page — edit freely below. Left blank, the internal close record omits this section entirely rather than including an empty one.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textSecondary)
 

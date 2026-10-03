@@ -137,6 +137,28 @@ struct MonthlyReportIntegrityTests {
         #expect(loss.steps.last?.kind == .loss)
     }
 
+    @Test("Cash & bills uses the quick ratio; a tiny unclassified amount doesn't lower confidence")
+    func cashAndMateriality() {
+        func build(cash: Int64, ar: Int64, parked: Int64) -> MonthlyClientReport {
+            let pnl = [line("Sales", 1_552_248, id: "i"), sum("Total Income", 1_552_248), sum("Gross Profit", 1_552_248),
+                       line("Ask My Accountant", parked, id: "a"), line("Fuel", 1_303_937 - parked, id: "e"), sum("Total Expenses", 1_303_937),
+                       sum("Net Operating Income", 248_311), sum("Net Income", 248_311)]
+            let bs = [sum("Total Bank Accounts", cash), sum("Total Accounts Receivable", ar), sum("Total Current Assets", cash + ar),
+                      sum("Total Current Liabilities", 1_272_182)]
+            return MonthlyReportBuilder.build(MonthlyReportInputs(clientName: "A", period: period, today: AccountingDate(year: 2026, month: 9, day: 1), generatedAt: Date(), accountingBasis: "Accrual", environment: "sandbox",
+                                                                  monthlyProfitAndLoss: [MonthlyReport(period: period, lines: pnl)], balanceSheet: bs, cashFlow: [], agedReceivables: [], accountTypes: [:], findings: [], coverage: .complete))
+        }
+        let ok = build(cash: 911_538, ar: 2_383_151, parked: 12_999)
+        let cashCheck = ok.healthChecks.first { $0.area == "Cash & bills" }
+        #expect(cashCheck?.statusKind == "stable")
+        #expect(cashCheck?.detail == "Cash of $9,115.38 plus $23,831.51 customers owe covers the $12,721.82 due within a year 2.6 times over; cash alone covers 72%.")
+        #expect(!ok.priorities.contains { $0.action.hasPrefix("Plan cash") })
+        #expect(ok.reportingConfidence == "Good")   // $129.99 is under 1% of $13,039.37
+        let tight = build(cash: 300_000, ar: 500_000, parked: 200_000)
+        #expect(tight.healthChecks.first { $0.area == "Cash & bills" }?.statusKind == "attention")
+        #expect(tight.reportingConfidence == "Limited") // $2,000 is over 1% of costs
+    }
+
     @Test("Bank + undeposited funds ties to the cash-flow statement's ending cash")
     func cashTie() throws {
         let bs = [sum("Total Bank Accounts", -455_678), line("Undeposited Funds", 286_252)]

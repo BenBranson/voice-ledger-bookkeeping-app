@@ -179,6 +179,16 @@ public enum MonthlyReportSections {
         if let cash {
             if cash.minorUnits < 0 {
                 check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Bank accounts are overdrawn by \(Money(minorUnits: -cash.minorUnits, currency: .usd).accountingDescription).")
+            } else if let cl = currentLiabilities, cl.minorUnits > 0, let ar = summary("Total Accounts Receivable", bs), let quick = FinancialKPIs.quickRatio(from: bs) {
+                // Quick ratio, the standard test (Gemini review 2026-10-03): cash
+                // alone needn't cover a full year of obligations on one day.
+                // Same figure as the Dashboard's Quick Ratio card.
+                let cashOnly = cash < cl ? "; cash alone covers \(pct(cash, of: cl))" : ""
+                if quick < 1 {
+                    check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Cash of \(cash.accountingDescription) plus \(ar.accountingDescription) customers owe covers only \(pct(cash + ar, of: cl)) of the \(cl.accountingDescription) due within a year (vendor bills, credit cards, loan payments and taxes).")
+                } else {
+                    check("Cash & bills", "Is there cash to cover what's coming due?", "stable", "Cash of \(cash.accountingDescription) plus \(ar.accountingDescription) customers owe covers the \(cl.accountingDescription) due within a year \(String(format: "%.1f", quick)) times over\(cashOnly).")
+                }
             } else if let cl = currentLiabilities, cl.minorUnits > 0, cash < cl {
                 check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Cash of \(cash.accountingDescription) covers \(pct(cash, of: cl)) of the \(cl.accountingDescription) due within a year (vendor bills, credit cards, loan payments and taxes).")
             } else {
@@ -203,7 +213,8 @@ public enum MonthlyReportSections {
         // Reporting confidence: a fixed rule, not a judgment.
         //   Low     — a tie-out check failed, data is incomplete, or bookkeeping
         //             adjustments exceed 25% of the month's costs.
-        //   Limited — any confirmed issue, unclassified spending, or adjustment.
+        //   Limited — any confirmed issue, an adjustment, or unclassified spending
+        //             of at least 1% of the month's costs.
         //   Good    — none of the above.
         let failedChecks = report.checks.filter { !$0.passed }.count
         let costs = MonthlyReportBuilder.totalCosts(current) ?? .zero
@@ -211,7 +222,12 @@ public enum MonthlyReportSections {
         var reasons: [String] = []
         if adjustments.minorUnits != 0 { reasons.append("a \(adjustments.accountingDescription) reconciliation adjustment is unexplained") }
         if confirmedCount > 0 { reasons.append("\(confirmedCount) confirmed issue\(confirmedCount == 1 ? " is" : "s are") open") }
-        if parked.minorUnits != 0 { reasons.append("\(parked.accountingDescription) of spending isn't classified yet") }
+        // Materiality (Gemini review 2026-10-03): unclassified spending under 1% of
+        // the month's costs doesn't lower confidence; it is still asked in
+        // "Questions for you" and listed in Appendix B.
+        if parked.minorUnits != 0, costs.minorUnits == 0 || abs(parked.minorUnits) * 100 >= costs.minorUnits {
+            reasons.append("\(parked.accountingDescription) of spending isn't classified yet")
+        }
         if failedChecks > 0 { reasons.append("\(failedChecks) tie-out check\(failedChecks == 1 ? "" : "s") failed") }
         let lowAdjustments = costs.minorUnits > 0 && abs(adjustments.minorUnits) * 4 > costs.minorUnits
         if case .partial = input.coverage {

@@ -1616,3 +1616,10 @@ Owner: the app's waterfall was "hard to understand and read" (same reason it lef
 
 - Minus signs, not brackets, on the Dashboard, KPI tiles, chart cards, insight cards and every ECharts label/tooltip (`Money.signedDescription`, `ClientText.minusSigns`, JS `signed()` in vl-charts.js). The formal statement pages (Balance Sheet, P&L, Trial Balance, General Ledger) deliberately keep accounting brackets — CPA convention, same split as the PDF.
 - Owner's Draw is neutral slate (Swift `ChartPalette.neutral`, JS `theme.muted`), not error red; overdrafts and negative equity stay red.
+
+## 2026-10-03 — v1.88: internal close record + third Gemini review
+
+- "Export Branded PDF" was the old pre-report close file and leaked the bookkeeper's private Ask AI chat history, with truncated lines and "USD 1234.56" amounts. Owner chose to keep it as an internal file: renamed "Export Close Record (internal)", INTERNAL footer on every page, `conversationHistory` REMOVED from `ClosePackagePDFExporter.Input` (so it can never be exported again), wrapped lines, `$` amounts, activity grouped by day/kind with a count (`groupedLines`). Clients get only the Client Summary + Full Report.
+- Cash & bills health check now uses the quick ratio (cash + A/R vs current liabilities, same as the Dashboard card); still states what cash alone covers. Unclassified spending under 1% of the month's costs no longer lowers Reporting confidence by itself (still a client question + Appendix B item).
+- "Where the bookkeeping stands" counts are one compact row in a keep-together block in both PDFs (was splitting across pages 2–3 of the full report). Trend legends say "Total costs".
+- Rejected: payroll in the cash test (not reliably in QBO data); credits "no action" claim was false (aging note already says apply or refund). Proposed, awaiting owner: collections cash-impact line; click-through from app chart bars to the account.

@@ -2899,7 +2899,7 @@ public final class AppState {
         exportError = nil
         let data = ClosePackagePDFExporter.export(input)
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Close Package.pdf"
+        panel.nameFieldStringValue = "\(input.companyName ?? "Client") — Close Record (internal) \(input.period.year)-\(String(format: "%02d", input.period.month)).pdf"
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {

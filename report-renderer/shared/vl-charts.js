@@ -338,7 +338,7 @@
     const pts = data.points;
     return Object.assign(base(theme, opts.reducedMotion), {
       grid: { left: 8, right: 12, top: 30, bottom: 8, containLabel: true },
-      legend: { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8, data: ["Revenue", "Expenses"] },
+      legend: { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8, data: ["Revenue", "Total costs"] },
       tooltip: tooltip(theme, function (params) {
         const p = pts[params[0].dataIndex];
         return "<b>" + esc(p.label) + "</b><br/>Revenue: " + money(p.revenue) + "<br/>Expenses: " + money(p.expenses);
@@ -347,7 +347,7 @@
       yAxis: valueAxis(theme),
       series: [
         { name: "Revenue", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.palette[1], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.revenue; }) },
-        { name: "Expenses", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.name === "print" ? theme.palette[2] : theme.palette[3], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.expenses; }) }
+        { name: "Total costs", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.name === "print" ? theme.palette[2] : theme.palette[3], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.expenses; }) }
       ]
     });
   }
@@ -367,7 +367,7 @@
       series: [
         { name: "Revenue", type: "line", smooth: false, showSymbol: false, lineStyle: { color: theme.palette[1], width: 2.5 },
           areaStyle: { color: theme.palette[1], opacity: 0.12 }, data: pts.map(function (p) { return p.revenue; }).map(dot(theme.palette[1])) },
-        { name: "Expenses", type: "line", smooth: false, showSymbol: false, lineStyle: { color: theme.palette[2], width: 2.5, type: [6, 4] },
+        { name: "Total costs", type: "line", smooth: false, showSymbol: false, lineStyle: { color: theme.palette[2], width: 2.5, type: [6, 4] },
           data: pts.map(function (p) { return p.expenses; }).map(dot(theme.palette[2])) }
       ]
     });
@@ -513,7 +513,7 @@
     const pts = data.points;
     const option = Object.assign(base(theme, opts.reducedMotion), {
       grid: { left: 8, right: 8, top: 34, bottom: theme.interactive ? 44 : 8, containLabel: true },
-      legend: { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8, data: ["Revenue", "Expenses", "Profit margin"] },
+      legend: { top: 0, left: 0, textStyle: { color: theme.muted, fontFamily: theme.font }, itemWidth: 12, itemHeight: 8, data: ["Revenue", "Total costs", "Profit margin"] },
       tooltip: tooltip(theme, function (params) {
         const p = pts[params[0].dataIndex];
         return "<b>" + esc(p.label) + "</b><br/>Revenue: " + money(p.revenue) + "<br/>Expenses: " + money(p.expenses) +
@@ -523,7 +523,7 @@
       yAxis: [valueAxis(theme), valueAxis(theme, { position: "right", splitLine: { show: false }, axisLabel: { formatter: function (v) { return v + "%"; } } })],
       series: [
         { name: "Revenue", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.palette[1], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.revenue; }) },
-        { name: "Expenses", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.name === "print" ? theme.palette[2] : theme.palette[3], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.expenses; }) },
+        { name: "Total costs", type: "bar", barMaxWidth: 14, itemStyle: { color: theme.name === "print" ? theme.palette[2] : theme.palette[3], borderRadius: [2, 2, 0, 0] }, data: pts.map(function (p) { return p.expenses; }) },
         { name: "Profit margin", type: "line", yAxisIndex: 1, connectNulls: false, symbolSize: 5, lineStyle: { width: 2, color: theme.name === "print" ? theme.palette[0] : theme.palette[5] }, itemStyle: { color: theme.name === "print" ? theme.palette[0] : theme.palette[5] }, data: pts.map(function (p) { return p.marginPercent; }) }
       ]
     });

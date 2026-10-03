@@ -2072,7 +2072,6 @@ struct RootView: View {
                             return (mark: mark, findingTitle: finding.title, dollarExposure: finding.dollarExposure)
                         },
                         clientQuestionThreads: ClientQuestionDrafter.threads(from: state.activityLog),
-                        conversationHistory: state.conversationHistory.sorted { $0.askedAt > $1.askedAt },
                         recentActivity: state.activityLog.sorted { $0.recordedAt > $1.recordedAt },
                         executiveSummary: executiveSummary,
                         checklistSignOffs: MonthEndChecklist.workpaper(completions: state.checklistCompletions, period: state.currentPeriod, currentWatermark: AppState.currentEvidenceWatermark(), companyName: state.companyInfo?.companyName)
