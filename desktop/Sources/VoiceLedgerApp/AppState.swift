@@ -2163,7 +2163,11 @@ public final class AppState {
             // needs the on-disk snapshot as of right now.
             let currentPeriodLockSnapshot = try await store.loadPeriodLockSnapshot()
             let currentBankStatementSnapshots = try await store.loadBankStatementReconciliationSnapshots()
-            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, periodLock: currentPeriodLock, periodLockSnapshot: currentPeriodLockSnapshot, bankStatementSnapshots: currentBankStatementSnapshots)
+            // Ages ("in Undeposited Funds for N days") count to the same date the
+            // balances are as of: the month end for a finished month, today for the
+            // current one. Counting to today while deposits are only loaded through
+            // the month end flagged payments deposited the next month (2026-10-03).
+            let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, dismissedFindingIDs: dismissedFindingIDs, asOfDate: agingAsOf ?? AccountingDate(date: Date()), periodLock: currentPeriodLock, periodLockSnapshot: currentPeriodLockSnapshot, bankStatementSnapshots: currentBankStatementSnapshots)
             let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
             // Gauntlet Loop, Gauntlet B round 11 (2026-08-24): a fresh

@@ -1550,3 +1550,20 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   2. Once production keys unlock: add `/connected` to the production redirect URIs.
   3. The owner pastes the production keys into `QBO_PRODUCTION_CLIENT_ID` and `QBO_PRODUCTION_CLIENT_SECRET` using the clipboard method.
   4. Set `ALLOW_PRODUCTION=true` only when the first signed client is ready. That client connects in Read-Only Mode.
+
+## 2026-10-03: report review (Gemini critique of the Sept 29 July PDF), what was verified, what changed
+
+- **Gemini claims that were false, checked against the PDF text:**
+  - A Cyrillic "г" in "error" and a double period "yet..". Neither exists.
+  - "Reclassifying the overdraft makes working capital deeply negative." Wrong: reclassifying moves the same amount to both sides, so working capital is unchanged and only the ratio moves.
+  - The "duplicate" Cool Cars finding was really two separate $400 payments with identical text.
+- **The Sept 29 PDF's core numbers were wrong.** It showed July revenue $1,000 and total assets $20,173. The regenerated report matches the verified facts: revenue $16,019.16, net income $1,845.15.
+- **Fixed:**
+  - Parent account names: `qualifiedLabels()` gives "Truck: Original Cost". Statement tables (balance sheet, P&L, cash flow) keep their headings.
+  - "Working capital without the $X in suspense and clearing" row; the current ratio is flagged when the position includes unsettled or overdrawn balances.
+  - Receivables chart: with the aging detail, buckets are owed-only and credits get their own "Credits (not owed)" bar. Uses `OpenItemsSplit.owedByBucket`.
+  - Undeposited Funds titles carry the payment reference.
+  - "is an Income account" (was "a Income").
+  - `Money.exposureText` shows "—" for a zero-dollar finding.
+  - **Rule ages now count to the period end for a finished month** (`RuleContext.asOfDate = agingAsOf`), in both the app and the devtool. Before, ages counted to today while deposits were loaded only through the month end, so a payment deposited the next month was flagged as aging. Affects VL-BS-UNDEP-001 and unapplied vendor credits.
+- **Open:** an in-progress month is compared with the full prior month ("Revenue down 90.9%" on Oct 3). It should compare the same number of days, or say it's partial and drop the percentage.

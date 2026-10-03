@@ -122,4 +122,17 @@ struct UndepositedFundsAgingRuleTests {
             Issue.record("rule must not report .pass on partial coverage")
         }
     }
+
+    @Test("Two same-day payments of the same amount from one customer read as two findings, not one printed twice")
+    func samePaymentsAreDistinguishable() {
+        let a = payment(id: "157", date: AccountingDate(year: 2026, month: 7, day: 27))
+        let b = payment(id: "158", date: AccountingDate(year: 2026, month: 7, day: 27))
+        guard case .findings(let findings) = UndepositedFundsAgingRule.evaluate(dataSet(transactions: [a, b], accounts: [undepositedFundsAccount()]), context: context()) else {
+            Issue.record("expected findings"); return
+        }
+        #expect(findings.count == 2)
+        #expect(Set(findings.map(\.title)).count == 2)
+        #expect(findings.contains { $0.title.hasSuffix("(QuickBooks payment 157)") })
+        #expect(findings.allSatisfy { $0.narrative?.contains("(QuickBooks payment") == true })
+    }
 }

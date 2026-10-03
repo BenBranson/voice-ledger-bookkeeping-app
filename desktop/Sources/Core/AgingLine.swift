@@ -71,8 +71,24 @@ public struct OpenItemsSplit: Hashable, Sendable {
     /// Sum of every open balance; must equal the summary report's TOTAL.
     public let net: Money
     public let itemCount: Int
+    /// Owed (positive open balances only) per aging bucket, keyed "current",
+    /// "1-30", "31-60", "61-90", "91+". Credits are never in here; they are
+    /// `credits`. So these buckets plus `credits` sum exactly to `net`.
+    public let owedByBucket: [String: Money]
 
-    public init(owed: Money, credits: Money, over60Owed: Money, net: Money, itemCount: Int) {
+    public init(owed: Money, credits: Money, over60Owed: Money, net: Money, itemCount: Int, owedByBucket: [String: Money] = [:]) {
         self.owed = owed; self.credits = credits; self.over60Owed = over60Owed; self.net = net; self.itemCount = itemCount
+        self.owedByBucket = owedByBucket
+    }
+
+    /// The bucket key for an aging-detail section header ("61 - 90 days past due", "Current", …).
+    public static func bucketKey(forSection section: String) -> String? {
+        let s = section.lowercased()
+        if s.hasPrefix("current") { return "current" }
+        if s.hasPrefix("1 ") || s.hasPrefix("1-") { return "1-30" }
+        if s.hasPrefix("31") { return "31-60" }
+        if s.hasPrefix("61") { return "61-90" }
+        if s.hasPrefix("91") { return "91+" }
+        return nil
     }
 }

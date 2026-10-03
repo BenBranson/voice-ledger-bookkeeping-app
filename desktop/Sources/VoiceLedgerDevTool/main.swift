@@ -733,7 +733,8 @@ case "sync-check":
         )
 
         let engine = RuleEngine(rules: RuleRegistry.all)
-        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
+        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts,
+                                  asOfDate: QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date())) ?? AccountingDate(date: Date()))
         let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
         let tempStoreRoot = FileManager.default.temporaryDirectory.appending(path: "voiceledger-devtool-sync-check")
@@ -817,7 +818,8 @@ case "csv-import-check":
         )
 
         let engine = RuleEngine(rules: RuleRegistry.all)
-        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts)
+        let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts,
+                                  asOfDate: QBOSyncClient.agingDate(for: period, today: AccountingDate(date: Date())) ?? AccountingDate(date: Date()))
         let evaluation = await engine.evaluate(pages: [.page3Transactions, .cleanupAssessment, .bankFeedCleanup], input: dataSet, context: context)
 
         for ruleID in ["VL-RECON-MISSING-001", "VL-VENDOR-MISMATCH-001"] {

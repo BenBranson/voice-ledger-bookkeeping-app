@@ -118,18 +118,31 @@ public enum MonthlyReportSections {
         if let assets = summary("TOTAL ASSETS", bs) ?? summary("Total Assets", bs) { position.append(R.Row(label: "What the business owns (total assets)", valueText: assets.accountingDescription, depth: 0, isTotal: false)) }
         if let liabilities = summary("Total Liabilities", bs) { position.append(R.Row(label: "What it owes (total liabilities)", valueText: liabilities.accountingDescription, depth: 0, isTotal: false)) }
         if let equity = summary("Total Equity", bs) { position.append(R.Row(label: "Owner's stake (equity)", valueText: equity.accountingDescription, depth: 0, isTotal: true)) }
-        if let wc = FinancialKPIs.workingCapital(from: bs) { position.append(R.Row(label: "Working capital (short-term assets minus short-term obligations)", valueText: wc.accountingDescription, depth: 0, isTotal: false)) }
-        if let ratio = FinancialKPIs.currentRatio(from: bs) { position.append(R.Row(label: "Current ratio (short-term assets ÷ short-term obligations)", valueText: String(format: "%.2f×", ratio), depth: 0, isTotal: false)) }
+        let unsettledForPosition = Self.unsettledBalances(bs)
+        let positionHasCaveat = unsettledForPosition.minorUnits > 0 || (cash?.minorUnits ?? 0) < 0
+        if let wc = FinancialKPIs.workingCapital(from: bs) {
+            position.append(R.Row(label: "Working capital (short-term assets minus short-term obligations)", valueText: wc.accountingDescription, depth: 0, isTotal: false))
+            // The same figure without balances still under review, so a reader
+            // skimming the number sees how much of the cushion is unsettled.
+            if unsettledForPosition.minorUnits > 0 {
+                position.append(R.Row(label: "Working capital without the \(unsettledForPosition.accountingDescription) in suspense and clearing still under review", valueText: (wc - unsettledForPosition).accountingDescription, depth: 1, isTotal: false))
+            }
+        }
+        if let ratio = FinancialKPIs.currentRatio(from: bs) {
+            position.append(R.Row(label: "Current ratio (short-term assets ÷ short-term obligations)\(positionHasCaveat ? ", including balances still under review or overdrawn" : "")", valueText: String(format: "%.2f×", ratio), depth: 0, isTotal: false))
+        }
         report.position = position
 
         // Comparative P&L (this month vs last month), matched by stable key.
         let priorByKey = Dictionary((priorLines ?? []).compactMap { l in l.amount.map { (l.isSummary ? "sum:\(l.label)" : l.stableKey, $0) } }, uniquingKeysWith: { first, _ in first })
-        report.comparativeProfitAndLoss = current.filter { $0.amount != nil }.map { line in
-            R.ComparativeRow(label: line.label, currentText: line.amount!.accountingDescription,
+        // Headings (no amount) are kept so sub-accounts always appear under their parent.
+        report.comparativeProfitAndLoss = current.filter { $0.amount != nil || !$0.isSummary }.map { line in
+            guard let amount = line.amount else { return R.ComparativeRow(label: line.label, currentText: "", priorText: "", depth: line.depth, isTotal: false) }
+            return R.ComparativeRow(label: line.label, currentText: amount.accountingDescription,
                              priorText: priorLines == nil ? "—" : (priorByKey[line.isSummary ? "sum:\(line.label)" : line.stableKey]?.accountingDescription ?? "$0.00"),
                              depth: line.depth, isTotal: line.isSummary)
         }
-        report.cashFlowStatement = input.cashFlow.filter { $0.amount != nil }.map { R.Row(label: $0.label, valueText: $0.amount!.accountingDescription, depth: $0.depth, isTotal: $0.isSummary) }
+        report.cashFlowStatement = input.cashFlow.filter { $0.amount != nil || !$0.isSummary }.map { R.Row(label: $0.label, valueText: $0.amount?.accountingDescription ?? "", depth: $0.depth, isTotal: $0.isSummary) }
 
         // Health check.
         var health: [R.HealthCheck] = []
@@ -278,7 +291,7 @@ public enum MonthlyReportSections {
             // The adjustment priority above already covers this one.
             if adjustments.minorUnits != 0 && item.amountText == adjustments.accountingDescription { continue }
             var p = R.Priority(action: action, owner: "Benjamin", why: "\(item.title).", timing: timing)
-            p.impact = "Makes \(item.amountText) in the books reliable"
+            p.impact = item.amountText == "—" ? "Makes the books reliable" : "Makes \(item.amountText) in the books reliable"
             priorities.append(p)
         }
         report.priorities = Array(priorities.prefix(3))
@@ -347,7 +360,7 @@ public enum MonthlyReportSections {
             let assets = summary("TOTAL ASSETS", bs) ?? summary("Total Assets", bs)
             let liabilities = summary("Total Liabilities", bs)
             // Current-asset balances still being investigated.
-            let unsettled = bs.filter { !$0.isSummary && ["suspense", "clearing"].contains(where: $0.label.lowercased().contains) }.compactMap(\.amount).filter { $0.minorUnits > 0 }.reduce(Money.zero, +)
+            let unsettled = Self.unsettledBalances(bs)
             var happened = ""
             if let equity, let assets, let liabilities, equity.minorUnits < 0 {
                 happened = "The business owns \(assets.accountingDescription) and owes \(liabilities.accountingDescription), so owner's equity is negative: \(equity.accountingDescription). "
@@ -381,5 +394,12 @@ public enum MonthlyReportSections {
         report.sparklines = ChartData.sparklines(months: input.monthlyProfitAndLoss, monthEndCash: input.monthEndCash)
         if input.agedPayables.isEmpty && !input.payablesLoaded { report.notes.append("The payables aging report could not be loaded, so bills coming due are not shown.") }
         return report
+    }
+
+    /// Current-asset balances still being investigated: positive suspense and
+    /// clearing accounts. Shared by the position table and its narrative.
+    static func unsettledBalances(_ bs: [ReportLine]) -> Money {
+        bs.filter { !$0.isSummary && ["suspense", "clearing"].contains(where: $0.label.lowercased().contains) }
+            .compactMap(\.amount).filter { $0.minorUnits > 0 }.reduce(Money.zero, +)
     }
 }

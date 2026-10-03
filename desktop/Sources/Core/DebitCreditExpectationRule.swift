@@ -139,7 +139,7 @@ public enum DebitCreditExpectationRule: Rule {
                 )],
                 proposedActions: [action],
                 provenance: [.qboAPI(readAt: Date())],
-                narrative: "\(account.name) is a \(kind) account, which normally carries a \(expectedSide) balance, but the Trial Balance shows \(exposure) on the \(wrongSide) side this period.",
+                narrative: "\(account.name) is an \(kind) account, which normally carries a \(expectedSide) balance, but the Trial Balance shows \(exposure) on the \(wrongSide) side this period.",
                 riskIfIgnored: "\(kind) stays potentially misstated by \(exposure) until the underlying sign or coding error is found and corrected."
             ))
         }

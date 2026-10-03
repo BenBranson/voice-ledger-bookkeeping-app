@@ -299,12 +299,20 @@ public enum MonthlyReportBuilder {
             let customers = input.agedReceivables.filter { !$0.isSummary && ($0.total?.minorUnits ?? 0) != 0 }
                 .sorted { ($0.total?.minorUnits ?? 0) > ($1.total?.minorUnits ?? 0) }.prefix(8)
                 .map { MonthlyClientReport.Row(label: $0.label, valueText: $0.total!.accountingDescription, depth: 0, isTotal: false) }
+            // With QuickBooks' per-invoice detail, buckets show only money owed and
+            // customer credits get their own bar (they aren't an age). Without it,
+            // fall back to QuickBooks' netted buckets.
+            let exact = total.openItems.flatMap { o in o.owedByBucket.isEmpty || total.total.map({ $0 != o.net }) == true ? nil : o }
+            var items: [ChartItem] = buckets.map { id, name, amount in
+                let value = exact.map { $0.owedByBucket[id] ?? .zero } ?? (amount ?? .zero)
+                let isCredit = value.minorUnits < 0
+                return ChartItem(id: id, accountID: nil, label: isCredit ? "\(name) (credits)" : name, value: value.majorUnitsDouble, valueText: value.accountingDescription, category: isCredit ? "credit" : id == "91+" ? "overdraft" : "asset")
+            }
+            if let exact, exact.credits.minorUnits < 0 {
+                items.append(ChartItem(id: "credits", accountID: nil, label: "Credits (not owed)", value: exact.credits.majorUnitsDouble, valueText: exact.credits.accountingDescription, category: "credit"))
+            }
             return MonthlyClientReport.Receivables(
-                buckets: buckets.map { id, name, amount in
-                    let value = amount ?? .zero
-                    let isCredit = value.minorUnits < 0
-                    return ChartItem(id: id, accountID: nil, label: isCredit ? "\(name) (credits)" : name, value: value.majorUnitsDouble, valueText: value.accountingDescription, category: isCredit ? "credit" : id == "91+" ? "overdraft" : "asset")
-                },
+                buckets: items,
                 totalText: grand.accountingDescription,
                 topCustomers: Array(customers),
                 note: split.credits.minorUnits < 0
@@ -316,14 +324,15 @@ public enum MonthlyReportBuilder {
 
         let open = FindingTriage.sorted(input.findings.filter { $0.status == .open })
         func row(_ f: Finding) -> MonthlyClientReport.FindingRow {
-            MonthlyClientReport.FindingRow(title: f.title, amountText: f.dollarExposure.accountingDescription, detail: f.narrative ?? "", action: f.proposedActions.first?.title)
+            // A finding with no dollar exposure (e.g. a duplicate vendor record) shows "—", not "$0.00".
+            MonthlyClientReport.FindingRow(title: f.title, amountText: f.dollarExposure.exposureText, detail: f.narrative ?? "", action: f.proposedActions.first?.title)
         }
         let verified = open.filter { $0.confidence == .high }.prefix(12).map(row)
         let review = open.filter { $0.confidence != .high }.prefix(12).map(row)
         var actions: [String] = []
         for f in open.prefix(8) {
             guard let title = f.proposedActions.first?.title else { continue }
-            let line = "\(title) (\(f.dollarExposure.accountingDescription))"
+            let line = f.dollarExposure.minorUnits == 0 ? title : "\(title) (\(f.dollarExposure.accountingDescription))"
             if !actions.contains(line) { actions.append(line) }
         }
 
@@ -354,7 +363,9 @@ public enum MonthlyReportBuilder {
         notes.append("Status labels: \"Confirmed issue\" is established directly from the QuickBooks data; \"Possible issue\" is a pattern that often signals an error but isn't established; \"Corrected and verified\" means a person made the correction and a later QuickBooks sync confirms it.")
 
         let pnlTable = pnl.filter { $0.amount != nil }.map { MonthlyClientReport.Row(label: $0.label, valueText: $0.amount!.accountingDescription, depth: $0.depth, isTotal: $0.isSummary) }
-        let bsTable = input.balanceSheet.filter { $0.amount != nil }.map { MonthlyClientReport.Row(label: $0.label, valueText: $0.amount!.accountingDescription, depth: $0.depth, isTotal: $0.isSummary) }
+        // Section and parent-account headings ("Bank Accounts", "Truck") have no amount
+        // but are kept, so a child like "Original Cost" is never shown without its parent.
+        let bsTable = input.balanceSheet.filter { $0.amount != nil || !$0.isSummary }.map { MonthlyClientReport.Row(label: $0.label, valueText: $0.amount?.accountingDescription ?? "", depth: $0.depth, isTotal: $0.isSummary) }
 
         let formatter = ISO8601DateFormatter()
         let display = DateFormatter()

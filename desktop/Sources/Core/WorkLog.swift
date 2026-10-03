@@ -80,7 +80,7 @@ public enum WorkLog {
                 status: status,
                 statusLabel: label(status),
                 impact: impact(ruleID: finding.ruleID.rawValue, amount: finding.dollarExposure, status: status),
-                amountText: finding.dollarExposure.accountingDescription
+                amountText: finding.dollarExposure.exposureText
             )
             item.ruleID = finding.ruleID.rawValue
             item.amountMinorUnits = finding.dollarExposure.minorUnits

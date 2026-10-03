@@ -34,3 +34,22 @@ public struct ReportLine: Identifiable, Hashable, Sendable, Codable {
     /// otherwise the label (never an array position or random ID).
     public var stableKey: String { accountID.map { "acct:\($0)" } ?? "label:\(label)" }
 }
+
+extension Array where Element == ReportLine {
+    /// "Truck: Original Cost" for an account row nested directly under a parent
+    /// ACCOUNT heading (a heading with an account id). Section headings like
+    /// "Bank Accounts" carry no account id and never prefix. Keyed by line id.
+    public func qualifiedLabels() -> [String: String] {
+        var headings: [ReportLine] = []
+        var out: [String: String] = [:]
+        for line in self {
+            while let top = headings.last, top.depth >= line.depth { headings.removeLast() }
+            if line.amount == nil && !line.isSummary { headings.append(line); continue }
+            if !line.isSummary, let parent = headings.last, parent.accountID != nil, parent.depth == line.depth - 1,
+               !line.label.hasPrefix(parent.label) {
+                out[line.id] = "\(parent.label): \(line.label)"
+            }
+        }
+        return out
+    }
+}

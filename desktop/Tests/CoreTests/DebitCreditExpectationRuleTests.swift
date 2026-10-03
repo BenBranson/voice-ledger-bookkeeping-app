@@ -42,6 +42,7 @@ struct DebitCreditExpectationRuleTests {
             return
         }
         #expect(findings[0].confidence == .medium)
+        #expect(findings[0].narrative?.hasPrefix("Pest Control Services is an Income account") == true) // not "a Income"
     }
 
     @Test("An Expense account with a credit balance produces a finding")

@@ -136,7 +136,7 @@ public enum ReportStatus {
             let related = amount.minorUnits >= 10_000
                 ? prepared.filter { $0.0.id != finding.id && $0.2 == amount }.map { ClientText.polish($0.3) + " (\(label($0.1).lowercased()))" }
                 : []
-            return ReportOpenItem(findingID: finding.id, kind: kind, tag: label(kind), title: ClientText.polish(title), amountText: amount.accountingDescription,
+            return ReportOpenItem(findingID: finding.id, kind: kind, tag: label(kind), title: ClientText.polish(title), amountText: amount.exposureText,
                                   detail: ClientText.polish(detail), action: finding.proposedActions.first.map { ClientText.polish($0.title) }, related: related)
         }
         return (items, dropped)

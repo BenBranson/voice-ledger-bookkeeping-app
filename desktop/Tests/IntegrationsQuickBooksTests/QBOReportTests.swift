@@ -113,6 +113,9 @@ struct QBOReportTests {
         #expect(split.over60Owed == Money(minorUnits: 8_100, currency: .usd))    // only the invoice; the −800 payment isn't "owed"
         #expect(split.net == Money(minorUnits: 3_100, currency: .usd))
         #expect(split.itemCount == 4)
+        // Owed per bucket (credits excluded), so the report can chart credits separately and still tie.
+        #expect(split.owedByBucket == ["91+": Money(minorUnits: 8_100, currency: .usd), "current": Money(minorUnits: 100_000, currency: .usd)])
+        #expect(split.owedByBucket.values.reduce(Money.zero, +) + split.credits == split.net)
     }
 
     @Test("An empty report (no rows) flattens to an empty list, not a crash")

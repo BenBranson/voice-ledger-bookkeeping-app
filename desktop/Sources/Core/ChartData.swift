@@ -68,6 +68,7 @@ public extension ChartData {
             ? lines[split].amount
             : lines.first { $0.isSummary && ($0.label == "TOTAL LIABILITIES AND EQUITY" || $0.label == "Total Liabilities and Equity") }?.amount
         let leaves = slice.filter { !$0.isSummary && $0.amount != nil && $0.amount!.minorUnits != 0 }
+        let names = lines.qualifiedLabels()
 
         let positives = leaves.filter { $0.amount!.minorUnits > 0 }
         let negatives = leaves.filter { $0.amount!.minorUnits < 0 }
@@ -80,7 +81,7 @@ public extension ChartData {
             .map { line -> ChartItem in
                 let type = line.accountID.flatMap { accountTypes[$0] }
                 return ChartItem(
-                    id: line.stableKey, accountID: line.accountID, label: line.label,
+                    id: line.stableKey, accountID: line.accountID, label: names[line.id] ?? line.label,
                     value: line.amount!.majorUnitsDouble, valueText: line.amount!.accountingDescription,
                     category: positiveCategory(section: section, type: type),
                     share: positiveTotal.minorUnits > 0 ? Double(line.amount!.minorUnits) / Double(positiveTotal.minorUnits) : nil
@@ -91,7 +92,7 @@ public extension ChartData {
             .map { line -> ChartItem in
                 let kind = negativeKind(section: section, type: line.accountID.flatMap { accountTypes[$0] }, label: line.label)
                 return ChartItem(
-                    id: line.stableKey, accountID: line.accountID, label: line.label,
+                    id: line.stableKey, accountID: line.accountID, label: names[line.id] ?? line.label,
                     value: line.amount!.majorUnitsDouble, valueText: line.amount!.accountingDescription,
                     category: kind.category, note: kind.note
                 )

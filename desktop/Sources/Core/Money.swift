@@ -78,6 +78,10 @@ extension Money: CustomStringConvertible {
 }
 
 extension Money {
+    /// A finding's dollar exposure for display: "—" when the issue carries no
+    /// amount (e.g. a duplicate vendor record), so it never reads as "$0.00".
+    public var exposureText: String { minorUnits == 0 ? "—" : accountingDescription }
+
     /// Display format for screens and client-facing text: `$1,263.76`, with
     /// negatives in accounting brackets `($1,263.76)`. `description` keeps
     /// its plain `USD 1263.76` form because persisted narratives, amount

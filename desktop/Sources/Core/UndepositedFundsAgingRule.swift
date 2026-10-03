@@ -110,7 +110,7 @@ public enum UndepositedFundsAgingRule: Rule {
                 ruleVersion: identity.version,
                 realmID: input.realmID,
                 period: input.period,
-                title: "Payment still in Undeposited Funds after \(ageDays) days — \(payment.vendorName ?? "unknown"), \(payment.totalAmount)",
+                title: "Payment still in Undeposited Funds after \(ageDays) days — \(payment.vendorName ?? "unknown"), \(payment.totalAmount)\(Self.reference(payment))",
                 severity: Severity.derive(dollarExposure: payment.totalAmount, materiality: context.materiality),
                 confidence: .high,
                 dollarExposure: payment.totalAmount,
@@ -122,7 +122,7 @@ public enum UndepositedFundsAgingRule: Rule {
                 proposedActions: [action],
                 provenance: [payment.provenance],
                 vendorName: payment.vendorName,
-                narrative: "A \(payment.totalAmount) payment\(payment.vendorName.map { " from \($0)" } ?? "") dated \(payment.txnDate.formatted) has sat in Undeposited Funds for \(ageDays) days with no matching bank Deposit — it may have been forgotten.",
+                narrative: "A \(payment.totalAmount) payment\(payment.vendorName.map { " from \($0)" } ?? "")\(Self.reference(payment)) dated \(payment.txnDate.formatted) has sat in Undeposited Funds for \(ageDays) days with no matching bank Deposit — it may have been forgotten.",
                 riskIfIgnored: "Available cash stays overstated by \(payment.totalAmount) in your books until this is deposited (or confirmed as entered in error)."
             ))
         }
@@ -137,5 +137,14 @@ public enum UndepositedFundsAgingRule: Rule {
             return .pass(coverage: input.coverage, checkedCount: candidates.count)
         }
         return .findings(findings)
+    }
+}
+
+extension UndepositedFundsAgingRule {
+    /// " (ref 1042)" or " (QuickBooks payment 157)": two payments from the same
+    /// customer, same day, same amount must not read as one finding printed twice.
+    static func reference(_ payment: LedgerTransaction) -> String {
+        if let doc = payment.docNumber, !doc.isEmpty { return " (ref \(doc))" }
+        return " (QuickBooks payment \(payment.id))"
     }
 }

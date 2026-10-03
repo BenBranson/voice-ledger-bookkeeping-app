@@ -308,6 +308,7 @@ public struct QBOSyncClient: Sendable {
     /// A/P 8 with "Past Due"), so the section, not a column, gives the age.
     static func openItemsSplit(_ rows: QBORawReportRowList) -> OpenItemsSplit? {
         var owed: Int64 = 0, credits: Int64 = 0, over60: Int64 = 0, count = 0
+        var byBucket: [String: Int64] = [:]
         func walk(_ list: QBORawReportRowList, section: String) {
             for row in list.row ?? [] {
                 let label = row.header?.colData.first?.value ?? section
@@ -320,13 +321,17 @@ public struct QBOSyncClient: Sendable {
                 if open > 0 {
                     owed += open
                     if section.hasPrefix("61") || section.hasPrefix("91") { over60 += open }
+                    if let key = OpenItemsSplit.bucketKey(forSection: section) { byBucket[key, default: 0] += open }
                 } else { credits += open }
             }
         }
         walk(rows, section: "")
         guard count > 0 else { return nil }
         func m(_ v: Int64) -> Money { Money(minorUnits: v, currency: .usd) }
-        return OpenItemsSplit(owed: m(owed), credits: m(credits), over60Owed: m(over60), net: m(owed + credits), itemCount: count)
+        // Only trust the per-bucket split if every owed item landed in a known bucket.
+        let bucketsComplete = byBucket.values.reduce(0, +) == owed
+        return OpenItemsSplit(owed: m(owed), credits: m(credits), over60Owed: m(over60), net: m(owed + credits), itemCount: count,
+                              owedByBucket: bucketsComplete ? byBucket.mapValues(m) : [:])
     }
 
     /// Detail columns (verified live): Date, Transaction Type, Num, Vendor,
