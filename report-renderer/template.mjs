@@ -12,6 +12,19 @@ const svgImg = (svg, alt) => svg
 
 const neg = (text) => /^\(/.test(String(text)) ? " neg" : "";
 
+
+const triangle = (up, color) => `<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="${up ? "M5 1 L9.5 9 L0.5 9 Z" : "M0.5 1 L9.5 1 L5 9 Z"}" fill="${color}"/></svg>`;
+
+// "($241.66) vs June 2026 (-1.5%)" → chip "▼ $241.66" + "vs June 2026 (-1.5%)". Direction comes from
+// the sign the app already formatted; whether it is good uses the metric's own direction.
+function changeChip(text, higherIsBetter) {
+  const m = /^(\(?[+\-]?\$[\d,.]+\)?)\s+(vs\s.*)$/.exec(String(text ?? ""));
+  if (!m) return `<span>${esc(text)}</span>`;
+  const amount = m[1], down = /^\(|^-/.test(amount), zero = /^\$?0\.00$|^\+?\$0\.00$/.test(amount.replace(/[()+-]/g, ""));
+  const cls = zero ? "flat" : (down !== higherIsBetter ? "good" : "bad");
+  return `<span class="chip ${cls}">${zero ? "" : triangle(!down, cls === "good" ? "#135E5E" : "#B23A48")}${esc(amount.replace(/[()+]/g, ""))}</span><span>${esc(m[2])}</span>`;
+}
+
 function table(columns, rows, opts = {}) {
   const head = columns.map((c, i) => `<th class="${i === 0 ? "" : "num"}">${esc(c)}</th>`).join("");
   const body = rows.map((r) => `<tr class="${r.total ? "total" : ""}">${r.cells.map((c, i) =>
@@ -124,6 +137,69 @@ table.impact td:nth-child(3){white-space:normal;text-align:left}
 table.checks td:nth-child(2){white-space:nowrap;width:12%}
 .flow{break-before:auto;margin-top:6pt}
 .appendix-banner{font-size:8pt;font-weight:700;letter-spacing:1.4pt;text-transform:uppercase;color:var(--teal);border-top:4pt solid var(--navy);padding-top:6pt;margin-bottom:-4pt}
+
+/* ——— 2026-10-03 redesign (Figma "Voice Ledger — Monthly Report redesign", Option A cover + Option B summary) ——— */
+@page :first{margin-top:0}
+.band{margin:-8pt -0.7in 0;padding:34pt 0.7in 20pt;background:var(--navy);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.band .firm{color:#9FD3D3;font-size:7.6pt}
+.band>div:first-child{flex:1;min-width:0}
+.band .title{white-space:nowrap;font-size:21pt;font-weight:700;letter-spacing:-0.3pt;margin:2pt 0 2pt}
+.band .sub{font-size:8.6pt;color:#C7D0DE}
+.band .badge{background:var(--gold);color:var(--navy);font-size:7pt;font-weight:700;letter-spacing:0.8pt;padding:3pt 8pt;border-radius:999pt;white-space:nowrap}
+.metaline{font-size:7.6pt;color:var(--muted);margin:7pt 0 0}
+.metaline b{color:var(--ink);font-weight:600}
+.hero{display:flex;gap:22pt;align-items:flex-end;margin:18pt 0 14pt;break-inside:avoid}
+.hero-l .lbl,.stat .lbl,.panel .lbl{font-size:7.6pt;font-weight:600;letter-spacing:1pt;text-transform:uppercase;color:var(--muted)}
+.hero-l .big{font-size:44pt;font-weight:700;letter-spacing:-1.2pt;line-height:1.05;margin:2pt 0 4pt}
+.hero-l .big.neg{color:var(--neg)}
+.hero-l .cmp{font-size:8.8pt;color:var(--muted)}
+.hero-r{flex:1;background:#E3F2F2;color:#135E5E;border-radius:8pt;padding:9pt 12pt}
+.hero-r .s{font-size:8pt}.hero-r .v{font-size:14pt;font-weight:600;margin:1pt 0}
+.chip{display:inline-block;font-size:7.6pt;font-weight:600;padding:1.5pt 6pt;border-radius:999pt;margin-right:4pt;white-space:nowrap}
+.chip.good{background:#E3F2F2;color:#135E5E}.chip.bad{background:#F7E1E4;color:var(--neg)}.chip.flat{background:#ECEFF3;color:var(--muted)}
+.chip svg{width:6pt;height:6pt;vertical-align:0.2pt;margin-right:2pt}
+.stats{display:flex;gap:9pt;margin:0 0 14pt;break-inside:avoid}
+.stat{flex:1;background:var(--soft);border-radius:8pt;padding:9pt 11pt}
+.stat .v{font-size:15pt;font-weight:700;margin:2pt 0 3pt}
+.stat .v.neg{color:var(--neg)}
+.stat .c{font-size:7.6pt;color:var(--muted)}
+.legend{display:flex;gap:14pt;align-items:center;font-size:8pt;margin-bottom:2pt}
+.legend b{font-size:10pt;color:var(--ink);margin-right:4pt}
+.legend .sw{display:inline-block;width:12pt;height:2.5pt;border-radius:2pt;vertical-align:2pt;margin-right:4pt}
+ol.tk{list-style:none;margin:4pt 0 12pt;padding:0;counter-reset:tk}
+ol.tk li{counter-increment:tk;position:relative;padding:3pt 0 3pt 22pt;font-size:9.4pt}
+ol.tk li:before{content:counter(tk);position:absolute;left:0;top:3pt;width:14pt;height:14pt;border-radius:7pt;background:var(--navy);color:#fff;font-size:7.5pt;font-weight:700;text-align:center;line-height:14pt}
+.strip{display:flex;gap:7pt;break-inside:avoid}
+.pill{flex:1;border:1pt solid var(--teal);background:#E3F2F2;border-radius:7pt;padding:6pt 9pt}
+.pill .a{font-size:7.4pt;color:var(--muted)}.pill .s{font-size:9pt;font-weight:600;color:#135E5E}
+.pill.attention{border-color:#C9A227;background:#FBF1D9}.pill.attention .s{color:#6E5812}
+.pill.low{border-color:var(--neg);background:#F7E1E4}.pill.low .s{color:var(--neg)}
+.pill.insufficient{border-color:#9AA5B4;background:#ECEFF3}.pill.insufficient .s{color:var(--muted)}
+.panels{display:flex;gap:12pt;margin:4pt 0 12pt;break-inside:avoid}
+.panel{flex:1;border:1pt solid var(--line);border-radius:8pt;padding:9pt 11pt;min-width:0}
+.panel h3{margin:0 0 5pt}
+.hrow{border-top:0.6pt solid var(--line);padding:5pt 0}
+.hrow .top{display:flex;justify-content:space-between;align-items:center;gap:6pt}
+.hrow .n{font-weight:600;font-size:9pt}.hrow .d{font-size:7.8pt;color:var(--muted);line-height:1.3;margin-top:1pt}
+.tagp{font-size:6.6pt;font-weight:700;letter-spacing:0.5pt;text-transform:uppercase;padding:1.5pt 6pt;border-radius:999pt;background:#E3F2F2;color:#135E5E;white-space:nowrap}
+.tagp.attention{background:#FBF1D9;color:#6E5812}.tagp.low{background:#F7E1E4;color:#8A2433}.tagp.insufficient{background:#ECEFF3;color:var(--muted)}
+.bar{margin:0 0 6pt}.bar .top{display:flex;justify-content:space-between;font-size:8pt}.bar .top b{font-weight:600}
+.bar .track{height:5.5pt;background:var(--soft);border-radius:3pt;margin-top:2pt}.bar .fill{height:5.5pt;border-radius:3pt;background:var(--teal)}
+.bar .fill.other{background:#A9B8C9}
+.prow{display:flex;gap:10pt;align-items:flex-start;padding:6pt 0;border-bottom:0.6pt solid var(--line);break-inside:avoid}
+.prow .no{flex:0 0 14pt;height:14pt;border-radius:7pt;background:var(--navy);color:#fff;font-size:7.5pt;font-weight:700;text-align:center;line-height:14pt}
+.prow .act{flex:1}.prow .act b{font-weight:600}.prow .act div{font-size:7.8pt;color:var(--muted)}
+.prow .who{flex:0 0 70pt;font-size:8pt;color:var(--muted)}.prow .when{flex:0 0 96pt;font-size:8pt;color:var(--muted)}.prow .imp{flex:0 0 120pt;font-size:8pt}
+/* refreshed look carried through every section */
+h2{border-bottom:0.8pt solid var(--line)}
+h2 .num{display:inline-block;background:var(--navy);color:#fff;border-radius:999pt;padding:0 6pt;font-size:8.5pt;line-height:13pt;vertical-align:1.5pt;margin-right:7pt}
+.story{border:none;background:var(--soft);border-left:3pt solid var(--teal);border-radius:6pt}
+.kpi{border-radius:7pt}
+.counts>div{border:none;background:var(--soft);border-radius:7pt}
+.note{border-radius:6pt}
+.tag{border-radius:999pt;padding:1pt 6pt}
+.work{border-radius:7pt}
+tr.total td{background:#EEF2F6}
 `;
 }
 
@@ -184,25 +260,46 @@ export function renderHTML(report, charts, fontDir) {
 
   // ——— Client summary ———
 
-  // 1 — Month at a glance
+  // 1 — Month at a glance (cover: Option A of the Figma redesign)
+  const kpi = Object.fromEntries((report.kpis ?? []).map((k) => [k.id, k]));
+  const better = Object.fromEntries((report.sparklines?.rows ?? []).map((r) => [r.id, r.higherIsBetter]));
+  const hib = (id) => better[id] ?? id !== "expenses";
+  const net = kpi.net, bridge0 = report.performanceBridge;
+  // Without a bookkeeping adjustment, the aside shows the month's profit margin (already
+  // computed in the snapshot's trend), and says plainly when the month isn't finished.
+  const heroAside = () => {
+    const lastPt = report.trend?.points?.at(-1);
+    const margin = lastPt && lastPt.period === m.periodKey && lastPt.marginPercent != null ? lastPt.marginPercent : null;
+    if (margin == null && !m.isPartialMonth) return "";
+    return `<div class="hero-r">${margin != null ? `<div class="v">${esc(margin)}% profit margin</div><div class="s">Net income as a share of revenue.</div>` : ""}${m.isPartialMonth ? `<div class="s">Month in progress: figures run through ${esc(m.balanceDateLabel.replace("Balances as of ", ""))}, so they will grow before the month closes.</div>` : ""}</div>`;
+  };
+  const stat = (k) => k ? `<div class="stat"><div class="lbl">${esc(k.label)}</div><div class="v${k.isNegative ? " neg" : ""}">${esc(k.valueText)}</div><div class="c">${changeChip(k.comparisonText, hib(k.id))}</div></div>` : "";
   sections.push(`
-<div class="masthead"><div class="firm">${esc(m.firmName)}</div>
-<h1>Monthly Financial Report</h1>
-<div style="font-size:12pt;font-weight:600">${esc(m.clientName)} · ${esc(m.periodLabel)}${m.isPartialMonth ? " (month in progress)" : ""}</div>
-<div class="meta"><span>Prepared by <b>${esc(report.preparedBy || m.firmName)}</b></span><span>Generated <b>${esc(m.generatedAtLabel)}</b></span><span>Accounting basis <b>${esc(m.accountingBasis)}</b></span><span><b>${esc(m.balanceDateLabel)}</b></span></div>
-${flag ? `<div class="flag">${esc(flag)}</div>` : ""}</div>
-${h2("Your month at a glance")}
-${kpiCards(report.kpis)}
-${charts.sparklines ? `<figure class="keep" style="margin-top:8pt">${svgImg(charts.sparklines, "Twelve-month trends for revenue, expenses, net income and cash")}<div class="caption">12-month trend, ${esc(report.sparklines.rangeLabel)}. The dot marks this month: teal helped, red hurt, compared with last month.</div></figure>` : ""}
-${report.takeaways?.length ? `<ul class="takeaways">${report.takeaways.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
-${report.healthChecks?.length ? `<h3>Business health check</h3><div class="health">${report.healthChecks.map((h) => `<div class="hc ${esc(h.statusKind)}"><div class="area">${esc(h.area)}</div><div class="q">${esc(h.question)}</div><div class="st">${esc(h.status)}</div><div class="d">${esc(h.detail)}</div></div>`).join("")}</div>` : ""}`);
+<div class="band"><div><div class="firm">${esc(m.firmName)}</div>
+<div class="title">${esc(m.periodLabel)} Financial Report</div>
+<div class="sub">${esc(m.clientName)} · ${m.isPartialMonth ? "Month in progress · " : ""}${esc(m.balanceDateLabel)}</div></div>
+${flag ? `<span class="badge">${m.isSample ? "SAMPLE DATA" : "SANDBOX DATA"}</span>` : ""}</div>
+<div class="metaline">Prepared by <b>${esc(report.preparedBy || m.firmName)}</b> · Generated <b>${esc(m.generatedAtLabel)}</b> · Accounting basis <b>${esc(m.accountingBasis)}</b>${flag ? ` · ${esc(flag)}` : ""}</div>
+${net ? `<div class="hero"><div class="hero-l"><div class="lbl">${esc(net.label)}</div><div class="big${net.isNegative ? " neg" : ""}">${esc(net.valueText)}</div><div class="cmp">${changeChip(net.comparisonText, hib("net"))}</div></div>
+${bridge0 ? `<div class="hero-r"><div class="s">Before the ${esc(bridge0.adjustmentsText)} bookkeeping adjustment</div><div class="v">${esc(bridge0.beforeAdjustmentsText)} operating result</div><div class="s">The adjustment is under review, not day-to-day spending.</div></div>`
+  : heroAside()}</div>` : ""}
+<div class="stats">${stat(kpi.revenue)}${stat(kpi.expenses)}${stat(kpi.cash)}</div>
+${charts.trendArea ? `<figure class="keep"><div class="legend"><b>Trend</b><span><span class="sw" style="background:#1F8A8A"></span>Revenue</span><span><span class="sw" style="background:#C9A227"></span>Expenses</span></div>${svgImg(charts.trendArea, "Revenue and expenses by month")}<div class="caption">${esc(report.trend?.points?.slice(-13)[0]?.label ?? "")} – ${esc(report.trend?.points?.at(-1)?.label ?? "")}. The dot marks this month${m.isPartialMonth ? ", which is still in progress, so its drop is partly just fewer days" : ""}.</div></figure>` : ""}
+${report.takeaways?.length ? `<h3>What matters this month</h3><ol class="tk">${report.takeaways.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>` : ""}
+${report.healthChecks?.length ? `<div class="strip">${report.healthChecks.map((h) => `<div class="pill ${esc(h.statusKind)}"><div class="a">${esc(h.area)}</div><div class="s">${esc(h.status)}</div></div>`).join("")}</div>` : ""}`);
 
   // 2 — Priorities, questions, where things stand
   const prio = report.priorities ?? [];
   const impact = report.workImpact ?? [];
-  sections.push(`<div class="page">${h2("Priorities and bookkeeping status")}
-<p class="lede">The things that matter most before next month's close.</p>
-${prio.length ? `<table class="prio"><thead><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th><th>Expected impact</th></tr></thead><tbody>${prio.map((p) => `<tr><td><div class="pa">${esc(p.action)}</div><div class="small muted">${esc(p.why)}</div></td><td>${esc(p.owner)}</td><td>${esc(p.timing)}</td><td>${esc(p.status ?? "Open")}</td><td>${esc(p.impact ?? "")}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No priority actions this month.</p>`}
+  const spendItems = (report.expenses?.items ?? []).slice(0, 7);
+  const spendMax = Math.max(...spendItems.map((i) => Math.abs(i.value)), 0) || 1;
+  sections.push(`<div class="page">${h2("Health, spending and priorities")}
+<div class="panels">
+${report.healthChecks?.length ? `<div class="panel"><h3>Business health check</h3>${report.healthChecks.map((h) => `<div class="hrow"><div class="top"><span class="n">${esc(h.area)}</span><span class="tagp ${esc(h.statusKind)}">${esc(h.status)}</span></div><div class="d">${esc(h.detail)}</div></div>`).join("")}</div>` : ""}
+${spendItems.length ? `<div class="panel"><h3>Where the money went</h3>${spendItems.map((i) => `<div class="bar"><div class="top"><span>${esc(i.label)}</span><b>${esc(i.valueText)}</b></div><div class="track"><div class="fill${i.category === "other" ? " other" : ""}" style="width:${(100 * Math.abs(i.value) / spendMax).toFixed(1)}%"></div></div></div>`).join("")}<p class="small muted">Operating expenses ${esc(report.expenses.totalText)}; full detail in Where the money went.</p></div>` : ""}
+</div>
+<h3>Top priorities before next close</h3>
+${prio.length ? prio.map((p, i) => `<div class="prow"><div class="no">${i + 1}</div><div class="act"><b>${esc(p.action)}</b><div>${esc(p.why)}</div></div><div class="who">${esc(p.owner)}</div><div class="when">${esc(p.timing)}</div><div class="imp">${esc(p.impact ?? "")}</div></div>`).join("") : `<p class="muted">No priority actions this month.</p>`}
 <h3>Questions for you</h3>
 ${report.questionsForClient?.length ? `<ul class="findings">${report.questionsForClient.map((q) => `<li><span class="tag r">Question</span>${esc(q)}</li>`).join("")}</ul>` : `<p class="muted small">No open questions.</p>`}
 ${counts ? `<h3>Where the bookkeeping stands</h3><div class="counts six">${counts}</div><p class="small muted">Every page of this report uses these same counts. Details: work log (Appendix A) and open items (Appendix B).</p>` : ""}
@@ -220,7 +317,7 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
   if (report.monthOverMonth.length) perf.push(`<h3>Compared with last month</h3>${comparisonTable(report.monthOverMonth, "Last month")}`);
   if (report.ytd?.length) perf.push(`<div class="keep"><h3>Year to date</h3><p class="small muted">${esc(report.ytdLabel)}</p>${table(["", "This month", "Year to date"], report.ytd.map((r) => ({ total: r.isTotal, cells: [r.label, r.currentText, r.priorText] })))}</div>`);
   if (report.yearOverYear) perf.push(`<h3>Compared with the same month last year</h3>${comparisonTable(report.yearOverYear, "Last year")}`);
-  if (perf.length) sections.push(`<div class="page">${h2("Profitability")}${story(N.performance)}${perf.join("\n")}</div>`);
+  if (perf.length) sections.push(`<div class="flow">${h2("Profitability")}${story(N.performance)}${perf.join("\n")}</div>`);
 
   // 4 — Where the money went (flows on from the previous page)
   const exp = report.expenses;

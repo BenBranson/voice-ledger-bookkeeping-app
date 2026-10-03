@@ -59,6 +59,7 @@ try {
   const expensesHeight = report.expenses ? Math.max(110, 24 * report.expenses.items.length + 12) : 0;
   charts = {
     trendMixed: report.trend ? svg("trendMixed", report.trend, 720, 210) : null,
+    trendArea: report.trend ? svg("trendArea", report.trend, 720, 190) : null,
     sparklines: report.sparklines ? svg("sparklines", report.sparklines, 720, 30 * report.sparklines.rows.length + 8) : null,
     moneyFlow: report.moneyFlow ? svg("moneyFlow", report.moneyFlow, 720, 290) : null,
     trendNetIncome: report.trend ? svg("trendNetIncome", report.trend, 720, 140) : null,

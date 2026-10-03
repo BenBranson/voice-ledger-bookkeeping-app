@@ -1567,3 +1567,18 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - `Money.exposureText` shows "—" for a zero-dollar finding.
   - **Rule ages now count to the period end for a finished month** (`RuleContext.asOfDate = agingAsOf`), in both the app and the devtool. Before, ages counted to today while deposits were loaded only through the month end, so a payment deposited the next month was flagged as aging. Affects VL-BS-UNDEP-001 and unapplied vendor credits.
 - **Open:** an in-progress month is compared with the full prior month ("Revenue down 90.9%" on Oct 3). It should compare the same number of days, or say it's partial and drop the percentage.
+
+## 2026-10-03: v1.82, monthly report redesign from Figma
+
+- **Figma file:** "Voice Ledger — Monthly Report redesign", https://www.figma.com/design/pCfBrchE7coYfyx9eJaYkK (owner's Starter team; the API can write to it despite the "View" seat). Option A is Executive, Option B is Dashboard.
+- **What ships:** Option A became the cover, and Option B's health check, spending bars and priorities became page 2 ("Health, spending and priorities"). The owner hadn't picked between A and B, so this was my recommendation; it's easy to swap.
+- **Code:** `report-renderer/template.mjs`:
+  - Cover: navy band (first page has no top margin; the band uses negative margins to bleed), hero net figure, three stat cards, and 3 numbered takeaways.
+  - `trendArea` chart, a new builder in `shared/vl-charts.js`.
+  - Health strip of pills.
+  - `changeChip()` turns the app's pre-formatted comparison text into an arrow chip. Arrow direction comes from the formatted sign; good or bad comes from the sparkline row's `higherIsBetter`. The arrows are inline SVG triangles because the Inter subset has no ▲▼ glyphs.
+  - Without a performance bridge, the hero aside shows the margin from `trend.points.last.marginPercent` plus a month-in-progress note.
+  - Refreshed look throughout: section numbers in navy pills, softer story boxes, rounded cards.
+  - Profitability now flows instead of forcing a page break, which removed a near-empty page.
+- **Test:** `test/render.test.mjs` "cover: hero, change chips and trend area".
+- **Still open:** a partial month is compared with a full prior month (see the earlier entry). The cover now warns about it, but the comparisons themselves aren't fixed.

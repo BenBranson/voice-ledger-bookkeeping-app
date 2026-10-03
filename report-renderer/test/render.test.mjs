@@ -73,3 +73,26 @@ test("new chart types render as SVG in print and build interactive options in da
     chart.dispose();
   }
 });
+
+// 2026-10-03 cover redesign (Figma Option A): hero net figure, change chips colored by
+// whether the move helped, the trend-area chart, and a partial-month note.
+test("cover: hero, change chips and trend area", () => {
+  const r = structuredClone(sample);
+  const html = renderHTML(r, { trendArea: "<svg></svg>" }, "/fonts");
+  assert.match(html, /class="band"/);
+  assert.match(html, /class="hero"/);
+  assert.match(html, /What matters this month/);
+  const expenses = r.kpis.find((k) => k.id === "expenses");
+  expenses.comparisonText = "+$100.00 vs June 2026 (+5.0%)";
+  const revenue = r.kpis.find((k) => k.id === "revenue");
+  revenue.comparisonText = "+$100.00 vs June 2026 (+5.0%)";
+  const h2 = renderHTML(r, {}, "/fonts");
+  // Expenses rising is bad; revenue rising is good.
+  const chips = [...h2.matchAll(/<div class="stat"><div class="lbl">([^<]+)<\/div>.*?class="chip (good|bad|flat)"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(Object.fromEntries(chips).Expenses, "bad");
+  assert.deepEqual(Object.fromEntries(chips).Revenue, "good");
+  r.meta.isPartialMonth = true; r.performanceBridge = null;
+  assert.match(renderHTML(r, {}, "/fonts"), /Month in progress/);
+  const svg = (() => { const c = echarts.init(null, null, { renderer: "svg", ssr: true, width: 720, height: 190 }); c.setOption(VL.builders.trendArea(r.trend ?? { points: [{ label: "Jul 2026", revenue: 1, expenses: 1 }] }, VL.themes.print, {})); const out = c.renderToSVGString(); c.dispose(); return out; })();
+  assert.match(svg, /^<svg/);
+});

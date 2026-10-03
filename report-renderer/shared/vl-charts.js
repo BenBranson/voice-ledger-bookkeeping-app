@@ -345,6 +345,27 @@
     });
   }
 
+  // Report cover (2026-10-03 redesign, Option A): revenue as a soft area,
+  // expenses as a dashed line, last point marked. Values come straight from
+  // the snapshot; nothing is computed here.
+  function trendArea(data, theme, opts) {
+    opts = opts || {};
+    const pts = data.points.slice(-13);
+    const last = pts.length - 1;
+    const dot = function (color) { return function (p, i) { return i === last ? { value: p, symbol: "circle", symbolSize: 8, itemStyle: { color: color } } : p; }; };
+    return Object.assign(base(theme, opts.reducedMotion), {
+      grid: { left: 4, right: 10, top: 8, bottom: 4, containLabel: true },
+      xAxis: categoryAxis(theme, pts.map(function (p) { return shortMonth(p.label); }), { boundaryGap: false, axisLabel: { color: theme.muted, fontFamily: theme.font, fontSize: 9 } }),
+      yAxis: valueAxis(theme),
+      series: [
+        { name: "Revenue", type: "line", smooth: false, showSymbol: false, lineStyle: { color: theme.palette[1], width: 2.5 },
+          areaStyle: { color: theme.palette[1], opacity: 0.12 }, data: pts.map(function (p) { return p.revenue; }).map(dot(theme.palette[1])) },
+        { name: "Expenses", type: "line", smooth: false, showSymbol: false, lineStyle: { color: theme.palette[2], width: 2.5, type: [6, 4] },
+          data: pts.map(function (p) { return p.expenses; }).map(dot(theme.palette[2])) }
+      ]
+    });
+  }
+
   function trendNetIncome(data, theme, opts) {
     opts = opts || {};
     const pts = data.points;
@@ -619,7 +640,7 @@
     });
   }
 
-  const builders = { insightChart, breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars, moneyFlow, sparklines, trendMixed, postingCalendar, expenseTreemap };
+  const builders = { trendArea, insightChart, breakdownDoughnut, breakdownDiverging, waterfall, rankedBars, trendRevenueExpenses, trendNetIncome, agingBars, moneyFlow, sparklines, trendMixed, postingCalendar, expenseTreemap };
 
   return { themes, builders, colorFor, esc, money, NEGATIVE_CATEGORIES };
 });
