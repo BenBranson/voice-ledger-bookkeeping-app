@@ -92,7 +92,7 @@ extension VoiceEngine {
         ),
         tool(
             name: "generate_chart",
-            description: "Generate and display a chart popup for this client, using real already-computed data. \"expense_drivers\" and \"pareto_cost_drivers\" chart expense categories for the loaded period; \"vendor_spend\" charts top vendors by spend for the loaded period; \"income_vs_expenses\" charts revenue vs. expenses vs. net income as a waterfall; \"receivables\" and \"payables\" show who owes us and what we owe by age; \"cash_outlook\" shows the 13-week cash projection; \"revenue_trend\" and \"net_income_trend\" show the last 12 months.",
+            description: "Generate and display a chart popup for this client, using real already-computed data. \"expense_drivers\" and \"pareto_cost_drivers\" chart expense categories for the loaded period; \"vendor_spend\" charts top vendors by spend for the loaded period; \"income_vs_expenses\" shows revenue, each cost total and net income as a plain from-sales-to-profit list; \"receivables\" and \"payables\" show who owes us and what we owe by age; \"cash_outlook\" shows the 13-week cash projection; \"revenue_trend\" and \"net_income_trend\" show the last 12 months.",
             properties: [
                 "kind": .object([
                     "type": .string("string"),

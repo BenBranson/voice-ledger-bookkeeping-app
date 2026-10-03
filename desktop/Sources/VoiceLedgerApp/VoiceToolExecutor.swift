@@ -422,10 +422,10 @@ extension VoiceEngine {
                 let rev = card.rows.first { $0.id == "inc" }?.amountText ?? "", exp = card.rows.first { $0.id == "exp" }?.amountText ?? ""
                 return ("\(ClientFacts.periodLabel(appState.period)): revenue \(rev), expenses \(exp), net income \(card.headline ?? "").", .presentChart(.insight(card)))
             }
-            guard let segments = ProfitAndLossWaterfall.segments(from: appState.profitAndLossLines) else {
+            guard let steps = ChartData.moneySteps(from: appState.profitAndLossLines) else {
                 return ("Income vs. expenses data isn't available to chart for the loaded period.", nil)
             }
-            let request: ChartRequest = .incomeVsExpenses(title: "Income vs. Expenses", segments: segments)
+            let request: ChartRequest = .incomeVsExpenses(title: "From sales to profit", steps: steps)
             let action: VoiceUIAction = .presentChart(request)
             return ("Showing income versus expenses for the loaded period.", action)
         default:

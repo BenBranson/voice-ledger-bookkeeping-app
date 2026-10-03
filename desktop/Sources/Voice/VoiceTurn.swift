@@ -52,7 +52,7 @@ public enum ChartRequest: Equatable, Sendable {
     case expenseDrivers(title: String, drivers: [TopExpenseDrivers.Driver])
     case vendorSpend(title: String, vendors: [VendorSpendSummary.VendorTotal])
     case paretoCostDrivers(title: String, drivers: [TopExpenseDrivers.Driver])
-    case incomeVsExpenses(title: String, segments: [ProfitAndLossWaterfall.Segment])
+    case incomeVsExpenses(title: String, steps: MoneyStepList)
     /// A card with chart, rows, QBO links and recommendations (2026-10-02).
     case insight(InsightCard)
 }

@@ -11,7 +11,7 @@ import DesignSystem
 ///
 /// Deliberately composes components that already exist rather than
 /// reimplementing them: `KPICardRow`/`BalanceBreakdownCard`/
-/// `ProfitAndLossWaterfallChart`/`ExpenseDriverBarChart` are the exact
+/// `SalesToProfitList`/`ExpenseDriverBarChart` are the exact
 /// views `BalanceSheetReportView`/`ProfitAndLossReportView` already use —
 /// same computed data (`FinancialKPIs`, `BalanceSheetBreakdown`,
 /// `ProfitAndLossWaterfall`, `TopExpenseDrivers`), just on one screen
@@ -263,7 +263,7 @@ public struct ClientDashboardView: View {
                     }
                     if !state.profitAndLossLines.isEmpty {
                         KPICardRow(cards: profitAndLossKPICards)
-                        WaterfallCard(data: ChartData.waterfall(from: state.profitAndLossLines))
+                        SalesToProfitCard(list: ChartData.moneySteps(from: state.profitAndLossLines))
                         MoneyFlowCard(data: ChartData.moneyFlow(from: state.profitAndLossLines, hubLabel: "This period", topExpenses: 6), actions: chartActions)
                         ExpenseCategoriesCard(data: ChartData.expenseCategories(from: state.profitAndLossLines, top: 6), actions: chartActions)
                     }

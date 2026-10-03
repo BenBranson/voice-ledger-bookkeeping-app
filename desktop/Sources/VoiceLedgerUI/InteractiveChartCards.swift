@@ -262,54 +262,82 @@ public struct BalanceBreakdownCard: View {
     }
 }
 
-// MARK: - Waterfall
+// MARK: - From sales to profit
 
-public struct WaterfallCard: View {
-    let data: WaterfallData?
-    @State private var selectedID: String?
+/// Replaced the floating-bar waterfall (owner, 2026-10-03: "hard to understand
+/// and read"). Money in at the top, each cost with a minus sign, what's left at
+/// the bottom; bars only show relative size. Rows come computed from Core.
+public struct SalesToProfitCard: View {
+    let list: MoneyStepList?
 
-    public init(data: WaterfallData?) { self.data = data }
+    public init(list: MoneyStepList?) { self.list = list }
 
     public var body: some View {
         VLCard {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
-                Eyebrow(text: "Revenue to \(data?.steps.last?.label.lowercased() ?? "net income")")
-                if let w = data, ChartAssets.directory != nil {
-                    let summary = w.steps.map { "\($0.label) \($0.valueText)" }.joined(separator: ", then ")
-                    EChartView(kind: "waterfall", data: w, allowedIDs: Set(w.steps.map(\.id)), selectedID: selectedID, summary: summary) { selectedID = $0 }
-                        .frame(height: 250)
-                    HStack(spacing: VLSpacing.xs) {
-                        ForEach(w.steps) { step in
-                            Button { selectedID = selectedID == step.id ? nil : step.id } label: {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(step.label).foregroundStyle(VLColor.textMuted).lineLimit(1)
-                                    Text(step.valueText).foregroundStyle(VLColor.textPrimary)
-                                }
-                                .font(VLTypography.caption())
-                                .monospacedDigit()
-                                .padding(5)
-                                .background(step.id == selectedID ? VLColor.cyan.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 5))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(step.label) \(step.valueText)")
-                        }
-                    }
-                    if let id = selectedID, let step = w.steps.first(where: { $0.id == id }) {
-                        Text(step.kind == "total"
-                             ? "\(step.label): \(step.valueText), measured from zero."
-                             : "\(step.label): \(step.valueText), taking the running total from \(Money(minorUnits: Int64((step.from * 100).rounded()), currency: .usd).accountingDescription) to \(Money(minorUnits: Int64((step.to * 100).rounded()), currency: .usd).accountingDescription).")
-                            .font(VLTypography.caption())
-                            .foregroundStyle(VLColor.textSecondary)
-                    }
-                    Text(w.reconciles ? "Uses QuickBooks' own section totals; ties exactly to reported net income." : (w.note ?? ""))
-                        .font(VLTypography.caption())
-                        .foregroundStyle(w.reconciles ? VLColor.textMuted : .orange)
+                Eyebrow(text: "From sales to profit")
+                if let list {
+                    SalesToProfitList(list: list)
                 } else {
-                    ChartUnavailable(message: data == nil ? "Not available — the P&L has no Total Income or Net Income for this period." : "Chart files are missing — run \"npm install\" in report-renderer.")
+                    ChartUnavailable(message: "Not available — the P&L has no Total Income or Net Income for this period.")
                 }
             }
         }
-        .onChange(of: data) { _, _ in reconcileSelection(&selectedID, validIDs: Set(data?.steps.map(\.id) ?? [])) }
+    }
+}
+
+/// The rows alone, for the card above and the voice chart popup.
+public struct SalesToProfitList: View {
+    let list: MoneyStepList
+
+    public init(list: MoneyStepList) { self.list = list }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: VLSpacing.sm) {
+            ForEach(list.steps) { step in
+                let isResult = step.kind == .profit || step.kind == .loss
+                if isResult { Divider().overlay(VLColor.border) }
+                HStack(alignment: .center, spacing: VLSpacing.sm) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text((isResult ? "= " : "") + step.name)
+                            .font(isResult ? VLTypography.body().weight(.semibold) : VLTypography.body())
+                            .foregroundStyle(VLColor.textPrimary)
+                        if let hint = step.hint {
+                            Text(hint).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                        }
+                    }
+                    .frame(width: 230, alignment: .leading)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(VLColor.surfaceInset)
+                            Capsule().fill(color(step.kind)).frame(width: max(3, geo.size.width * step.barFraction))
+                        }
+                    }
+                    .frame(height: isResult ? 12 : 9)
+                    Text(step.amountText)
+                        .font(isResult ? VLTypography.body().weight(.semibold) : VLTypography.body())
+                        .monospacedDigit()
+                        .foregroundStyle(step.kind == .loss ? .red : VLColor.textPrimary)
+                        .frame(width: 120, alignment: .trailing)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if let sentence = list.perDollarSentence {
+                Text(sentence).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
+            }
+            Text(list.tieNote)
+                .font(VLTypography.caption())
+                .foregroundStyle(VLColor.textMuted)
+        }
+    }
+
+    private func color(_ kind: MoneyStep.Kind) -> Color {
+        switch kind {
+        case .moneyIn: return VLColor.teal
+        case .moneyOut: return Color(red: 0xC9 / 255, green: 0xA2 / 255, blue: 0x27 / 255)
+        case .profit: return VLColor.teal
+        case .loss: return .red
+        }
     }
 }
 

@@ -116,6 +116,23 @@ struct MonthlyReportIntegrityTests {
                       "Amazon Business, $129.99: what was this for, so it can go in the right category?"])
     }
 
+    @Test("From sales to profit: plain names, minus signs, profit per dollar")
+    func moneySteps() throws {
+        let pnl = [line("Sales", 1_552_248, id: "i"), sum("Total Income", 1_552_248), line("Materials", 16_000, id: "c"), sum("Total Cost of Goods Sold", 16_000),
+                   sum("Gross Profit", 1_536_248), line("Fuel", 1_276_812, id: "e"), sum("Total Expenses", 1_276_812),
+                   line("Interest", 11_125, id: "x"), sum("Total Other Expenses", 11_125), sum("Net Income", 248_311)]
+        let list = try #require(ChartData.moneySteps(from: pnl))
+        #expect(list.steps.map(\.name) == ["Money in (sales)", "Cost of goods sold", "Costs of running the business", "Other costs (interest, fees)", "Money left over (profit)"])
+        #expect(list.steps.map(\.amountText) == ["+$15,522.48", "-$160.00", "-$12,768.12", "-$111.25", "$2,483.11"])
+        #expect(list.steps.first?.barFraction == 1)
+        #expect(list.perDollarSentence == "Out of every $1 in sales, 16¢ was left over as profit.")
+        #expect(list.tieNote.hasPrefix("Each line is a QuickBooks total"))
+        let loss = try #require(ChartData.moneySteps(from: julyPnL))
+        #expect(loss.steps.last?.name == "Money lost this month")
+        #expect(loss.steps.last?.amountText == "-$4,262.78")
+        #expect(loss.steps.last?.kind == .loss)
+    }
+
     @Test("Bank + undeposited funds ties to the cash-flow statement's ending cash")
     func cashTie() throws {
         let bs = [sum("Total Bank Accounts", -455_678), line("Undeposited Funds", 286_252)]

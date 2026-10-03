@@ -1607,3 +1607,7 @@ Verified each claim against the rendered PDFs before changing anything.
 Also: "(plus ($1,050.00) in customer credits)" now reads "plus $1,050.00 in customer credits".
 
 Follow-up (same day, checked against the owner's downloaded v1.85 PDFs): every fix above showed correctly, but the two new questions pushed the summary to 3 pages. Fix: in summary mode the six counts sit in one row, the "this is your 2-page summary" line moved into the cover meta line, and at most 3 questions are listed ("N more in the full report"). Re-rendered September summary = 2 pages. Credit amounts in sentences now use `AgingSplit.creditsProseText` (positive, no brackets) everywhere.
+
+## 2026-10-03 — v1.86: the app's waterfall chart is gone too
+
+Owner: the app's waterfall was "hard to understand and read" (same reason it left the PDF in v1.83). `SalesToProfitCard` / `SalesToProfitList` (VoiceLedgerUI) replace `WaterfallCard` on the Dashboard and the Profit & Loss page, and `ProfitAndLossWaterfallChart` in the voice "income vs expenses" popup (`ChartRequest.incomeVsExpenses` now carries a `MoneyStepList`). Rows come from Core `ChartData.moneySteps` (built on the unchanged `ChartData.waterfall` data): same names as the PDF list, "+"/"-" signs (never brackets), bars sized against the largest row, and a computed "Out of every $1 in sales, 16¢ was left over as profit." Do not bring a floating-bar waterfall back to client- or owner-facing screens.

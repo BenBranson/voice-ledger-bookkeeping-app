@@ -7,7 +7,7 @@ import DesignSystem
 /// pop up with chart for the graph im asking." Presented as a `.sheet` by
 /// `RootView`, bound to `AppState.presentedChart` — a popup, not a full
 /// page navigation, reusing this app's existing chart components
-/// (`ExpenseDriverBarChart`, `ProfitAndLossWaterfallChart`) plus
+/// (`ExpenseDriverBarChart`, `SalesToProfitList`) plus
 /// `RankedMoneyBarChart` for the two chart kinds with no dedicated
 /// component of their own. Every number rendered here was computed by
 /// `Core` before this view ever saw it — this view only lays it out.
@@ -77,8 +77,8 @@ public struct ChartPopupView: View {
             )
         case .paretoCostDrivers(_, let drivers):
             RankedMoneyBarChart(title: "Biggest Cost Drivers", entries: Self.paretoEntries(from: drivers))
-        case .incomeVsExpenses(_, let segments):
-            ProfitAndLossWaterfallChart(segments: segments)
+        case .incomeVsExpenses(_, let steps):
+            VLCard { SalesToProfitList(list: steps) }
         case .insight(let card):
             InsightCardView(card: card)
         }
