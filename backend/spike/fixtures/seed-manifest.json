@@ -28,7 +28,13 @@
     "Automobile": "55",
     "Notes Payable": "44",
     "Interest Paid": "1150040021",
-    "Owner's Draw": "1150040022"
+    "Owner's Draw": "1150040022",
+    "Office Expenses": "15",
+    "Meals and Entertainment": "13",
+    "Maintenance and Repair": "72",
+    "Sales of Product Income": "79",
+    "Cost of Goods Sold": "80",
+    "Inventory Asset": "81"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
@@ -52,7 +58,11 @@
     "Lee Advertising": "42",
     "Diego's Road Warrior Bodyshop": "36",
     "First Basin Bank": "200000051",
-    "Owner Draw": "200000061"
+    "Owner Draw": "200000061",
+    "VLT Permian Pipe & Supply": "200000071",
+    "VLT Lone Star Fuel": "200000081",
+    "VLT Amazon Business": "200000091",
+    "VLT Pest Pros": "200000101"
   },
   "purchases": {
     "VL-SPIKE-ZERO": {
@@ -1102,6 +1112,38 @@
     "VL history 2026-09 owner draw": {
       "id": "483",
       "syncToken": "0"
+    },
+    "VLT-SEP-EXP-DUP-A": {
+      "id": "819",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-DUP-B": {
+      "id": "820",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-PERSONAL": {
+      "id": "821",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-UNCAT": {
+      "id": "822",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-NOPAYEE": {
+      "id": "823",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-ANOMALY": {
+      "id": "824",
+      "syncToken": "0"
+    },
+    "VLT-AUG-EXP-PEST": {
+      "id": "825",
+      "syncToken": "0"
+    },
+    "VLT-SEP-EXP-PEST": {
+      "id": "826",
+      "syncToken": "0"
     }
   },
   "bills": {
@@ -1172,6 +1214,18 @@
     "VL history 2026-09 lumber bill": {
       "id": "497",
       "syncToken": "1"
+    },
+    "VLT-SEP-BILL-PIPE": {
+      "id": "827",
+      "syncToken": "0"
+    },
+    "VLT-SEP-BILL-DUP-A": {
+      "id": "828",
+      "syncToken": "0"
+    },
+    "VLT-SEP-BILL-DUP-B": {
+      "id": "829",
+      "syncToken": "0"
     }
   },
   "customers": {
@@ -1195,7 +1249,12 @@
     "Rondonuwu Fruit and Vegi": "21",
     "Red Rock Diner": "20",
     "Pye's Cakes": "15",
-    "Kookies by Kathy": "16"
+    "Kookies by Kathy": "16",
+    "VLT Gulf Coast Builders": "63",
+    "VLT Midland Yard": "64",
+    "VLT Odessa Shop": "65",
+    "VLT O'Brien & Sons": "66",
+    "VLT Desert Rose Cafe": "67"
   },
   "items": {
     "Design": "4",
@@ -1205,7 +1264,9 @@
     "Installation": "7",
     "Pest Control": "10",
     "Trimming": "18",
-    "Sod": "14"
+    "Sod": "14",
+    "VLT Valve Kit": "19",
+    "Hours": "2"
   },
   "invoices": {
     "VL-SPIKE-DUP-INV-A": {
@@ -1831,6 +1892,34 @@
     "VL history 2026-09 invoice 10": {
       "id": "650",
       "syncToken": "0"
+    },
+    "VLT-SEP-INV-MIDLAND": {
+      "id": "830",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-ODESSA": {
+      "id": "831",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-PARENT": {
+      "id": "832",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-OBRIEN": {
+      "id": "833",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-ROSE-TAX": {
+      "id": "834",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-ROSE-DUP-A": {
+      "id": "835",
+      "syncToken": "0"
+    },
+    "VLT-SEP-INV-ROSE-DUP-B": {
+      "id": "836",
+      "syncToken": "0"
     }
   },
   "payments": {
@@ -2413,6 +2502,10 @@
     "VL history 2026-08 payment 11": {
       "id": "792",
       "syncToken": "0"
+    },
+    "VLT-SEP-PAY-PARENT": {
+      "id": "837",
+      "syncToken": "0"
     }
   },
   "vendorCredits": {
@@ -2530,6 +2623,166 @@
     },
     "VL history 2026-08 card payoff": {
       "id": "817",
+      "syncToken": "0"
+    }
+  },
+  "owned": {
+    "scenarios-sep-2026": [
+      {
+        "entity": "Vendor",
+        "id": "200000071",
+        "key": "VLT Permian Pipe & Supply"
+      },
+      {
+        "entity": "Vendor",
+        "id": "200000081",
+        "key": "VLT Lone Star Fuel"
+      },
+      {
+        "entity": "Vendor",
+        "id": "200000091",
+        "key": "VLT Amazon Business"
+      },
+      {
+        "entity": "Vendor",
+        "id": "200000101",
+        "key": "VLT Pest Pros"
+      },
+      {
+        "entity": "Customer",
+        "id": "63",
+        "key": "VLT Gulf Coast Builders"
+      },
+      {
+        "entity": "Customer",
+        "id": "64",
+        "key": "VLT Midland Yard"
+      },
+      {
+        "entity": "Customer",
+        "id": "65",
+        "key": "VLT Odessa Shop"
+      },
+      {
+        "entity": "Customer",
+        "id": "66",
+        "key": "VLT O'Brien & Sons"
+      },
+      {
+        "entity": "Customer",
+        "id": "67",
+        "key": "VLT Desert Rose Cafe"
+      },
+      {
+        "entity": "Item",
+        "id": "19",
+        "key": "VLT Valve Kit"
+      },
+      {
+        "entity": "Purchase",
+        "id": "819",
+        "key": "VLT-SEP-EXP-DUP-A"
+      },
+      {
+        "entity": "Purchase",
+        "id": "820",
+        "key": "VLT-SEP-EXP-DUP-B"
+      },
+      {
+        "entity": "Purchase",
+        "id": "821",
+        "key": "VLT-SEP-EXP-PERSONAL"
+      },
+      {
+        "entity": "Purchase",
+        "id": "822",
+        "key": "VLT-SEP-EXP-UNCAT"
+      },
+      {
+        "entity": "Purchase",
+        "id": "823",
+        "key": "VLT-SEP-EXP-NOPAYEE"
+      },
+      {
+        "entity": "Purchase",
+        "id": "824",
+        "key": "VLT-SEP-EXP-ANOMALY"
+      },
+      {
+        "entity": "Purchase",
+        "id": "825",
+        "key": "VLT-AUG-EXP-PEST"
+      },
+      {
+        "entity": "Purchase",
+        "id": "826",
+        "key": "VLT-SEP-EXP-PEST"
+      },
+      {
+        "entity": "Bill",
+        "id": "827",
+        "key": "VLT-SEP-BILL-PIPE"
+      },
+      {
+        "entity": "Bill",
+        "id": "828",
+        "key": "VLT-SEP-BILL-DUP-A"
+      },
+      {
+        "entity": "Bill",
+        "id": "829",
+        "key": "VLT-SEP-BILL-DUP-B"
+      },
+      {
+        "entity": "Invoice",
+        "id": "830",
+        "key": "VLT-SEP-INV-MIDLAND"
+      },
+      {
+        "entity": "Invoice",
+        "id": "831",
+        "key": "VLT-SEP-INV-ODESSA"
+      },
+      {
+        "entity": "Invoice",
+        "id": "832",
+        "key": "VLT-SEP-INV-PARENT"
+      },
+      {
+        "entity": "Invoice",
+        "id": "833",
+        "key": "VLT-SEP-INV-OBRIEN"
+      },
+      {
+        "entity": "Invoice",
+        "id": "834",
+        "key": "VLT-SEP-INV-ROSE-TAX"
+      },
+      {
+        "entity": "Invoice",
+        "id": "835",
+        "key": "VLT-SEP-INV-ROSE-DUP-A"
+      },
+      {
+        "entity": "Invoice",
+        "id": "836",
+        "key": "VLT-SEP-INV-ROSE-DUP-B"
+      },
+      {
+        "entity": "Payment",
+        "id": "837",
+        "key": "VLT-SEP-PAY-PARENT"
+      },
+      {
+        "entity": "CreditMemo",
+        "id": "838",
+        "key": "VLT-SEP-CM-OBRIEN"
+      }
+    ]
+  },
+  "creditMemos": {
+    "VLT-SEP-CM-OBRIEN": {
+      "id": "838",
       "syncToken": "0"
     }
   }

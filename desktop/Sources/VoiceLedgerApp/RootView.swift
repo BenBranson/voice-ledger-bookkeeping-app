@@ -31,7 +31,9 @@ struct RootView: View {
             AppSidebar(
                 selection: sidebarSelection,
                 companyName: state.displayCompanyName,
-                periodLabel: "\(state.currentPeriod.year)-\(String(format: "%02d", state.currentPeriod.month))",
+                periodLabel: ReviewPeriod.label(state.currentPeriod),
+                periodChoices: state.periodChoices,
+                onChangePeriod: { state.changePeriod(to: $0) },
                 environmentTone: state.environment == .production ? .production : .sandbox,
                 isSyncing: state.loadState == .loading,
                 onSync: { Task { await state.syncDashboard() } },

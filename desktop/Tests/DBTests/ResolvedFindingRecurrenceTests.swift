@@ -59,7 +59,7 @@ struct ResolvedFindingRecurrenceTests {
         // Cycle 2: exclusion fires (e.g. isVoided), rule stops producing it,
         // AppState's loop calls reconcileAgainstLatestRun with an empty
         // current-run set for this rule -> resolved, logged.
-        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID)
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID, period: AccountingPeriod(year: 2026, month: 7))
         #expect(resolved.map(\.id) == ["dup-exp-recur-1"])
         #expect(try await store.loadFindings().first?.status == .resolved)
 

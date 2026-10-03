@@ -40,23 +40,44 @@ public enum VendorAnomalyRule: Rule {
         requiredCoverage: .complete
     )
 
+    /// How far back "normal for this vendor" looks when history is loaded.
+    static let historyMonths = 12
+
     public static func evaluate(_ input: NormalizedDataSet, context: RuleContext) -> RuleOutcome {
-        let candidates = input.transactions.filter { !$0.isVoided && $0.vendorName != nil }
+        // Money going out only: `vendorName` also carries the customer on invoices and payments.
+        func isVendorCharge(_ t: LedgerTransaction) -> Bool { !t.isVoided && t.vendorName != nil && (t.entityKind == .purchase || t.entityKind == .bill) }
+        let candidates = input.transactions.filter(isVendorCharge)
         var byVendor: [String: [LedgerTransaction]] = [:]
         for transaction in candidates {
             byVendor[transaction.vendorName!, default: []].append(transaction)
         }
+        // Rewritten 2026-10-02 (owner test): "normal" used to be the median of the SAME month's
+        // charges including the one being judged, so three bills in one month, two of them
+        // duplicates, made the third look 4x "normal". Now the baseline is this vendor's charges
+        // over the prior 12 months plus this month's OTHER charges, never the charge itself or
+        // its exact duplicates (same amount, same day; the duplicate rules own those).
+        var earliest = input.period
+        for _ in 0..<Self.historyMonths { earliest = earliest.previousMonth }
+        let earliestDate = AccountingDate(year: earliest.year, month: earliest.month, day: 1)
+        let periodStart = AccountingDate(year: input.period.year, month: input.period.month, day: 1)
+        var historyByVendor: [String: [Int64]] = [:]
+        for t in input.historyTransactions where isVendorCharge(t) && t.txnDate >= earliestDate && t.txnDate < periodStart {
+            historyByVendor[t.vendorName!, default: []].append(t.totalAmount.minorUnits)
+        }
 
         var findings: [Finding] = []
-        for (vendorName, group) in byVendor.sorted(by: { $0.key < $1.key }) where group.count >= minimumTransactionsForBaseline {
-            let amounts = group.map { $0.totalAmount.minorUnits }.sorted()
-            let median = Self.median(of: amounts)
-            guard median > 0 else { continue }
-
+        for (vendorName, group) in byVendor.sorted(by: { $0.key < $1.key }) {
+            let history = historyByVendor[vendorName] ?? []
             for transaction in group.sorted(by: { $0.id < $1.id }) {
+                let others = group.filter { $0.id != transaction.id && !($0.totalAmount == transaction.totalAmount && $0.txnDate == transaction.txnDate) }
+                let baseline = (history + others.map(\.totalAmount.minorUnits)).sorted()
+                guard baseline.count >= minimumTransactionsForBaseline else { continue }
+                let median = Self.median(of: baseline)
+                guard median > 0 else { continue }
                 let ratio = Double(transaction.totalAmount.minorUnits) / Double(median)
                 guard ratio >= outlierMultiple else { continue }
                 guard transaction.totalAmount >= context.materiality.absoluteFloor else { continue }
+                let basis = history.isEmpty ? "\(baseline.count) other charges this month" : "\(baseline.count) charges over the last \(Self.historyMonths) months"
 
                 let findingID = FindingIDGenerator.makeID(
                     ruleID: identity.id,
@@ -108,14 +129,14 @@ public enum VendorAnomalyRule: Rule {
                             "vendorName": vendorName,
                             "amount": transaction.totalAmount.description,
                             "date": transaction.txnDate.formatted,
-                            "vendorMedianThisPeriod": medianMoney.description,
-                            "transactionCountThisPeriod": "\(group.count)"
+                            "vendorTypicalAmount": medianMoney.description,
+                            "comparedWith": basis
                         ]
                     )],
                     proposedActions: [action],
                     provenance: [transaction.provenance],
                     vendorName: vendorName,
-                    narrative: "This \(transaction.totalAmount) transaction from \(vendorName) is at least \(Int(outlierMultiple))x this vendor's typical \(medianMoney) amount across their \(group.count) transactions this period.",
+                    narrative: "This \(transaction.totalAmount) charge from \(vendorName) is at least \(Int(outlierMultiple))x this vendor's typical \(medianMoney), based on \(basis).",
                     riskIfIgnored: "If this is a data-entry error, it stays overstating expenses by the difference until confirmed against the source document."
                 ))
             }

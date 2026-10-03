@@ -224,10 +224,23 @@ public enum ExtractionMethod: String, Hashable, Codable, Sendable {
 public struct LedgerTransactionLine: Hashable, Codable, Sendable {
     public let id: String
     public let accountID: String
+    /// The line's Description text, if any. Optional so caches saved before
+    /// 2026-10-02 still decode.
+    public let description: String?
 
-    public init(id: String, accountID: String) {
+    public init(id: String, accountID: String, description: String? = nil) {
         self.id = id
         self.accountID = accountID
+        self.description = description
+    }
+}
+
+public extension LedgerTransaction {
+    /// Every note a person wrote on the transaction: the form's Memo plus each
+    /// line's Description. Keyword checks read this, never `memo` alone (owner
+    /// test 2026-10-02: "personal expense" typed on the line was missed).
+    var noteText: String {
+        ([memo] + lines.map(\.description)).compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 
@@ -406,6 +419,10 @@ public struct NormalizedDataSet: Sendable {
     /// a rare but real possible case the rule can't distinguish from
     /// "never fetched," so it treats empty as `.cannotEvaluate` either way.
     public let priorPeriodTransactions: [LedgerTransaction]
+    /// Transactions from the months BEFORE `period` (the app's 24-month history,
+    /// when loaded). Lets a rule judge "normal for this vendor" from real history
+    /// instead of the same month (added 2026-10-02). Empty when history isn't loaded.
+    public let historyTransactions: [LedgerTransaction]
     public let coverage: Coverage
     public let companyFacts: CompanyFacts
 
@@ -423,9 +440,11 @@ public struct NormalizedDataSet: Sendable {
         agedPayablesLines: [AgingLine] = [],
         trialBalanceLines: [TrialBalanceLine] = [],
         priorPeriodTransactions: [LedgerTransaction] = [],
+        historyTransactions: [LedgerTransaction] = [],
         coverage: Coverage,
         companyFacts: CompanyFacts
     ) {
+        self.historyTransactions = historyTransactions
         self.realmID = realmID
         self.period = period
         self.transactions = transactions
@@ -444,6 +463,38 @@ public struct NormalizedDataSet: Sendable {
     }
 }
 
+
+extension NormalizedDataSet {
+    /// An account's balance at the END of the reviewed period, in QBO's
+    /// `CurrentBalance` sign convention (assets positive when normal;
+    /// liabilities and equity negative when normal).
+    ///
+    /// Found 2026-10-02 while testing with seeded September data: the
+    /// balance-sheet rules read `currentBalance`, which is TODAY's balance, so
+    /// a July review showed today's figures labeled July, and anything entered
+    /// later changed July's findings (Opening Balance Equity was $8,337.50 on
+    /// July 31; the July finding said $9,247.50). The period's own Balance
+    /// Sheet report is the July 31 truth. Its amounts are shown credit-positive
+    /// for liabilities and equity, so those flip sign (verified against the
+    /// sandbox: A/P 3,913.76 on the report vs -3,523.60 CurrentBalance today).
+    /// An account absent from a loaded balance sheet had no balance then.
+    /// Falls back to `currentBalance` only when no balance sheet is loaded.
+    public func periodEndBalance(of account: LedgerAccount) -> Money {
+        guard !balanceSheetLines.isEmpty else { return account.currentBalance }
+        guard let line = balanceSheetLines.first(where: { !$0.isSummary && $0.accountID == account.id }), let amount = line.amount else {
+            return Money(minorUnits: 0, currency: account.currentBalance.currency)
+        }
+        let credit: Bool
+        switch account.accountType {
+        case .accountsPayable, .creditCard, .otherCurrentLiability, .longTermLiability, .equity: credit = true
+        default: credit = false
+        }
+        return credit ? Money(minorUnits: -amount.minorUnits, currency: amount.currency) : amount
+    }
+
+    /// True when `periodEndBalance` is reading the period's balance sheet, not today's balance.
+    public var balancesArePeriodEnd: Bool { !balanceSheetLines.isEmpty }
+}
 
 extension LedgerAccount {
     /// Liabilities, equity and income carry credit balances. QBO's

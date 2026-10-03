@@ -173,3 +173,60 @@ struct NameMatchTests {
         #expect(!ClientFacts.nameMatches("Hicks Hardware", ""))
     }
 }
+
+@Suite("Balance-sheet rules read the reviewed month's ending balance, not today's")
+struct PeriodEndBalanceTests {
+    let realm = RealmID(rawValue: "9341456442848752")
+    let jul = AccountingPeriod(year: 2026, month: 7)
+    func usd(_ cents: Int64) -> Money { Money(minorUnits: cents, currency: .usd) }
+
+    @Test("Live case 2026-10-02: OBE was $8,337.50 on July 31 while today's balance is $9,247.50; July's finding must say $8,337.50")
+    func obeUsesJuly31() {
+        let obe = LedgerAccount(id: "2", name: "Opening Balance Equity", accountType: .equity, accountSubType: "OpeningBalanceEquity", currentBalance: usd(924_750))
+        let bs = [ReportLine(label: "Opening Balance Equity", amount: usd(-833_750), depth: 2, isSummary: false, accountID: "2")]
+        let data = NormalizedDataSet(realmID: realm, period: jul, transactions: [], accounts: [obe], balanceSheetLines: bs,
+                                     coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        #expect(data.periodEndBalance(of: obe) == usd(833_750))
+        let ctx = RuleContext(period: jul, materiality: .defaultPolicy, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        guard case .findings(let f) = OpeningBalanceEquityRule.evaluate(data, context: ctx) else { Issue.record("expected a finding"); return }
+        #expect(f.first?.dollarExposure == usd(833_750))
+    }
+
+    @Test("Sign conventions: an asset reads as-is; a liability flips (A/P 3,913.76 on the report = -3,913.76 CurrentBalance); absent = zero")
+    func signs() {
+        let checking = LedgerAccount(id: "35", name: "Checking", accountType: .bank, currentBalance: usd(1_440_803))
+        let ap = LedgerAccount(id: "33", name: "Accounts Payable (A/P)", accountType: .accountsPayable, currentBalance: usd(-352_360))
+        let newer = LedgerAccount(id: "99", name: "Opened in September", accountType: .bank, currentBalance: usd(50_000))
+        let bs = [ReportLine(label: "Checking", amount: usd(1_194_194), depth: 2, isSummary: false, accountID: "35"),
+                  ReportLine(label: "Accounts Payable (A/P)", amount: usd(391_376), depth: 2, isSummary: false, accountID: "33")]
+        let data = NormalizedDataSet(realmID: realm, period: jul, transactions: [], accounts: [checking, ap, newer], balanceSheetLines: bs,
+                                     coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        #expect(data.periodEndBalance(of: checking) == usd(1_194_194))
+        #expect(data.periodEndBalance(of: ap) == usd(-391_376))
+        #expect(data.periodEndBalance(of: newer) == usd(0))
+        let noReport = NormalizedDataSet(realmID: realm, period: jul, transactions: [], accounts: [checking], coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        #expect(noReport.periodEndBalance(of: checking) == usd(1_440_803))
+    }
+}
+
+@Suite("Review month (was hard-coded to July 2026)")
+struct ReviewPeriodTests {
+    let oct2 = AccountingDate(year: 2026, month: 10, day: 2)
+    @Test("Default is the last completed month; January rolls back a year")
+    func defaults() {
+        #expect(ReviewPeriod.lastCompleted(today: oct2) == AccountingPeriod(year: 2026, month: 9))
+        #expect(ReviewPeriod.lastCompleted(today: AccountingDate(year: 2027, month: 1, day: 5)) == AccountingPeriod(year: 2026, month: 12))
+        #expect(ReviewPeriod.choices(today: oct2).first == AccountingPeriod(year: 2026, month: 10))
+        #expect(ReviewPeriod.choices(today: oct2).count == 13)
+    }
+    @Test("Spoken months resolve to the most recent one that isn't in the future")
+    func spoken() {
+        #expect(ReviewPeriod.spoken("september", today: oct2) == AccountingPeriod(year: 2026, month: 9))
+        #expect(ReviewPeriod.spoken("sept", today: oct2) == AccountingPeriod(year: 2026, month: 9))
+        #expect(ReviewPeriod.spoken("november", today: oct2) == AccountingPeriod(year: 2025, month: 11))
+        #expect(ReviewPeriod.spoken("august 2025", today: oct2) == AccountingPeriod(year: 2025, month: 8))
+        #expect(ReviewPeriod.spoken("mastercard", today: oct2) == nil)
+        #expect(ReviewPeriod.spoken("may report", today: oct2) == nil)
+        #expect(ReviewPeriod.parse(ReviewPeriod.key(AccountingPeriod(year: 2026, month: 9))) == AccountingPeriod(year: 2026, month: 9))
+    }
+}

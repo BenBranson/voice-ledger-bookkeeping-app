@@ -2,29 +2,29 @@
   "asOf" : "2026-09-30",
   "facts" : {
     "balanceSheetTotals" : {
-      "Total Accounts Payable" : "$3,913.76",
-      "Total Accounts Receivable" : "$17,771.03",
-      "TOTAL ASSETS" : "$47,468.72",
-      "Total Bank Accounts" : "$10,448.92",
-      "Total Credit Cards" : "$1,111.22",
-      "Total Current Assets" : "$33,973.72",
-      "Total Current Liabilities" : "$9,395.92",
-      "Total Equity" : "$19,737.86",
+      "Total Accounts Payable" : "$7,093.60",
+      "Total Accounts Receivable" : "$23,831.51",
+      "TOTAL ASSETS" : "$53,335.66",
+      "Total Bank Accounts" : "$9,115.38",
+      "Total Credit Cards" : "$1,222.70",
+      "Total Current Assets" : "$39,840.66",
+      "Total Current Liabilities" : "$12,721.82",
+      "Total Equity" : "$23,353.06",
       "Total Fixed Assets" : "$13,495.00",
-      "Total Liabilities" : "$27,730.86",
-      "TOTAL LIABILITIES AND EQUITY" : "$47,468.72",
-      "Total Long-Term Liabilities" : "$18,334.94",
-      "Total Other Current Assets" : "$5,753.77",
-      "Total Other Current Liabilities" : "$4,370.94",
+      "Total Liabilities" : "$29,982.60",
+      "TOTAL LIABILITIES AND EQUITY" : "$53,335.66",
+      "Total Long-Term Liabilities" : "$17,260.78",
+      "Total Other Current Assets" : "$6,893.77",
+      "Total Other Current Liabilities" : "$4,405.52",
       "Total Truck" : "$13,495.00"
     },
-    "cashBalance" : "$10,448.92",
+    "cashBalance" : "$9,115.38",
     "cashFlowTotals" : {
-      "Cash at end of period" : "$13,311.44",
-      "Net cash increase for period" : "($1,766.60)",
-      "Net cash provided by financing activities" : "($2,032.08)",
-      "Net cash provided by operating activities" : "$265.48",
-      "Total Adjustments to reconcile Net Income to Net Cash provided by operations:" : "($1,579.67)"
+      "Cash at end of period" : "$12,477.90",
+      "Net cash increase for period" : "($4,223.86)",
+      "Net cash provided by financing activities" : "($938.75)",
+      "Net cash provided by operating activities" : "($3,285.11)",
+      "Total Adjustments to reconcile Net Income to Net Cash provided by operations:" : "($5,768.22)"
     },
     "chartOfAccounts" : {
       "Accounting" : "$0.00",
@@ -117,38 +117,39 @@
       "VL Spike Sweeper Supplies" : "$0.00",
       "Workers Compensation" : "$0.00"
     },
-    "exposure.allOpen" : "$29,214.07",
-    "exposure.balanceSheetIntegrity" : "$18,990.28",
-    "exposure.cleanupAssessment" : "$24,636.81",
-    "netIncome" : "$1,845.15",
-    "netIncomePrior" : "$6,239.07",
-    "openFindingCount" : 17,
-    "payablesTotal" : "$3,913.76",
+    "exposure.allOpen" : "$18,276.19",
+    "exposure.balanceSheetIntegrity" : "$14,035.52",
+    "exposure.cleanupAssessment" : "$17,660.33",
+    "netIncome" : "$2,483.11",
+    "netIncomePrior" : "$3,642.09",
+    "openFindingCount" : 14,
+    "payablesTotal" : "$7,093.60",
     "profitAndLossTotals" : {
-      "Gross Profit" : "$16,019.16",
-      "Net Income" : "$1,845.15",
-      "Net Operating Income" : "$6,227.83",
-      "Net Other Income" : "($4,382.68)",
-      "Total Automobile" : "$750.06",
-      "Total Expenses" : "$9,791.33",
-      "Total Income" : "$16,019.16",
-      "Total Job Expenses" : "$5,575.81",
-      "Total Job Materials" : "$2,932.51",
-      "Total Labor" : "$5,820.17",
-      "Total Landscaping Services" : "$10,987.88",
-      "Total Other Expenses" : "$4,382.68",
-      "Total Utilities" : "$378.50"
+      "Gross Profit" : "$15,362.48",
+      "Net Income" : "$2,483.11",
+      "Net Operating Income" : "$2,594.36",
+      "Net Other Income" : "($111.25)",
+      "Total Automobile" : "$2,820.73",
+      "Total Cost of Goods Sold" : "$160.00",
+      "Total Expenses" : "$12,768.12",
+      "Total Income" : "$15,522.48",
+      "Total Job Expenses" : "$6,283.86",
+      "Total Job Materials" : "$1,364.66",
+      "Total Labor" : "$6,455.46",
+      "Total Landscaping Services" : "$10,525.11",
+      "Total Other Expenses" : "$111.25",
+      "Total Utilities" : "$354.35"
     },
     "receivables" : {
-      "credits" : "($800.00)",
-      "net" : "$17,771.03",
-      "over60" : "$6,317.69",
-      "owed" : "$18,571.03"
+      "credits" : "($1,050.00)",
+      "net" : "$23,831.51",
+      "over60" : "$7,451.13",
+      "owed" : "$24,881.51"
     },
-    "revenue" : "$16,019.16",
-    "revenuePrior" : "$16,260.82",
-    "transactionCount" : 54,
-    "workingCapital" : "$24,577.80"
+    "revenue" : "$15,522.48",
+    "revenuePrior" : "$12,633.92",
+    "transactionCount" : 49,
+    "workingCapital" : "$27,118.84"
   },
   "findings" : [
     {
@@ -182,78 +183,47 @@
       "title" : "VL Spike Suspense has a USD 875.00 balance — unidentified items in suspense"
     },
     {
-      "amount" : "$400.00",
+      "amount" : "$129.99",
       "confidence" : "high",
       "evidence" : [
-        "223"
-      ],
-      "rule" : "VL-BS-UNDEP-001",
-      "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
-    },
-    {
-      "amount" : "$400.00",
-      "confidence" : "high",
-      "evidence" : [
-        "222"
-      ],
-      "rule" : "VL-BS-UNDEP-001",
-      "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
-    },
-    {
-      "amount" : "$312.50",
-      "confidence" : "high",
-      "evidence" : [
-        "232"
+        "822"
       ],
       "rule" : "VL-CAT-UNCAT-001",
       "severity" : "high",
-      "title" : "Uncategorized transaction — VL Spike Permian Supply, USD 312.50"
+      "title" : "Uncategorized transaction — VLT Amazon Business, USD 129.99"
     },
     {
-      "amount" : "$500.00",
+      "amount" : "$615.00",
       "confidence" : "high",
       "evidence" : [
-        "220",
-        "221"
+        "828",
+        "829"
+      ],
+      "rule" : "VL-DUP-BILL-001",
+      "severity" : "high",
+      "title" : "Possible duplicate bill — USD 615.00"
+    },
+    {
+      "amount" : "$412.37",
+      "confidence" : "high",
+      "evidence" : [
+        "819",
+        "820"
+      ],
+      "rule" : "VL-DUP-EXP-001",
+      "severity" : "high",
+      "title" : "Possible duplicate expense — VLT Lone Star Fuel, USD 412.37"
+    },
+    {
+      "amount" : "$220.00",
+      "confidence" : "high",
+      "evidence" : [
+        "835",
+        "836"
       ],
       "rule" : "VL-DUP-INV-001",
       "severity" : "high",
-      "title" : "Possible duplicate invoice — USD 500.00"
-    },
-    {
-      "amount" : "$264.99",
-      "confidence" : "low",
-      "evidence" : [
-        "235",
-        "236"
-      ],
-      "rule" : "VL-DUP-NEAR-001",
-      "severity" : "high",
-      "title" : "Possible near-duplicate expense — USD 264.99"
-    },
-    {
-      "amount" : "$77.77",
-      "confidence" : "low",
-      "evidence" : [
-        "237",
-        "238"
-      ],
-      "rule" : "VL-DUP-NEAR-001",
-      "severity" : "high",
-      "title" : "Possible near-duplicate expense — USD 77.77"
-    },
-    {
-      "amount" : "$400.00",
-      "confidence" : "medium",
-      "evidence" : [
-        "222",
-        "223"
-      ],
-      "rule" : "VL-DUP-PAY-001",
-      "severity" : "high",
-      "title" : "Possible duplicate payment — USD 400.00"
+      "title" : "Possible duplicate invoice — USD 220.00"
     },
     {
       "amount" : "$0.00",
@@ -267,68 +237,67 @@
       "title" : "Possible duplicate vendor — VL SPIKE GULF COAST HARDWARE, LLC, VL Spike Gulf Coast Hardware"
     },
     {
-      "amount" : "$4,264.76",
+      "amount" : "$73.50",
       "confidence" : "high",
       "evidence" : [
-        "228",
-        "Reconciliation Discrepancies"
-      ],
-      "rule" : "VL-FORCED-RECON-001",
-      "severity" : "high",
-      "title" : "Reconciliation Discrepancies carries a balance — USD 4264.76"
-    },
-    {
-      "amount" : "$4,264.76",
-      "confidence" : "high",
-      "evidence" : [
-        "228"
+        "823"
       ],
       "rule" : "VL-MISSING-PAYEE-001",
       "severity" : "high",
-      "title" : "Expense with no vendor — USD 4264.76"
+      "title" : "Expense with no vendor — USD 73.50"
     },
     {
-      "amount" : "$8,337.50",
+      "amount" : "$8,447.50",
       "confidence" : "high",
       "evidence" : [
         "34"
       ],
       "rule" : "VL-OBE-BALANCE-001",
       "severity" : "high",
-      "title" : "Opening Balance Equity carries a nonzero balance — USD 8337.50"
+      "title" : "Opening Balance Equity carries a nonzero balance — USD 8447.50"
     },
     {
-      "amount" : "$1,759.08",
+      "amount" : "$1,368.41",
       "confidence" : "medium",
       "evidence" : [
-        "437"
+        "468"
       ],
       "rule" : "VL-PAYROLL-LUMP-001",
       "severity" : "high",
-      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1759.08"
+      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1368.41"
     },
     {
-      "amount" : "$1,769.69",
+      "amount" : "$186.40",
       "confidence" : "medium",
       "evidence" : [
-        "436"
+        "821"
       ],
-      "rule" : "VL-PAYROLL-LUMP-001",
+      "rule" : "VL-PERSONAL-001",
       "severity" : "high",
-      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1769.69"
+      "title" : "Possible personal expense or owner draw — VLT Lone Star Fuel, USD 186.40"
     },
     {
-      "amount" : "$875.00",
+      "amount" : "$1,150.00",
       "confidence" : "medium",
       "evidence" : [
-        "233"
+        "824"
       ],
       "rule" : "VL-VEND-ANOMALY-001",
       "severity" : "high",
-      "title" : "Unusually large amount for VL Spike Permian Supply — USD 875.00"
+      "title" : "Unusually large amount for Chin's Gas and Oil — USD 1150.00"
+    },
+    {
+      "amount" : "$85.00",
+      "confidence" : "low",
+      "evidence" : [
+        "826"
+      ],
+      "rule" : "VL-VEND-PRICE-001",
+      "severity" : "high",
+      "title" : "VLT Pest Pros charged 49% more than last period"
     }
   ],
-  "period" : "2026-07",
+  "period" : "2026-09",
   "realmId" : "9341456442848752",
   "rulesCannotEvaluate" : {
     "VL-CLOSED-PERIOD-DRIFT-001" : "partialCoverage(reason: \"No period lock has been set. Set one on the Scope & Period Lock page to enable this check.\")",
@@ -341,18 +310,18 @@
   "rulesPassed" : [
     "VL-BS-DRCR-001",
     "VL-BS-EQUITY-DR-001",
+    "VL-BS-UNDEP-001",
     "VL-CAT-MISCODE-001",
     "VL-CC-PAYMENT-001",
-    "VL-DUP-BILL-001",
-    "VL-DUP-EXP-001",
     "VL-DUP-EXP-002",
+    "VL-DUP-NEAR-001",
+    "VL-DUP-PAY-001",
     "VL-FEE-AVOIDABLE-001",
-    "VL-PERSONAL-001",
+    "VL-FORCED-RECON-001",
     "VL-RELATIONSHIP-003",
     "VL-RELATIONSHIP-005",
     "VL-REPORT-TIE-001",
     "VL-TRANSPOSITION-001",
-    "VL-VEND-PRICE-001",
     "VL-VENDCREDIT-UNAPPLIED-001"
   ]
 }

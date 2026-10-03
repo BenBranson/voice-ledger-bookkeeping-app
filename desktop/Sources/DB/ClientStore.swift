@@ -203,10 +203,12 @@ public actor ClientStore {
     /// the Activity & Correction Log — or a client asking why a finding
     /// disappeared — had nothing to point to.
     @discardableResult
-    public func reconcileAgainstLatestRun(currentRunFindingIDs: Set<String>, ruleID: RuleID) throws -> [Finding] {
+    /// `period` is required (2026-10-02): a run for September must never resolve
+    /// July's findings just because September's run didn't re-detect them.
+    public func reconcileAgainstLatestRun(currentRunFindingIDs: Set<String>, ruleID: RuleID, period: AccountingPeriod) throws -> [Finding] {
         var existing = try loadFindings()
         var resolved: [Finding] = []
-        for i in existing.indices where existing[i].ruleID == ruleID && existing[i].status == .open {
+        for i in existing.indices where existing[i].ruleID == ruleID && existing[i].status == .open && existing[i].period == period {
             if !currentRunFindingIDs.contains(existing[i].id) {
                 existing[i].status = .resolved
                 resolved.append(existing[i])

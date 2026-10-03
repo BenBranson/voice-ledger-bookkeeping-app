@@ -25,13 +25,17 @@ import Foundation
 /// legitimately cache-forever workpaper artifacts, not live account state.
 public struct FinancialSnapshot: Codable, Sendable {
     public let syncedAt: Date
+    /// The month this snapshot's reports cover. Optional only so snapshots saved
+    /// before 2026-10-02 (always July 2026 then) still decode.
+    public let period: AccountingPeriod?
     public let accounts: [LedgerAccount]
     public let transactions: [LedgerTransaction]
     public let balanceSheetLines: [ReportLine]
     public let profitAndLossLines: [ReportLine]
 
-    public init(syncedAt: Date, accounts: [LedgerAccount], transactions: [LedgerTransaction], balanceSheetLines: [ReportLine], profitAndLossLines: [ReportLine]) {
+    public init(syncedAt: Date, period: AccountingPeriod? = nil, accounts: [LedgerAccount], transactions: [LedgerTransaction], balanceSheetLines: [ReportLine], profitAndLossLines: [ReportLine]) {
         self.syncedAt = syncedAt
+        self.period = period
         self.accounts = accounts
         self.transactions = transactions
         self.balanceSheetLines = balanceSheetLines
@@ -43,7 +47,7 @@ public struct FinancialSnapshot: Codable, Sendable {
     public static func fromCompleteSync(_ data: NormalizedDataSet, syncedAt: Date) -> FinancialSnapshot? {
         guard data.coverage == .complete,
               !data.balanceSheetLines.isEmpty, !data.profitAndLossLines.isEmpty else { return nil }
-        return FinancialSnapshot(syncedAt: syncedAt, accounts: data.accounts, transactions: data.transactions,
+        return FinancialSnapshot(syncedAt: syncedAt, period: data.period, accounts: data.accounts, transactions: data.transactions,
                                  balanceSheetLines: data.balanceSheetLines, profitAndLossLines: data.profitAndLossLines)
     }
 

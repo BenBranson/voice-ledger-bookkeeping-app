@@ -41,8 +41,9 @@ public enum NegativeBalanceRule: Rule {
         var findings: [Finding] = []
 
         for account in candidates {
-            guard isAbnormal(account) else { continue }
-            let exposure = Money(minorUnits: abs(account.currentBalance.minorUnits), currency: account.currentBalance.currency)
+            let balance = input.periodEndBalance(of: account)
+            guard isAbnormal(account.accountType, balance) else { continue }
+            let exposure = Money(minorUnits: abs(balance.minorUnits), currency: balance.currency)
             guard exposure >= context.materiality.absoluteFloor else { continue }
 
             let findingID = FindingIDGenerator.makeID(
@@ -96,7 +97,7 @@ public enum NegativeBalanceRule: Rule {
                 evidence: [EvidenceItem(
                     transactionID: account.id,
                     highlightedFields: ["currentBalance"],
-                    fieldValues: ["currentBalance": account.currentBalance.description, "account": account.name]
+                    fieldValues: ["currentBalance": balance.description, "account": account.name]
                 )],
                 proposedActions: [action],
                 provenance: [],
@@ -125,7 +126,7 @@ public enum NegativeBalanceRule: Rule {
 
     /// Assets: below zero. Liabilities: above zero in QBO's CurrentBalance
     /// (which reports money owed as negative — see the type comment).
-    static func isAbnormal(_ account: LedgerAccount) -> Bool {
-        isAsset(account.accountType) ? account.currentBalance.minorUnits < 0 : account.currentBalance.minorUnits > 0
+    static func isAbnormal(_ type: LedgerAccountType, _ balance: Money) -> Bool {
+        isAsset(type) ? balance.minorUnits < 0 : balance.minorUnits > 0
     }
 }

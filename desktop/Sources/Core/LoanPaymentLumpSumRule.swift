@@ -53,7 +53,7 @@ public enum LoanPaymentLumpSumRule: Rule {
 
         for purchase in purchases {
             let vendorLower = purchase.vendorName?.lowercased() ?? ""
-            let memoLower = purchase.memo?.lowercased() ?? ""
+            let memoLower = purchase.noteText.lowercased()
             guard loanPaymentKeywords.contains(where: { vendorLower.contains($0) || memoLower.contains($0) }) else { continue }
             guard !context.gatedTransactionIDs.contains(purchase.id) else { continue } // §8.2a gating
 

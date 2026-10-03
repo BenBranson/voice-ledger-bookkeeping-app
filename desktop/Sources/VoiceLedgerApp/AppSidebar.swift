@@ -1,4 +1,5 @@
 import SwiftUI
+import Core
 import DesignSystem
 import VoiceLedgerUI
 
@@ -181,6 +182,8 @@ struct AppSidebar: View {
     @Binding var selection: SidebarItem?
     let companyName: String
     let periodLabel: String
+    var periodChoices: [AccountingPeriod] = []
+    var onChangePeriod: (AccountingPeriod) -> Void = { _ in }
     let environmentTone: VLEnvironmentTone
     let isSyncing: Bool
     let onSync: () -> Void
@@ -240,7 +243,7 @@ struct AppSidebar: View {
                 .buttonStyle(.plain)
                 .help("Go to Dashboard")
                 Spacer()
-                Text("v1.72")
+                Text("v1.73")
                     .font(.system(size: 9, weight: .regular))
                     .foregroundStyle(VLColor.textMuted)
                 voiceMicButton
@@ -258,9 +261,21 @@ struct AppSidebar: View {
                     .font(VLTypography.label())
                     .foregroundStyle(VLColor.textSecondary)
                     .lineLimit(1)
-                Text(periodLabel)
-                    .font(VLTypography.caption())
-                    .foregroundStyle(VLColor.textMuted)
+                // The reviewed month, changeable (2026-10-02; it was fixed to July 2026).
+                Menu {
+                    ForEach(periodChoices, id: \.self) { p in
+                        Button(ReviewPeriod.label(p) + (p == periodChoices.first ? " (in progress)" : "")) { onChangePeriod(p) }
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(periodLabel).font(VLTypography.caption()).foregroundStyle(VLColor.textSecondary)
+                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold)).foregroundStyle(VLColor.textMuted)
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Month being reviewed")
             }
             VLEnvironmentBadge(environmentTone)
         }

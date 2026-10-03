@@ -1,4 +1,5 @@
 import Foundation
+import Core
 
 /// The deterministic fast path — ported from a design already battle-
 /// tested in a separate app (`server/voiceRouter.js`'s `matchDirectIntent`),
@@ -272,6 +273,14 @@ public enum VoiceIntentRouter {
             case .stop: return .routineStop
             case .where: return .routineWhere
             }
+        }
+
+        // "review September", "switch to August 2026": change the reviewed month. Checked before
+        // page navigation; it only fires when the rest of the phrase is a month name.
+        for lead in ["review ", "switch to ", "go to ", "look at ", "open ", "change the month to ", "switch the month to ", "change month to ", "let's do ", "lets do ", "work on "]
+            where normalized.hasPrefix(lead) {
+            let rest = CommandGrammar.strip(String(normalized.dropFirst(lead.count)), ["the month of", "the", "month of"])
+            if let p = ReviewPeriod.spoken(rest, today: AccountingDate(date: Date())) { return .reviewMonth(p) }
         }
 
         // "how many open findings / issues" wants the count spoken, not just the page.

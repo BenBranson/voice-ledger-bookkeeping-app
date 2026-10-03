@@ -993,6 +993,17 @@ public final class VoiceEngine: NSObject {
             showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(speech + "."), uiAction: .navigate(.agedPayablesReport))
 
+        case .reviewMonth(let p):
+            guard p != appState.period else { return VoiceTurn(speech: "We're already on \(ReviewPeriod.label(p)).") }
+            let today = AccountingDate(date: Date())
+            guard (p.year, p.month) <= (today.year, today.month) else { return VoiceTurn(speech: "\(ReviewPeriod.label(p)) hasn't started yet.") }
+            // Speak first, then rebuild: the switch replaces this whole app state, voice included.
+            Task { @MainActor [appState] in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                appState.changePeriod(to: p)
+            }
+            return VoiceTurn(speech: "Switching to \(ReviewPeriod.label(p)). I'll sync that month now.")
+
         case .nameFindings(let name):
             if name.contains("book") || name.contains("this month") || name.contains("everything") { return findingsGroupTurn(.allOpen) }
             let hits = appState.findings.filter { $0.status == .open && (ClientFacts.nameMatches($0.vendorName ?? "", name) || ClientFacts.nameMatches($0.title, name)) }

@@ -1369,3 +1369,21 @@ Notes for next time:
   - The card overlay (v1.65) sat outside `.environment(\.qboLinks)`, so every card got `QBOLinks.none`: no account or finding links, and sandbox URLs in production. The overlay now passes the links explicitly. Anything presented outside RootView's environment chain must do the same.
   - VL-FORCED-RECON-001 used the account NAME as evidence. The forced reconciliation's adjustment does come through the API, as a Purchase (memo "Reconcile Adjustment", DocNumber "ADJ") posting to the account. The 2026-08-18 note had only ruled out JournalEntry. Those Purchases now lead the evidence; the finding ID is unchanged.
   - Every name lookup uses `ClientFacts.nameMatches`.
+
+## 2026-10-02 — v1.73: seeded scenario batch; calculation fixes at the root
+
+**Seed tool** (`backend/spike/seed.ts`):
+- Can now create customers with jobs, inventory items, and taxable product sales (Qty/UnitPrice, TaxCode by name) and credit memos.
+- Every create sends QBO's `requestid`, derived from the seed and the body, and retries transient 5xx/auth-500 errors with the same id. A 504 mid-seed had shown a blind retry could plant an unintended duplicate.
+- `teardown <seed>` removes exactly what that seed created (newest first; names deactivated). It is recorded in `manifest.owned`. Seeds applied before this date aren't tracked; `teardown all` still deletes ALL purchases, including the baseline history, so don't use it.
+
+**Scenario batch** `scenarios-sep-2026`: all September 2026 except one August $175 Pest Pros charge (the price-jump baseline). QBO's own reports confirmed every expected figure: tax $34.58, COGS $160, Gulf Coast $5,050, O'Brien $750, Desert Rose $854.58. `preflight.sh` now also checks 2026-09.
+
+**Root causes found by it, all fixed with tests:**
+1. **Review month was hard-coded to July 2026.** It now defaults to the last completed month, is persisted per realm (`reviewPeriod.<realm>`), and can be changed from the sidebar menu or by voice ("review September"). A change rebuilds `AppState` like a client switch; `RootView` is `.id(ObjectIdentifier(appState))` so its startup `.task` reruns.
+2. `reconcileAgainstLatestRun` resolved findings of every month. It now requires `period`. `AppState.findings` is the reviewed month only (`storedFindings` holds all).
+3. **Balance-sheet rules (OBE, negative balance, suspense/clearing) read TODAY's `currentBalance` for past months.** July's OBE showed $9,247.50; the July 31 truth is $8,337.50. They now use `NormalizedDataSet.periodEndBalance(of:)`, the period Balance Sheet line converted to CurrentBalance sign (liabilities and equity flip). Bank-drift is unchanged; it compares against the statement's own date.
+4. Imported statement lines were merged into every month's run, so September flagged July's bank lines as "not found". They are now filtered to the period. The 3 false September findings were removed from the sandbox store once.
+5. **PersonalExpense, AvoidableFee and LoanPayment read only the Memo (PrivateNote).** Line Descriptions are now synced (`LedgerTransactionLine.description`), and the rules read `LedgerTransaction.noteText`.
+6. **VendorAnomaly judged "normal" from the same month, including the charge itself.** It now uses the prior 12 months (`NormalizedDataSet.historyTransactions`, fed by the app's history snapshot AND the devtool's `syncHistory`), excludes the charge and its exact duplicates, and only looks at purchases and bills.
+- `FinancialSnapshot` records its `period`; the MCP tools report it.

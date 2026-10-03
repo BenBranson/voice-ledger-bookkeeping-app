@@ -151,6 +151,8 @@ public enum VoiceIntent: Equatable, Sendable {
     case customerOwes(String)
     /// "anything unusual with Permian Supply" — that vendor's or customer's open findings, listed by code.
     case nameFindings(String)
+    /// "review September", "switch to August" — change the month being reviewed.
+    case reviewMonth(AccountingPeriod)
     /// "start month-end" — begin the guided walkthrough.
     case startRoutine
     /// Walkthrough controls (only produced while one is running).

@@ -424,7 +424,7 @@ struct VoiceLedgerTools {
                 "balance": account.currentBalance.majorUnitsDouble
             ]
         }
-        return try jsonText(["accounts": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)])
+        return try jsonText(["accounts": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt), "period": snapshot.period.map { String(format: "%04d-%02d", $0.year, $0.month) } ?? "unknown"])
     }
 
     /// "Recent" = the last 30 days as of NOW (when this tool is called),
@@ -459,7 +459,7 @@ struct VoiceLedgerTools {
             }
             return row
         }
-        return try jsonText(["account_name": account.name, "transactions": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)])
+        return try jsonText(["account_name": account.name, "transactions": rows, "synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt), "period": snapshot.period.map { String(format: "%04d-%02d", $0.year, $0.month) } ?? "unknown"])
     }
 
     /// The exact same `FinancialKPIs` pure functions the Dashboard's own
@@ -469,7 +469,7 @@ struct VoiceLedgerTools {
     /// "not available" (never a fabricated zero) rule.
     private func getFinancialSummary() async throws -> String {
         let snapshot = try await requireFinancialSnapshot()
-        var result: [String: Any] = ["synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt)]
+        var result: [String: Any] = ["synced_at": Self.syncedAtFormatter.string(from: snapshot.syncedAt), "period": snapshot.period.map { String(format: "%04d-%02d", $0.year, $0.month) } ?? "unknown"]
         if let grossMargin = FinancialKPIs.grossMarginPercent(from: snapshot.profitAndLossLines) {
             result["grossMarginPercent"] = grossMargin
         }

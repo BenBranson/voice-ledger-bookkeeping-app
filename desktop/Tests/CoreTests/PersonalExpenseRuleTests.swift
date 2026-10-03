@@ -131,4 +131,15 @@ struct PersonalExpenseRuleTests {
             Issue.record("rule must not report .pass on partial coverage")
         }
     }
+
+    @Test("Owner test 2026-10-02: 'personal expense' typed on the LINE description (not the Memo) is caught")
+    func lineDescriptionIsRead() {
+        let t = LedgerTransaction(id: "821", entityKind: .purchase, vendorName: "VLT Lone Star Fuel", txnDate: AccountingDate(year: 2026, month: 7, day: 13),
+                                  totalAmount: Money(minorUnits: 18_640, currency: .usd), paymentAccountID: "35", docNumber: nil, isVoided: false,
+                                  memo: "VLT-SEP-EXP-PERSONAL", lineAccountIDs: ["13"],
+                                  lines: [LedgerTransactionLine(id: "1", accountID: "13", description: "personal expense - family dinner")],
+                                  provenance: .qboAPI(readAt: Date()))
+        guard case .findings(let f) = PersonalExpenseRule.evaluate(dataSet([t]), context: context()) else { Issue.record("missed the line description"); return }
+        #expect(f.first?.evidence.first?.transactionID == "821")
+    }
 }

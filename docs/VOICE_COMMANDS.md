@@ -77,6 +77,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what's the balance of the sweeper checking account"** · **"how much is in savings"** · **"balance of Mastercard"** | Says the account's current QuickBooks balance (overdrawn = in parentheses). |
 | **"what do we owe"** · **"how much do we owe"** · **"what bills are due"** | Says total payables, how much is over 60 days past due, less credits; opens Aged Payables. |
 | **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. For a vendor paid as each charge happens (like Gusto Payroll), she says nothing is owed and how many charges were paid. |
+| **"review September"** · **"switch to August"** · **"go to July"** | Changes the month being reviewed (the app opens on the last finished month). You can also click the month under the company name in the sidebar. |
 | **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
 | **"who owes us the most"** · **"which customer owes us the most"** · **"who do we owe the most"** | Names the biggest customer (or vendor) balance, how much is over 60 days, and who is next; opens the aging page with a card. |
 | **"what does Freeman Sporting Goods owe us"** · **"how much does Kate Whelan owe us"** | One customer's open balance: current, past due, over 90 days. Pops up their card. |

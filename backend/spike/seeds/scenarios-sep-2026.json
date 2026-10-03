@@ -1,0 +1,61 @@
+{
+  "description": "2026-10-02 scenario batch, all dated September 2026 (except one August charge, needed as the price-jump baseline), so the July/August regression snapshots are untouched apart from that one reviewed charge. Each item names the check it plants and the expected result as of 2026-10-02. Tear down with: seed.ts teardown scenarios-sep-2026",
+  "accounts": [
+    { "name": "Checking", "accountType": "Bank" },
+    { "name": "Fuel", "accountType": "Expense" },
+    { "name": "Job Materials", "accountType": "Expense" },
+    { "name": "Office Expenses", "accountType": "Expense" },
+    { "name": "Uncategorized Expense", "accountType": "Expense" },
+    { "name": "Meals and Entertainment", "accountType": "Expense" },
+    { "name": "Maintenance and Repair", "accountType": "Expense" }
+  ],
+  "vendors": [
+    { "displayName": "VLT Permian Pipe & Supply" },
+    { "displayName": "VLT Lone Star Fuel" },
+    { "displayName": "VLT Amazon Business" },
+    { "displayName": "VLT Pest Pros" },
+    { "displayName": "Chin's Gas and Oil" }
+  ],
+  "newCustomers": [
+    { "displayName": "VLT Gulf Coast Builders", "city": "Midland", "state": "TX" },
+    { "displayName": "VLT Midland Yard", "parent": "VLT Gulf Coast Builders", "city": "Midland", "state": "TX" },
+    { "displayName": "VLT Odessa Shop", "parent": "VLT Gulf Coast Builders", "city": "Odessa", "state": "TX" },
+    { "displayName": "VLT O'Brien & Sons", "city": "Odessa", "state": "TX" },
+    { "displayName": "VLT Desert Rose Cafe", "city": "Tucson", "state": "AZ" }
+  ],
+  "inventoryItems": [
+    { "name": "VLT Valve Kit", "qty": 20, "unitCostMinorUnits": 4000, "salesPriceMinorUnits": 9500, "startDate": "2026-09-01",
+      "incomeAccount": "Sales of Product Income", "cogsAccount": "Cost of Goods Sold", "assetAccount": "Inventory Asset" }
+  ],
+  "invoices": [
+    { "case": "job invoice 31 days past due (expect: Gulf Coast Builders total includes it, 31-60 bucket)", "customer": "VLT Midland Yard", "itemName": "Installation", "amountMinorUnits": 320000, "date": "2026-09-01", "dueDate": "2026-09-01", "note": "VLT-SEP-INV-MIDLAND" },
+    { "case": "job invoice not yet due", "customer": "VLT Odessa Shop", "itemName": "Maintenance & Repair", "amountMinorUnits": 185000, "date": "2026-09-20", "dueDate": "2026-10-20", "note": "VLT-SEP-INV-ODESSA" },
+    { "case": "parent customer's OWN invoice (paid below; expect parent total $5,050.00)", "customer": "VLT Gulf Coast Builders", "itemName": "Design", "amountMinorUnits": 50000, "date": "2026-09-10", "dueDate": "2026-09-25", "note": "VLT-SEP-INV-PARENT" },
+    { "case": "invoice to a name with ' and & (expect net $750.00 after the credit memo)", "customer": "VLT O'Brien & Sons", "itemName": "Hours", "amountMinorUnits": 100000, "date": "2026-09-12", "dueDate": "2026-10-12", "note": "VLT-SEP-INV-OBRIEN" },
+    { "case": "taxable product sale: 4 Valve Kits x $95, Tucson 9.1% (expect $34.58 tax, $160.00 COGS)", "customer": "VLT Desert Rose Cafe", "itemName": "VLT Valve Kit", "amountMinorUnits": 38000, "date": "2026-09-15", "dueDate": "2026-10-15", "note": "VLT-SEP-INV-ROSE-TAX", "taxCode": "Tucson",
+      "lines": [ { "itemName": "VLT Valve Kit", "amountMinorUnits": 38000, "qty": 4, "unitPriceMinorUnits": 9500, "taxable": true } ] },
+    { "case": "duplicate invoice A (expect VL-DUP-INV-001)", "customer": "VLT Desert Rose Cafe", "itemName": "Gardening", "amountMinorUnits": 22000, "date": "2026-09-22", "dueDate": "2026-10-22", "note": "VLT-SEP-INV-ROSE-DUP-A" },
+    { "case": "duplicate invoice B", "customer": "VLT Desert Rose Cafe", "itemName": "Gardening", "amountMinorUnits": 22000, "date": "2026-09-22", "dueDate": "2026-10-22", "note": "VLT-SEP-INV-ROSE-DUP-B" }
+  ],
+  "payments": [
+    { "case": "parent pays its own invoice, left in Undeposited Funds (expect VL-BS-UNDEP-001, 6+ days)", "customer": "VLT Gulf Coast Builders", "amountMinorUnits": 50000, "date": "2026-09-26", "note": "VLT-SEP-PAY-PARENT", "invoiceNote": "VLT-SEP-INV-PARENT" }
+  ],
+  "bills": [
+    { "case": "bill 30 days past due (expect What We Owe: Permian Pipe, 1-30 bucket)", "vendor": "VLT Permian Pipe & Supply", "expenseAccount": "Job Materials", "amountMinorUnits": 234000, "date": "2026-09-02", "dueDate": "2026-09-02", "note": "VLT-SEP-BILL-PIPE" },
+    { "case": "duplicate bill A (expect VL-DUP-BILL-001)", "vendor": "VLT Permian Pipe & Supply", "expenseAccount": "Job Materials", "amountMinorUnits": 61500, "date": "2026-09-08", "dueDate": "2026-10-08", "note": "VLT-SEP-BILL-DUP-A" },
+    { "case": "duplicate bill B", "vendor": "VLT Permian Pipe & Supply", "expenseAccount": "Job Materials", "amountMinorUnits": 61500, "date": "2026-09-08", "dueDate": "2026-10-08", "note": "VLT-SEP-BILL-DUP-B" }
+  ],
+  "purchases": [
+    { "case": "exact duplicate expense A (expect VL-DUP-EXP-001)", "vendor": "VLT Lone Star Fuel", "account": "Checking", "expenseAccount": "Fuel", "amountMinorUnits": 41237, "date": "2026-09-11", "note": "VLT-SEP-EXP-DUP-A" },
+    { "case": "exact duplicate expense B", "vendor": "VLT Lone Star Fuel", "account": "Checking", "expenseAccount": "Fuel", "amountMinorUnits": 41237, "date": "2026-09-11", "note": "VLT-SEP-EXP-DUP-B" },
+    { "case": "personal expense by memo (expect VL-PERSONAL-001)", "vendor": "VLT Lone Star Fuel", "account": "Checking", "expenseAccount": "Meals and Entertainment", "amountMinorUnits": 18640, "date": "2026-09-13", "note": "VLT-SEP-EXP-PERSONAL", "memo": "personal expense - family dinner" },
+    { "case": "uncategorized expense (expect VL-CAT-UNCAT-001)", "vendor": "VLT Amazon Business", "account": "Checking", "expenseAccount": "Uncategorized Expense", "amountMinorUnits": 12999, "date": "2026-09-16", "note": "VLT-SEP-EXP-UNCAT" },
+    { "case": "expense with no payee (expect VL-MISSING-PAYEE-001)", "vendor": "", "account": "Checking", "expenseAccount": "Office Expenses", "amountMinorUnits": 7350, "date": "2026-09-19", "note": "VLT-SEP-EXP-NOPAYEE" },
+    { "case": "unusually large charge vs ~$260 history (expect VL-VEND-ANOMALY-001)", "vendor": "Chin's Gas and Oil", "account": "Checking", "expenseAccount": "Fuel", "amountMinorUnits": 115000, "date": "2026-09-24", "note": "VLT-SEP-EXP-ANOMALY" },
+    { "case": "price-jump baseline, August (the one pre-September item)", "vendor": "VLT Pest Pros", "account": "Checking", "expenseAccount": "Maintenance and Repair", "amountMinorUnits": 17500, "date": "2026-08-05", "note": "VLT-AUG-EXP-PEST" },
+    { "case": "price jump +48.6% (expect VL-VEND-PRICE-001)", "vendor": "VLT Pest Pros", "account": "Checking", "expenseAccount": "Maintenance and Repair", "amountMinorUnits": 26000, "date": "2026-09-05", "note": "VLT-SEP-EXP-PEST" }
+  ],
+  "creditMemos": [
+    { "case": "unapplied customer credit (expect O'Brien net $750.00)", "customer": "VLT O'Brien & Sons", "itemName": "Hours", "amountMinorUnits": 25000, "date": "2026-09-18", "note": "VLT-SEP-CM-OBRIEN" }
+  ]
+}

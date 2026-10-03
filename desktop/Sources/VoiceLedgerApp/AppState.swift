@@ -112,7 +112,10 @@ public final class AppState {
         case failed(String)
     }
 
-    public private(set) var findings: [Finding] = []
+    /// Every finding on disk, all months. Screens and Moneypenny read `findings`,
+    /// which is only the reviewed month's (2026-10-02, when months became switchable).
+    public private(set) var storedFindings: [Finding] = []
+    public var findings: [Finding] { storedFindings.filter { $0.period == period } }
     public private(set) var activityLog: [ActivityLogEntry] = []
     public private(set) var coverage: Coverage = .partial(reason: "not synced yet")
     /// The chart of accounts from the last sync — used to let the import
@@ -753,6 +756,13 @@ public final class AppState {
     /// re-instantiation is `VoiceLedgerApp.swift`'s job, wired in here as a
     /// callback exactly once at construction.
     public var onSwitchToClient: ((RealmID, QBOEnvironment) async -> Void)?
+    /// Rebuilds the app for another month (set by `VoiceLedgerApp`, same path as a client switch).
+    public var onChangePeriod: ((AccountingPeriod) -> Void)?
+    public var periodChoices: [AccountingPeriod] { ReviewPeriod.choices(today: AccountingDate(date: Date())) }
+    public func changePeriod(to newPeriod: AccountingPeriod) {
+        guard newPeriod != period else { return }
+        onChangePeriod?(newPeriod)
+    }
     public private(set) var isSwitchingClient = false
     public private(set) var switchClientError: String?
 
@@ -842,7 +852,7 @@ public final class AppState {
             }.max()
             let newCachedSyncedAt = ((try? await store.loadLastSyncedAt()) ?? nil) ?? newestFindingRead
             let newUnreconciledMonths = (try? await store.loadUnreconciledMonths()) ?? 0
-            findings = newFindings
+            storedFindings = newFindings
             activityLog = newActivityLog
             checklistCompletions = newChecklistCompletions
             mappingHints = newMappingHints
@@ -2065,7 +2075,9 @@ public final class AppState {
             let dataSet = NormalizedDataSet(
                 realmID: syncedDataSet.realmID,
                 period: syncedDataSet.period,
-                transactions: syncedDataSet.transactions + importedLines,
+                // Only this month's statement lines: a July statement checked against September's
+                // QuickBooks entries reports every line "not found" (owner test 2026-10-02).
+                transactions: syncedDataSet.transactions + importedLines.filter { syncedDataSet.period.contains($0.txnDate) },
                 accounts: syncedDataSet.accounts,
                 vendors: syncedDataSet.vendors,
                 deposits: syncedDataSet.deposits,
@@ -2088,6 +2100,7 @@ public final class AppState {
                 agedPayablesLines: agedPayablesLines,
                 trialBalanceLines: trialBalanceLinesForSync,
                 priorPeriodTransactions: priorPeriodTransactionsForSync,
+                historyTransactions: historySnapshot?.transactions ?? [],
                 coverage: syncedDataSet.coverage,
                 companyFacts: syncedDataSet.companyFacts
             )
@@ -2158,7 +2171,7 @@ public final class AppState {
                 }
             }
             for (ruleID, currentIDs) in currentRunIDsByRule {
-                let resolvedFindings = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: currentIDs, ruleID: ruleID)
+                let resolvedFindings = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: currentIDs, ruleID: ruleID, period: period)
                 for finding in resolvedFindings {
                     try await store.appendActivityLogEntry(ActivityLogEntry(
                         realmID: realmID,
@@ -2237,7 +2250,7 @@ public final class AppState {
             vendors = syncedDataSet.vendors
             await checkForNewAccounts(syncedDataSet.accounts)
             transactions = dataSet.transactions
-            findings = newFindings
+            storedFindings = newFindings
             activityLog = newActivityLog
             importedStatementLineCount = importedLines.count
             if let bs { self.balanceSheetLines = bs }
@@ -2671,7 +2684,7 @@ public final class AppState {
             let newFindings = try await self.store.loadFindings()
             let newActivityLog = try await self.store.loadActivityLog()
             self.clientMemoryRules = newClientMemoryRules
-            self.findings = newFindings
+            self.storedFindings = newFindings
             self.activityLog = newActivityLog
         }
         // `triggeringFindingID` is optional — this action isn't inherently
@@ -2987,7 +3000,7 @@ public final class AppState {
             // inconsistent combination, not just one stale property.
             let newFindings = try await self.store.loadFindings()
             let newActivityLog = try await self.store.loadActivityLog()
-            self.findings = newFindings
+            self.storedFindings = newFindings
             self.activityLog = newActivityLog
         }
     }

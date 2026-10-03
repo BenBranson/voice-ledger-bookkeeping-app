@@ -151,6 +151,15 @@ struct CardCatalogTests {
         #expect(VoiceIntentRouter.match(text: "stop", context: ctx) == .routineStop)
     }
 
+    @Test("'review September' changes the month; page commands are untouched")
+    func reviewMonth() {
+        func r(_ p: String) -> VoiceIntent { VoiceIntentRouter.match(text: p, context: .empty) }
+        if case .reviewMonth(let p) = r("review september") { #expect(p.month == 9) } else { Issue.record("review september") }
+        if case .reviewMonth(let p) = r("switch to August") { #expect(p.month == 8) } else { Issue.record("switch to august") }
+        if case .reviewMonth = r("go to dashboard") { Issue.record("dashboard became a month") }
+        if case .reviewMonth = r("look at mastercard") { Issue.record("mastercard became a month") }
+    }
+
     @Test("'show <trend> chart' phrasing is a command; 'show vendors' is still a page")
     func showTrend() {
         #expect(VoiceIntentRouter.match(text: "show net income trend", context: .empty) == .chart(.netIncomeTrend))

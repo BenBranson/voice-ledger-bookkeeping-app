@@ -710,7 +710,7 @@ public struct QBOSyncClient: Sendable {
     static func lines(from rawLines: [QBORawPurchaseLine]?) -> [LedgerTransactionLine] {
         (rawLines ?? []).compactMap { rawLine in
             guard let lineID = rawLine.id, let accountID = rawLine.accountBasedExpenseLineDetail?.accountRef?.value else { return nil }
-            return LedgerTransactionLine(id: lineID, accountID: accountID)
+            return LedgerTransactionLine(id: lineID, accountID: accountID, description: rawLine.description)
         }
     }
 

@@ -467,13 +467,16 @@ case "facts":
         let priorPL = try await syncClient.fetchProfitAndLoss(realmID: realmID, period: period.previousMonth)
         let syncedDataSet = try await syncClient.sync(realmID: realmID, period: period)
         let priorPeriodTransactions = try await syncClient.fetchPurchases(realmID: realmID, period: period.previousMonth)
+        // Same history the app feeds the rules (AppState.loadHistory: 24 months through today).
+        let history = try await syncClient.syncHistory(realmID: realmID, months: 24, through: asOf)
 
         let dataSet = NormalizedDataSet(
             realmID: syncedDataSet.realmID, period: syncedDataSet.period, transactions: syncedDataSet.transactions,
             accounts: syncedDataSet.accounts, vendors: syncedDataSet.vendors, deposits: syncedDataSet.deposits,
             vendorCredits: syncedDataSet.vendorCredits, profitAndLossLines: profitAndLossLines, balanceSheetLines: balanceSheetLines,
             agedReceivablesLines: agedReceivablesLines, agedPayablesLines: agedPayablesLines, trialBalanceLines: trialBalanceLines,
-            priorPeriodTransactions: priorPeriodTransactions, coverage: syncedDataSet.coverage, companyFacts: syncedDataSet.companyFacts
+            priorPeriodTransactions: priorPeriodTransactions, historyTransactions: history.transactions,
+            coverage: syncedDataSet.coverage, companyFacts: syncedDataSet.companyFacts
         )
         let engine = RuleEngine(rules: RuleRegistry.all)
         let context = RuleContext(period: period, materiality: .defaultPolicy, companyFacts: dataSet.companyFacts, asOfDate: asOf)
@@ -727,7 +730,7 @@ case "sync-check":
                     print("    [\(f.id.prefix(12))...] \(f.title) — confidence=\(f.confidence.rawValue) severity=\(f.severity.rawValue) resolution=\(f.proposedActions.first?.resolution.rawValue ?? "-")")
                 }
                 try await store.upsertFindings(findings)
-                try await store.reconcileAgainstLatestRun(currentRunFindingIDs: Set(findings.map(\.id)), ruleID: ruleID)
+                try await store.reconcileAgainstLatestRun(currentRunFindingIDs: Set(findings.map(\.id)), ruleID: ruleID, period: period)
             }
         }
         print("\n(Findings persisted to \(tempStoreRoot.path) — temp store, not the real app's Application Support location.)")

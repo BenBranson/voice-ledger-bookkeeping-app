@@ -48,7 +48,7 @@ public enum AvoidableFeeRule: Rule {
 
         for transaction in input.transactions.sorted(by: { $0.id < $1.id }) {
             guard !transaction.isVoided else { continue }
-            let haystack = [transaction.vendorName, transaction.memo]
+            let haystack = [transaction.vendorName, transaction.noteText]
                 .compactMap { $0?.lowercased() }
                 .joined(separator: " ")
             guard feeKeywords.contains(where: { haystack.contains($0) }) else { continue }
@@ -102,7 +102,7 @@ public enum AvoidableFeeRule: Rule {
                     highlightedFields: ["vendorName", "memo"],
                     fieldValues: [
                         "vendorName": transaction.vendorName ?? "unknown",
-                        "memo": transaction.memo ?? "",
+                        "memo": transaction.noteText,
                         "amount": transaction.totalAmount.description,
                         "date": transaction.txnDate.formatted
                     ]

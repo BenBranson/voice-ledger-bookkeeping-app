@@ -11,7 +11,7 @@ DESKTOP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND_DIR="$DESKTOP_DIR/../backend"
 REALM="${VL_REGRESSION_REALM:-9341456442848752}"
 AS_OF="${VL_REGRESSION_AS_OF:-2026-09-30}"
-PERIODS="${VL_REGRESSION_PERIODS:-2026-07 2026-08}"
+PERIODS="${VL_REGRESSION_PERIODS:-2026-07 2026-08 2026-09}"  # 2026-09 = seeded scenario batch (backend/spike/seeds/scenarios-sep-2026.json)
 ACCEPT=0; SKIP_TESTS=0
 for arg in "$@"; do case "$arg" in --accept-baseline) ACCEPT=1;; --skip-tests) SKIP_TESTS=1;; esac; done
 

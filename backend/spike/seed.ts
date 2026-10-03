@@ -22,6 +22,7 @@
 
 import "dotenv/config";
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { QboRawClient } from "./qboRawClient.js";
 
@@ -84,10 +85,42 @@ interface SeedInvoice {
   date: string;
   docNumber?: string;
   note: string;
-  /** Optional multi-line invoice; replaces itemName/amount when present. */
-  lines?: { itemName: string; amountMinorUnits: number; description?: string }[];
+  /** Optional multi-line invoice; replaces itemName/amount when present. `qty` + `unitPriceMinorUnits` sell a quantity (inventory); `taxable` marks the line for sales tax. */
+  lines?: { itemName: string; amountMinorUnits: number; description?: string; qty?: number; unitPriceMinorUnits?: number; taxable?: boolean }[];
   /** Net-N due date, e.g. "2025-08-14". */
   dueDate?: string;
+  /** Sales tax code by Name (e.g. "Tucson"); QBO computes the tax on lines marked taxable. */
+  taxCode?: string;
+}
+
+/** Added 2026-10-02: customers this seed CREATES (the older SeedCustomerRef only looks up). `parent` makes it a sub-customer (job). */
+interface SeedNewCustomer {
+  displayName: string;
+  parent?: string;
+  city?: string;
+  state?: string;
+}
+
+/** Added 2026-10-02: an inventory product with a starting quantity. QBO posts the opening value on `startDate`. */
+interface SeedInventoryItem {
+  name: string;
+  qty: number;
+  unitCostMinorUnits: number;
+  salesPriceMinorUnits: number;
+  startDate: string;
+  incomeAccount: string;
+  cogsAccount: string;
+  assetAccount: string;
+}
+
+/** Added 2026-10-02: a customer credit memo (left unapplied unless QBO applies it). */
+interface SeedCreditMemo {
+  case: string;
+  customer: string;
+  itemName: string;
+  amountMinorUnits: number;
+  date: string;
+  note: string;
 }
 
 interface SeedPayment {
@@ -123,6 +156,9 @@ interface SeedTransfer {
 
 interface SeedFile {
   description: string;
+  newCustomers?: SeedNewCustomer[];
+  inventoryItems?: SeedInventoryItem[];
+  creditMemos?: SeedCreditMemo[];
   requiresBaseline?: boolean;
   accounts?: SeedAccount[];
   vendors?: SeedVendor[];
@@ -150,6 +186,38 @@ interface Manifest {
   vendorCredits?: Record<string, { id: string; syncToken: string }>; // note -> {id, syncToken}
   billPayments?: Record<string, { id: string; syncToken: string }>;
   transfers?: Record<string, { id: string; syncToken: string }>;
+  creditMemos?: Record<string, { id: string; syncToken: string }>;
+  /** Added 2026-10-02: what each seed file CREATED, in creation order, so `teardown <seed>` removes exactly that and nothing else. */
+  owned?: Record<string, { entity: string; id: string; key: string }[]>;
+}
+
+/**
+ * Added 2026-10-02 after a 504 mid-seed: a timeout doesn't say whether QBO saved
+ * the record, so a blind retry can create a duplicate nobody planted. Every create
+ * carries QBO's `requestid` (same request → saved once), derived from the seed and
+ * the exact body, and temporary failures (5xx, and QBO's 403 "statusCode: 500"
+ * auth hiccup) are retried with that same id.
+ */
+async function createOnce(client: QboRawClient, entity: string, body: unknown) {
+  const requestid = createHash("sha1").update(`${currentSeed}|${entity}|${JSON.stringify(body)}`).digest("hex").slice(0, 36);
+  let last: Awaited<ReturnType<QboRawClient["post"]>> | undefined;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    last = await client.post(entity, body, { requestid });
+    const transient = last.status >= 500 || (last.status === 403 && JSON.stringify(last.body ?? "").includes("statusCode: 500"));
+    if (!transient) return last;
+    process.stdout.write(`  [retry ${attempt}] ${entity}: HTTP ${last.status}\n`);
+    await new Promise((r) => setTimeout(r, 1500 * attempt));
+  }
+  return last!;
+}
+
+/** The seed file `apply` is currently running, for ownership tracking. */
+let currentSeed = "";
+
+function own(manifest: Manifest, entity: string, id: string, key: string): void {
+  if (!currentSeed) return;
+  manifest.owned ??= {};
+  (manifest.owned[currentSeed] ??= []).push({ entity, id, key });
 }
 
 function loadManifest(): Manifest {
@@ -186,10 +254,11 @@ async function ensureAccount(client: QboRawClient, manifest: Manifest, spec: See
     return found.Id;
   }
 
-  const created = await client.post("account", { Name: spec.name, AccountType: spec.accountType, AccountSubType: spec.accountSubType });
+  const created = await createOnce(client, "account", { Name: spec.name, AccountType: spec.accountType, AccountSubType: spec.accountSubType });
   if (created.status !== 200) throw new Error(`Account create failed for "${spec.name}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   const id = (created.body as any).Account.Id;
   manifest.accounts[spec.name] = id;
+  own(manifest, "Account", id, spec.name);
   return id;
 }
 
@@ -204,10 +273,11 @@ async function ensureVendor(client: QboRawClient, manifest: Manifest, spec: Seed
     return found.Id;
   }
 
-  const created = await client.post("vendor", { DisplayName: spec.displayName });
+  const created = await createOnce(client, "vendor", { DisplayName: spec.displayName });
   if (created.status !== 200) throw new Error(`Vendor create failed for "${spec.displayName}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   const id = (created.body as any).Vendor.Id;
   manifest.vendors[spec.displayName] = id;
+  own(manifest, "Vendor", id, spec.displayName);
   return id;
 }
 
@@ -242,7 +312,8 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
   }
 
   const accountId = manifest.accounts[spec.account];
-  const vendorId = manifest.vendors[spec.vendor];
+  // An empty vendor seeds an expense with no payee (VL-MISSING-PAYEE-001), added 2026-10-02.
+  const vendorId = spec.vendor === "" ? "(no payee)" : manifest.vendors[spec.vendor];
   const expenseAccountId = spec.lines ? "split" : manifest.accounts[spec.expenseAccount];
   if (!accountId || !vendorId || !expenseAccountId) {
     throw new Error(
@@ -250,9 +321,9 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
     );
   }
 
-  const created = await client.post("purchase", {
+  const created = await createOnce(client, "purchase", {
     AccountRef: { value: accountId },
-    EntityRef: { value: vendorId, type: "Vendor" },
+    EntityRef: spec.vendor === "" ? undefined : { value: vendorId, type: "Vendor" },
     TxnDate: spec.date,
     DocNumber: spec.docNumber,
     PrivateNote: spec.note,
@@ -285,6 +356,7 @@ async function ensurePurchase(client: QboRawClient, manifest: Manifest, spec: Se
   }
   const purchase = (created.body as any).Purchase;
   manifest.purchases[spec.note] = { id: purchase.Id, syncToken: purchase.SyncToken };
+  own(manifest, "Purchase", purchase.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> Purchase ${purchase.Id}\n`);
 }
 
@@ -307,7 +379,7 @@ async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBi
     );
   }
 
-  const created = await client.post("bill", {
+  const created = await createOnce(client, "bill", {
     VendorRef: { value: vendorId },
     TxnDate: spec.date,
     DueDate: spec.dueDate,
@@ -325,6 +397,7 @@ async function ensureBill(client: QboRawClient, manifest: Manifest, spec: SeedBi
   }
   const bill = (created.body as any).Bill;
   manifest.bills[spec.note] = { id: bill.Id, syncToken: bill.SyncToken };
+  own(manifest, "Bill", bill.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> Bill ${bill.Id}\n`);
 }
 
@@ -343,7 +416,7 @@ async function ensureVendorCredit(client: QboRawClient, manifest: Manifest, spec
     );
   }
 
-  const created = await client.post("vendorcredit", {
+  const created = await createOnce(client, "vendorcredit", {
     VendorRef: { value: vendorId },
     TxnDate: spec.date,
     PrivateNote: spec.note,
@@ -360,6 +433,7 @@ async function ensureVendorCredit(client: QboRawClient, manifest: Manifest, spec
   }
   const vendorCredit = (created.body as any).VendorCredit;
   manifest.vendorCredits[spec.note] = { id: vendorCredit.Id, syncToken: vendorCredit.SyncToken };
+  own(manifest, "VendorCredit", vendorCredit.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> VendorCredit ${vendorCredit.Id}\n`);
 }
 
@@ -422,22 +496,26 @@ async function ensureInvoice(client: QboRawClient, manifest: Manifest, spec: See
   const lines = [];
   for (const line of specLines) {
     const itemId = await ensureItem(client, manifest, line.itemName);
-    lines.push({ Amount: line.amountMinorUnits / 100, Description: (line as any).description, DetailType: "SalesItemLineDetail", SalesItemLineDetail: { ItemRef: { value: itemId } } });
+    const detail: any = { ItemRef: { value: itemId } };
+    if (line.qty !== undefined && line.unitPriceMinorUnits !== undefined) { detail.Qty = line.qty; detail.UnitPrice = line.unitPriceMinorUnits / 100; }
+    if (line.taxable) detail.TaxCodeRef = { value: "TAX" };
+    lines.push({ Amount: line.amountMinorUnits / 100, Description: line.description, DetailType: "SalesItemLineDetail", SalesItemLineDetail: detail });
   }
 
-  const created = await client.post("invoice", {
-    CustomerRef: { value: customerId },
-    TxnDate: spec.date,
-    DueDate: spec.dueDate,
-    DocNumber: spec.docNumber,
-    PrivateNote: spec.note,
-    Line: lines
-  });
+  const body: any = { CustomerRef: { value: customerId }, TxnDate: spec.date, DueDate: spec.dueDate, DocNumber: spec.docNumber, PrivateNote: spec.note, Line: lines };
+  if (spec.taxCode) {
+    const tc = await client.query(`select Id from TaxCode where Name = '${escapeQboStringLiteral(spec.taxCode)}'`);
+    const tcId = (tc.body as any)?.QueryResponse?.TaxCode?.[0]?.Id;
+    if (!tcId) throw new Error(`Tax code "${spec.taxCode}" not found`);
+    body.TxnTaxDetail = { TxnTaxCodeRef: { value: tcId } };
+  }
+  const created = await createOnce(client, "invoice", body);
   if (created.status !== 200) {
     throw new Error(`Invoice create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   }
   const invoice = (created.body as any).Invoice;
   manifest.invoices[spec.note] = { id: invoice.Id, syncToken: invoice.SyncToken };
+  own(manifest, "Invoice", invoice.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> Invoice ${invoice.Id}\n`);
 }
 
@@ -471,12 +549,13 @@ async function ensurePayment(client: QboRawClient, manifest: Manifest, spec: See
     if (!depositId) throw new Error(`Payment "${spec.case}" deposit account "${spec.depositTo}" not seeded`);
     body.DepositToAccountRef = { value: depositId };
   }
-  const created = await client.post("payment", body);
+  const created = await createOnce(client, "payment", body);
   if (created.status !== 200) {
     throw new Error(`Payment create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
   }
   const payment = (created.body as any).Payment;
   manifest.payments[spec.note] = { id: payment.Id, syncToken: payment.SyncToken };
+  own(manifest, "Payment", payment.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> Payment ${payment.Id}\n`);
 }
 
@@ -491,7 +570,7 @@ async function ensureBillPayment(client: QboRawClient, manifest: Manifest, spec:
   const bankId = manifest.accounts[spec.bankAccount];
   const bill = manifest.bills?.[spec.billNote];
   if (!vendorId || !bankId || !bill) throw new Error(`Missing dependency for bill payment "${spec.case}"`);
-  const created = await client.post("billpayment", {
+  const created = await createOnce(client, "billpayment", {
     VendorRef: { value: vendorId },
     PayType: "Check",
     CheckPayment: { BankAccountRef: { value: bankId } },
@@ -505,6 +584,7 @@ async function ensureBillPayment(client: QboRawClient, manifest: Manifest, spec:
   }
   const payment = (created.body as any).BillPayment;
   manifest.billPayments[spec.note] = { id: payment.Id, syncToken: payment.SyncToken };
+  own(manifest, "BillPayment", payment.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> BillPayment ${payment.Id}\n`);
 }
 
@@ -518,7 +598,7 @@ async function ensureTransfer(client: QboRawClient, manifest: Manifest, spec: Se
   const fromId = manifest.accounts[spec.from];
   const toId = manifest.accounts[spec.to];
   if (!fromId || !toId) throw new Error(`Missing account for transfer "${spec.case}"`);
-  const created = await client.post("transfer", {
+  const created = await createOnce(client, "transfer", {
     FromAccountRef: { value: fromId },
     ToAccountRef: { value: toId },
     Amount: spec.amountMinorUnits / 100,
@@ -530,7 +610,73 @@ async function ensureTransfer(client: QboRawClient, manifest: Manifest, spec: Se
   }
   const transfer = (created.body as any).Transfer;
   manifest.transfers[spec.note] = { id: transfer.Id, syncToken: transfer.SyncToken };
+  own(manifest, "Transfer", transfer.Id, spec.note);
   process.stdout.write(`  [created] ${spec.case} -> Transfer ${transfer.Id}\n`);
+}
+
+// Added 2026-10-02: creates a customer (or a job under `parent`) with a billing address.
+async function ensureNewCustomer(client: QboRawClient, manifest: Manifest, spec: SeedNewCustomer): Promise<string> {
+  manifest.customers ??= {};
+  const cached = manifest.customers[spec.displayName];
+  if (cached) return cached;
+  const existing = await client.query(`select Id from Customer where DisplayName = '${escapeQboStringLiteral(spec.displayName)}'`);
+  const found = (existing.body as any)?.QueryResponse?.Customer?.[0];
+  if (found) { manifest.customers[spec.displayName] = found.Id; return found.Id; }
+  const body: any = { DisplayName: spec.displayName, BillAddr: { City: spec.city, CountrySubDivisionCode: spec.state, Country: "USA" } };
+  if (spec.parent) {
+    const parentId = manifest.customers[spec.parent];
+    if (!parentId) throw new Error(`Parent customer "${spec.parent}" must be listed before "${spec.displayName}"`);
+    body.ParentRef = { value: parentId };
+    body.Job = true;
+    body.BillWithParent = true;
+  }
+  const created = await createOnce(client, "customer", body);
+  if (created.status !== 200) throw new Error(`Customer create failed for "${spec.displayName}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  const id = (created.body as any).Customer.Id;
+  manifest.customers[spec.displayName] = id;
+  own(manifest, "Customer", id, spec.displayName);
+  process.stdout.write(`  [created] customer ${spec.displayName} -> ${id}\n`);
+  return id;
+}
+
+// Added 2026-10-02: an inventory product with its starting quantity on hand.
+async function ensureInventoryItem(client: QboRawClient, manifest: Manifest, spec: SeedInventoryItem): Promise<string> {
+  manifest.items ??= {};
+  const cached = manifest.items[spec.name];
+  if (cached) return cached;
+  const existing = await client.query(`select Id from Item where Name = '${escapeQboStringLiteral(spec.name)}'`);
+  const found = (existing.body as any)?.QueryResponse?.Item?.[0];
+  if (found) { manifest.items[spec.name] = found.Id; return found.Id; }
+  const income = await ensureAccount(client, manifest, { name: spec.incomeAccount, accountType: "Income" });
+  const cogs = await ensureAccount(client, manifest, { name: spec.cogsAccount, accountType: "Cost of Goods Sold" });
+  const asset = await ensureAccount(client, manifest, { name: spec.assetAccount, accountType: "Other Current Asset" });
+  const created = await createOnce(client, "item", {
+    Name: spec.name, Type: "Inventory", TrackQtyOnHand: true, QtyOnHand: spec.qty, InvStartDate: spec.startDate,
+    UnitPrice: spec.salesPriceMinorUnits / 100, PurchaseCost: spec.unitCostMinorUnits / 100,
+    IncomeAccountRef: { value: income }, ExpenseAccountRef: { value: cogs }, AssetAccountRef: { value: asset }
+  });
+  if (created.status !== 200) throw new Error(`Item create failed for "${spec.name}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  const id = (created.body as any).Item.Id;
+  manifest.items[spec.name] = id;
+  own(manifest, "Item", id, spec.name);
+  process.stdout.write(`  [created] inventory item ${spec.name} (${spec.qty} on hand) -> ${id}\n`);
+  return id;
+}
+
+async function ensureCreditMemo(client: QboRawClient, manifest: Manifest, spec: SeedCreditMemo): Promise<void> {
+  manifest.creditMemos ??= {};
+  if (manifest.creditMemos[spec.note]) { process.stdout.write(`  [skip, already seeded] ${spec.case}\n`); return; }
+  const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
+  const itemId = await ensureItem(client, manifest, spec.itemName);
+  const created = await createOnce(client, "creditmemo", {
+    CustomerRef: { value: customerId }, TxnDate: spec.date, PrivateNote: spec.note,
+    Line: [{ Amount: spec.amountMinorUnits / 100, DetailType: "SalesItemLineDetail", SalesItemLineDetail: { ItemRef: { value: itemId } } }]
+  });
+  if (created.status !== 200) throw new Error(`CreditMemo create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  const memo = (created.body as any).CreditMemo;
+  manifest.creditMemos[spec.note] = { id: memo.Id, syncToken: memo.SyncToken };
+  own(manifest, "CreditMemo", memo.Id, spec.note);
+  process.stdout.write(`  [created] ${spec.case} -> CreditMemo ${memo.Id}\n`);
 }
 
 async function apply(seedName: string): Promise<void> {
@@ -540,6 +686,7 @@ async function apply(seedName: string): Promise<void> {
   const seed = JSON.parse(readFileSync(path, "utf8")) as SeedFile;
 
   process.stdout.write(`Applying seed "${seedName}": ${seed.description}\n`);
+  currentSeed = seedName;
 
   // Saved after EVERY entity, not once at the end. Capability-spike finding
   // (2026-08-16): a mid-run failure (e.g. the 4th of 5 purchases hits a
@@ -555,6 +702,14 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const vendor of seed.vendors ?? []) {
     await ensureVendor(client, manifest, vendor);
+    saveManifest(manifest);
+  }
+  for (const customer of seed.newCustomers ?? []) {
+    await ensureNewCustomer(client, manifest, customer);
+    saveManifest(manifest);
+  }
+  for (const item of seed.inventoryItems ?? []) {
+    await ensureInventoryItem(client, manifest, item);
     saveManifest(manifest);
   }
   for (const purchase of seed.purchases ?? []) {
@@ -583,6 +738,10 @@ async function apply(seedName: string): Promise<void> {
   }
   for (const transfer of seed.transfers ?? []) {
     await ensureTransfer(client, manifest, transfer);
+    saveManifest(manifest);
+  }
+  for (const memo of seed.creditMemos ?? []) {
+    await ensureCreditMemo(client, manifest, memo);
     saveManifest(manifest);
   }
 
@@ -614,7 +773,43 @@ async function teardown(seedName: string): Promise<void> {
     return;
   }
 
-  process.stdout.write(`Selective teardown by seed file isn't implemented — use 'teardown all', or recreate the sandbox company.\n`);
+  // Added 2026-10-02: remove exactly what one seed file created, newest first (a payment
+  // before the invoice it pays). Transactions are deleted; names (customers, vendors,
+  // items, accounts) have no delete in QBO, so they are made inactive. Only seeds applied
+  // after ownership tracking existed can be torn down this way.
+  const owned = manifest.owned?.[seedName];
+  if (!owned || owned.length === 0) {
+    process.stdout.write(`Nothing recorded for seed "${seedName}" (seeds applied before 2026-10-02 aren't tracked). Nothing removed.\n`);
+    return;
+  }
+  const maps: Record<string, keyof Manifest> = {
+    Purchase: "purchases", Bill: "bills", Invoice: "invoices", Payment: "payments", VendorCredit: "vendorCredits",
+    BillPayment: "billPayments", Transfer: "transfers", CreditMemo: "creditMemos",
+    Customer: "customers", Vendor: "vendors", Item: "items", Account: "accounts"
+  };
+  const names = new Set(["Customer", "Vendor", "Item", "Account"]);
+  const left: typeof owned = [];
+  for (const rec of [...owned].reverse()) {
+    const path = rec.entity.toLowerCase();
+    const current = await client.get(`${path}/${rec.id}`);
+    const entity = (current.body as any)?.[rec.entity];
+    if (!entity) { process.stdout.write(`  [gone] ${rec.entity} ${rec.id}\n`); continue; }
+    const result = names.has(rec.entity)
+      ? await client.post(path, { ...entity, Active: false })
+      : await client.post(path, { Id: rec.id, SyncToken: entity.SyncToken }, { operation: "delete" });
+    if (result.status !== 200) {
+      process.stdout.write(`  [FAILED] ${rec.entity} ${rec.id}: HTTP ${result.status} ${JSON.stringify(result.body).slice(0, 200)}\n`);
+      left.unshift(rec);
+      continue;
+    }
+    process.stdout.write(`  [${names.has(rec.entity) ? "deactivated" : "deleted"}] ${rec.entity} ${rec.id} (${rec.key})\n`);
+    const key = maps[rec.entity];
+    const map = key ? (manifest[key] as Record<string, unknown> | undefined) : undefined;
+    if (map) delete map[rec.key];
+  }
+  manifest.owned![seedName] = left;
+  saveManifest(manifest);
+  process.stdout.write(left.length ? `${left.length} record(s) could not be removed; see FAILED lines.\n` : `Seed "${seedName}" fully removed.\n`);
 }
 
 const [, , command, target] = process.argv;

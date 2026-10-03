@@ -42,8 +42,9 @@ public enum SuspenseClearingBalanceRule: Rule {
         }
         var findings: [Finding] = []
         for account in input.accounts {
-            guard let kind = kind(of: account), account.currentBalance.minorUnits != 0 else { continue }
-            let exposure = Money(minorUnits: abs(account.currentBalance.minorUnits), currency: account.currentBalance.currency)
+            let balance = input.periodEndBalance(of: account)
+            guard let kind = kind(of: account), balance.minorUnits != 0 else { continue }
+            let exposure = Money(minorUnits: abs(balance.minorUnits), currency: balance.currency)
             guard exposure >= context.materiality.absoluteFloor else { continue }
 
             let findingID = FindingIDGenerator.makeID(
@@ -95,7 +96,7 @@ public enum SuspenseClearingBalanceRule: Rule {
                 evidence: [EvidenceItem(
                     transactionID: account.id,
                     highlightedFields: ["currentBalance"],
-                    fieldValues: ["account": account.name, "accountType": account.accountType.rawValue, "currentBalance": account.currentBalance.description, "kind": kind.rawValue]
+                    fieldValues: ["account": account.name, "accountType": account.accountType.rawValue, "currentBalance": balance.description, "kind": kind.rawValue]
                 )],
                 proposedActions: [action],
                 provenance: [.qboAPI(readAt: Date())],

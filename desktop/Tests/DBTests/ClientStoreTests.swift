@@ -67,7 +67,7 @@ struct ClientStoreTests {
         // Simulate a resync where the duplicate is now voided — the rule's
         // isVoided exclusion means the pair no longer produces this finding
         // at all, so the current run's ID set is empty for this rule.
-        try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID)
+        try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID, period: AccountingPeriod(year: 2026, month: 7))
 
         let loaded = try await store.loadFindings()
         #expect(loaded[0].status == .resolved)
@@ -88,7 +88,7 @@ struct ClientStoreTests {
         let ruleID = RuleID(rawValue: "VL-DUP-EXP-001")
         try await store.upsertFindings([sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))])
 
-        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID)
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID, period: AccountingPeriod(year: 2026, month: 7))
         #expect(resolved.count == 1)
         #expect(resolved[0].id == "abc123")
         #expect(resolved[0].status == .resolved, "the returned copy already reflects the new status, not the pre-resolve one")
@@ -101,7 +101,7 @@ struct ClientStoreTests {
         let finding = sampleFinding(id: "abc123", realmID: RealmID(rawValue: "realm-a"))
         try await store.upsertFindings([finding])
 
-        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [finding.id], ruleID: ruleID)
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [finding.id], ruleID: ruleID, period: AccountingPeriod(year: 2026, month: 7))
         #expect(resolved.isEmpty)
     }
 
@@ -524,5 +524,24 @@ struct ClientStoreTests {
 
         let loaded = try await store.loadVoiceSessionContext()
         #expect(loaded == context)
+    }
+}
+
+@Suite("Reconciling one month never resolves another month's findings")
+struct ReconcilePeriodScopeTests {
+    @Test("2026-10-02: a September run that re-detects nothing leaves July's open findings open")
+    func otherMonthUntouched() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "vl-period-scope-\(UUID().uuidString)")
+        let store = try ClientStore(realmID: RealmID(rawValue: "9341456442848752"), rootDirectory: root)
+        let rule = RuleID(rawValue: "VL-OBE-BALANCE-001")
+        func finding(_ id: String, month: Int) -> Finding {
+            Finding(id: id, ruleID: rule, ruleVersion: RuleVersion(major: 1, minor: 0, patch: 0), realmID: RealmID(rawValue: "9341456442848752"),
+                    period: AccountingPeriod(year: 2026, month: month), title: "t", severity: .low, confidence: .high,
+                    dollarExposure: Money(minorUnits: 100, currency: .usd), evidence: [], proposedActions: [], provenance: [])
+        }
+        try await store.upsertFindings([finding("jul", month: 7), finding("sep", month: 9)])
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: rule, period: AccountingPeriod(year: 2026, month: 9))
+        #expect(resolved.map(\.id) == ["sep"])
+        #expect(try await store.loadFindings().first { $0.id == "jul" }?.status == .open)
     }
 }

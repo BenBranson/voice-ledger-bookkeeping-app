@@ -52,6 +52,9 @@ struct VoiceLedgerApp: App {
             Group {
                 if let appState {
                     RootView(state: appState)
+                        // A new AppState (client switch or month change) gets a fresh screen, so its
+                        // startup work (load from disk, sync) runs for the new client or month.
+                        .id(ObjectIdentifier(appState))
                 } else if let configError {
                     ConfigErrorView(message: configError)
                 } else {
@@ -169,6 +172,8 @@ struct VoiceLedgerApp: App {
     }
 
     private static let mainWindowID = "main"
+    /// Per client, so each client opens on the month last reviewed for it.
+    static func reviewPeriodKey(_ realmID: RealmID) -> String { "reviewPeriod.\(realmID.rawValue)" }
     static let comparisonWindowID = "finding-comparison"
 
     private func configure() {
@@ -246,8 +251,17 @@ struct VoiceLedgerApp: App {
         let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appending(path: "VoiceLedger", directoryHint: .isDirectory)
         let store = try ClientStore(realmID: realmID, rootDirectory: supportDir)
-        let period = AccountingPeriod(year: 2026, month: 7)
+        // Was hard-coded to July 2026 until 2026-10-02. Now: this client's chosen month,
+        // else the last completed month.
+        let saved = ReviewPeriod.parse(UserDefaults.standard.string(forKey: Self.reviewPeriodKey(realmID)))
+        let period = saved ?? ReviewPeriod.lastCompleted(today: AccountingDate(date: Date()))
         let newState = AppState(realmID: realmID, environment: environment, period: period, backend: backend, store: store, clientStoreRootDirectory: supportDir)
+        newState.onChangePeriod = { newPeriod in
+            UserDefaults.standard.set(ReviewPeriod.key(newPeriod), forKey: Self.reviewPeriodKey(realmID))
+            if let rebuilt = try? buildAppState(realmID: realmID, environment: environment, sessionToken: sessionToken, backendBaseURL: backendBaseURL) {
+                appState = rebuilt
+            }
+        }
         newState.onSwitchToClient = { [weak newState] targetRealmID, targetEnvironment in
             await performSwitch(to: targetRealmID, environment: targetEnvironment, requestingFrom: newState)
         }

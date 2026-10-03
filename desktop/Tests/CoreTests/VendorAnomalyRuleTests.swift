@@ -38,11 +38,14 @@ struct VendorAnomalyRuleTests {
         )
     }
 
-    @Test("A transaction at 4x a vendor's median amount this period produces a finding")
+    // 2026-10-02: the charge being judged no longer counts toward its own "normal", so a
+    // finding needs 3 OTHER charges (this month or the prior 12 months).
+    @Test("A transaction at 4x the median of the vendor's other charges produces a finding")
     func largeOutlierProducesFinding() {
         let txns = [
             purchase(id: "1", vendor: "Acme Supply", amountMinorUnits: 10_000),
             purchase(id: "2", vendor: "Acme Supply", amountMinorUnits: 11_000),
+            purchase(id: "4", vendor: "Acme Supply", amountMinorUnits: 10_500),
             purchase(id: "3", vendor: "Acme Supply", amountMinorUnits: 40_000)
         ]
         let outcome = VendorAnomalyRule.evaluate(dataSet(txns), context: context())
@@ -142,5 +145,34 @@ struct VendorAnomalyRuleTests {
         #expect(VendorAnomalyRule.median(of: [10, 20, 30]) == 20)
         #expect(VendorAnomalyRule.median(of: [10, 20, 30, 40]) == 25)
         #expect(VendorAnomalyRule.median(of: []) == 0)
+    }
+
+    func charge(_ id: String, _ vendor: String, _ amount: Int64, _ month: Int, _ day: Int = 15, kind: QBOEntityKind = .purchase) -> LedgerTransaction {
+        LedgerTransaction(id: id, entityKind: kind, vendorName: vendor, txnDate: AccountingDate(year: 2026, month: month, day: day),
+                          totalAmount: Money(minorUnits: amount, currency: .usd), paymentAccountID: "checking-1", docNumber: nil,
+                          isVoided: false, memo: nil, provenance: .qboAPI(readAt: Date()))
+    }
+
+    @Test("Owner test 2026-10-02: a first bill plus a duplicate pair is not 'unusual' — duplicates never set the baseline")
+    func duplicatesDoNotSetTheBaseline() {
+        let txns = [charge("a", "VLT Permian Pipe", 234_000, 7, 2, kind: .bill),
+                    charge("b", "VLT Permian Pipe", 61_500, 7, 8, kind: .bill), charge("c", "VLT Permian Pipe", 61_500, 7, 8, kind: .bill)]
+        if case .findings = VendorAnomalyRule.evaluate(dataSet(txns), context: context()) { Issue.record("flagged against its own duplicates") }
+    }
+
+    @Test("History sets 'normal': one large charge against 12 months of small ones is flagged, citing the history")
+    func historyBaseline() {
+        let history = (1...6).map { charge("h\($0)", "Chin's Gas", 26_000, $0) }
+        let data = NormalizedDataSet(realmID: realm, period: period, transactions: [charge("big", "Chin's Gas", 115_000, 7)],
+                                     historyTransactions: history, coverage: .complete, companyFacts: CompanyFacts(customTxnNumbersForPurchases: false))
+        guard case .findings(let f) = VendorAnomalyRule.evaluate(data, context: context()), let first = f.first else { Issue.record("expected a finding"); return }
+        #expect(first.narrative?.contains("6 charges over the last 12 months") == true)
+    }
+
+    @Test("Customer invoices are not vendor charges")
+    func invoicesIgnored() {
+        let txns = [charge("1", "Desert Rose", 10_000, 7, kind: .invoice), charge("2", "Desert Rose", 10_000, 7, 3, kind: .invoice),
+                    charge("3", "Desert Rose", 10_000, 7, 4, kind: .invoice), charge("4", "Desert Rose", 90_000, 7, 5, kind: .invoice)]
+        if case .findings = VendorAnomalyRule.evaluate(dataSet(txns), context: context()) { Issue.record("flagged an invoice") }
     }
 }

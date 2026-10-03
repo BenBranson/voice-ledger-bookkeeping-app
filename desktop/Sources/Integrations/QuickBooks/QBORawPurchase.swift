@@ -72,10 +72,14 @@ public struct QBORawPurchaseLine: Decodable, Sendable {
     /// specific line safely.
     public let id: String?
     public let accountBasedExpenseLineDetail: QBORawAccountBasedExpenseLineDetail?
+    /// The line's own "Description" — where people often write a note ("personal",
+    /// "loan payment"), separate from the form's Memo (`PrivateNote`). Added 2026-10-02.
+    public let description: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "Id"
         case accountBasedExpenseLineDetail = "AccountBasedExpenseLineDetail"
+        case description = "Description"
     }
 }
 

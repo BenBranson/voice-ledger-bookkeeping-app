@@ -66,7 +66,7 @@ struct ReconcileCannotEvaluateTests {
         let finding = sampleFinding(id: "forced-recon-2", ruleID: ruleID, realmID: realmID)
         try await store.upsertFindings([finding])
 
-        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID)
+        let resolved = try await store.reconcileAgainstLatestRun(currentRunFindingIDs: [], ruleID: ruleID, period: AccountingPeriod(year: 2026, month: 7))
         #expect(resolved.count == 1)
         #expect(resolved.first?.id == "forced-recon-2")
     }

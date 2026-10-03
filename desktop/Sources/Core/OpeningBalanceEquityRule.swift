@@ -39,8 +39,9 @@ public enum OpeningBalanceEquityRule: Rule {
         var findings: [Finding] = []
 
         for account in obeAccounts {
-            guard account.currentBalance.minorUnits != 0 else { continue }
-            let exposure = Money(minorUnits: abs(account.currentBalance.minorUnits), currency: account.currentBalance.currency)
+            let balance = input.periodEndBalance(of: account)
+            guard balance.minorUnits != 0 else { continue }
+            let exposure = Money(minorUnits: abs(balance.minorUnits), currency: balance.currency)
             guard exposure >= context.materiality.absoluteFloor else { continue }
 
             let findingID = FindingIDGenerator.makeID(
