@@ -1491,3 +1491,8 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - new email everywhere
   - Privacy page gained a "QuickBooks Connection" section (keys stored encrypted on the owner's Mac, never on the site)
 - **Hosting decision:** keep the backend local on the owner's Mac (single user). For production OAuth, plan a static https "connected" page on the website that hands the one-time code to the app (stores nothing, no analytics). No cloud server unless remote access, after-hours syncs or staff are needed.
+- **2026-10-03, website "Build Your Plan" quote page (/quote; menu label "Get a Quote"):** clients check boxes and see a live estimate.
+  - Tier cards on the Pricing page link to it as `/quote?tier=…`.
+  - Each submission is saved as a QuoteRequest record and emailed to the firm address.
+  - It carries a **third copy of the price list**, built in Base44 rather than read from `PriceBook`. Any price change must update `PriceBook.swift`, the Pricing page and this page together.
+  - Math was tested in the preview: Growth plus advisory, sales tax, payroll bookkeeping, 2 extra accounts and 1 entity = $1,800/mo. Three catch-up months plus five 1099s = $1,150 one-time. Heavy inventory turns the total into "from".
