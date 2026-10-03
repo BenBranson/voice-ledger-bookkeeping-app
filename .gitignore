@@ -85,3 +85,4 @@ __pycache__/
 # Per-machine app signature produced by build-app-bundle.sh. Never commit
 # the Apple Development certificate's signature resources.
 Voice Ledger Launcher.app/Contents/_CodeSignature/
+desktop/Evals/results/

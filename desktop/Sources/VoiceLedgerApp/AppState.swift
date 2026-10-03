@@ -1635,6 +1635,7 @@ public final class AppState {
         if askAIError?.contextKey == contextKey { askAIError = nil }
         do {
             let fullContext = Self.contextWithKnowledge(contextText, question: question)
+            aiCallCount += 1
             let raw = try await backend.askAI(realmID: realmID, question: question, context: fullContext, history: history, format: format, model: model)
             let answer = verifiedAnswer(raw, context: fullContext, question: question, history: history)
             askAIAnswers[contextKey] = answer
@@ -1651,7 +1652,8 @@ public final class AppState {
     /// than compose the call and surface the result; the actual tool
     /// definitions and dispatch logic live entirely in `VoiceToolLoop`.
     public func askAIWithTools(question: String, context: String, history: [AskAIHistoryTurn], model: String, tools: [[String: JSONValue]]) async throws -> (answer: String, toolCalls: [AIToolCall]) {
-        try await backend.askAIWithTools(realmID: realmID, question: question, context: context, history: history, model: model, tools: tools)
+        aiCallCount += 1
+        return try await backend.askAIWithTools(realmID: realmID, question: question, context: context, history: history, model: model, tools: tools)
     }
 
     /// `FindingDetailView`'s call site — a thin wrapper over the general
@@ -1711,6 +1713,7 @@ public final class AppState {
         if secondOpinionError?.contextKey == contextKey { secondOpinionError = nil }
         do {
             let fullContext = Self.contextWithKnowledge(contextText, question: question)
+            aiCallCount += 1
             let raw = try await backend.askAI(realmID: realmID, question: question, context: fullContext, tier: .secondary, format: format)
             let answer = verifiedAnswer(raw, context: fullContext, question: question, history: [])
             secondOpinionAnswers[contextKey] = answer
@@ -2344,6 +2347,10 @@ public final class AppState {
             transactions: clientData.searchableTransactions, openFindings: findings.filter { $0.status == .open },
             tieOut: tieOut, forecast: thirteenWeekForecast))
     }
+
+    /// Every call to an AI model, counted. The voice log uses it to record whether an
+    /// answer was computed instantly by code or went through the model (the eval grades it).
+    public private(set) var aiCallCount = 0
 
     public static let diagnosisAskKey = "page:business-diagnosis"
     public static let diagnosisQuestion = "Write a short, plain-English summary of this diagnosis for the business owner: what's going right, what needs attention, and the two or three most important next steps. Use only the items given; do not add figures."

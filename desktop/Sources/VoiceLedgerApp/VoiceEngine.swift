@@ -645,6 +645,7 @@ public final class VoiceEngine: NSObject {
 
     private func processCommand(_ text: String) async {
         let commandStarted = Date()
+        let aiCallsBefore = appState.aiCallCount
         syncCurrentEntityWithScreen()
         let intent = VoiceIntentRouter.match(text: text, context: context)
         if case .chooseFinding = intent {} else { context.candidateFindingIDs = nil }
@@ -670,7 +671,7 @@ public final class VoiceEngine: NSObject {
         if let uiAction = turn.uiAction { actionDescription = describe(uiAction) }
         else { actionDescription = "No screen action" }
         if let card = cardShownThisTurn { actionDescription += " + card: \(card)"; cardShownThisTurn = nil }
-        await recordTranscript(speaker: .assistant, text: "COMMAND RESULT\nHEARD: \(text)\nSOURCE: \(transcriptSource.isEmpty ? "typed" : transcriptSource)\nACTION: \(actionDescription) → \(appState.voiceLogLabel)\nRESPONSE: \(turn.speech)")
+        await recordTranscript(speaker: .assistant, text: "COMMAND RESULT\nHEARD: \(text)\nSOURCE: \(transcriptSource.isEmpty ? "typed" : transcriptSource)\nPATH: \(appState.aiCallCount > aiCallsBefore ? "ai" : "instant")\nACTION: \(actionDescription) → \(appState.voiceLogLabel)\nRESPONSE: \(turn.speech)")
         guard !Task.isCancelled else { return }
         // Fresh data: the scope sentence stays on screen but isn't read aloud.
         var fresh = false

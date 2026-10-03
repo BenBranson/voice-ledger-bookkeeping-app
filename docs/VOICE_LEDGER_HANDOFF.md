@@ -1454,3 +1454,16 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
 - **QBO quirk hit again:** the AgedPayables summary was empty at 10-31 with bills open. The detail fallback rebuilt it, and all 11 tie-outs tie for October both as a finished month (devtool, as of 11-01) and in progress (the live app, today's balances).
 - **Regression check:** preflight now runs as of 2026-11-01 and covers 2026-07…10. The 2026-09 baseline gained the batch-1 $500 Undeposited Funds finding (36 days old as of 11-01): the plant that wasn't old enough before.
 - **Fixed:** the nexus screen and the diagnosis customer-concentration check read only the history snapshot, which refreshes daily, so anything synced since was missing (the NV sale). Both now use `clientData.searchableTransactions` (fresh sync + history, deduplicated), as does `qboWebURL(for:)`.
+
+## 2026-10-03 — v1.78: Moneypenny eval (`desktop/Evals/moneypenny-eval.json`, `desktop/Scripts/eval-moneypenny.py`)
+
+- **What it is:** 29 fixed questions about the sandbox's September 2026 books (the expected figures were verified against QBO and depend on the seed batches). They run through the sandbox-only `voiceledger-dev://ask` link and are graded by code:
+  - `PATH` instant vs ai
+  - card title
+  - screen action
+  - required text
+  - for AI answers, every $ figure must appear in `Regression/<realm>-2026-09.json`
+- **Output:** results go to `Evals/results/` (git-ignored); scores are appended to `Evals/history.tsv` (committed). Use `--fast` to skip the AI cases.
+- **Logging:** the voice log line now carries `PATH: instant|ai`, from `AppState.aiCallCount`, which counts every model call.
+- **First run (28/29) caught a real bug.** The expense card total excluded cost of goods sold (it split at "Gross Profit") and so disagreed with Income vs. Expenses by $160; it would also have counted Other Income as a cost. The new `TopExpenseDrivers.costLines` covers COGS + expenses + other expenses, skips Other Income, and is shared by both charts, the Pareto chart and the diagnosis. Now 29/29.
+- **Not yet enabled:** the "You should know" mod needs Claude Code 2.1.287+; this machine runs 2.1.286.

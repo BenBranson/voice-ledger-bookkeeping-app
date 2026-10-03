@@ -19,11 +19,26 @@ public enum TopExpenseDrivers {
         }
     }
 
+    /// Every cost line on a P&L: cost of goods sold, expenses and other expenses, never
+    /// income. Fixed 2026-10-03 (caught by the Moneypenny eval): this used to start after
+    /// "Gross Profit", which skipped cost of goods sold ($160 in September) so the expense
+    /// chart disagreed with Income vs. Expenses, and it would have counted Other Income lines
+    /// as costs. Starts after "Total Income" and skips the Other Income section.
+    public static func costLines(_ lines: [ReportLine]) -> [ReportLine] {
+        guard let start = lines.firstIndex(where: { $0.isSummary && $0.label == "Total Income" }) else { return [] }
+        var out: [ReportLine] = []
+        var inOtherIncome = false
+        for line in lines[(start + 1)...] {
+            if !line.isSummary && line.amount == nil && line.label == "Other Income" { inOtherIncome = true; continue }
+            if line.isSummary && line.label == "Total Other Income" { inOtherIncome = false; continue }
+            if inOtherIncome || line.isSummary { continue }
+            out.append(line)
+        }
+        return out
+    }
+
     public static func top(_ count: Int, from profitAndLossLines: [ReportLine]) -> [Driver] {
-        let splitLabel = profitAndLossLines.contains(where: { $0.isSummary && $0.label == "Gross Profit" }) ? "Gross Profit" : "Total Income"
-        guard let splitIndex = profitAndLossLines.firstIndex(where: { $0.isSummary && $0.label == splitLabel }) else { return [] }
-        let expenseLines = profitAndLossLines[(splitIndex + 1)...]
-        return expenseLines
+        return costLines(profitAndLossLines)
             .compactMap { line -> Driver? in
                 guard !line.isSummary, let amount = line.amount, amount.minorUnits != 0 else { return nil }
                 return Driver(label: line.label, amount: amount)

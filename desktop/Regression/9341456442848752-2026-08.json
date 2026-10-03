@@ -126,7 +126,7 @@
       "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
       "Weaknesses.late-ar" : "46% of what customers owe is over 60 days late ($7,451.13 of $16,083.03)"
     },
-    "diagnosis.whereMoneyGoes" : "Cost of Labor $34,440.43 31.0% | Rent or Lease $15,300.00 13.8% | Plants and Soil $11,011.77 9.9% | Job Materials (other) $10,729.91 9.7% | Fuel $8,953.29 8.1% | Insurance $4,861.23 4.4% | Everything else $25,683.54 23.1%",
+    "diagnosis.whereMoneyGoes" : "Cost of Labor $34,440.43 30.9% | Rent or Lease $15,300.00 13.7% | Plants and Soil $11,011.77 9.9% | Job Materials (other) $10,729.91 9.6% | Fuel $8,953.29 8.0% | Insurance $4,861.23 4.4% | Everything else $26,088.54 23.4%",
     "exposure.allOpen" : "$19,110.89",
     "exposure.balanceSheetIntegrity" : "$14,835.52",
     "exposure.cleanupAssessment" : "$18,110.89",

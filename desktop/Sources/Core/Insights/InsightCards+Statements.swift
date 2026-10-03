@@ -17,9 +17,7 @@ extension InsightCards {
 
     /// Expense lines below the income section, largest first (same split as `TopExpenseDrivers`).
     static func expenseLines(_ lines: [ReportLine]) -> [ReportLine] {
-        let split = lines.contains(where: { $0.isSummary && $0.label == "Gross Profit" }) ? "Gross Profit" : "Total Income"
-        guard let i = lines.firstIndex(where: { $0.isSummary && $0.label == split }) else { return [] }
-        return lines[(i + 1)...].filter { !$0.isSummary && ($0.amount?.minorUnits ?? 0) != 0 }
+        TopExpenseDrivers.costLines(lines).filter { ($0.amount?.minorUnits ?? 0) != 0 }
             .sorted { abs(m($0.amount).minorUnits) > abs(m($1.amount).minorUnits) }
     }
 

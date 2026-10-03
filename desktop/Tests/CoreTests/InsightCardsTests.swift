@@ -230,3 +230,31 @@ struct ReviewPeriodTests {
         #expect(ReviewPeriod.parse(ReviewPeriod.key(AccountingPeriod(year: 2026, month: 9))) == AccountingPeriod(year: 2026, month: 9))
     }
 }
+
+@Suite("Cost lines: cost of goods and other expenses in, income out")
+struct CostLinesTests {
+    func usd(_ d: Double) -> Money { Money(minorUnits: Int64((d * 100).rounded()), currency: .usd) }
+    @Test("Eval catch 2026-10-03: expense categories add up to revenue − net income + other income")
+    func costLinesTie() {
+        let pl = [ReportLine(label: "Sales", amount: usd(15_522.48), depth: 1, isSummary: false),
+                  ReportLine(label: "Total Income", amount: usd(15_522.48), depth: 0, isSummary: true),
+                  ReportLine(label: "Cost of Goods Sold", amount: nil, depth: 0, isSummary: false),
+                  ReportLine(label: "Cost of Goods Sold", amount: usd(160), depth: 1, isSummary: false),
+                  ReportLine(label: "Total Cost of Goods Sold", amount: usd(160), depth: 0, isSummary: true),
+                  ReportLine(label: "Gross Profit", amount: usd(15_362.48), depth: 0, isSummary: true),
+                  ReportLine(label: "Fuel", amount: usd(12_768.12), depth: 1, isSummary: false),
+                  ReportLine(label: "Total Expenses", amount: usd(12_768.12), depth: 0, isSummary: true),
+                  ReportLine(label: "Other Income", amount: nil, depth: 0, isSummary: false),
+                  ReportLine(label: "Interest Earned", amount: usd(40), depth: 1, isSummary: false),
+                  ReportLine(label: "Total Other Income", amount: usd(40), depth: 0, isSummary: true),
+                  ReportLine(label: "Other Expenses", amount: nil, depth: 0, isSummary: false),
+                  ReportLine(label: "Interest Paid", amount: usd(111.25), depth: 1, isSummary: false),
+                  ReportLine(label: "Total Other Expenses", amount: usd(111.25), depth: 0, isSummary: true),
+                  ReportLine(label: "Net Income", amount: usd(2_523.11), depth: 0, isSummary: true)]
+        let costs = TopExpenseDrivers.costLines(pl)
+        #expect(costs.map(\.label) == ["Cost of Goods Sold", "Cost of Goods Sold", "Fuel", "Other Expenses", "Interest Paid"])
+        let total = costs.compactMap(\.amount).reduce(Money(minorUnits: 0, currency: .usd), +)
+        #expect(total == usd(15_522.48 - 2_523.11 + 40))   // 13,039.37
+        #expect(InsightCards.expenses(pl, prior: [], transactions: [], pareto: false, period: AccountingPeriod(year: 2026, month: 9), footnote: "")?.headline == "$13,039.37")
+    }
+}
