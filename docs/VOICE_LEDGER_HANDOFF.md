@@ -1431,3 +1431,11 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
 **Voice:** "how is the business doing" speaks the counts and the most pressing item. "explain the diagnosis" runs AI prose through `askAI`, using only `diagnosisContext`, NumberGuard-verified. Diagnosis items are in `facts` (`diagnosis.*`), so the regression check covers them.
 
 **Known definitional point:** "owed before credits" (`AgingSplit`) is computed from aging buckets, and QBO nets a credit against invoices in the same age bucket. So the gross figure can move as a credit ages from one bucket to another, even though the net TOTAL doesn't change. It's consistent everywhere it's used; the precise fix would read open invoice balances.
+
+## 2026-10-02 — v1.76: exact "owed before credits"
+
+- `AgingSplit` used the summary's age buckets, and QBO nets a credit against invoices in the same bucket. The Sep 30 split read $24,631.51 owed / $800 credits; the truth is **$24,881.51 / $1,050.00**: two $400 Cool Cars unapplied payments plus the $250 O'Brien credit memo, verified by summing QBO's AgedReceivableDetail independently.
+- Every aging read now also reads its DETAIL report for the same date and attaches an `OpenItemsSplit` (owed = positive open balances, credits = negative, over60 = positives in the 61–90/91+ sections) to the TOTAL line. `AgingSplit` uses it only when its net equals the TOTAL, else falls back. All 8 call sites became exact without plumbing.
+- Backend allow-list: added `AgedReceivableDetail`. Detail layout: A/R has 7 columns, A/P 8; the open balance is always the last column; the age comes from the section header.
+- New tie-outs `ar-open` / `ap-open` (detail net = summary TOTAL): 11 checks, all tie.
+- **Regression harness fix.** `facts` pins aging to `--as-of` (it had fallen back to the wall clock for a month ending on the as-of day, so the September baseline drifted with the real date), and `preflight.sh` now runs as of 2026-10-01, so every baseline month is a finished month.

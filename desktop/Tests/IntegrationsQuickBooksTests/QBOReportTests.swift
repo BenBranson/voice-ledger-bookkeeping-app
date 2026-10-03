@@ -101,6 +101,20 @@ struct QBOReportTests {
         #expect(lines.last?.isSummary == true && lines.last?.total == Money(minorUnits: 201_937, currency: .usd))
     }
 
+    @Test("A/R aging DETAIL (7 columns, live shape 2026-10-02): exact owed, credits and over-60 by section")
+    func openItemsSplitFromReceivableDetail() throws {
+        func row(_ type: String, _ customer: String, _ open: String) -> String {
+            #"{ "ColData": [{"value":"2026-01-01"},{"value":"\#(type)"},{"value":"1"},{"value":"\#(customer)"},{"value":"2026-01-31"},{"value":"\#(open)"},{"value":"\#(open)"}], "type": "Data" }"#
+        }
+        let json = #"{ "Rows": { "Row": [ { "Header": { "ColData": [{"value":"91 or more days past due"}] }, "Rows": { "Row": ["# + row("Invoice", "Freeman Sporting Goods:55 Twin Lane", "81.00") + #"] }, "type": "Section" }, { "Header": { "ColData": [{"value":"61 - 90 days past due"}] }, "Rows": { "Row": ["# + row("Payment", "Amy", "-800.00") + #"] }, "type": "Section" }, { "Header": { "ColData": [{"value":"Current"}] }, "Rows": { "Row": ["# + row("Invoice", "O'Brien", "1000.00") + "," + row("Credit Memo", "O'Brien", "-250.00") + #"] }, "type": "Section" } ] } }"#
+        let split = try #require(QBOSyncClient.openItemsSplit(try JSONDecoder().decode(QBORawReport.self, from: Data(json.utf8)).rows))
+        #expect(split.owed == Money(minorUnits: 108_100, currency: .usd))        // 81 + 1,000 — the credit memo no longer nets in
+        #expect(split.credits == Money(minorUnits: -105_000, currency: .usd))    // −800 − 250
+        #expect(split.over60Owed == Money(minorUnits: 8_100, currency: .usd))    // only the invoice; the −800 payment isn't "owed"
+        #expect(split.net == Money(minorUnits: 3_100, currency: .usd))
+        #expect(split.itemCount == 4)
+    }
+
     @Test("An empty report (no rows) flattens to an empty list, not a crash")
     func emptyReportFlattensToEmptyList() throws {
         let json = "{ \"Rows\": { \"Row\": [] } }"

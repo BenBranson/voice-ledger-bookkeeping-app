@@ -1,5 +1,5 @@
 {
-  "asOf" : "2026-09-30",
+  "asOf" : "2026-10-01",
   "facts" : {
     "balanceSheetTotals" : {
       "Total Accounts Payable" : "$3,913.76",
@@ -123,7 +123,7 @@
       "Opportunities.trim-Job Materials (other)" : "Bringing it back to its earlier level saves about $396.28 a month",
       "Strengths.growth" : "Revenue +238%: $46,008.22 in May '26 – Jul '26 vs. the same months a year earlier ($13,616.87)",
       "Strengths.margin" : "12-month net margin 27.6% ($42,367.83 kept from $153,334.88 of revenue)",
-      "Strengths.ties" : "All 9 tie-out checks agree to the cent",
+      "Strengths.ties" : "All 11 tie-out checks agree to the cent",
       "Threats.runway" : "$10,448.92 in the bank covers 0.9 months of costs ($11,412.34 a month on average)",
       "Weaknesses.findings" : "17 open findings touching $29,214.07",
       "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
@@ -163,8 +163,10 @@
     "revenue" : "$16,019.16",
     "revenuePrior" : "$16,260.82",
     "tieOut" : {
+      "ap-open" : "ties",
       "ap-rows" : "ties",
       "ap-tie" : "ties",
+      "ar-open" : "ties",
       "ar-rows" : "ties",
       "ar-tie" : "ties",
       "bs-balances" : "ties",
@@ -215,7 +217,7 @@
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 66 days — Cool Cars, USD 400.00"
     },
     {
       "amount" : "$400.00",
@@ -225,7 +227,7 @@
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 65 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 66 days — Cool Cars, USD 400.00"
     },
     {
       "amount" : "$312.50",

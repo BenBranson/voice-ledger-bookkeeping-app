@@ -27,6 +27,11 @@ public struct AgingLine: Identifiable, Hashable, Sendable {
     /// QBO Customer/Vendor Id from the report's name column, for a link to
     /// that customer's or vendor's page in QBO. Nil when QBO omits it.
     public let entityID: String?
+    /// On the TOTAL line only: exact figures from the aging DETAIL report for the
+    /// same date (2026-10-02). The summary's buckets net a credit against invoices
+    /// in the same age bucket, so "owed before credits" read from buckets moved as
+    /// a credit aged. Nil when the detail wasn't read.
+    public var openItems: OpenItemsSplit?
 
     public init(
         label: String,
@@ -51,5 +56,23 @@ public struct AgingLine: Identifiable, Hashable, Sendable {
         self.total = total
         self.depth = depth
         self.isSummary = isSummary
+    }
+}
+
+
+/// Exact split of an aging report from its open documents (aging DETAIL report):
+/// invoices/bills with an open balance are owed; credit memos, vendor credits and
+/// unapplied payments are credits.
+public struct OpenItemsSplit: Hashable, Sendable {
+    public let owed: Money
+    public let credits: Money
+    /// Owed (positive open balances only) in the 61–90 and 91+ sections.
+    public let over60Owed: Money
+    /// Sum of every open balance; must equal the summary report's TOTAL.
+    public let net: Money
+    public let itemCount: Int
+
+    public init(owed: Money, credits: Money, over60Owed: Money, net: Money, itemCount: Int) {
+        self.owed = owed; self.credits = credits; self.over60Owed = over60Owed; self.net = net; self.itemCount = itemCount
     }
 }

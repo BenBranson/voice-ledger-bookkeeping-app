@@ -1,5 +1,5 @@
 {
-  "asOf" : "2026-09-30",
+  "asOf" : "2026-10-01",
   "facts" : {
     "balanceSheetTotals" : {
       "Total Accounts Payable" : "$3,687.43",
@@ -121,7 +121,7 @@
       "Opportunities.collect" : "Largest: Freeman Sporting Goods $2,732.11, Paulsen Medical Supplies $954.75, Geeta Kalapatapu $629.10",
       "Strengths.growth" : "Revenue +74%: $44,913.90 in Jun '26 – Aug '26 vs. the same months a year earlier ($25,768.27)",
       "Strengths.margin" : "12-month net margin 27.6% ($42,432.23 kept from $153,817.40 of revenue)",
-      "Strengths.ties" : "All 9 tie-out checks agree to the cent",
+      "Strengths.ties" : "All 11 tie-out checks agree to the cent",
       "Weaknesses.findings" : "10 open findings touching $19,110.89",
       "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
       "Weaknesses.late-ar" : "46% of what customers owe is over 60 days late ($7,451.13 of $16,083.03)"
@@ -158,8 +158,10 @@
     "revenue" : "$12,633.92",
     "revenuePrior" : "$16,019.16",
     "tieOut" : {
+      "ap-open" : "ties",
       "ap-rows" : "ties",
       "ap-tie" : "ties",
+      "ar-open" : "ties",
       "ar-rows" : "ties",
       "ar-tie" : "ties",
       "bs-balances" : "ties",

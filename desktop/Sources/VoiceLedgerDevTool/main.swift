@@ -454,7 +454,11 @@ case "facts":
         let backend = BackendClient(configuration: configuration)
         let syncClient = QBOSyncClient(backend: backend)
         let period = AccountingPeriod(year: year, month: month)
-        let agingAsOf = QBOSyncClient.agingDate(for: period, today: asOf)
+        // Pinned to --as-of, never the wall clock (2026-10-02): nil from agingDate means
+        // "month in progress", which in the app is today; here it must be the stated date
+        // or a baseline quietly drifts with the real calendar.
+        let agingAsOf = QBOSyncClient.agingDate(for: period, today: asOf) ?? asOf
+        let agingIsPeriodEnd = QBOSyncClient.agingDate(for: period, today: asOf) != nil
 
         async let bs = syncClient.fetchBalanceSheet(realmID: realmID, period: period)
         async let pl = syncClient.fetchProfitAndLoss(realmID: realmID, period: period)
@@ -524,7 +528,7 @@ case "facts":
         // Self-checking math (2026-10-02): every tie-out, so the regression check proves the numbers agree.
         let tieOut = TieOut.run(TieOut.Input(period: period, balanceSheet: balanceSheetLines, priorBalanceSheet: priorBS, profitAndLoss: profitAndLossLines,
                                              cashFlow: cashFlowLines, trialBalance: trialBalanceLines, agedReceivables: agedReceivablesLines,
-                                             agedPayables: agedPayablesLines, accounts: syncedDataSet.accounts, agingIsPeriodEnd: agingAsOf != nil))
+                                             agedPayables: agedPayablesLines, accounts: syncedDataSet.accounts, agingIsPeriodEnd: agingIsPeriodEnd))
         facts["tieOut"] = Dictionary(tieOut.map { c -> (String, String) in
             switch c.status {
             case .ties: return (c.id, "ties")

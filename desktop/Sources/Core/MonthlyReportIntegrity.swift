@@ -276,6 +276,11 @@ public struct AgingSplit: Sendable {
     /// Negative buckets are customer credits or unapplied payments, not
     /// money owed; they are reported separately, never netted into "old".
     public init(_ total: AgingLine) {
+        // Exact, from the open documents, whenever the detail was read and ties.
+        if let o = total.openItems, total.total == nil || total.total == o.net {
+            owed = o.owed; credits = o.credits; over60Owed = o.over60Owed; net = total.total ?? o.net
+            return
+        }
         let buckets = [total.current, total.days1to30, total.days31to60, total.days61to90, total.days91AndOver].map { $0 ?? .zero }
         owed = buckets.filter { $0.minorUnits > 0 }.reduce(.zero, +)
         credits = buckets.filter { $0.minorUnits < 0 }.reduce(.zero, +)

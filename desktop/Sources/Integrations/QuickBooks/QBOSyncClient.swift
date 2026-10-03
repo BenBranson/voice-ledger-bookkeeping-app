@@ -279,17 +279,54 @@ public struct QBOSyncClient: Sendable {
             params: ReadAgingReportParams(reportKind: reportKind, endDate: asOf.map { Self.format($0) })
         )
         let decoded = try JSONDecoder().decode(QBORawReport.self, from: data)
-        let lines = Self.flattenAging(decoded.rows, depth: 0)
+        var lines = Self.flattenAging(decoded.rows, depth: 0)
+        // Exact owed/credits from the open documents, same date (2026-10-02).
+        let detailKind = reportKind == "AgedReceivables" ? "AgedReceivableDetail" : reportKind == "AgedPayables" ? "AgedPayableDetail" : nil
+        var split: OpenItemsSplit?
+        if let detailKind,
+           let detail = try? await backend.call(.readReport, realmID: realmID, params: ReadAgingReportParams(reportKind: detailKind, endDate: asOf.map { Self.format($0) })),
+           let decodedDetail = try? JSONDecoder().decode(QBORawReport.self, from: detail) {
+            split = Self.openItemsSplit(decodedDetail.rows)
+            if let split, let i = lines.lastIndex(where: { $0.isSummary && $0.label.uppercased() == "TOTAL" }) { lines[i].openItems = split }
+        }
         // QBO's AgedPayables SUMMARY can come back empty ("NoReportData")
         // while bills are open — seen live 2026-09-29 with 7 open bills.
         // The detail report still lists them; rebuild the same shape from it.
         if reportKind == "AgedPayables", !lines.contains(where: { !$0.isSummary && ($0.total?.minorUnits ?? 0) != 0 }) {
             let detail = try await backend.call(.readReport, realmID: realmID,
                                                 params: ReadAgingReportParams(reportKind: "AgedPayableDetail", endDate: asOf.map { Self.format($0) }))
-            let rebuilt = Self.agingFromDetail(try JSONDecoder().decode(QBORawReport.self, from: detail).rows)
+            var rebuilt = Self.agingFromDetail(try JSONDecoder().decode(QBORawReport.self, from: detail).rows)
+            if let split, let i = rebuilt.lastIndex(where: \.isSummary) { rebuilt[i].openItems = split }
             if !rebuilt.isEmpty { return rebuilt }
         }
         return lines
+    }
+
+    /// Exact split from an aging DETAIL report. Verified live 2026-10-02: rows sit
+    /// under section headers ("91 or more days past due", "61 - 90 days past due",
+    /// …, "Current"); the LAST column is the open balance (A/R has 7 columns,
+    /// A/P 8 with "Past Due"), so the section, not a column, gives the age.
+    static func openItemsSplit(_ rows: QBORawReportRowList) -> OpenItemsSplit? {
+        var owed: Int64 = 0, credits: Int64 = 0, over60: Int64 = 0, count = 0
+        func walk(_ list: QBORawReportRowList, section: String) {
+            for row in list.row ?? [] {
+                let label = row.header?.colData.first?.value ?? section
+                if let nested = row.rows { walk(nested, section: label) }
+                guard row.header == nil, row.rows == nil, let cols = row.colData, cols.count >= 7,
+                      let last = cols.last, let value = Decimal(string: last.value) else { continue }
+                let open = Self.minorUnits(from: value)
+                guard open != 0 else { continue }
+                count += 1
+                if open > 0 {
+                    owed += open
+                    if section.hasPrefix("61") || section.hasPrefix("91") { over60 += open }
+                } else { credits += open }
+            }
+        }
+        walk(rows, section: "")
+        guard count > 0 else { return nil }
+        func m(_ v: Int64) -> Money { Money(minorUnits: v, currency: .usd) }
+        return OpenItemsSplit(owed: m(owed), credits: m(credits), over60Owed: m(over60), net: m(owed + credits), itemCount: count)
     }
 
     /// Detail columns (verified live): Date, Transaction Type, Num, Vendor,

@@ -121,6 +121,15 @@ public enum TieOut {
                                affects: [figure], missing: "The aging report isn't loaded."))
         }
 
+        // Open documents (aging detail) add up to the summary TOTAL: proves the exact
+        // owed-before-credits split rests on the same money as the report.
+        for (id, title, lines, figure) in [("ar-open", "Open invoices add up", input.agedReceivables, Figure.receivables),
+                                           ("ap-open", "Open bills add up", input.agedPayables, Figure.payables)] {
+            let totalLine = lines.last { $0.isSummary && $0.label.uppercased() == "TOTAL" }
+            out.append(compare(id, title, "Each open document vs. the aging TOTAL", "Open documents", totalLine?.openItems?.net, "Report TOTAL", totalLine?.total,
+                               affects: [figure], missing: lines.isEmpty ? "The aging report isn't loaded." : "The aging detail wasn't read."))
+        }
+
         // 5–6. Aging TOTAL vs. the A/R or A/P balance on the same date.
         func agingTotal(_ lines: [AgingLine]) -> Money? { lines.last { $0.isSummary && $0.label.uppercased() == "TOTAL" }?.total }
         func currentBalance(_ type: LedgerAccountType, flip: Bool) -> Money? {

@@ -273,7 +273,10 @@ const reportKindSchema = z.enum([
   // Fallback source (2026-09-29): QBO's AgedPayables SUMMARY returned
   // NoReportData for this sandbox while seven bills were open; the detail
   // report had them all (total $3,523.60, verified live).
-  "AgedPayableDetail"
+  "AgedPayableDetail",
+  // Exact owed-before-credits (2026-10-02): each open invoice, credit memo and
+  // unapplied payment with its open balance as of report_date (verified live).
+  "AgedReceivableDetail"
 ]);
 
 const readReportParams = z.object({
@@ -295,7 +298,7 @@ const readReport = op({
     // verified live 2026-09-29: AgedReceivables with report_date=2026-08-31
     // ties to the Balance Sheet's A/R at 2026-08-31 to the cent; without it
     // QBO returns aging as of today.
-    const isAging = params.reportKind === "AgedReceivables" || params.reportKind === "AgedPayables" || params.reportKind === "AgedPayableDetail";
+    const isAging = params.reportKind === "AgedReceivables" || params.reportKind === "AgedPayables" || params.reportKind === "AgedPayableDetail" || params.reportKind === "AgedReceivableDetail";
     if (params.startDate && !isAging) searchParams.start_date = params.startDate;
     if (params.endDate) searchParams[isAging ? "report_date" : "end_date"] = params.endDate;
     if (params.accountId) searchParams.account = params.accountId;

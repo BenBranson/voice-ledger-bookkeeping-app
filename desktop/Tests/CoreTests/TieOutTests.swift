@@ -10,9 +10,11 @@ struct TieOutTests {
     func usd(_ dollars: Double) -> Money { Money(minorUnits: Int64((dollars * 100).rounded()), currency: .usd) }
     func s(_ label: String, _ v: Double, depth: Int = 0) -> ReportLine { ReportLine(label: label, amount: usd(v), depth: depth, isSummary: true) }
     func d(_ label: String, _ v: Double, id: String? = nil) -> ReportLine { ReportLine(label: label, amount: usd(v), depth: 1, isSummary: false, accountID: id) }
-    func aging(_ rows: [(String, Double)], total: Double) -> [AgingLine] {
-        rows.map { AgingLine(label: $0.0, current: usd($0.1), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: usd($0.1), depth: 0, isSummary: false) }
-            + [AgingLine(label: "TOTAL", current: usd(total), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: usd(total), depth: 0, isSummary: true)]
+    func aging(_ rows: [(String, Double)], total: Double, openNet: Double? = nil) -> [AgingLine] {
+        var t = AgingLine(label: "TOTAL", current: usd(total), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: usd(total), depth: 0, isSummary: true)
+        let net = openNet ?? total
+        t.openItems = OpenItemsSplit(owed: usd(net), credits: usd(0), over60Owed: usd(0), net: usd(net), itemCount: rows.count)
+        return rows.map { AgingLine(label: $0.0, current: usd($0.1), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: usd($0.1), depth: 0, isSummary: false) } + [t]
     }
 
     /// Books that tie: assets 20,000 = liabilities 5,000 + equity 15,000; NI 1,500.
@@ -36,10 +38,10 @@ struct TieOutTests {
         Dictionary(TieOut.run(input).compactMap { c in if case .doesNotTie(let diff) = c.status { return (c.id, diff) }; return nil }, uniquingKeysWith: { a, _ in a })
     }
 
-    @Test("Correct books: all nine checks tie")
+    @Test("Correct books: all eleven checks tie")
     func allTie() {
         let checks = TieOut.run(good())
-        #expect(checks.count == 9)
+        #expect(checks.count == 11)
         for c in checks { #expect(c.status == .ties, "\(c.id): \(c.status)") }
         #expect(TieOut.failing(checks).isEmpty)
     }
@@ -75,6 +77,10 @@ struct TieOutTests {
 
         i = good(); i.cashFlow = [d("Cash at end of period", 6_000)]
         #expect(failingIDs(i) == ["cash-tie": usd(500)])
+
+        // The open-document detail disagrees with the summary TOTAL by a cent.
+        i = good(); i.agedReceivables = aging([("Amy", 1_500), ("Bob", 2_500)], total: 4_000, openNet: 3_999.99)
+        #expect(failingIDs(i) == ["ar-open": usd(-0.01)])
     }
 
     @Test("New fiscal year: the balance sheet's net income restarts and still ties")
@@ -98,5 +104,31 @@ struct TieOutTests {
     func missingIsNotChecked() {
         let checks = TieOut.run(TieOut.Input(period: AccountingPeriod(year: 2026, month: 9), balanceSheet: [], profitAndLoss: [], agingIsPeriodEnd: true))
         for c in checks { if case .ties = c.status { Issue.record("\(c.id) claimed to tie with no data") } }
+    }
+}
+
+@Suite("Owed before credits is exact (open documents), not bucket-netted")
+struct OpenItemsSplitTests {
+    func usd(_ d: Double) -> Money { Money(minorUnits: Int64((d * 100).rounded()), currency: .usd) }
+
+    @Test("Live case 2026-10-02: a $250 credit in the Current bucket no longer hides $250 of what's owed")
+    func exactSplit() {
+        // Summary buckets as QBO nets them: Current 11,857.06 (12,107.06 of invoices − 250 credit memo).
+        var total = AgingLine(label: "TOTAL", current: usd(11_857.06), days1to30: usd(2_950), days31to60: usd(2_123.32), days61to90: usd(-800),
+                              days91AndOver: usd(7_451.13), total: usd(23_581.51), depth: 0, isSummary: true)
+        let bucketOnly = AgingSplit(total)
+        #expect(bucketOnly.owed == usd(24_381.51))          // the old, netted figure
+        total.openItems = OpenItemsSplit(owed: usd(24_631.51), credits: usd(-1_050), over60Owed: usd(7_451.13), net: usd(23_581.51), itemCount: 30)
+        let exact = AgingSplit(total)
+        #expect(exact.owed == usd(24_631.51))
+        #expect(exact.credits == usd(-1_050))
+        #expect(exact.owed + exact.credits == exact.net)
+    }
+
+    @Test("A detail that doesn't tie to the TOTAL is never used")
+    func untiedDetailIgnored() {
+        var total = AgingLine(label: "TOTAL", current: usd(100), days1to30: nil, days31to60: nil, days61to90: nil, days91AndOver: nil, total: usd(100), depth: 0, isSummary: true)
+        total.openItems = OpenItemsSplit(owed: usd(500), credits: usd(0), over60Owed: usd(0), net: usd(500), itemCount: 1)
+        #expect(AgingSplit(total).owed == usd(100))
     }
 }

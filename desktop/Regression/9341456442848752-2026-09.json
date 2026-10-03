@@ -1,5 +1,5 @@
 {
-  "asOf" : "2026-09-30",
+  "asOf" : "2026-10-01",
   "facts" : {
     "balanceSheetTotals" : {
       "Total Accounts Payable" : "$7,093.60",
@@ -123,7 +123,7 @@
       "Opportunities.trim-Job Materials (other)" : "Bringing it back to its earlier level saves about $866.93 a month",
       "Strengths.growth" : "Revenue +13%: $44,175.56 in Jul '26 – Sep '26 vs. the same months a year earlier ($39,016.83)",
       "Strengths.margin" : "12-month net margin 26.4% ($41,240.01 kept from $156,091.32 of revenue)",
-      "Strengths.ties" : "All 9 tie-out checks agree to the cent",
+      "Strengths.ties" : "All 11 tie-out checks agree to the cent",
       "Threats.runway" : "$9,115.38 in the bank covers 0.8 months of costs ($12,068.40 a month on average)",
       "Weaknesses.findings" : "14 open findings touching $18,276.19",
       "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
@@ -164,8 +164,10 @@
     "revenue" : "$15,522.48",
     "revenuePrior" : "$12,633.92",
     "tieOut" : {
+      "ap-open" : "ties",
       "ap-rows" : "ties",
       "ap-tie" : "ties",
+      "ar-open" : "ties",
       "ar-rows" : "ties",
       "ar-tie" : "ties",
       "bs-balances" : "ties",
