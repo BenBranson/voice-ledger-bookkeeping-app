@@ -297,6 +297,7 @@ struct RootView: View {
                 case .scopeRequests: return .scopeRequests
                 case .industrySetup: return .industrySetup
                 case .chartsGallery: return .chartsGallery
+                case .businessDiagnosis: return .businessDiagnosis
                 }
             },
             set: { newValue in
@@ -337,6 +338,7 @@ struct RootView: View {
                 case .scopeRequests: state.screen = .scopeRequests
                 case .industrySetup: state.screen = .industrySetup
                 case .chartsGallery: state.screen = .chartsGallery
+                case .businessDiagnosis: state.screen = .businessDiagnosis
                 }
             }
         )
@@ -2280,6 +2282,28 @@ struct RootView: View {
                 onSavePresets: { state.updateScopePresets($0) },
                 onResetPresets: { state.resetScopePresets() }
             )
+
+        case .businessDiagnosis:
+            let diagnosisKey = AppState.diagnosisAskKey
+            let untied = state.tieOut.filter { if case .doesNotTie = $0.status { return true }; return false }
+            BusinessDiagnosisView(
+                companyName: state.displayCompanyName,
+                report: state.diagnosis,
+                untied: untied,
+                environment: state.environment == .production ? .production : .sandbox,
+                explanation: state.askAIAnswers[diagnosisKey],
+                isExplaining: state.askingAIContextKeys.contains(diagnosisKey),
+                explainError: state.askAIError?.contextKey == diagnosisKey ? state.askAIError?.message : nil,
+                onExplain: {
+                    Task {
+                        await state.askAI(contextKey: diagnosisKey, contextText: state.diagnosisContext, question: AppState.diagnosisQuestion)
+                    }
+                }
+            )
+            .task {
+                if state.historySnapshot == nil { await state.loadHistory() }
+                await state.prepareForecast()
+            }
 
         case .chartsGallery:
             ChartsGalleryView(environment: state.environment == .production ? .production : .sandbox,

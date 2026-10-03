@@ -1411,3 +1411,23 @@ All 9 tie on July, August and September (finished months) and October (in progre
 - **Aging as-of date.** The sync read aging at month end for the rules, while pages and voice read today's: two answers to "who owes us". There is now one `AppState.agingAsOf` (month end for a finished month, today while in progress), the sync publishes its aging, and voice says "As of September 30". The 13-week forecast reads its own today's aging through `prepareForecast()`, which replaced three copy-pasted load blocks.
 - **Empty months.** QBO sends `NoReportData=true` for a month with no activity, with summary rows that have no amount. `fetchReport` now reads that header flag and sets those totals to $0.00 (October revenue is $0.00, not "not loaded").
 - `RootView` gets `.id(ObjectIdentifier(appState))`, so a client or month change reruns its startup work.
+
+## 2026-10-02 — v1.75: Business Diagnosis (`Core/BusinessDiagnosis.swift`, `VoiceLedgerUI/BusinessDiagnosisView.swift`)
+
+A SWOT read of the client, code-computed from stated thresholds. Every item carries its numbers and its basis.
+- **Profitability:** 12-month net margin (strength ≥15%, weakness <5%). Revenue for the last 3 months vs the same months a year earlier (else the prior 3); ±10% counts. Losses in 2 of the last 3 months is a threat.
+- **Costs:** a category up ≥25% and ≥$300 (last 3 months vs prior 3) is a weakness, plus a "rein in" opportunity. Holding accounts get no opportunity.
+- **Cash:** runway = month-end bank total ÷ average monthly costs over the last 3 months (strength ≥3 months, threat <1). Current ratio <1 is a threat. A 13-week forecast going below zero is a threat.
+- **Receivables and payables:** ≥25% of receivables over 60 days is a weakness. "Collect $X" is an opportunity, linked to the largest late customer. Bills over 60 days past due is a weakness.
+- **Concentration:** one billing name ≥30% of 12-month invoices is a threat. Not rolled up to parent customers.
+- **Books:** all tie-outs tie is a strength; open findings is a weakness.
+- **Visuals and gating:** where-the-money-goes (top 6 + everything else) and a 12-month revenue/net chart. The page goes on hold if any tie-out fails.
+
+**Verified against QBO range P&Ls:**
+- 12-month revenue $156,091.32 and net income $41,240.01
+- Jul–Sep 2026 revenue $44,175.56 vs $39,016.83 a year earlier
+- Fuel $4,350.94 vs $2,283.20
+
+**Voice:** "how is the business doing" speaks the counts and the most pressing item. "explain the diagnosis" runs AI prose through `askAI`, using only `diagnosisContext`, NumberGuard-verified. Diagnosis items are in `facts` (`diagnosis.*`), so the regression check covers them.
+
+**Known definitional point:** "owed before credits" (`AgingSplit`) is computed from aging buckets, and QBO nets a credit against invoices in the same age bucket. So the gross figure can move as a credit ages from one bucket to another, even though the net TOTAL doesn't change. It's consistent everywhere it's used; the precise fix would read open invoice balances.

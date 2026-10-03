@@ -117,6 +117,16 @@
       "VL Spike Sweeper Supplies" : "$0.00",
       "Workers Compensation" : "$0.00"
     },
+    "diagnosis" : {
+      "Opportunities.collect" : "Largest: Freeman Sporting Goods $2,732.11, Paulsen Medical Supplies $954.75, Geeta Kalapatapu $629.10",
+      "Strengths.growth" : "Revenue +74%: $44,913.90 in Jun '26 – Aug '26 vs. the same months a year earlier ($25,768.27)",
+      "Strengths.margin" : "12-month net margin 27.6% ($42,432.23 kept from $153,817.40 of revenue)",
+      "Strengths.ties" : "All 9 tie-out checks agree to the cent",
+      "Weaknesses.findings" : "10 open findings touching $19,110.89",
+      "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
+      "Weaknesses.late-ar" : "46% of what customers owe is over 60 days late ($7,451.13 of $16,083.03)"
+    },
+    "diagnosis.whereMoneyGoes" : "Cost of Labor $34,440.43 31.0% | Rent or Lease $15,300.00 13.8% | Plants and Soil $11,011.77 9.9% | Job Materials (other) $10,729.91 9.7% | Fuel $8,953.29 8.1% | Insurance $4,861.23 4.4% | Everything else $25,683.54 23.1%",
     "exposure.allOpen" : "$19,110.89",
     "exposure.balanceSheetIntegrity" : "$14,835.52",
     "exposure.cleanupAssessment" : "$18,110.89",

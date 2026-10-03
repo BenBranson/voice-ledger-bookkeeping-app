@@ -816,6 +816,7 @@ public final class VoiceEngine: NSObject {
         case .scopeRequests: return .scopeRequests
         case .industrySetup: return .industrySetup
         case .chartsGallery: return .chartsGallery
+        case .businessDiagnosis: return .businessDiagnosis
         case .aiConversations: return .voiceHistory
         case .connection: return .connection
         case .scopeAndPeriodLock: return .scopeAndPeriodLock
@@ -925,6 +926,23 @@ public final class VoiceEngine: NSObject {
             context.candidateFindingIDs = nil
             context = context.viewingEntity(VoiceEntityRef(type: .finding, id: finding.id, label: finding.title))
             return VoiceTurn(speech: "Opening \(ClientText.polish(finding.title)).", uiAction: .openFinding(id: finding.id))
+        case .navigate(.businessDiagnosis):
+            // Speak the headline: counts per quadrant and the most pressing threat or weakness.
+            if appState.historySnapshot == nil { await appState.loadHistory() }
+            await appState.prepareForecast()
+            if appState.tieOut.contains(where: { if case .doesNotTie = $0.status { return true }; return false }) {
+                return VoiceTurn(speech: "The diagnosis is on hold: some numbers don't tie to QuickBooks yet. Say do the numbers tie for details.", uiAction: .navigate(.businessDiagnosis))
+            }
+            let r = appState.diagnosis
+            let counts = BusinessDiagnosis.Quadrant.allCases.map { q -> String in
+                let n = r.items(q).count
+                return "\(n) \(n == 1 ? String(q.rawValue.lowercased().dropLast()) : q.rawValue.lowercased())"
+            }.joined(separator: ", ")
+            var speech = "For \(ReviewPeriod.label(r.period)): \(counts)."
+            if let top = r.items(.threat).first ?? r.items(.weakness).first { speech += " Most pressing: \(top.title.lowercased()). \(top.detail)." }
+            if let best = r.items(.strength).first { speech += " Best news: \(best.title.lowercased())." }
+            return VoiceTurn(speech: ClientText.polish(speech), uiAction: .navigate(.businessDiagnosis))
+
         case .navigate(let destination):
             return VoiceTurn(speech: Self.speech(for: destination), uiAction: .navigate(destination))
 
@@ -1024,6 +1042,15 @@ public final class VoiceEngine: NSObject {
             if split.credits.minorUnits < 0 { speech += ", less \(Money(minorUnits: -split.credits.minorUnits, currency: split.credits.currency).accountingDescription) in credits" }
             showCard(InsightCards.aging(data.agedPayables, receivables: false, footnote: cardFootnote))
             return VoiceTurn(speech: ClientText.polish(agingAsOfSentence + speech + "."), uiAction: .navigate(.agedPayablesReport))
+
+        case .explainDiagnosis:
+            if appState.historySnapshot == nil { await appState.loadHistory() }
+            await appState.prepareForecast()
+            await appState.askAI(contextKey: AppState.diagnosisAskKey, contextText: appState.diagnosisContext, question: AppState.diagnosisQuestion)
+            guard let answer = appState.askAIAnswers[AppState.diagnosisAskKey] else {
+                return VoiceTurn(speech: "I couldn't write the summary just now. " + (appState.askAIError?.message ?? ""), uiAction: .navigate(.businessDiagnosis))
+            }
+            return VoiceTurn(speech: answer, uiAction: .navigate(.businessDiagnosis))
 
         case .tieOut:
             let checks = appState.tieOut

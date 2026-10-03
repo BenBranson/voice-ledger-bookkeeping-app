@@ -532,6 +532,13 @@ case "facts":
             case .notChecked(let why): return (c.id, "not checked: \(why)")
             }
         }, uniquingKeysWith: { a, _ in a })
+        // Business Diagnosis (2026-10-02). No forecast here: it runs from today, so it isn't reproducible.
+        let diagnosis = BusinessDiagnosis.build(BusinessDiagnosis.Input(
+            period: period, monthly: history.monthlyProfitAndLoss, currentProfitAndLoss: profitAndLossLines, balanceSheet: balanceSheetLines,
+            agedReceivables: agedReceivablesLines, agedPayables: agedPayablesLines, transactions: history.transactions,
+            openFindings: findings, tieOut: tieOut, forecast: nil))
+        facts["diagnosis"] = Dictionary(diagnosis.items.map { ("\($0.quadrant.rawValue).\($0.id)", $0.detail) }, uniquingKeysWith: { a, _ in a })
+        facts["diagnosis.whereMoneyGoes"] = diagnosis.whereMoneyGoes.map { "\($0.label) \($0.amount.accountingDescription) \(String(format: "%.1f%%", $0.share))" }.joined(separator: " | ")
         let findingRows: [[String: Any]] = findings.map { f in
             ["rule": f.ruleID.rawValue, "title": f.title, "amount": f.dollarExposure.accountingDescription, "severity": f.severity.rawValue,
              "confidence": f.confidence.rawValue, "evidence": f.evidence.map(\.transactionID).sorted()]

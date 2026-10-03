@@ -41,6 +41,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
     case scopeRequests
     case industrySetup
     case chartsGallery
+    case businessDiagnosis
     case aiConversations
     case connection
     case scopeAndPeriodLock
@@ -60,6 +61,7 @@ public enum VoiceDestination: String, Codable, Sendable, CaseIterable {
         case .scopeRequests: return "Scope Requests"
         case .industrySetup: return "Industry Setup"
         case .chartsGallery: return "Charts & Cards"
+        case .businessDiagnosis: return "Business Diagnosis"
         case .firmCockpit: return "Firm Cockpit"
         case .cashFlowForecast: return "Cash Flow Forecast"
         case .clientDiagnostics: return "Client Diagnostics"
@@ -155,6 +157,8 @@ public enum VoiceIntent: Equatable, Sendable {
     case reviewMonth(AccountingPeriod)
     /// "do the numbers tie?" — the self-checking math, spoken and as a card.
     case tieOut
+    /// "explain the diagnosis" — AI writes the plain-English summary of the computed diagnosis.
+    case explainDiagnosis
     /// "start month-end" — begin the guided walkthrough.
     case startRoutine
     /// Walkthrough controls (only produced while one is running).

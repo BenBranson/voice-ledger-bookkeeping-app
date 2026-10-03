@@ -79,6 +79,8 @@ public final class AppState {
         case industrySetup
         /// Clickable list of every card Moneypenny can show (2026-10-02).
         case chartsGallery
+        /// SWOT read of the business (2026-10-02).
+        case businessDiagnosis
     }
 
     /// Which rules belong to the Cleanup Assessment view vs. Page 3's
@@ -326,6 +328,7 @@ public final class AppState {
         case .scopeRequests: return "Scope Requests"
         case .industrySetup: return "Industry Setup"
         case .chartsGallery: return "Charts & Cards"
+        case .businessDiagnosis: return "Business Diagnosis"
         }
     }
 
@@ -2331,6 +2334,33 @@ public final class AppState {
                                 accounts: clientData.searchableAccounts, agingIsPeriodEnd: agingAsOf != nil))
     }
 
+    /// Business Diagnosis for the reviewed month (code-computed; see `BusinessDiagnosis`).
+    public var diagnosis: BusinessDiagnosis.Report {
+        BusinessDiagnosis.build(BusinessDiagnosis.Input(
+            period: period, monthly: historySnapshot?.monthlyProfitAndLoss ?? [], currentProfitAndLoss: profitAndLossLines,
+            balanceSheet: balanceSheetLines, agedReceivables: agedReceivablesLines, agedPayables: agedPayablesLines,
+            transactions: historySnapshot?.transactions ?? [], openFindings: findings.filter { $0.status == .open },
+            tieOut: tieOut, forecast: thirteenWeekForecast))
+    }
+
+    public static let diagnosisAskKey = "page:business-diagnosis"
+    public static let diagnosisQuestion = "Write a short, plain-English summary of this diagnosis for the business owner: what's going right, what needs attention, and the two or three most important next steps. Use only the items given; do not add figures."
+
+    /// The diagnosis as plain text: the ONLY facts the AI explanation may use.
+    public var diagnosisContext: String {
+        let r = diagnosis
+        var lines = ["Business Diagnosis for \(ReviewPeriod.label(r.period)). Every item below was computed from QuickBooks by code."]
+        for q in BusinessDiagnosis.Quadrant.allCases {
+            let items = r.items(q)
+            lines.append("\(q.rawValue): " + (items.isEmpty ? "none at the stated thresholds." : items.map { "\($0.title) — \($0.detail) [\($0.basis)]" }.joined(separator: "; ")))
+        }
+        if !r.whereMoneyGoes.isEmpty {
+            lines.append("Where the money goes (\(r.whereMoneyGoesBasis)): " + r.whereMoneyGoes.map { "\($0.label) \($0.amount.accountingDescription) (\(String(format: "%.0f%%", $0.share)))" }.joined(separator: ", "))
+        }
+        if !r.notJudged.isEmpty { lines.append("Not judged: " + r.notJudged.joined(separator: " ")) }
+        return lines.joined(separator: "\n")
+    }
+
     /// Figures that must not be shown as verified right now.
     public var untiedFigures: Set<TieOut.Figure> { TieOut.failing(tieOut) }
 
@@ -3681,6 +3711,8 @@ public final class AppState {
 
         case .chartsGallery:
             return "Page: Charts & Cards (a clickable list of every card and chart Moneypenny can show)."
+        case .businessDiagnosis:
+            return "Page: Business Diagnosis (strengths, weaknesses, opportunities, threats, computed from QuickBooks).\n" + diagnosisContext
 
         case .industrySetup:
             let c = industryComparison

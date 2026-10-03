@@ -14,6 +14,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | Page you can name | Also works as |
 |---|---|
 | Dashboard | home |
+| Business Diagnosis | how is the business doing, SWOT, diagnosis, strengths and weaknesses — she says the headline: strengths, weaknesses, opportunities, threats, and the most pressing one |
 | Charts & Cards | all charts, all cards, chart gallery |
 | Findings | findings list |
 | Firm Cockpit | cockpit |
@@ -79,6 +80,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"what do we owe Norton Lumber"** | Says what we owe that vendor — current vs. past due vs. over 90 days. For a vendor paid as each charge happens (like Gusto Payroll), she says nothing is owed and how many charges were paid. |
 | **"review September"** · **"switch to August"** · **"go to July"** | Changes the month being reviewed (the app opens on the last finished month). You can also click the month under the company name in the sidebar. |
 | **"do the numbers tie"** · **"check the math"** · **"does everything tie"** | Proves every key figure against QuickBooks' own totals, to the cent: balance sheet, trial balance, who owes us, what we owe, profit, cash. Any that doesn't tie is named with the exact difference. |
+| **"explain the diagnosis"** · **"what should I tell the client"** | Moneypenny writes and reads a short plain-English summary of the Business Diagnosis for the owner, using only its computed items (about 30 seconds). |
 | **"who owes us"** · **"what are we owed"** · **"what do customers owe us"** | Says what customers owe, the credits, the net (matches the page TOTAL) and how much is over 60 days old; opens Aged Receivables. |
 | **"who owes us the most"** · **"which customer owes us the most"** · **"who do we owe the most"** | Names the biggest customer (or vendor) balance, how much is over 60 days, and who is next; opens the aging page with a card. |
 | **"what does Freeman Sporting Goods owe us"** · **"how much does Kate Whelan owe us"** | One customer's open balance: current, past due, over 90 days. Pops up their card. |

@@ -83,6 +83,9 @@ public enum VoiceIntentRouter {
         (.intakeQuestions, ["intake questions", "intake"]),
         (.complianceCalendar, ["compliance calendar", "compliance", "deadlines", "due dates", "filing calendar", "tax calendar", "calendar", "sales by state", "economic nexus", "nexus"]),
         (.scopeRequests, ["scope requests", "out of scope", "out of scope requests", "scope log", "add ons", "upsells"]),
+        (.businessDiagnosis, ["business diagnosis", "diagnosis", "diagnose the business", "swot", "swot analysis", "swat analysis", "strengths and weaknesses",
+                              "business health", "business review", "how is the business doing", "how's the business doing", "hows the business doing",
+                              "how is business", "how are we doing overall", "what's going right and wrong", "whats going right and wrong"]),
         (.chartsGallery, ["charts and cards", "charts & cards", "chart gallery", "all charts", "all cards", "cards", "card list", "chart list", "list of charts"]),
         (.industrySetup, ["industry setup", "industry", "industry template", "chart of accounts template"])
     ]
@@ -283,6 +286,8 @@ public enum VoiceIntentRouter {
             if let p = ReviewPeriod.spoken(rest, today: AccountingDate(date: Date())) { return .reviewMonth(p) }
         }
 
+        if ["explain the diagnosis", "explain the business diagnosis", "summarize the diagnosis", "explain it for the client", "what should i tell the client",
+            "what do i tell the client", "explain the swot", "summarize the swot", "give me the summary for the client"].contains(normalized) { return .explainDiagnosis }
         if ["do the numbers tie", "do the numbers tie out", "does everything tie", "does everything tie out", "do the books tie", "check the math", "check the numbers",
             "tie out", "run the tie out", "run a tie out", "are the numbers right", "is the math right", "are the numbers correct", "verify the numbers",
             "do the numbers add up", "does it all add up", "numbers tie", "tie out the numbers"].contains(normalized) { return .tieOut }

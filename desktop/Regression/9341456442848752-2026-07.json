@@ -117,6 +117,21 @@
       "VL Spike Sweeper Supplies" : "$0.00",
       "Workers Compensation" : "$0.00"
     },
+    "diagnosis" : {
+      "Opportunities.collect" : "Largest: Freeman Sporting Goods $1,598.67, Paulsen Medical Supplies $954.75, Geeta Kalapatapu $629.10",
+      "Opportunities.trim-Cost of Labor" : "Bringing it back to its earlier level saves about $1,085.12 a month",
+      "Opportunities.trim-Job Materials (other)" : "Bringing it back to its earlier level saves about $396.28 a month",
+      "Strengths.growth" : "Revenue +238%: $46,008.22 in May '26 – Jul '26 vs. the same months a year earlier ($13,616.87)",
+      "Strengths.margin" : "12-month net margin 27.6% ($42,367.83 kept from $153,334.88 of revenue)",
+      "Strengths.ties" : "All 9 tie-out checks agree to the cent",
+      "Threats.runway" : "$10,448.92 in the bank covers 0.9 months of costs ($11,412.34 a month on average)",
+      "Weaknesses.findings" : "17 open findings touching $29,214.07",
+      "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
+      "Weaknesses.late-ar" : "34% of what customers owe is over 60 days late ($6,317.69 of $18,571.03)",
+      "Weaknesses.rise-Cost of Labor" : "$11,006.45 in May '26 – Jul '26, up 42% from $7,751.07",
+      "Weaknesses.rise-Job Materials (other)" : "$3,705.06 in May '26 – Jul '26, up 47% from $2,516.22"
+    },
+    "diagnosis.whereMoneyGoes" : "Cost of Labor $34,512.18 31.2% | Rent or Lease $15,300.00 13.8% | Plants and Soil $10,939.22 9.9% | Job Materials (other) $10,738.73 9.7% | Fuel $8,833.39 8.0% | Insurance $4,861.23 4.4% | Everything else $25,377.30 23.0%",
     "exposure.allOpen" : "$29,214.07",
     "exposure.balanceSheetIntegrity" : "$18,990.28",
     "exposure.cleanupAssessment" : "$24,636.81",
