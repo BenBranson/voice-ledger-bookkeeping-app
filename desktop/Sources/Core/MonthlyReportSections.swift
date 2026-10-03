@@ -24,6 +24,12 @@ public enum MonthlyReportSections {
 
     static func month(_ p: AccountingPeriod) -> String { MonthlyReportBuilder.monthNames[p.month - 1] }
 
+    /// Findings only the client can resolve, with the question each one asks.
+    static let clientOnlyQuestions: [String: String] = [
+        "VL-PERSONAL-001": "was this a business cost, or personal (an owner draw)?",
+        "VL-CAT-UNCAT-001": "what was this for, so it can go in the right category?",
+    ]
+
     public static func enrich(_ base: MonthlyClientReport, input: MonthlyReportInputs) -> MonthlyClientReport {
         var report = base
         let period = input.period
@@ -174,7 +180,7 @@ public enum MonthlyReportSections {
             if cash.minorUnits < 0 {
                 check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Bank accounts are overdrawn by \(Money(minorUnits: -cash.minorUnits, currency: .usd).accountingDescription).")
             } else if let cl = currentLiabilities, cl.minorUnits > 0, cash < cl {
-                check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Cash of \(cash.accountingDescription) covers \(pct(cash, of: cl)) of \(cl.accountingDescription) in bills and short-term obligations.")
+                check("Cash & bills", "Is there cash to cover what's coming due?", "attention", "Cash of \(cash.accountingDescription) covers \(pct(cash, of: cl)) of the \(cl.accountingDescription) due within a year (vendor bills, credit cards, loan payments and taxes).")
             } else {
                 check("Cash & bills", "Is there cash to cover what's coming due?", "stable", "Cash of \(cash.accountingDescription)\(currentLiabilities.map { " against \($0.accountingDescription) in short-term obligations" } ?? "").")
             }
@@ -188,7 +194,7 @@ public enum MonthlyReportSections {
             let split = AgingSplit(arTotal)
             let over90 = max(arTotal.days91AndOver ?? .zero, .zero)
             let attention = Double(over90.minorUnits) > Double(split.owed.minorUnits) * 0.10 || Double(split.over60Owed.minorUnits) > Double(split.owed.minorUnits) * 0.20
-            let credits = split.credits.minorUnits < 0 ? " (plus \(split.credits.accountingDescription) in customer credits to apply)" : ""
+            let credits = split.credits.minorUnits < 0 ? " (plus \(split.creditsProseText) in customer credits to apply)" : ""
             check("Collections", "Are customers paying on time?", attention ? "attention" : "stable",
                   "Customers owe \(split.owed.accountingDescription)\(credits); \(split.over60Owed.accountingDescription) (\(pct(split.over60Owed, of: split.owed))) is more than 60 days old.")
         } else {
@@ -255,6 +261,18 @@ public enum MonthlyReportSections {
         // Questions for the client.
         var questions = input.clientQuestions.filter { $0.answer == nil }.map { "\($0.findingTitle): \($0.question.split(separator: "\n").first.map(String.init) ?? $0.question)" }
         questions += report.workCompleted.filter { $0.status == .awaitingClient }.map { "\($0.title) — waiting on your answer." }
+        // Only the client can say what a purchase was for: a possible personal
+        // expense or an uncategorized transaction becomes a question even before
+        // one is drafted (Gemini review, 2026-10-03: the report flagged one in
+        // Appendix B while saying "No open questions").
+        let asked = Set(input.clientQuestions.map(\.findingID))
+        let onReport = Set(report.openItems.map(\.findingID))
+        questions += input.findings
+            .filter { onReport.contains($0.id) && !asked.contains($0.id) && Self.clientOnlyQuestions[$0.ruleID.rawValue] != nil }
+            .map { f in
+                let what = f.vendorName.map { "\($0), \(f.dollarExposure.accountingDescription)" } ?? f.title
+                return "\(ClientText.polish(what)): \(Self.clientOnlyQuestions[f.ruleID.rawValue]!)"
+            }
         report.questionsForClient = Array(questions.prefix(6))
 
         // Priorities.
@@ -342,7 +360,7 @@ public enum MonthlyReportSections {
             let split = AgingSplit(arTotal)
             let over60 = split.over60Owed
             n["receivables"] = R.Narrative(
-                happened: "Customers owe \(split.owed.accountingDescription); \(over60.accountingDescription) is more than 60 days old." + (split.credits.minorUnits < 0 ? " Another \(split.credits.accountingDescription) is customer credits or unapplied payments, which lower the net balance to \(split.net.accountingDescription)." : ""),
+                happened: "Customers owe \(split.owed.accountingDescription); \(over60.accountingDescription) is more than 60 days old." + (split.credits.minorUnits < 0 ? " Another \(split.creditsProseText) is customer credits or unapplied payments, which lower the net balance to \(split.net.accountingDescription)." : ""),
                 matters: "The older a balance gets, the less likely it is to be collected.",
                 next: over60.minorUnits > 0 ? "Contact the customers with the oldest balances first." : "Collections are current; no follow-up needed."
             )

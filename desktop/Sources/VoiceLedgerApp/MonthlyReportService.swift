@@ -15,6 +15,9 @@ enum MonthlyReportService {
         let folder: URL
         var id: String { folder.path }
         var pdfURL: URL { folder.appending(path: "report.pdf") }
+        /// The 2-page Client Summary, rendered from the same snapshot as `pdfURL`.
+        var summaryURL: URL { folder.appending(path: "summary.pdf") }
+        var hasSummary: Bool { FileManager.default.fileExists(atPath: summaryURL.path) }
         var snapshotURL: URL { folder.appending(path: "snapshot.json") }
         let periodKey: String
         let createdAt: Date
@@ -89,9 +92,17 @@ enum MonthlyReportService {
         let pdfURL = folder.appending(path: "report.pdf")
         try sealed.json.write(to: snapshotURL, options: .atomic)
 
+        try await runRenderer(node: node, rendererDir: rendererDir, arguments: [snapshotURL.path, pdfURL.path], onStage: onStage)
+        // Same snapshot, so the summary and the full report can never disagree.
+        onStage("summary")
+        try await runRenderer(node: node, rendererDir: rendererDir, arguments: [snapshotURL.path, folder.appending(path: "summary.pdf").path, "--summary"], onStage: { _ in })
+        return GeneratedReport(folder: folder, periodKey: report.meta.periodKey, createdAt: Date(), snapshotID: sealed.snapshotID)
+    }
+
+    private static func runRenderer(node: URL, rendererDir: URL, arguments: [String], onStage: @escaping @Sendable (String) -> Void) async throws {
         let process = Process()
         process.executableURL = node
-        process.arguments = [rendererDir.appending(path: "render.mjs").path, snapshotURL.path, pdfURL.path]
+        process.arguments = [rendererDir.appending(path: "render.mjs").path] + arguments
         process.currentDirectoryURL = rendererDir
         let stdout = Pipe(), stderr = Pipe()
         process.standardOutput = stdout
@@ -122,6 +133,5 @@ enum MonthlyReportService {
             }
             do { try process.run() } catch { continuation.resume(throwing: RenderError(message: "Couldn't start the renderer: \(error.localizedDescription)")) }
         }
-        return GeneratedReport(folder: folder, periodKey: report.meta.periodKey, createdAt: Date(), snapshotID: sealed.snapshotID)
     }
 }

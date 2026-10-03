@@ -76,7 +76,9 @@
   /** Stable per-account color: the same account ID gets the same color on every screen. */
   function colorFor(item, theme) {
     if (item.category === "other") return theme.other;
-    if (NEGATIVE_CATEGORIES[item.category] || item.category === "draw") return theme.negative;
+    // Owner draws are normally negative: neutral slate, not error red.
+    if (item.category === "draw") return theme.muted;
+    if (NEGATIVE_CATEGORIES[item.category]) return theme.negative;
     if (!theme.interactive) return theme.positive;
     return theme.palette[hash(item.id || item.label) % theme.palette.length];
   }
@@ -354,7 +356,7 @@
     const last = pts.length - 1;
     const dot = function (color) { return function (p, i) { return i === last ? { value: p, symbol: "circle", symbolSize: 8, itemStyle: { color: color } } : p; }; };
     return Object.assign(base(theme, opts.reducedMotion), {
-      grid: { left: 4, right: 10, top: 8, bottom: 4, containLabel: true },
+      grid: { left: 4, right: 26, top: 8, bottom: 4, containLabel: true }, // room for the last month label ("Sep '26")
       xAxis: categoryAxis(theme, pts.map(function (p) { return shortMonth(p.label); }), { boundaryGap: false, axisLabel: { color: theme.muted, fontFamily: theme.font, fontSize: 9 } }),
       yAxis: valueAxis(theme),
       series: [

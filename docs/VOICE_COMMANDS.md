@@ -116,7 +116,17 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"show net income trend"** · **"pull up revenue by month"** · **"show me the cash outlook"** | Saying show or pull up in front of a trend, by-month or outlook chart opens that chart instantly. |
 | **"will we run out of cash"** · **"cash outlook"** | A card with the 13-week cash projection and the lowest week. |
 
-## 7. Review mode (work through findings one at a time)
+## 7. Client reports (the PDFs you send)
+Both are made at the same time from the same numbers, so they always agree. It takes about a minute (she syncs with QuickBooks and reads 13 months first), then the report **pops up with a Download PDF button**. A switch at the top of the pop-up flips between the summary and the full report.
+
+| Say | What happens |
+|---|---|
+| **"make the client summary"** · **"two page report"** · **"give me the two page report"** · **"short report"** | Makes the reports and pops up the **2-page Client Summary**: profit, sales, costs, cash, trend chart, health check and top 3 priorities. |
+| **"make the full report"** · **"monthly report"** · **"generate the monthly report"** · **"full monthly report"** | Makes the reports and pops up the **full report**: every section, open items and the financial statements. |
+
+Both are also on the Charts & Cards page under **Client reports** (one click each), and on the Close Package page (Generate Report).
+
+## 8. Review mode (work through findings one at a time)
 | Say | What happens |
 |---|---|
 | **"start review"** · **"show me anomalies"** · **"what needs my attention"** | Builds a queue of open findings and opens the first. |
@@ -129,7 +139,7 @@ Example: *"go to profit and loss"* → opens the Profit & Loss page and says its
 | **"is it fixed"** · **"I fixed it"** · **"check it"** | Re-syncs from QuickBooks and tells you whether that finding cleared. If it did, she says how many are left and offers the next one; say **"yes"**. If not, she says what QuickBooks still shows and the suggested fix. |
 | **"yes"** · **"no"** | Answers a question she just asked. If she misheard you, she instantly asks whether you meant the closest command; **"yes"** runs it. |
 
-## 8. Guided month-end walkthrough (she walks you through the routine, one step at a time)
+## 9. Guided month-end walkthrough (she walks you through the routine, one step at a time)
 Say **"start month-end"** (also "start the monthly routine", "walk me through the month"). She goes through 16 steps in the order on the Monthly Routine sheet: for each one she opens the page, reads the numbers, and waits. Steps 3 and 5 are **yours to do in QuickBooks** (matching bank lines, reconciling); she tells you what to do, then re-syncs automatically when you say next. **Nothing in this mode changes your books.**
 
 | Say (only while the walkthrough is running) | What happens |
@@ -140,7 +150,7 @@ Say **"start month-end"** (also "start the monthly routine", "walk me through th
 | **"where are we"** · **"how much is left"** | Says the step number and how many remain. |
 | **"stop"** · **"end the routine"** · **"pause"** | Ends the walkthrough. |
 
-## 9. Control
+## 10. Control
 | Say | What happens |
 |---|---|
 | **"try again"** · **"that's wrong"** · **"never mind"** · **"scratch that"** | Clears her last answer and says Go ahead — then listens. |

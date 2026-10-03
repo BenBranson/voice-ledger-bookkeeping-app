@@ -170,6 +170,10 @@ public struct PerformanceBridge: Codable, Sendable {
     public let beforeAdjustmentsText: String
     public let reportedText: String
     public let note: String?
+    /// False when the bridge exists only for the unclassified-spending note:
+    /// the cover must not explain a $0.00 adjustment. Optional so reports
+    /// sealed before 2026-10-03 still decode.
+    public var hasAdjustment: Bool? = nil
 }
 
 public enum PerformanceAnalysis {
@@ -213,7 +217,7 @@ public enum PerformanceAnalysis {
         let note = parked.minorUnits != 0
             ? "\(parked.accountingDescription) of the costs above sits in a holding account (such as Ask My Accountant) until it is classified. It is real spending, so it stays in the result; only its category is unknown."
             : nil
-        return PerformanceBridge(rows: rows, adjustmentsText: adj.accountingDescription, beforeAdjustmentsText: before.accountingDescription, reportedText: net.accountingDescription, note: note)
+        return PerformanceBridge(rows: rows, adjustmentsText: adj.accountingDescription, beforeAdjustmentsText: before.accountingDescription, reportedText: net.accountingDescription, note: note, hasAdjustment: adj.minorUnits != 0)
     }
 }
 
@@ -227,7 +231,7 @@ public enum YearToDate {
         func total(_ f: ([ReportLine]) -> Money?) -> Money { ytd.compactMap { f($0.lines) }.reduce(.zero, +) }
         let measures: [(String, ([ReportLine]) -> Money?)] = [
             ("Revenue", { MonthlyReportBuilder.summary("Total Income", $0) }),
-            ("Costs of running the business", { l in MonthlyReportBuilder.totalCosts(l).map { $0 - PerformanceAnalysis.adjustments(l) } }),
+            ("Total costs (all spending)", { l in MonthlyReportBuilder.totalCosts(l).map { $0 - PerformanceAnalysis.adjustments(l) } }),
             ("Bookkeeping adjustments", { PerformanceAnalysis.adjustments($0) }),
             ("Reported net income", { TaxEstimate.netIncome(from: $0) })
         ]
@@ -272,6 +276,9 @@ public struct AgingSplit: Sendable {
     public let credits: Money
     public let over60Owed: Money
     public let net: Money
+    /// The credits as a positive amount for sentences ("plus $1,050.00 in
+    /// customer credits"); brackets read as a typo in prose.
+    public var creditsProseText: String { Money(minorUnits: abs(credits.minorUnits), currency: credits.currency).accountingDescription }
 
     /// Negative buckets are customer credits or unapplied payments, not
     /// money owed; they are reported separately, never netted into "old".

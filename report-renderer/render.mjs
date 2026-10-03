@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Voice Ledger monthly report renderer.
-//   node render.mjs <snapshot.json> <output.pdf> [--keep-html]
+//   node render.mjs <snapshot.json> <output.pdf> [--keep-html] [--summary]
+// --summary renders the 2-page Client Summary from the same snapshot.
 // Stdout: one JSON progress line per stage ({"stage": ...}).
 // Stderr: one JSON error line ({"error", "hint"}) and a non-zero exit.
 // Never prints report figures; runs fully offline.
@@ -83,7 +84,7 @@ const fontDir = resolve(here, "node_modules/@fontsource/inter/files");
 if (!existsSync(join(fontDir, "inter-latin-400-normal.woff"))) fail("Report font missing.", `Run "npm install" in ${here}.`);
 const workDir = mkdtempSync(join(tmpdir(), "vl-report-"));
 const htmlPath = join(workDir, "report.html");
-writeFileSync(htmlPath, renderHTML(report, charts, fontDir), "utf8");
+writeFileSync(htmlPath, renderHTML(report, charts, fontDir, { summary: flags.includes("--summary") }), "utf8");
 
 progress("pdf");
 const python = join(here, ".venv/bin/python");

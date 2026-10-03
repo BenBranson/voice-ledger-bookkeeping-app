@@ -93,6 +93,29 @@ struct MonthlyReportIntegrityTests {
         #expect(waterfall.steps.map(\.id) == ["revenue", "expenses", "adjustment", "net"])
     }
 
+    @Test("No adjustment: the bridge keeps the holding-account note but says there is nothing to adjust")
+    func bridgeWithoutAdjustment() throws {
+        let pnl = [line("Design income", 100_000, id: "i"), sum("Total Income", 100_000), sum("Gross Profit", 100_000),
+                   line("Ask My Accountant", 12_999, id: "a"), line("Supplies", 50_000, id: "s"), sum("Total Expenses", 62_999),
+                   sum("Net Operating Income", 37_001), sum("Net Income", 37_001)]
+        let b = try #require(PerformanceAnalysis.bridge(pnl))
+        #expect(b.hasAdjustment == false)
+        #expect(b.note?.contains("$129.99") == true)
+        #expect(try #require(PerformanceAnalysis.bridge(julyPnL)).hasAdjustment == true)
+    }
+
+    @Test("A possible personal expense or uncategorized spending becomes a question for the client")
+    func clientOnlyQuestions() {
+        let input = MonthlyReportInputs(clientName: "A", period: period, today: AccountingDate(year: 2026, month: 9, day: 1), generatedAt: Date(), accountingBasis: "Accrual", environment: "sandbox",
+                                        monthlyProfitAndLoss: [MonthlyReport(period: period, lines: julyPnL)], balanceSheet: [], cashFlow: [], agedReceivables: [], accountTypes: [:],
+                                        findings: [finding("p", rule: "VL-PERSONAL-001", cents: 18_640, title: "Lone Star Fuel, $186.40"),
+                                                   finding("u", rule: "VL-CAT-UNCAT-001", cents: 12_999, title: "Amazon Business, $129.99"),
+                                                   finding("d", rule: "VL-DUP-INV-001", cents: 22_000)], coverage: .complete)
+        let q = MonthlyReportBuilder.build(input).questionsForClient
+        #expect(q == ["Lone Star Fuel, $186.40: was this a business cost, or personal (an owner draw)?",
+                      "Amazon Business, $129.99: what was this for, so it can go in the right category?"])
+    }
+
     @Test("Bank + undeposited funds ties to the cash-flow statement's ending cash")
     func cashTie() throws {
         let bs = [sum("Total Bank Accounts", -455_678), line("Undeposited Funds", 286_252)]
@@ -110,6 +133,7 @@ struct MonthlyReportIntegrityTests {
         #expect(split.owed == usd(628_152))
         #expect(split.credits == usd(-80_000))
         #expect(split.over60Owed == usd(528_152))
+        #expect(split.creditsProseText == "$800.00")
     }
 
     @Test("July sandbox shape: confidence Low, no Sankey in a loss month, takeaway leads with the adjustment")

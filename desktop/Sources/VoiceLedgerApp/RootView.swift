@@ -2113,19 +2113,34 @@ struct RootView: View {
                     stageText: state.monthlyReportStage,
                     error: state.monthlyReportError,
                     history: state.monthlyReportHistory.map { report in
-                        MonthlyReportCard.HistoryItem(id: report.id, title: report.periodKey, subtitle: "generated \(report.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(report.snapshotID.prefix(8))")
+                        MonthlyReportCard.HistoryItem(id: report.id, title: report.periodKey, subtitle: "generated \(report.createdAt.formatted(date: .abbreviated, time: .shortened)) · \(report.snapshotID.prefix(8))", hasSummary: report.hasSummary)
                     },
                     onGenerate: { Task { await state.generateMonthlyReport() } },
-                    onOpen: { id in state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id } },
+                    onOpen: { id in
+                        state.previewedMonthlyReportIsSummary = false
+                        state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id }
+                    },
                     onExport: { id in
                         guard let report = state.monthlyReportHistory.first(where: { $0.id == id }) else { return }
                         PDFExport.save(report.pdfURL, suggestedName: "\(state.companyInfo?.companyName ?? "Client") — Monthly Report \(report.periodKey)")
+                    },
+                    onOpenSummary: { id in
+                        state.previewedMonthlyReportIsSummary = true
+                        state.previewedMonthlyReport = state.monthlyReportHistory.first { $0.id == id }
+                    },
+                    onExportSummary: { id in
+                        guard let report = state.monthlyReportHistory.first(where: { $0.id == id }) else { return }
+                        PDFExport.save(report.summaryURL, suggestedName: "\(state.companyInfo?.companyName ?? "Client") — Client Summary \(report.periodKey)")
                     }
                 ))
             )
             .onAppear { state.refreshMonthlyReportHistory() }
             .sheet(item: Binding(get: { state.previewedMonthlyReport }, set: { state.previewedMonthlyReport = $0 })) { report in
-                PDFPreviewSheet(url: report.pdfURL, title: "\(state.companyInfo?.companyName ?? "Client") — Monthly Report \(report.periodKey)") {
+                PDFPreviewSheet(variants: (report.hasSummary
+                                    ? [PDFPreviewSheet.Variant(id: "summary", label: "2-page Client Summary", url: report.summaryURL, title: "\(state.companyInfo?.companyName ?? "Client") — Client Summary \(report.periodKey)")]
+                                    : [])
+                                  + [PDFPreviewSheet.Variant(id: "full", label: "Full Report", url: report.pdfURL, title: "\(state.companyInfo?.companyName ?? "Client") — Monthly Report \(report.periodKey)")],
+                                initial: state.previewedMonthlyReportIsSummary && report.hasSummary ? "summary" : "full") {
                     state.previewedMonthlyReport = nil
                 }
             }

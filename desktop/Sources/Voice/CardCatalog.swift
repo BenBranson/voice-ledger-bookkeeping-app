@@ -23,6 +23,10 @@ public enum CardCatalog {
     static func i(_ t: String, _ s: String, _ p: String, _ sym: String) -> Item { Item(title: t, shows: s, phrase: p, symbol: sym) }
 
     public static let sections: [Section] = [
+        Section(title: "Client reports", items: [
+            i("2-page Client Summary", "The month on two pages: profit, sales, costs, cash, trend chart, health check and top priorities. Pops up with a Download PDF button.", "make the client summary", "doc.richtext"),
+            i("Full monthly report", "Every section: profit, where the money went, cash, customers, bills, financial position, open items and the financial statements. Pops up with a Download PDF button.", "make the full report", "doc.text.magnifyingglass"),
+        ]),
         Section(title: "Money in and out", items: [
             i("Who owes us", "Customers by amount owed, split into current, 1–60 days and over 60 days, with what to do about late balances and credits.", "who owes us", "person.2"),
             i("What we owe", "Vendors by open bill amount and age, with what to check on old bills and vendor credits.", "what do we owe", "building.2"),

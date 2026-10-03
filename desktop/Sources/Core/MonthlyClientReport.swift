@@ -202,7 +202,7 @@ public struct MonthlyReportInputs: Sendable {
 }
 
 public enum MonthlyReportBuilder {
-    static let monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    public static let monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
     static func label(_ p: AccountingPeriod) -> String { "\(monthNames[p.month - 1]) \(p.year)" }
 
@@ -257,7 +257,7 @@ public enum MonthlyReportBuilder {
 
         let kpis = [
             MonthlyClientReport.KPI(id: "revenue", label: "Revenue", valueText: revenue?.accountingDescription ?? "Not available", comparisonText: vsPrior(revenue, priorRevenue), detail: "Total Income, \(label(input.period))", isNegative: false),
-            MonthlyClientReport.KPI(id: "expenses", label: "Expenses", valueText: costs?.accountingDescription ?? "Not available", comparisonText: vsPrior(costs, priorCosts), detail: "COGS + operating + other expenses", isNegative: false),
+            MonthlyClientReport.KPI(id: "expenses", label: "Total costs", valueText: costs?.accountingDescription ?? "Not available", comparisonText: vsPrior(costs, priorCosts), detail: "COGS + operating + other expenses", isNegative: false),
             MonthlyClientReport.KPI(id: "net", label: (net?.minorUnits ?? 0) < 0 ? "Net Loss" : "Net Profit", valueText: net?.accountingDescription ?? "Not available", comparisonText: vsPrior(net, priorNet), detail: "Net Income per QuickBooks", isNegative: (net?.minorUnits ?? 0) < 0),
             MonthlyClientReport.KPI(id: "cash", label: "Cash in Bank", valueText: cash?.accountingDescription ?? "Not available", comparisonText: "Balance as of \(balanceDate)", detail: "Total Bank Accounts on the Balance Sheet", isNegative: (cash?.minorUnits ?? 0) < 0)
         ]
@@ -266,7 +266,7 @@ public enum MonthlyReportBuilder {
             let cl = c?.lines ?? [], pl = p?.lines ?? []
             let items: [(String, Money?, Money?)] = [
                 ("Revenue", summary("Total Income", cl) ?? .zero, p == nil ? nil : summary("Total Income", pl) ?? .zero),
-                ("Expenses", totalCosts(cl) ?? .zero, p == nil ? nil : totalCosts(pl) ?? .zero),
+                ("Total costs", totalCosts(cl) ?? .zero, p == nil ? nil : totalCosts(pl) ?? .zero),
                 ("Net income", TaxEstimate.netIncome(from: cl) ?? .zero, p == nil ? nil : TaxEstimate.netIncome(from: pl) ?? .zero)
             ]
             return items.map { name, cv, pv in
@@ -316,7 +316,7 @@ public enum MonthlyReportBuilder {
                 totalText: grand.accountingDescription,
                 topCustomers: Array(customers),
                 note: split.credits.minorUnits < 0
-                    ? "Aging as of \(balanceDate), matching the Balance Sheet. \(split.credits.accountingDescription) is customer credits or payments not yet applied to an invoice — not money owed. It is netted into the total but excluded from the \"older than 60 days\" figures; it should be applied to an open invoice or refunded. 91+ days is at risk of not being collected."
+                    ? "Aging as of \(balanceDate), matching the Balance Sheet. \(split.creditsProseText) is customer credits or payments not yet applied to an invoice — not money owed. It is netted into the total but excluded from the \"older than 60 days\" figures; it should be applied to an open invoice or refunded. 91+ days is at risk of not being collected."
                     : "Aging as of \(balanceDate), matching the Balance Sheet; 91+ days is at risk of not being collected.",
                 creditsText: split.credits.minorUnits < 0 ? split.credits.accountingDescription : nil
             )

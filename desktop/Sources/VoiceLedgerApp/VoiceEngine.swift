@@ -1310,6 +1310,18 @@ public final class VoiceEngine: NSObject {
                 ?? low.map { "Cash stays above zero for 13 weeks. The lowest point is week \($0.number), at \($0.endingCash.accountingDescription)." } ?? ""
             return VoiceTurn(speech: ClientText.polish("Today's cash is \(card.headline ?? ""). " + speech), uiAction: .navigate(.cashFlowForecast))
 
+        case .monthlyReport(let summary):
+            // Generating reads 13 months from QuickBooks (about a minute), so she answers now and the
+            // finished PDF pops up on the Close Package page with its Download PDF button.
+            let what = summary ? "the 2-page client summary" : "the full monthly report"
+            let month = "\(MonthlyReportBuilder.monthNames[appState.period.month - 1]) \(appState.period.year)"
+            if appState.isGeneratingMonthlyReport {
+                appState.monthlyReportOpensSummary = summary
+                return VoiceTurn(speech: "A report for \(month) is already being made. \(summary ? "The summary" : "The full report") will pop up when it's ready.", uiAction: .navigate(.closePackage))
+            }
+            Task { @MainActor [appState] in await appState.generateMonthlyReport(openSummary: summary) }
+            return VoiceTurn(speech: "Making \(what) for \(month). It takes about a minute, then it pops up with a Download PDF button.", uiAction: .navigate(.closePackage))
+
         case .unrecognized:
             // A near-miss of a real command ("vendor by spin") is answered in
             // code, instantly, with a yes/no the next "yes" will act on. Only

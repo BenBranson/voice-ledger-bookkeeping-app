@@ -1588,3 +1588,22 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - Negatives show as "-$X" everywhere except Appendix D, which keeps brackets (`sv()`, and `table(..., {brackets:true})`). Chart SVGs are converted in `render.mjs` `minusSigns()`.
   - The dual-axis revenue/expenses/margin chart was replaced by plain side-by-side bars ("Money in vs money out").
 - Owner decision (2026-10-03): KEEP the "Every dollar in, every dollar out" money-flow chart (Sankey) in the report. Do not replace it.
+
+## 2026-10-03 — v1.85: second Gemini review of the September report + 2-page summary
+
+Verified each claim against the rendered PDFs before changing anything.
+
+| Gemini claim | Verdict | Change |
+|---|---|---|
+| Cover says "Before the $0.00 bookkeeping adjustment" | True (bridge exists for the unclassified note even with no adjustment) | `PerformanceBridge.hasAdjustment` (optional, old snapshots decode); cover box shows only when true |
+| "Questions for you: No open questions" while Appendix B flags a possible personal expense | True | `MonthlyReportSections.clientOnlyQuestions`: open VL-PERSONAL-001 and VL-CAT-UNCAT-001 findings on the report become questions |
+| "Expenses $13,039.37" vs "Operating expenses $12,768.12" | True: two different totals with near-identical labels | Cover KPI, comparison row and trend legend renamed "Total costs" (COGS + operating + other) |
+| "Covers 72% of $12,721.82 in bills" misleads (A/P is only $7,093.60) | Partly: the figure is total current liabilities | Wording now "due within a year (vendor bills, credit cards, loan payments and taxes)". Kept the conservative denominator; did NOT switch to A/P only |
+| Trend chart cuts "Sep '26" to "Sep '2" | True | `trendArea` grid right padding 10 → 26 |
+| Owner's Draw shown in error red | True | `colorFor`: draw = neutral slate; negative-balance table doesn't color draw rows red |
+| Page 2 of the full report has "pipe artifacts" | **False**: page 2 is identical in both PDFs (text-extraction artifact on Gemini's side) | none |
+| Strip "VL Spike"/"VLT" prefixes | **Rejected**: those are the sandbox company's real account/vendor names; renaming client data would misreport. Real clients won't have them | none |
+
+Also: "(plus ($1,050.00) in customer credits)" now reads "plus $1,050.00 in customer credits".
+
+Follow-up (same day, checked against the owner's downloaded v1.85 PDFs): every fix above showed correctly, but the two new questions pushed the summary to 3 pages. Fix: in summary mode the six counts sit in one row, the "this is your 2-page summary" line moved into the cover meta line, and at most 3 questions are listed ("N more in the full report"). Re-rendered September summary = 2 pages. Credit amounts in sentences now use `AgingSplit.creditsProseText` (positive, no brackets) everywhere.

@@ -55,7 +55,7 @@ function table(columns, rows, opts = {}) {
   const head = columns.map((c, i) => `<th class="${i === 0 ? "" : "num"}">${esc(c)}</th>`).join("");
   const fmt = opts.brackets ? (c) => c : sv;
   const body = rows.map((r) => `<tr class="${r.total ? "total" : ""}">${r.cells.map((c, i) =>
-    `<td class="${i === 0 ? `lbl d${Math.min(r.depth ?? 0, 4)}` : `num${neg(c)}`}">${esc(i === 0 ? c : fmt(c))}</td>`).join("")}</tr>`).join("");
+    `<td class="${i === 0 ? `lbl d${Math.min(r.depth ?? 0, 4)}` : `num${r.normal ? "" : neg(c)}`}">${esc(i === 0 ? c : fmt(c))}</td>`).join("")}</tr>`).join("");
   return `<table class="${opts.className ?? ""}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
@@ -152,6 +152,7 @@ h2{bookmark-level:1}
 .counts .n{font-size:15pt;font-weight:700}
 .counts .l{font-size:7.4pt;color:var(--muted);text-transform:uppercase;letter-spacing:0.5pt}
 .counts.six{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6pt}.counts.six>div{padding:4pt 6pt}.counts.six .n{font-size:13pt}
+.counts.six.row{grid-template-columns:repeat(6,1fr);gap:4pt}.counts.six.row .n{font-size:11pt}.counts.six.row .l{font-size:6pt;letter-spacing:0.2pt}
 .hc.low{border-left-color:var(--neg)}
 .hc.low .st{background:#F7E1E4;color:#8A2433}
 table.prio th:nth-child(1),table.prio td:nth-child(1){width:38%}
@@ -268,7 +269,7 @@ function findingList(items, tag, tagClass) {
 function breakdownBlock(b, svg) {
   if (!b) return "";
   const negatives = b.negativeItems.length
-    ? table(["Negative balance", "Type", "Amount"], b.negativeItems.map((n) => ({ cells: [n.label, n.note ?? "", n.valueText] })))
+    ? table(["Negative balance", "Type", "Amount"], b.negativeItems.map((n) => ({ cells: [n.label, n.note ?? "", n.valueText], normal: n.category === "draw" })))
     : "";
   return `<div class="keep"><h3>${esc(b.title)}</h3>
     ${svgImg(svg, `${b.title}: signed balances by account`)}
@@ -289,7 +290,10 @@ function agingBlock(a, svg, title, friendly, whoLabel) {
     <p class="small muted">${esc(a.note)}</p></div>`;
 }
 
-export function renderHTML(report, charts, fontDir) {
+// opts.summary: the 2-page Client Summary (owner, 2026-10-03): cover + health/spending/priorities,
+// rendered from the SAME snapshot as the full report so the two can never disagree.
+export function renderHTML(report, charts, fontDir, opts = {}) {
+  const S = !!opts.summary;
   const m = report.meta;
   const flag = m.isSample ? "SAMPLE DATA — fictional figures for review, not a client report"
     : m.environment === "sandbox" ? "SANDBOX DATA — generated from a QuickBooks test company" : "";
@@ -321,12 +325,12 @@ export function renderHTML(report, charts, fontDir) {
 <div class="title">${esc(m.periodLabel)} Financial Report</div>
 <div class="sub">${esc(m.clientName)} · ${m.isPartialMonth ? "Month in progress · " : ""}${esc(m.balanceDateLabel)}</div></div>
 ${flag ? `<span class="badge">${m.isSample ? "SAMPLE DATA" : "SANDBOX DATA"}</span>` : ""}</div>
-<div class="metaline">Prepared by <b>${esc(report.preparedBy || m.firmName)}</b> · Generated <b>${esc(m.generatedAtLabel)}</b> · Accounting basis <b>${esc(m.accountingBasis)}</b>${flag ? ` · ${esc(flag)}` : ""}</div>
+<div class="metaline">Prepared by <b>${esc(report.preparedBy || m.firmName)}</b> · Generated <b>${esc(m.generatedAtLabel)}</b> · Accounting basis <b>${esc(m.accountingBasis)}</b>${flag ? ` · ${esc(flag)}` : ""}${S ? `<br>This is your 2-page summary. The full monthly report (cash, customers, bills, every open item, statements) uses the same numbers.` : ""}</div>
 ${net ? `<div class="hero"><div class="hero-l"><div class="lbl">${esc(net.label)}</div><div class="big${net.isNegative ? " neg" : ""}">${esc(sv(net.valueText))}</div><div class="cmp">${changeChip(net.comparisonText, hib("net"))}</div></div>
-${bridge0 ? `<div class="hero-r"><div class="s">Before the ${esc(bridge0.adjustmentsText)} bookkeeping adjustment</div><div class="v">${esc(bridge0.beforeAdjustmentsText)} operating result</div><div class="s">The adjustment is under review, not day-to-day spending.</div></div>`
+${bridge0?.hasAdjustment ? `<div class="hero-r"><div class="s">Before the ${esc(bridge0.adjustmentsText)} bookkeeping adjustment</div><div class="v">${esc(bridge0.beforeAdjustmentsText)} operating result</div><div class="s">The adjustment is under review, not day-to-day spending.</div></div>`
   : heroAside()}</div>` : ""}
 <div class="stats">${stat(kpi.revenue)}${stat(kpi.expenses)}${stat(kpi.cash)}</div>
-${charts.trendArea ? `<figure class="keep"><div class="legend"><b>Trend</b><span><span class="sw" style="background:#1F8A8A"></span>Revenue</span><span><span class="sw" style="background:#C9A227"></span>Expenses</span></div>${svgImg(charts.trendArea, "Revenue and expenses by month")}<div class="caption">${esc(report.trend?.points?.slice(-13)[0]?.label ?? "")} – ${esc(report.trend?.points?.at(-1)?.label ?? "")}. The dot marks this month${m.isPartialMonth ? ", which is still in progress, so its drop is partly just fewer days" : ""}.</div></figure>` : ""}
+${charts.trendArea ? `<figure class="keep"><div class="legend"><b>Trend</b><span><span class="sw" style="background:#1F8A8A"></span>Revenue</span><span><span class="sw" style="background:#C9A227"></span>Total costs</span></div>${svgImg(charts.trendArea, "Revenue and total costs by month")}<div class="caption">${esc(report.trend?.points?.slice(-13)[0]?.label ?? "")} – ${esc(report.trend?.points?.at(-1)?.label ?? "")}. The dot marks this month${m.isPartialMonth ? ", which is still in progress, so its drop is partly just fewer days" : ""}.</div></figure>` : ""}
 ${report.takeaways?.length ? `<h3>What matters this month</h3><ol class="tk">${report.takeaways.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>` : ""}
 ${report.healthChecks?.length ? `<div class="strip">${report.healthChecks.map((h) => `<div class="pill ${esc(h.statusKind)}"><div class="a">${esc(h.area)}</div><div class="s">${esc(h.status)}</div></div>`).join("")}</div>` : ""}`);
 
@@ -342,13 +346,13 @@ ${spendItems.length ? `<div class="panel"><h3>Where the money went</h3>${spendIt
 </div>
 <h3>Top priorities before next close</h3>
 ${prio.length ? prio.map((p, i) => `<div class="prow"><div class="no">${i + 1}</div><div class="act"><b>${esc(p.action)}</b><div>${esc(p.why)}</div></div><div class="who">${esc(p.owner)}</div><div class="when">${esc(p.timing)}</div><div class="imp">${esc(p.impact ?? "")}</div></div>`).join("") : `<p class="muted">No priority actions this month.</p>`}
-<h3>Questions for you</h3>
-${report.questionsForClient?.length ? `<ul class="findings">${report.questionsForClient.map((q) => `<li><span class="tag r">Question</span>${esc(q)}</li>`).join("")}</ul>` : `<p class="muted small">No open questions.</p>`}
-${counts ? `<h3>Where the bookkeeping stands</h3><div class="counts six">${counts}</div><p class="small muted">Every page of this report uses these same counts. Details: work log (Appendix A) and open items (Appendix B).</p>` : ""}
-<h3>Effect of this month's bookkeeping work</h3>
+${S && !report.questionsForClient?.length ? "" : `<h3>Questions for you</h3>
+${report.questionsForClient?.length ? `<ul class="findings">${(S ? report.questionsForClient.slice(0, 3) : report.questionsForClient).map((q) => `<li><span class="tag r">Question</span>${esc(q)}</li>`).join("")}</ul>${S && report.questionsForClient.length > 3 ? `<p class="small muted">${report.questionsForClient.length - 3} more in the full report.</p>` : ""}` : `<p class="muted small">No open questions.</p>`}`}
+${counts ? `<h3>Where the bookkeeping stands</h3><div class="counts six${S ? " row" : ""}">${counts}</div>${S ? "" : `<p class="small muted">Every page of this report uses these same counts. Details: work log (Appendix A) and open items (Appendix B).</p>`}` : ""}
+${S ? "" : `<h3>Effect of this month's bookkeeping work</h3>
 <p class="small">Correcting a record makes the numbers accurate; it doesn't by itself earn or recover money. Only a correction a person made and a later QuickBooks sync confirms counts as "corrected and verified".</p>
 ${impact.length ? `<div class="keep">${table(["Work completed and verified", "Items", "Effect on the reported figures"], impact.map((r) => ({ cells: [r.activity, String(r.count), r.effect] })), { className: "impact" })}<p class="small muted">None of this work moved or recovered actual money.</p></div>` : `<p class="muted small">No corrections were completed and verified for this period yet.</p>`}
-${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCount)} earlier flag${report.autoClearedCount === 1 ? "" : "s"} stopped appearing on a later sync with no recorded correction. ${report.autoClearedCount === 1 ? "It is" : "They are"} not counted as work.</p>` : ""}</div>`);
+${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCount)} earlier flag${report.autoClearedCount === 1 ? "" : "s"} stopped appearing on a later sync with no recorded correction. ${report.autoClearedCount === 1 ? "It is" : "They are"} not counted as work.</p>` : ""}`}</div>`);
 
   // 3 — Profitability: reported vs before adjustments
   const perf = [];
@@ -356,7 +360,7 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
   // The bridge table repeated the "From sales to profit" list line for line; only its note stays.
   if (bridge?.note && !report.waterfall?.steps?.length) perf.push(`<p class="small muted">${esc(bridge.note)}</p>`);
   if (report.waterfall?.steps?.length) perf.push(moneySteps(report.waterfall, bridge?.note));
-  if (charts.trendBars) perf.push(`<figure class="keep"><h3>Money in vs money out, month by month</h3>${svgImg(charts.trendBars, "Revenue and expenses by month")}<div class="caption">Teal is money in (sales); gold is money out (costs). When gold is taller than teal, that month lost money. ${esc(report.trend?.note ?? "")}</div></figure>`);
+  if (charts.trendBars) perf.push(`<figure class="keep"><h3>Money in vs money out, month by month</h3>${svgImg(charts.trendBars, "Revenue and total costs by month")}<div class="caption">Teal is money in (sales); gold is money out (costs). When gold is taller than teal, that month lost money. ${esc(report.trend?.note ?? "")}</div></figure>`);
   if (report.monthOverMonth.length) perf.push(`<h3>Compared with last month</h3>${comparisonTable(report.monthOverMonth, "Last month")}`);
   if (report.ytd?.length) perf.push(`<div class="keep"><h3>Year to date</h3><p class="small muted">${esc(report.ytdLabel)}</p>${table(["", "This month", "Year to date"], report.ytd.map((r) => ({ total: r.isTotal, cells: [r.label, r.currentText, r.priorText] })))}</div>`);
   if (report.yearOverYear) perf.push(`<h3>Compared with the same month last year</h3>${comparisonTable(report.yearOverYear, "Last year")}`);
@@ -422,10 +426,10 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
 
   let sectionNumber = 0;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>${esc(m.clientName)} — Monthly Financial Report — ${esc(m.periodLabel)}</title>
+<title>${esc(m.clientName)} — ${S ? "Client Summary" : "Monthly Financial Report"} — ${esc(m.periodLabel)}</title>
 <meta name="author" content="${esc(m.firmName)}"><meta name="keywords" content="voice-ledger-snapshot:${esc(m.snapshotID)}">
 <meta name="generator" content="Voice Ledger">
 <style>${css(fontDir, m)}</style></head><body>
-${sections.join("\n")}
+${(S ? sections.slice(0, 2) : sections).join("\n")}
 </body></html>`.replace(/§N§/g, () => String(++sectionNumber));
 }

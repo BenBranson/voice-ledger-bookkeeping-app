@@ -292,6 +292,8 @@ public enum VoiceIntentRouter {
             "tie out", "run the tie out", "run a tie out", "are the numbers right", "is the math right", "are the numbers correct", "verify the numbers",
             "do the numbers add up", "does it all add up", "numbers tie", "tie out the numbers"].contains(normalized) { return .tieOut }
 
+        if let summary = reportRequest(normalized) { return .monthlyReport(summary: summary) }
+
         // "how many open findings / issues" wants the count spoken, not just the page.
         if normalized.hasPrefix("how many "), ["finding", "issue", "problem", "open item", "exception"].contains(where: { normalized.contains($0) }) {
             return .findingsGroup(.allOpen)
@@ -394,6 +396,26 @@ public enum VoiceIntentRouter {
             value = value.replacingOccurrences(of: phrase, with: "month end close")
         }
         return value
+    }
+
+    /// "make the client summary", "two page report", "generate the full report", "monthly report".
+    /// true = the 2-page Client Summary, false = the full report, nil = not a report request.
+    static func reportRequest(_ normalized: String) -> Bool? {
+        let summaryWords = ["client summary", "two page report", "2 page report", "two page summary", "2 page summary", "two pager", "short report", "summary report", "monthly summary", "one page report"]
+        let fullWords = ["full report", "full monthly report", "monthly report", "client report", "whole report", "long report", "complete report", "monthly financial report"]
+        let verbs = ["make", "create", "generate", "build", "run", "give me", "pull up", "show me", "show", "open", "i need", "can you make", "send me", "prepare", "print", "get me", "do the", "let's do", "lets do", "we need"]
+        var stripped = normalized.replacingOccurrences(of: ",", with: "")
+        stripped = CommandGrammar.strip(stripped, ["please", "moneypenny", "hey moneypenny", "ok moneypenny", "okay moneypenny"])
+        for tail in [" please", " for me", " now", " for this month", " for the client"] where stripped.hasSuffix(tail) { stripped = String(stripped.dropLast(tail.count)) }
+        func asked(_ words: [String]) -> Bool {
+            words.contains { w in
+                stripped == w || stripped == "the \(w)" || stripped == "a \(w)"
+                    || (stripped.contains(w) && verbs.contains { stripped.hasPrefix($0) })
+            }
+        }
+        if asked(summaryWords) { return true }
+        if asked(fullWords) { return false }
+        return nil
     }
 
     private static func matchDestination(_ normalized: String) -> VoiceDestination? {

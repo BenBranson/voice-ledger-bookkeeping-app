@@ -9,10 +9,12 @@ public struct MonthlyReportCard: View {
         public let id: String
         public let title: String
         public let subtitle: String
-        public init(id: String, title: String, subtitle: String) {
+        public let hasSummary: Bool
+        public init(id: String, title: String, subtitle: String, hasSummary: Bool = false) {
             self.id = id
             self.title = title
             self.subtitle = subtitle
+            self.hasSummary = hasSummary
         }
     }
 
@@ -23,9 +25,14 @@ public struct MonthlyReportCard: View {
     let onGenerate: () -> Void
     let onOpen: (String) -> Void
     let onExport: (String) -> Void
+    /// Preview / save the 2-page Client Summary of a generated report.
+    let onOpenSummary: (String) -> Void
+    let onExportSummary: (String) -> Void
 
-    public init(isGenerating: Bool, stageText: String?, error: String?, history: [HistoryItem], onGenerate: @escaping () -> Void, onOpen: @escaping (String) -> Void, onExport: @escaping (String) -> Void = { _ in }) {
+    public init(isGenerating: Bool, stageText: String?, error: String?, history: [HistoryItem], onGenerate: @escaping () -> Void, onOpen: @escaping (String) -> Void, onExport: @escaping (String) -> Void = { _ in }, onOpenSummary: @escaping (String) -> Void = { _ in }, onExportSummary: @escaping (String) -> Void = { _ in }) {
         self.onExport = onExport
+        self.onOpenSummary = onOpenSummary
+        self.onExportSummary = onExportSummary
         self.isGenerating = isGenerating
         self.stageText = stageText
         self.error = error
@@ -43,7 +50,7 @@ public struct MonthlyReportCard: View {
                             .font(VLTypography.eyebrow())
                             .tracking(VLTypography.eyebrowTracking)
                             .foregroundStyle(VLColor.textMuted)
-                        Text("A designed, client-ready PDF: KPIs, trends, revenue-to-net-income bridge, expenses, cash and receivables, findings, and supporting tables.")
+                        Text("Makes two PDFs from the same numbers: a 2-page Client Summary to send every month, and the full report (profit, expenses, cash, customers, bills, open items, financial statements).")
                             .font(VLTypography.caption())
                             .foregroundStyle(VLColor.textSecondary)
                     }
@@ -72,8 +79,15 @@ public struct MonthlyReportCard: View {
                             Text(item.title).foregroundStyle(VLColor.textPrimary)
                             Text(item.subtitle).foregroundStyle(VLColor.textMuted)
                             Spacer()
+                            if item.hasSummary {
+                                Text("Summary:").foregroundStyle(VLColor.textMuted)
+                                Button("Preview") { onOpenSummary(item.id) }.buttonStyle(.link)
+                                Button("Export…") { onExportSummary(item.id) }.buttonStyle(.link)
+                                Text("·").foregroundStyle(VLColor.textMuted)
+                                Text("Full report:").foregroundStyle(VLColor.textMuted)
+                            }
                             Button("Preview") { onOpen(item.id) }.buttonStyle(.link)
-                            Button("Export PDF…") { onExport(item.id) }.buttonStyle(.link)
+                            Button(item.hasSummary ? "Export…" : "Export PDF…") { onExport(item.id) }.buttonStyle(.link)
                         }
                         .font(VLTypography.caption())
                     }
@@ -89,35 +103,62 @@ public struct MonthlyReportCard: View {
 /// Shows the generated PDF itself — Save/Open use this same file, so the
 /// preview and the export can never differ.
 public struct PDFPreviewSheet: View {
-    let url: URL
-    let title: String
+    /// One PDF the sheet can show: the 2-page Client Summary or the full report.
+    public struct Variant: Identifiable, Equatable {
+        public let id: String
+        public let label: String
+        public let url: URL
+        public let title: String
+        public init(id: String, label: String, url: URL, title: String) {
+            self.id = id; self.label = label; self.url = url; self.title = title
+        }
+    }
+
+    let variants: [Variant]
     let onClose: () -> Void
+    @State private var selected: String
 
     public init(url: URL, title: String, onClose: @escaping () -> Void) {
-        self.url = url
-        self.title = title
-        self.onClose = onClose
+        self.init(variants: [Variant(id: "only", label: title, url: url, title: title)], onClose: onClose)
     }
+
+    /// Several PDFs from the same snapshot; a switch at the top flips between them.
+    public init(variants: [Variant], initial: String? = nil, onClose: @escaping () -> Void) {
+        self.variants = variants
+        self.onClose = onClose
+        _selected = State(initialValue: initial ?? variants.first?.id ?? "")
+    }
+
+    private var current: Variant? { variants.first { $0.id == selected } ?? variants.first }
 
     public var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(title).font(VLTypography.cardTitle())
+            HStack(spacing: VLSpacing.sm) {
+                if variants.count > 1 {
+                    Picker("", selection: $selected) {
+                        ForEach(variants) { Text($0.label).tag($0.id) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                } else if let current {
+                    Text(current.title).font(VLTypography.cardTitle())
+                }
                 Spacer()
-                Button("Export PDF…") { saveCopy() }
+                Button {
+                    if let current { PDFExport.save(current.url, suggestedName: current.title) }
+                } label: { Label("Download PDF", systemImage: "arrow.down.doc") }
                     .buttonStyle(.borderedProminent)
-                    .keyboardShortcut("e", modifiers: .command)
-                Button("Open in Preview") { NSWorkspace.shared.open(url) }
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    .keyboardShortcut("d", modifiers: .command)
+                Button("Open in Preview") { if let current { NSWorkspace.shared.open(current.url) } }
+                Button("Show in Finder") { if let current { NSWorkspace.shared.activateFileViewerSelecting([current.url]) } }
                 Button("Close") { onClose() }.keyboardShortcut(.cancelAction)
             }
             .padding(VLSpacing.sm)
-            PDFKitView(url: url)
+            if let current { PDFKitView(url: current.url).id(current.id) }
         }
         .frame(minWidth: 760, idealWidth: 900, minHeight: 700, idealHeight: 920)
     }
-
-    private func saveCopy() { PDFExport.save(url, suggestedName: title) }
 }
 
 /// Saves a copy of an already-generated report PDF wherever the user picks.

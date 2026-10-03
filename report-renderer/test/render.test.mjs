@@ -96,3 +96,19 @@ test("cover: hero, change chips and trend area", () => {
   const svg = (() => { const c = echarts.init(null, null, { renderer: "svg", ssr: true, width: 720, height: 190 }); c.setOption(VL.builders.trendArea(r.trend ?? { points: [{ label: "Jul 2026", revenue: 1, expenses: 1 }] }, VL.themes.print, {})); const out = c.renderToSVGString(); c.dispose(); return out; })();
   assert.match(svg, /^<svg/);
 });
+
+// Client Summary (2026-10-03): the same snapshot, only the cover and the health/priorities page.
+test("summary renders only the cover and page 2", () => {
+  const full = renderHTML(sample, {}, "/fonts");
+  const summary = renderHTML(sample, {}, "/fonts", { summary: true });
+  assert.match(summary, /Client Summary/);
+  assert.match(summary, /This is your 2-page summary/);
+  assert.match(summary, /counts six row/);
+  // The 2-page summary lists at most 3 questions; the rest point to the full report.
+  const many = renderHTML({ ...sample, questionsForClient: ["q1", "q2", "q3", "q4", "q5"] }, {}, "/fonts", { summary: true });
+  assert.doesNotMatch(many, /q4/);
+  assert.match(many, /2 more in the full report/);
+  assert.doesNotMatch(summary, /Open items/);
+  assert.match(full, /Open items/);
+  assert.ok(summary.length < full.length / 2);
+});

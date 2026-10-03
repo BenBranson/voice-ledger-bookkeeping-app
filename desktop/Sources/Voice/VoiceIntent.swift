@@ -178,6 +178,9 @@ public enum VoiceIntent: Equatable, Sendable {
     case newAccounts
     /// "will we run out of cash" — the 13-week outlook card.
     case cashOutlook
+    /// "make the client summary" / "make the full report" — generate the monthly report
+    /// (both PDFs from one snapshot) and pop up the requested one with a Download button.
+    case monthlyReport(summary: Bool)
 }
 
 public enum KPIMetric: String, Equatable, Sendable {

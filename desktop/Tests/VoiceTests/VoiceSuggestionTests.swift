@@ -119,6 +119,20 @@ struct CardCatalogTests {
         #expect(VoiceIntentRouter.match(text: CardCatalog.accountPhrase("Mastercard"), context: .empty) == .accountBalance("mastercard"))
     }
 
+    @Test("Report requests: the 2-page summary vs the full report, said many ways (2026-10-03)")
+    func reportRequests() {
+        for phrase in ["make the client summary", "Moneypenny, make the client summary", "client summary", "give me the two page report", "make the 2 page report please",
+                       "create the two page summary", "pull up the client summary", "I need the short report"] {
+            #expect(VoiceIntentRouter.match(text: phrase, context: .empty) == .monthlyReport(summary: true), "\(phrase)")
+        }
+        for phrase in ["make the full report", "generate the monthly report", "monthly report", "show me the full monthly report", "run the client report"] {
+            #expect(VoiceIntentRouter.match(text: phrase, context: .empty) == .monthlyReport(summary: false), "\(phrase)")
+        }
+        // Not report requests.
+        #expect(VoiceIntentRouter.match(text: "explain the diagnosis", context: .empty) == .explainDiagnosis)
+        #expect(VoiceIntentRouter.match(text: "close package", context: .empty) == .navigate(.closePackage))
+    }
+
     @Test("'who owes us the most' and 'who do we owe the most' are instant commands")
     func topBalance() {
         #expect(VoiceIntentRouter.match(text: "which customer owes us the most", context: .empty) == .topBalance(receivables: true))

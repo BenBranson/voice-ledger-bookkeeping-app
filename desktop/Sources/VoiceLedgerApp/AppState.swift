@@ -3198,14 +3198,22 @@ public final class AppState {
     public private(set) var monthlyReportError: String?
     private(set) var monthlyReportHistory: [MonthlyReportService.GeneratedReport] = []
     var previewedMonthlyReport: MonthlyReportService.GeneratedReport?
+    /// Which PDF of `previewedMonthlyReport` is open: the 2-page Client Summary or the full report.
+    var previewedMonthlyReportIsSummary = false
 
     func refreshMonthlyReportHistory() {
         guard let root = clientStoreRootDirectory else { return }
         monthlyReportHistory = MonthlyReportService.history(root: root, realmID: realmID)
     }
 
-    public func generateMonthlyReport() async {
+    /// Which PDF pops up when generation finishes; a voice request can change it mid-run.
+    var monthlyReportOpensSummary = true
+
+    /// Makes both PDFs (2-page Client Summary + full report) from one snapshot, then pops up
+    /// the one asked for. `openSummary` is the voice command's choice; the button opens the summary.
+    public func generateMonthlyReport(openSummary: Bool = true) async {
         guard !isGeneratingMonthlyReport else { return }
+        monthlyReportOpensSummary = openSummary
         guard let root = clientStoreRootDirectory else {
             monthlyReportError = "No local store location for this client."
             return
@@ -3251,11 +3259,13 @@ public final class AppState {
                 case "charts": text = "Drawing charts…"
                 case "html": text = "Laying out pages…"
                 case "pdf": text = "Creating the PDF…"
+                case "summary": text = "Creating the 2-page Client Summary…"
                 default: text = "Finishing…"
                 }
                 Task { @MainActor [weak self] in self?.monthlyReportStage = text }
             }
             refreshMonthlyReportHistory()
+            previewedMonthlyReportIsSummary = monthlyReportOpensSummary && generated.hasSummary
             previewedMonthlyReport = generated
         } catch {
             monthlyReportError = "Report not generated: \(error.localizedDescription)"
