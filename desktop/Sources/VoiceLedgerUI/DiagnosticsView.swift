@@ -152,7 +152,8 @@ public struct DiagnosticsView: View {
                 row("Unapplied vendor credits", scope.unappliedVendorCreditTotal.accountingDescription)
                 row("Duplicate-looking chart of accounts groups", "\(scope.duplicateAccountGroups)")
                 row("Total dollar exposure (open findings)", scope.totalExposure.accountingDescription)
-                Text("Quote = base $500 + $150 × unreconciled months + $35 × anomalies + $2.50 × uncategorized transactions; hours at $100/hr. QuickBooks' API has no reconciliation history or cleared status, so unreconciled months is your input and \"older than 90 days\" uses undeposited payments as the stand-in.")
+                let f = CleanupScopeInputs()
+                Text("Quote = base \(f.baseFee.accountingDescription) + \(f.perUnreconciledMonth.accountingDescription) × unreconciled months + \(f.perAnomaly.accountingDescription) × anomalies + \(f.perUncategorizedTransaction.accountingDescription) × uncategorized transactions; hours at \(f.hourlyRate.accountingDescription)/hr. QuickBooks' API has no reconciliation history or cleared status, so unreconciled months is your input and \"older than 90 days\" uses undeposited payments as the stand-in.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }

@@ -206,12 +206,12 @@ struct IndustryCatalogTests {
 
 @Suite("Hard-to-price intake flags")
 struct ComplexityFlagTests {
-    @Test("Flags add hours and warnings; both heavy inventory and cash-heavy adds the custom-engagement warning")
+    @Test("Flags add their price-list prices and warnings; both heavy inventory and cash-heavy adds the custom-engagement warning")
     func flags() {
         let f = PricingCalculator.MonthlyComplexityFlags(heavyInventory: true, cashHeavy: true)
-        let base = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: Money(minorUnits: 100_00, currency: .usd), flags: .init())
-        let quote = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: Money(minorUnits: 100_00, currency: .usd), flags: f)
-        #expect(quote.totalHours == base.totalHours + 5.5)
+        let base = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: PriceBook.hourlyRate, flags: .init())
+        let quote = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: PriceBook.hourlyRate, flags: f)
+        #expect(quote.monthlyInvestment == base.monthlyInvestment + Money(minorUnits: 700_00, currency: .usd))   // $500 heavy inventory + $200 cash-heavy
         #expect(f.warnings.count == 3)
     }
 

@@ -49,10 +49,11 @@ public struct PricingCalculatorView: View {
 
     // Monthly retainer inputs
     @State private var volumeTier: PricingCalculator.VolumeTier = .light
-    @State private var hourlyRateText = "100"
+    @State private var hourlyRateText = "\(PriceBook.hourlyRate.minorUnits / 100)"
     @State private var payrollProcessing = false
     @State private var salesTaxManagement = false
-    @State private var multipleBankAccounts = false
+    @State private var extraAccounts = 0
+    @State private var advisory = false
     @State private var inventoryTracking = false
     @State private var heavyInventory = false
     @State private var multiStateSales = false
@@ -135,8 +136,9 @@ public struct PricingCalculatorView: View {
     }
 
     private var monthlyFlags: PricingCalculator.MonthlyComplexityFlags {
-        .init(payrollProcessing: payrollProcessing, salesTaxManagement: salesTaxManagement, multipleBankAccounts: multipleBankAccounts, inventoryTracking: inventoryTracking,
-              heavyInventory: heavyInventory, multiStateSales: multiStateSales, cashHeavy: cashHeavy, multipleEntities: multipleEntities)
+        .init(payrollProcessing: payrollProcessing, salesTaxManagement: salesTaxManagement, inventoryTracking: inventoryTracking,
+              heavyInventory: heavyInventory, multiStateSales: multiStateSales, cashHeavy: cashHeavy, multipleEntities: multipleEntities,
+              advisory: advisory, extraAccounts: extraAccounts)
     }
 
     private var monthlyQuote: PricingCalculator.MonthlyQuote {
@@ -164,10 +166,7 @@ public struct PricingCalculatorView: View {
     /// every figure here is real `PricingCalculator` output, nothing
     /// invented (CLAUDE.md rule 1).
     private var composedNumbersContext: String {
-        let totalHoursText = String(format: "%.1f", monthlyQuote.totalHours)
-        let baseHoursText = String(format: "%.1f", monthlyQuote.baseHours)
-        let addOnHoursText = String(format: "%.1f", monthlyQuote.addOnHours)
-        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(hourlyRate.accountingDescription)/hr = \(monthlyQuote.monthlyInvestment.accountingDescription)/mo."]
+        var lines = [PricingCalculator.retainerSentence(monthlyQuote)]
         if needsCleanup {
             lines.append("One-time cleanup project: \(monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.accountingDescription)–\(cleanupQuote.high.accountingDescription) (midpoint \(cleanupQuote.midpoint.accountingDescription)).")
             lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.accountingDescription). Then \(monthlyQuote.monthlyInvestment.accountingDescription)/mo ongoing.")
@@ -360,7 +359,7 @@ public struct PricingCalculatorView: View {
                 HStack {
                     Text("$")
                         .foregroundStyle(VLColor.textMuted)
-                    TextField("100", text: $hourlyRateText)
+                    TextField("\(PriceBook.hourlyRate.minorUnits / 100)", text: $hourlyRateText)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 100)
                     Text("/hr")
@@ -377,19 +376,20 @@ public struct PricingCalculatorView: View {
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.cyan)
-                Toggle("Payroll processing (+1.5 hrs/mo)", isOn: $payrollProcessing)
-                Toggle("Sales tax management (+1 hr/mo)", isOn: $salesTaxManagement)
-                Toggle("5+ bank/credit accounts (+1 hr/mo)", isOn: $multipleBankAccounts)
-                Toggle("Inventory tracking (+2 hrs/mo)", isOn: $inventoryTracking)
+                Toggle("Advisory: Business Diagnosis, cash forecast, monthly call (\(PriceBook.addOnPrice("advisory")))", isOn: $advisory)
+                Toggle("Payroll bookkeeping, up to 10 employees (\(PriceBook.addOnPrice("payroll-bookkeeping")))", isOn: $payrollProcessing)
+                Toggle("Sales tax tracking and return prep (\(PriceBook.addOnPrice("sales-tax")))", isOn: $salesTaxManagement)
+                Stepper("Extra bank/card accounts beyond 2 + 2: \(extraAccounts) (\(PriceBook.addOnPrice("extra-account")) each)", value: $extraAccounts, in: 0...20)
+                Toggle("Inventory tracking (\(PriceBook.addOnPrice("inventory")))", isOn: $inventoryTracking)
                 Text("HARD-TO-PRICE CLIENTS")
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(.orange)
                     .padding(.top, VLSpacing.xs)
-                Toggle("Heavy inventory, e.g. grocery or convenience (+4 hrs/mo)", isOn: $heavyInventory)
-                Toggle("Sells into several states (+1.5 hrs/mo)", isOn: $multiStateSales)
-                Toggle("Cash-heavy business (+1.5 hrs/mo)", isOn: $cashHeavy)
-                Toggle("Two or more related entities (+2 hrs/mo)", isOn: $multipleEntities)
+                Toggle("Heavy inventory, e.g. grocery or convenience (from \(PriceBook.addOnPrice("heavy-inventory").dropFirst()), quoted individually)", isOn: $heavyInventory)
+                Toggle("Sells into several states (\(PriceBook.addOnPrice("multi-state")))", isOn: $multiStateSales)
+                Toggle("Cash-heavy business (\(PriceBook.addOnPrice("cash-heavy")))", isOn: $cashHeavy)
+                Toggle("Two or more related entities (\(PriceBook.addOnPrice("additional-entity")) per extra entity)", isOn: $multipleEntities)
                 ForEach(monthlyFlags.warnings, id: \.self) { warning in
                     Text(warning).font(VLTypography.caption()).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                 }
@@ -424,9 +424,11 @@ public struct PricingCalculatorView: View {
                     .font(VLTypography.eyebrow())
                     .tracking(VLTypography.eyebrowTracking)
                     .foregroundStyle(VLColor.textMuted)
-                outputRow("Base hours", "\(String(format: "%.1f", monthlyQuote.baseHours)) hrs")
-                outputRow("Add-on hours", "\(String(format: "%.1f", monthlyQuote.addOnHours)) hrs")
-                outputRow("Total hours/mo", "\(String(format: "%.1f", monthlyQuote.totalHours)) hrs", emphasize: true)
+                outputRow("\(monthlyQuote.volumeTier.label) transactions: \(String(format: "%.1f", monthlyQuote.baseHours)) hrs × \(PriceBook.dollars(monthlyQuote.hourlyRate))/hr", "\(monthlyQuote.baseAmount.accountingDescription)")
+                ForEach(Array(monthlyQuote.addOns.enumerated()), id: \.offset) { _, item in
+                    outputRow(item.title, "+\(item.price.accountingDescription)")
+                }
+                outputRow("Add-ons total", "\(monthlyQuote.addOnTotal.accountingDescription)", emphasize: true)
                 Divider().overlay(VLColor.border)
                 HStack {
                     Text("Monthly Investment")
@@ -437,9 +439,15 @@ public struct PricingCalculatorView: View {
                         .font(VLTypography.metricLarge())
                         .foregroundStyle(VLColor.cyan)
                 }
-                Text("Rounded to the nearest $50.")
+                Text("Base rounded to the nearest $50; add-ons at their price-list prices.")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
+                if monthlyQuote.volumeTier == .light {
+                    // Founding-client offer (price list, 2026-10-03), shown so it's quoted consistently.
+                    Text("Founding client? Starter is \(PriceBook.dollars(PriceBook.foundingStarter))/mo for the first \(PriceBook.foundingMonths) months, in exchange for feedback and a testimonial.")
+                        .font(VLTypography.caption())
+                        .foregroundStyle(VLColor.cyan)
+                }
             }
         }
     }
@@ -470,7 +478,7 @@ public struct PricingCalculatorView: View {
                         Text(cleanupQuote.high.accountingDescription).font(VLTypography.body()).foregroundStyle(VLColor.textSecondary)
                     }
                 }
-                Text(verbatim: "\(cleanupQuote.issueCount) hygiene issue\(cleanupQuote.issueCount == 1 ? "" : "s") flagged · rounded to the nearest $50, floored at $400.")
+                Text(verbatim: "\(cleanupQuote.issueCount) hygiene issue\(cleanupQuote.issueCount == 1 ? "" : "s") flagged · rounded to the nearest $50, floored at \(PriceBook.dollars(PriceBook.cleanupFloor)).")
                     .font(VLTypography.caption())
                     .foregroundStyle(VLColor.textMuted)
             }

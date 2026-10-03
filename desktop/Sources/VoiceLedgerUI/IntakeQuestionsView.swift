@@ -145,10 +145,7 @@ public struct IntakeQuestionsView: View {
     }
 
     private var composedNumbersContext: String {
-        let totalHoursText = String(format: "%.1f", monthlyQuote.totalHours)
-        let baseHoursText = String(format: "%.1f", monthlyQuote.baseHours)
-        let addOnHoursText = String(format: "%.1f", monthlyQuote.addOnHours)
-        var lines = ["Monthly retainer: \(totalHoursText) hrs/mo (\(baseHoursText) base + \(addOnHoursText) add-ons) at \(intake.hourlyRate.accountingDescription)/hr = \(monthlyQuote.monthlyInvestment.accountingDescription)/mo."]
+        var lines = [PricingCalculator.retainerSentence(monthlyQuote)]
         if intake.needsCleanup {
             lines.append("One-time cleanup project: \(intake.monthsBehind.label) behind, \(cleanupQuote.issueCount) data hygiene issue(s) flagged, estimated \(cleanupQuote.low.accountingDescription)–\(cleanupQuote.high.accountingDescription) (midpoint \(cleanupQuote.midpoint.accountingDescription)).")
             lines.append("Day-one total (cleanup + first month's retainer): \(combinedProposal.dayOneTotal.accountingDescription). Then \(monthlyQuote.monthlyInvestment.accountingDescription)/mo ongoing.")
@@ -329,7 +326,7 @@ public struct IntakeQuestionsView: View {
             questionBlock(question: "How many active business bank accounts do you have?") {
                 VStack(alignment: .leading, spacing: VLSpacing.xs) {
                     labeledField("Bank accounts", text: $intake.bankAccountCountAnswer)
-                    Toggle("5+ bank/credit accounts (+1 hr/mo)", isOn: $intake.monthlyFlags.multipleBankAccounts)
+                    Stepper("Extra bank/card accounts beyond 2 + 2: \(intake.monthlyFlags.extraAccounts) (\(PriceBook.addOnPrice("extra-account")) each)", value: $intake.monthlyFlags.extraAccounts, in: 0...20)
                 }
             }
             questionBlock(question: "How many active business credit cards are used for expenses?") {
@@ -349,23 +346,26 @@ public struct IntakeQuestionsView: View {
                 }
             }
             questionBlock(question: "Do you currently have employees on payroll?") {
-                Toggle("Payroll processing (+1.5 hrs/mo)", isOn: $intake.monthlyFlags.payrollProcessing)
+                Toggle("Payroll bookkeeping, up to 10 employees (\(PriceBook.addOnPrice("payroll-bookkeeping")))", isOn: $intake.monthlyFlags.payrollProcessing)
             }
             questionBlock(question: "Do you collect and remit sales tax?") {
-                Toggle("Sales tax management (+1 hr/mo)", isOn: $intake.monthlyFlags.salesTaxManagement)
+                Toggle("Sales tax tracking and return prep (\(PriceBook.addOnPrice("sales-tax")))", isOn: $intake.monthlyFlags.salesTaxManagement)
             }
             questionBlock(question: "Do you track inventory?") {
-                Toggle("Inventory tracking (+2 hrs/mo)", isOn: $intake.monthlyFlags.inventoryTracking)
-                Toggle("Heavy inventory with many daily sales, like a grocery or convenience store (+4 hrs/mo)", isOn: $intake.monthlyFlags.heavyInventory)
+                Toggle("Inventory tracking (\(PriceBook.addOnPrice("inventory")))", isOn: $intake.monthlyFlags.inventoryTracking)
+                Toggle("Heavy inventory with many daily sales, like a grocery or convenience store (from \(PriceBook.addOnPrice("heavy-inventory").dropFirst()), quoted individually)", isOn: $intake.monthlyFlags.heavyInventory)
             }
             questionBlock(question: "Do you sell to customers in other states?") {
-                Toggle("Sells into several states (+1.5 hrs/mo)", isOn: $intake.monthlyFlags.multiStateSales)
+                Toggle("Sells into several states (\(PriceBook.addOnPrice("multi-state")))", isOn: $intake.monthlyFlags.multiStateSales)
             }
             questionBlock(question: "How much of your business is paid in cash?") {
-                Toggle("Cash-heavy business (+1.5 hrs/mo)", isOn: $intake.monthlyFlags.cashHeavy)
+                Toggle("Cash-heavy business (\(PriceBook.addOnPrice("cash-heavy")))", isOn: $intake.monthlyFlags.cashHeavy)
             }
             questionBlock(question: "Do you own other businesses or entities we'd keep books for?") {
-                Toggle("Two or more related entities (+2 hrs/mo)", isOn: $intake.monthlyFlags.multipleEntities)
+                Toggle("Two or more related entities (\(PriceBook.addOnPrice("additional-entity")) per extra entity)", isOn: $intake.monthlyFlags.multipleEntities)
+            }
+            questionBlock(question: "Would you like a monthly review of what your numbers mean — a business diagnosis, a 13-week cash forecast and a review call?") {
+                Toggle("Advisory (\(PriceBook.addOnPrice("advisory")))", isOn: $intake.monthlyFlags.advisory)
             }
             ForEach(intake.monthlyFlags.warnings, id: \.self) { warning in
                 Text(warning).font(VLTypography.caption()).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
@@ -380,7 +380,7 @@ public struct IntakeQuestionsView: View {
                 .foregroundStyle(VLColor.textMuted)
             HStack {
                 Text("$").foregroundStyle(VLColor.textMuted)
-                TextField("100", text: $intake.hourlyRateText)
+                TextField("\(PriceBook.hourlyRate.minorUnits / 100)", text: $intake.hourlyRateText)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 100)
                 Text("/hr").foregroundStyle(VLColor.textMuted)

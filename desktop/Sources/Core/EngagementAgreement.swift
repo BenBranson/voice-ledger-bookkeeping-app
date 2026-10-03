@@ -103,7 +103,7 @@ public struct AgreementTerms: Codable, Sendable, Equatable {
     public var liabilityCapMonths: Int
     public var latePauseDays: Int
 
-    public init(package: EngagementPackage = .monthly, effectiveDate: AccountingDate, monthlyFee: Money = .zero, cleanupFee: Money = .zero, hourlyRate: Money = Money(minorUnits: 10_000, currency: .usd),
+    public init(package: EngagementPackage = .monthly, effectiveDate: AccountingDate, monthlyFee: Money = .zero, cleanupFee: Money = .zero, hourlyRate: Money = PriceBook.outOfScopeHourly,
                 cleanupPayment: CleanupPaymentSchedule = .halfAndHalf, cleanupMonthsLabel: String = "", cleanupKnownIssues: [String] = [],
                 bankAccounts: Int = 2, creditCards: Int = 2, volumeTierLabel: String = "Under 200",
                 payrollSupport: Bool = false, salesTaxSupport: Bool = false, inventorySupport: Bool = false,
@@ -170,7 +170,8 @@ public struct EngagementAgreement: Codable, Sendable, Equatable {
             effectiveDate: effectiveDate,
             monthlyFee: intake.monthlyQuote.monthlyInvestment,
             cleanupFee: intake.needsCleanup ? intake.cleanupQuote.midpoint : .zero,
-            hourlyRate: intake.hourlyRate.minorUnits > 0 ? intake.hourlyRate : Money(minorUnits: 10_000, currency: .usd),
+            // Extra work is billed at the out-of-scope rate (never below the client's quoted rate).
+            hourlyRate: max(PriceBook.outOfScopeHourly, intake.hourlyRate),
             cleanupMonthsLabel: intake.monthsBehind.label,
             cleanupKnownIssues: known,
             bankAccounts: count(intake.bankAccountCountAnswer, default: 2),

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Core
 
@@ -9,24 +10,22 @@ struct PricingCalculatorTests {
 
     // MARK: monthlyQuote
 
-    @Test("Base tier with no add-ons: hours and investment match the plain base-hours × rate math")
+    @Test("Base tier with no add-ons: base hours × rate, rounded to $50 (3 × $125 = $375 → $400)")
     func monthlyQuoteNoAddOns() {
-        let quote = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: rate(100), flags: .init())
+        let quote = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: rate(125), flags: .init())
         #expect(quote.baseHours == 3.0)
-        #expect(quote.addOnHours == 0.0)
-        #expect(quote.totalHours == 3.0)
-        // 3 hrs * $100 = $300, already a multiple of $50.
-        #expect(quote.monthlyInvestment == rate(300))
+        #expect(quote.baseAmount == rate(400))
+        #expect(quote.addOns.isEmpty)
+        #expect(quote.monthlyInvestment == rate(400))
     }
 
-    @Test("All complexity add-ons stack correctly")
+    @Test("Add-ons stack at their price-list prices, not hours")
     func monthlyQuoteAllAddOns() {
         let flags = PricingCalculator.MonthlyComplexityFlags(payrollProcessing: true, salesTaxManagement: true, multipleBankAccounts: true, inventoryTracking: true)
-        let quote = PricingCalculator.monthlyQuote(tier: .growth, hourlyRate: rate(100), flags: flags)
-        // 5.5 base + 1.5 + 1.0 + 1.0 + 2.0 = 11.0 hours
-        #expect(quote.totalHours == 11.0)
-        // 11 * $100 = $1100, already a multiple of $50.
-        #expect(quote.monthlyInvestment == rate(1_100))
+        let quote = PricingCalculator.monthlyQuote(tier: .growth, hourlyRate: rate(125), flags: flags)
+        // $700 Growth + $200 payroll bookkeeping + $150 sales tax + $50 extra account + $250 inventory
+        #expect(quote.addOnTotal == rate(650))
+        #expect(quote.monthlyInvestment == rate(1_350))
     }
 
     @Test("Monthly investment rounds to the nearest $50, not truncated or floored")
@@ -45,11 +44,12 @@ struct PricingCalculatorTests {
 
     // MARK: cleanupQuote
 
-    @Test("A clean, recent, low-volume, no-issues cleanup produces the $400 floor, not a smaller number")
+    @Test("A clean, recent, low-volume, no-issues cleanup produces the price list's $500 floor, not a smaller number")
     func cleanupQuoteRespectsFloor() {
         let quote = PricingCalculator.cleanupQuote(monthsBehind: .oneToThree, volumeTier: .light, hourlyRate: rate(10), issues: .init())
-        // Deliberately tiny rate so the raw midpoint*0.8 would fall under $400.
-        #expect(quote.low == Money(minorUnits: 40_000, currency: .usd))
+        // Deliberately tiny rate so the raw midpoint*0.8 would fall under the floor.
+        #expect(quote.low == PriceBook.cleanupFloor)
+        #expect(quote.low == rate(500))
     }
 
     @Test("More months behind increases the midpoint, holding everything else constant")
@@ -92,5 +92,45 @@ struct PricingCalculatorTests {
         let monthly = PricingCalculator.monthlyQuote(tier: .light, hourlyRate: rate(100), flags: .init())
         let proposal = PricingCalculator.CombinedProposal(cleanup: nil, monthly: monthly)
         #expect(proposal.dayOneTotal == monthly.monthlyInvestment)
+    }
+}
+
+@Suite("Price book: one list for calculator, presets, agreement and website")
+struct PriceBookTests {
+    func usd(_ d: Int64) -> Money { Money(minorUnits: d * 100, currency: .usd) }
+
+    @Test("Owner-approved 2026-10-03: tiers are $400 / $700 / $1,000 at the standard $125/hr")
+    func tiers() {
+        #expect(PriceBook.hourlyRate == usd(125))
+        #expect(PricingCalculator.monthlyQuote(tier: .light, hourlyRate: PriceBook.hourlyRate, flags: .init()).monthlyInvestment == usd(400))
+        #expect(PricingCalculator.monthlyQuote(tier: .growth, hourlyRate: PriceBook.hourlyRate, flags: .init()).monthlyInvestment == usd(700))
+        #expect(PricingCalculator.monthlyQuote(tier: .high, hourlyRate: PriceBook.hourlyRate, flags: .init()).monthlyInvestment == usd(1_000))
+        #expect(PriceBook.outOfScopeHourly == usd(150))
+        #expect(PriceBook.foundingStarter == usd(300) && PriceBook.foundingMonths == 12)
+    }
+
+    @Test("The price buttons ARE the price book, and every calculator add-on is a published item")
+    func oneList() {
+        #expect(ScopePreset.defaults == PriceBook.items)
+        let all = PricingCalculator.MonthlyComplexityFlags(payrollProcessing: true, salesTaxManagement: true, inventoryTracking: true, heavyInventory: true,
+                                                           multiStateSales: true, cashHeavy: true, multipleEntities: true, advisory: true, extraAccounts: 1)
+        for item in all.addOns { #expect(PriceBook.items.contains(item)) }
+        #expect(Set(PriceBook.items.map(\.id)).count == PriceBook.items.count)
+    }
+
+    @Test("Extra accounts are priced per account; an old saved yes/no reads as one")
+    func extraAccounts() throws {
+        let three = PricingCalculator.MonthlyComplexityFlags(extraAccounts: 3)
+        #expect(PricingCalculator.monthlyQuote(tier: .light, hourlyRate: usd(125), flags: three).addOnTotal == usd(150))
+        let legacy = try JSONDecoder().decode(PricingCalculator.MonthlyComplexityFlags.self, from: Data(#"{"payrollProcessing":false,"salesTaxManagement":false,"multipleBankAccounts":true,"inventoryTracking":false}"#.utf8))
+        #expect(legacy.extraAccounts == 1)
+        let round = try JSONDecoder().decode(PricingCalculator.MonthlyComplexityFlags.self, from: JSONEncoder().encode(three))
+        #expect(round.extraAccounts == 3)
+    }
+
+    @Test("Screen labels read their prices from the book")
+    func labels() {
+        #expect(PriceBook.addOnPrice("payroll-bookkeeping") == "+$200/mo")
+        #expect(PriceBook.addOnPrice("1099") == "+$50 per form")
     }
 }

@@ -39,20 +39,9 @@ public struct ScopePreset: Codable, Sendable, Equatable, Identifiable {
 
     static func usd(_ dollars: Int64) -> Money { Money(minorUnits: dollars * 100, currency: .usd) }
 
-    /// Starting prices; the bookkeeper edits them in the app. Payroll $400/mo
-    /// and the $150/hr out-of-scope rate follow the owner's practice guide.
-    public static let defaults: [ScopePreset] = [
-        ScopePreset(id: "payroll", title: "Payroll processing", price: usd(400), billing: .monthly,
-                    taxNote: "Payroll data entry may be taxable data processing in Texas. Ask your CPA whether to collect sales tax on it."),
-        ScopePreset(id: "advisory", title: "Advisory upgrade: 13-week forecast + monthly review call", price: usd(1_000), billing: .monthly),
-        ScopePreset(id: "extra-account", title: "Additional bank or credit card account", price: usd(50), billing: .monthly),
-        ScopePreset(id: "sales-tax", title: "Sales tax tracking and return prep", price: usd(100), billing: .monthly),
-        ScopePreset(id: "class-tracking", title: "Class, location or job tracking", price: usd(150), billing: .monthly),
-        ScopePreset(id: "custom-report", title: "Custom or rush report", price: usd(150), billing: .oneTime),
-        ScopePreset(id: "catch-up-month", title: "Catch-up month (books behind)", price: usd(250), billing: .perUnit, unit: "month"),
-        ScopePreset(id: "1099", title: "1099 preparation", price: usd(50), billing: .perUnit, unit: "form"),
-        ScopePreset(id: "hourly", title: "Out-of-scope work (hourly)", price: usd(150), billing: .perUnit, unit: "hour"),
-    ]
+    /// Starting prices come from the one price list (`PriceBook`); the bookkeeper can
+    /// still edit them in the app.
+    public static var defaults: [ScopePreset] { PriceBook.items }
 }
 
 public struct ScopeRequest: Codable, Sendable, Equatable, Identifiable {

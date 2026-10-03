@@ -91,7 +91,7 @@ public struct ClientIntake: Identifiable, Codable, Sendable, Equatable {
         frustrations: String = "",
         desiredMetrics: String = "",
         financialsUse: String = "",
-        hourlyRateText: String = "100",
+        hourlyRateText: String = "\(PriceBook.hourlyRate.minorUnits / 100)",
         volumeTier: PricingCalculator.VolumeTier = .light,
         monthlyFlags: PricingCalculator.MonthlyComplexityFlags = .init(),
         needsCleanup: Bool = false,

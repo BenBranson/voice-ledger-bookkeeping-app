@@ -165,11 +165,11 @@ public struct CleanupScopeInputs: Hashable, Sendable {
 
     public init(
         unreconciledMonths: Int = 0,
-        baseFee: Money = Money(minorUnits: 50_000, currency: .usd),
+        baseFee: Money = PriceBook.cleanupFloor,
         perUnreconciledMonth: Money = Money(minorUnits: 15_000, currency: .usd),
         perAnomaly: Money = Money(minorUnits: 3_500, currency: .usd),
         perUncategorizedTransaction: Money = Money(minorUnits: 250, currency: .usd),
-        hourlyRate: Money = Money(minorUnits: 10_000, currency: .usd)
+        hourlyRate: Money = PriceBook.hourlyRate
     ) {
         self.unreconciledMonths = unreconciledMonths
         self.baseFee = baseFee

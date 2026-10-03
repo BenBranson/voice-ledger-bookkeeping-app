@@ -1471,3 +1471,23 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
 ## 2026-10-03 — v1.79: email drafts come forward; firm email
 - **Drafts opening behind the app.** "Email to Client…" (and "send signed copy") opened a Mail draft behind the full-screen app and its agreement window. The owner saw it as tabs stuck behind. `AgreementService.bringMailForward()` now activates the default mailto handler, retrying while it launches, after `NSSharingService.composeEmail.perform`.
 - **Firm email.** The default firm email is now benjamin@benjaminbransonbookkeeping.com (the owner's new Google Workspace address); no firm-profile.json had been saved, so the default was what agreements used.
+
+## 2026-10-03 — v1.80: one price book (`Core/Practice/PriceBook.swift`); website updated to match
+
+- **Prices (owner-approved after a market review):**
+  - Standard rate $125/hr. Tiers are base hours × rate: 3 / 5.5 / 8 h → **$400 / $700 / $1,000** a month.
+  - Out-of-scope work $150/hr (the agreement's "additional work" default; never below the client's quoted rate).
+  - Founding clients: Starter at $300/mo for 12 months. Clean-up floor $500 (50% at signing / 50% on completion stays the agreement default).
+- **Add-ons are fixed prices from `PriceBook.items`:**
+  - Advisory +$400; extra account +$50 each; class tracking +$150; sales tax +$150; payroll bookkeeping +$200; payroll processing +$400 (the owner's practice-guide price); multi-state +$200; cash-heavy +$200; inventory +$250; heavy inventory from $500 (quoted individually); extra entity +$250
+  - Catch-up month $300; custom report $150; 1099 $50/form
+- **Consumers:** the calculator, the scope-request presets (`ScopePreset.defaults == PriceBook.items`), the agreement, the diagnostics clean-up base, MCP descriptions and every on-screen label read these numbers. Before this, two lists disagreed (payroll +$150 vs $400, extra account +$100 vs $50).
+- **Calculator changes:**
+  - `MonthlyQuote` now carries `baseAmount`/`addOns`/`addOnTotal` instead of add-on hours.
+  - The yes/no "5+ accounts" flag became `extraAccounts` (a count; old saved intakes read as 1).
+  - New `advisory` flag. `PriceBookTests` pin it all.
+- **Website** benjaminbransonbookkeeping.com (Base44, owner published 2026-10-03):
+  - same tiers, add-ons, founding line, "How Billing Works" and 50/50 clean-up
+  - new email everywhere
+  - Privacy page gained a "QuickBooks Connection" section (keys stored encrypted on the owner's Mac, never on the site)
+- **Hosting decision:** keep the backend local on the owner's Mac (single user). For production OAuth, plan a static https "connected" page on the website that hands the one-time code to the app (stores nothing, no analytics). No cloud server unless remote access, after-hours syncs or staff are needed.

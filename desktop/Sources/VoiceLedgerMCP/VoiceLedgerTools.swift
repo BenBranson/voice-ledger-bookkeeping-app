@@ -76,12 +76,12 @@ struct VoiceLedgerTools {
                 "inputSchema": [
                     "type": "object",
                     "properties": [
-                        "hourlyRate": ["type": "number", "description": "The bookkeeper's hourly rate in dollars, e.g. 100."],
+                        "hourlyRate": ["type": "number", "description": "The bookkeeper's hourly rate in dollars (the price list's standard rate is 125)."],
                         "volumeTier": ["type": "string", "enum": ["light", "growth", "high"], "description": "Monthly transaction volume: light = under 200/mo, growth = 200-500/mo, high = 500+/mo."],
-                        "payrollProcessing": ["type": "boolean", "description": "Adds 1.5 hrs/mo. Default false."],
-                        "salesTaxManagement": ["type": "boolean", "description": "Adds 1 hr/mo. Default false."],
-                        "multipleBankAccounts": ["type": "boolean", "description": "5+ bank/credit accounts. Adds 1 hr/mo. Default false."],
-                        "inventoryTracking": ["type": "boolean", "description": "Adds 2 hrs/mo. Default false."],
+                        "payrollProcessing": ["type": "boolean", "description": "Payroll bookkeeping (up to 10 employees), \(PriceBook.addOnPrice("payroll-bookkeeping")). Default false."],
+                        "salesTaxManagement": ["type": "boolean", "description": "Sales tax tracking and return prep, \(PriceBook.addOnPrice("sales-tax")). Default false."],
+                        "multipleBankAccounts": ["type": "boolean", "description": "At least one bank/card account beyond the 2 + 2 included, \(PriceBook.addOnPrice("extra-account")) each (counts as one). Default false."],
+                        "inventoryTracking": ["type": "boolean", "description": "Inventory tracking, \(PriceBook.addOnPrice("inventory")). Default false."],
                         "needsCleanup": ["type": "boolean", "description": "Whether this client also needs a one-time historical cleanup project quoted alongside the monthly retainer. Default false."],
                         "monthsBehind": ["type": "string", "enum": ["oneToThree", "threeToSix", "sixToTwelve", "twelvePlus"], "description": "Required when needsCleanup is true."],
                         "multipleUncategorized": ["type": "boolean", "description": "Cleanup issue flag. Default false."],
@@ -337,8 +337,9 @@ struct VoiceLedgerTools {
         var result: [String: Any] = [
             "volumeTier": volumeTier.label,
             "baseHours": monthlyQuote.baseHours,
-            "addOnHours": monthlyQuote.addOnHours,
-            "totalHours": monthlyQuote.totalHours,
+            "baseAmount": monthlyQuote.baseAmount.description,
+            "addOns": monthlyQuote.addOns.map { ["item": $0.title, "price": $0.price.description] },
+            "addOnTotal": monthlyQuote.addOnTotal.description,
             "hourlyRate": hourlyRate.description,
             "monthlyInvestment": monthlyQuote.monthlyInvestment.description
         ]

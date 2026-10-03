@@ -117,7 +117,7 @@ public enum ClientIntakeCSV {
             frustrations: fields["frustrations"] ?? "",
             desiredMetrics: fields["desiredMetrics"] ?? "",
             financialsUse: fields["financialsUse"] ?? "",
-            hourlyRateText: fields["hourlyRateText"] ?? "100",
+            hourlyRateText: fields["hourlyRateText"] ?? "\(PriceBook.hourlyRate.minorUnits / 100)",
             volumeTier: fields["volumeTier"].flatMap { Int($0) }.flatMap(PricingCalculator.VolumeTier.init(rawValue:)) ?? .light,
             monthlyFlags: .init(
                 payrollProcessing: parseBool(fields["payrollProcessing"]),

@@ -56,7 +56,14 @@ public enum PricingCalculator {
     public struct MonthlyComplexityFlags: Sendable, Equatable, Codable {
         public var payrollProcessing: Bool
         public var salesTaxManagement: Bool
-        public var multipleBankAccounts: Bool
+        /// Bank and card accounts beyond the 2 bank + 2 card every tier includes; each is a
+        /// price-list "extra account" (2026-10-03, replaced a yes/no "5+ accounts" flag).
+        public var extraAccounts: Int
+        /// Old yes/no flag, kept so saved intakes and callers still work: true = 1 extra.
+        public var multipleBankAccounts: Bool {
+            get { extraAccounts > 0 }
+            set { extraAccounts = newValue ? max(1, extraAccounts) : 0 }
+        }
         public var inventoryTracking: Bool
         // Hard-to-price clients (owner directive 2026-10-02).
         /// Heavy inventory with many daily sales and deliveries (grocery, convenience, big retail).
@@ -67,12 +74,16 @@ public enum PricingCalculator {
         public var cashHeavy: Bool
         /// Two or more related entities kept in separate books.
         public var multipleEntities: Bool
+        /// Advisory add-on: Business Diagnosis, 13-week cash forecast, monthly review call.
+        public var advisory: Bool
 
         public init(payrollProcessing: Bool = false, salesTaxManagement: Bool = false, multipleBankAccounts: Bool = false, inventoryTracking: Bool = false,
-                    heavyInventory: Bool = false, multiStateSales: Bool = false, cashHeavy: Bool = false, multipleEntities: Bool = false) {
+                    heavyInventory: Bool = false, multiStateSales: Bool = false, cashHeavy: Bool = false, multipleEntities: Bool = false, advisory: Bool = false,
+                    extraAccounts: Int? = nil) {
+            self.advisory = advisory
+            self.extraAccounts = extraAccounts ?? (multipleBankAccounts ? 1 : 0)
             self.payrollProcessing = payrollProcessing
             self.salesTaxManagement = salesTaxManagement
-            self.multipleBankAccounts = multipleBankAccounts
             self.inventoryTracking = inventoryTracking
             self.heavyInventory = heavyInventory
             self.multiStateSales = multiStateSales
@@ -81,7 +92,21 @@ public enum PricingCalculator {
         }
 
         private enum CodingKeys: String, CodingKey {
-            case payrollProcessing, salesTaxManagement, multipleBankAccounts, inventoryTracking, heavyInventory, multiStateSales, cashHeavy, multipleEntities
+            case payrollProcessing, salesTaxManagement, multipleBankAccounts, inventoryTracking, heavyInventory, multiStateSales, cashHeavy, multipleEntities, advisory, extraAccounts
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(payrollProcessing, forKey: .payrollProcessing)
+            try c.encode(salesTaxManagement, forKey: .salesTaxManagement)
+            try c.encode(multipleBankAccounts, forKey: .multipleBankAccounts)
+            try c.encode(extraAccounts, forKey: .extraAccounts)
+            try c.encode(inventoryTracking, forKey: .inventoryTracking)
+            try c.encode(heavyInventory, forKey: .heavyInventory)
+            try c.encode(multiStateSales, forKey: .multiStateSales)
+            try c.encode(cashHeavy, forKey: .cashHeavy)
+            try c.encode(multipleEntities, forKey: .multipleEntities)
+            try c.encode(advisory, forKey: .advisory)
         }
 
         /// Older saved intakes lack the 2026-10-02 flags; they load as off.
@@ -89,25 +114,31 @@ public enum PricingCalculator {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             payrollProcessing = try c.decodeIfPresent(Bool.self, forKey: .payrollProcessing) ?? false
             salesTaxManagement = try c.decodeIfPresent(Bool.self, forKey: .salesTaxManagement) ?? false
-            multipleBankAccounts = try c.decodeIfPresent(Bool.self, forKey: .multipleBankAccounts) ?? false
+            let hadExtra = try c.decodeIfPresent(Bool.self, forKey: .multipleBankAccounts) ?? false
+            extraAccounts = try c.decodeIfPresent(Int.self, forKey: .extraAccounts) ?? (hadExtra ? 1 : 0)
             inventoryTracking = try c.decodeIfPresent(Bool.self, forKey: .inventoryTracking) ?? false
             heavyInventory = try c.decodeIfPresent(Bool.self, forKey: .heavyInventory) ?? false
             multiStateSales = try c.decodeIfPresent(Bool.self, forKey: .multiStateSales) ?? false
             cashHeavy = try c.decodeIfPresent(Bool.self, forKey: .cashHeavy) ?? false
             multipleEntities = try c.decodeIfPresent(Bool.self, forKey: .multipleEntities) ?? false
+            advisory = try c.decodeIfPresent(Bool.self, forKey: .advisory) ?? false
         }
 
-        var addOnHours: Double {
-            var hours = 0.0
-            if payrollProcessing { hours += 1.5 }
-            if salesTaxManagement { hours += 1.0 }
-            if multipleBankAccounts { hours += 1.0 }
-            if inventoryTracking { hours += 2.0 }
-            if heavyInventory { hours += 4.0 }
-            if multiStateSales { hours += 1.5 }
-            if cashHeavy { hours += 1.5 }
-            if multipleEntities { hours += 2.0 }
-            return hours
+        /// Each ticked add-on as its published price-list item (2026-10-03: fixed prices
+        /// from `PriceBook`, so a quote matches the website; they used to be hours × rate).
+        /// "Payroll" here is payroll bookkeeping; running payroll is a separate price-list item.
+        public var addOns: [ScopePreset] {
+            var ids: [String] = []
+            if advisory { ids.append("advisory") }
+            ids += Array(repeating: "extra-account", count: max(0, extraAccounts))
+            if salesTaxManagement { ids.append("sales-tax") }
+            if payrollProcessing { ids.append("payroll-bookkeeping") }
+            if multiStateSales { ids.append("multi-state") }
+            if cashHeavy { ids.append("cash-heavy") }
+            if inventoryTracking { ids.append("inventory") }
+            if heavyInventory { ids.append("heavy-inventory") }
+            if multipleEntities { ids.append("additional-entity") }
+            return ids.map(PriceBook.item)
         }
 
         /// What to tell the bookkeeper before quoting.
@@ -125,20 +156,30 @@ public enum PricingCalculator {
     public struct MonthlyQuote: Sendable, Equatable {
         public let volumeTier: VolumeTier
         public let baseHours: Double
-        public let addOnHours: Double
-        public let totalHours: Double
         public let hourlyRate: Money
-        /// Rounded to the nearest $50 — a clean, quotable number, not a
-        /// false-precision one.
+        /// Base hours × rate, rounded to the nearest $50.
+        public let baseAmount: Money
+        /// Ticked add-ons at their published prices.
+        public let addOns: [ScopePreset]
+        public let addOnTotal: Money
+        /// Base + add-ons: a clean, quotable number, not a false-precision one.
         public let monthlyInvestment: Money
+    }
+
+    /// The quote in one sentence, the same wherever it's shown or handed to the AI for a proposal draft.
+    public static func retainerSentence(_ q: MonthlyQuote) -> String {
+        var s = "Monthly retainer: \(q.volumeTier.label) transactions/month, \(String(format: "%.1f", q.baseHours)) hrs at \(q.hourlyRate.accountingDescription)/hr = \(q.baseAmount.accountingDescription)"
+        if !q.addOns.isEmpty { s += ", plus " + q.addOns.map { "\($0.title) \($0.price.accountingDescription)" }.joined(separator: ", ") }
+        return s + ". Total \(q.monthlyInvestment.accountingDescription)/mo."
     }
 
     public static func monthlyQuote(tier: VolumeTier, hourlyRate: Money, flags: MonthlyComplexityFlags) -> MonthlyQuote {
         let base = tier.monthlyBaseHours
-        let addOns = flags.addOnHours
-        let total = base + addOns
-        let investment = roundToNearest50(hours: total, rate: hourlyRate)
-        return MonthlyQuote(volumeTier: tier, baseHours: base, addOnHours: addOns, totalHours: total, hourlyRate: hourlyRate, monthlyInvestment: investment)
+        let baseAmount = roundToNearest50(hours: base, rate: hourlyRate)
+        let addOns = flags.addOns
+        let addOnTotal = Money(minorUnits: addOns.reduce(0) { $0 + $1.price.minorUnits }, currency: hourlyRate.currency)
+        let investment = baseAmount + addOnTotal
+        return MonthlyQuote(volumeTier: tier, baseHours: base, hourlyRate: hourlyRate, baseAmount: baseAmount, addOns: addOns, addOnTotal: addOnTotal, monthlyInvestment: investment)
     }
 
     public enum MonthsBehindTier: Int, CaseIterable, Identifiable, Sendable, Codable {
@@ -207,11 +248,9 @@ public enum PricingCalculator {
         public let midpoint: Money
     }
 
-    /// The low end is floored at $400 — a cleanup project small enough to
-    /// price under that isn't really a cleanup project, per the same
-    /// pricing floor already on record for this project's own $300–500
-    /// range discussion.
-    private static let cleanupFloor = Money(minorUnits: 40_000, currency: .usd)
+    /// The low end is floored at the price list's smallest clean-up (`PriceBook.cleanupFloor`):
+    /// a project smaller than that isn't really a clean-up project.
+    private static var cleanupFloor: Money { PriceBook.cleanupFloor }
 
     public static func cleanupQuote(monthsBehind: MonthsBehindTier, volumeTier: VolumeTier, hourlyRate: Money, issues: CleanupIssueFlags) -> CleanupQuote {
         let complexityFactor = 1.0 + Double(issues.activeCount) * 0.15
