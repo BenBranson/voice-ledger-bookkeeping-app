@@ -1439,3 +1439,18 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
 - Backend allow-list: added `AgedReceivableDetail`. Detail layout: A/R has 7 columns, A/P 8; the open balance is always the last column; the age comes from the section header.
 - New tie-outs `ar-open` / `ap-open` (detail net = summary TOTAL): 11 checks, all tie.
 - **Regression harness fix.** `facts` pins aging to `--as-of` (it had fallen back to the wall clock for a month ending on the as-of day, so the September baseline drifted with the real date), and `preflight.sh` now runs as of 2026-10-01, so every baseline month is a finished month.
+
+## 2026-10-02 — v1.77: scenario batch 2 (`scenarios-oct-2026`)
+
+- **Seed tool:** now creates RefundReceipts.
+- **Batch contents, dated October 1–2:**
+  - loan payment all to interest (VL-RELATIONSHIP-005 ✓) and a correctly split one (control, no flag ✓)
+  - transfer entered as an expense coded to Savings (VL-RELATIONSHIP-003 ✓) and a real Transfer (control ✓)
+  - Chase card payment coded to Office Expenses (VL-CC-PAYMENT-001 ✓)
+  - unapplied $100 vendor credit (VL-VENDCREDIT-UNAPPLIED-001 ✓ once 30+ days old)
+  - Midland Yard invoice paid to Checking and a partial $1,000 Permian bill payment
+  - Tucson-taxed refund of 1 Valve Kit ($103.65 incl. $8.65 tax; revenue −$95, COGS −$40)
+  - Nevada customer invoice (BillAddr NV, copied from the customer by QBO)
+- **QBO quirk hit again:** the AgedPayables summary was empty at 10-31 with bills open. The detail fallback rebuilt it, and all 11 tie-outs tie for October both as a finished month (devtool, as of 11-01) and in progress (the live app, today's balances).
+- **Regression check:** preflight now runs as of 2026-11-01 and covers 2026-07…10. The 2026-09 baseline gained the batch-1 $500 Undeposited Funds finding (36 days old as of 11-01): the plant that wasn't old enough before.
+- **Fixed:** the nexus screen and the diagnosis customer-concentration check read only the history snapshot, which refreshes daily, so anything synced since was missing (the NV sale). Both now use `clientData.searchableTransactions` (fresh sync + history, deduplicated), as does `qboWebURL(for:)`.

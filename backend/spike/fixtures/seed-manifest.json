@@ -34,7 +34,9 @@
     "Maintenance and Repair": "72",
     "Sales of Product Income": "79",
     "Cost of Goods Sold": "80",
-    "Inventory Asset": "81"
+    "Inventory Asset": "81",
+    "Savings": "36",
+    "Loan Payable": "43"
   },
   "vendors": {
     "VL Spike Permian Supply": "58",
@@ -62,7 +64,9 @@
     "VLT Permian Pipe & Supply": "200000071",
     "VLT Lone Star Fuel": "200000081",
     "VLT Amazon Business": "200000091",
-    "VLT Pest Pros": "200000101"
+    "VLT Pest Pros": "200000101",
+    "VLT First Basin Bank": "200000111",
+    "VLT Chase Card Services": "200000121"
   },
   "purchases": {
     "VL-SPIKE-ZERO": {
@@ -1144,6 +1148,22 @@
     "VLT-SEP-EXP-PEST": {
       "id": "826",
       "syncToken": "0"
+    },
+    "VLT-OCT-LOAN-LUMP": {
+      "id": "839",
+      "syncToken": "0"
+    },
+    "VLT-OCT-LOAN-SPLIT": {
+      "id": "840",
+      "syncToken": "0"
+    },
+    "VLT-OCT-XFER-AS-EXPENSE": {
+      "id": "841",
+      "syncToken": "0"
+    },
+    "VLT-OCT-CC-AS-EXPENSE": {
+      "id": "842",
+      "syncToken": "0"
     }
   },
   "bills": {
@@ -1254,7 +1274,8 @@
     "VLT Midland Yard": "64",
     "VLT Odessa Shop": "65",
     "VLT O'Brien & Sons": "66",
-    "VLT Desert Rose Cafe": "67"
+    "VLT Desert Rose Cafe": "67",
+    "VLT Silver State Supply": "68"
   },
   "items": {
     "Design": "4",
@@ -1920,6 +1941,10 @@
     "VLT-SEP-INV-ROSE-DUP-B": {
       "id": "836",
       "syncToken": "0"
+    },
+    "VLT-OCT-INV-NV": {
+      "id": "843",
+      "syncToken": "0"
     }
   },
   "payments": {
@@ -2506,11 +2531,19 @@
     "VLT-SEP-PAY-PARENT": {
       "id": "837",
       "syncToken": "0"
+    },
+    "VLT-OCT-PAY-MIDLAND": {
+      "id": "844",
+      "syncToken": "0"
     }
   },
   "vendorCredits": {
     "VL-SPIKE-VENDCREDIT-UNAPPLIED": {
       "id": "225",
+      "syncToken": "0"
+    },
+    "VLT-OCT-VCREDIT": {
+      "id": "845",
       "syncToken": "0"
     }
   },
@@ -2565,6 +2598,10 @@
     },
     "VL history 2026-08 lumber payment": {
       "id": "804",
+      "syncToken": "0"
+    },
+    "VLT-OCT-BILLPAY-PIPE": {
+      "id": "846",
       "syncToken": "0"
     }
   },
@@ -2623,6 +2660,10 @@
     },
     "VL history 2026-08 card payoff": {
       "id": "817",
+      "syncToken": "0"
+    },
+    "VLT-OCT-XFER-REAL": {
+      "id": "847",
       "syncToken": "0"
     }
   },
@@ -2778,11 +2819,84 @@
         "id": "838",
         "key": "VLT-SEP-CM-OBRIEN"
       }
+    ],
+    "scenarios-oct-2026": [
+      {
+        "entity": "Vendor",
+        "id": "200000111",
+        "key": "VLT First Basin Bank"
+      },
+      {
+        "entity": "Vendor",
+        "id": "200000121",
+        "key": "VLT Chase Card Services"
+      },
+      {
+        "entity": "Customer",
+        "id": "68",
+        "key": "VLT Silver State Supply"
+      },
+      {
+        "entity": "Purchase",
+        "id": "839",
+        "key": "VLT-OCT-LOAN-LUMP"
+      },
+      {
+        "entity": "Purchase",
+        "id": "840",
+        "key": "VLT-OCT-LOAN-SPLIT"
+      },
+      {
+        "entity": "Purchase",
+        "id": "841",
+        "key": "VLT-OCT-XFER-AS-EXPENSE"
+      },
+      {
+        "entity": "Purchase",
+        "id": "842",
+        "key": "VLT-OCT-CC-AS-EXPENSE"
+      },
+      {
+        "entity": "Invoice",
+        "id": "843",
+        "key": "VLT-OCT-INV-NV"
+      },
+      {
+        "entity": "Payment",
+        "id": "844",
+        "key": "VLT-OCT-PAY-MIDLAND"
+      },
+      {
+        "entity": "VendorCredit",
+        "id": "845",
+        "key": "VLT-OCT-VCREDIT"
+      },
+      {
+        "entity": "BillPayment",
+        "id": "846",
+        "key": "VLT-OCT-BILLPAY-PIPE"
+      },
+      {
+        "entity": "Transfer",
+        "id": "847",
+        "key": "VLT-OCT-XFER-REAL"
+      },
+      {
+        "entity": "RefundReceipt",
+        "id": "848",
+        "key": "VLT-OCT-REFUND"
+      }
     ]
   },
   "creditMemos": {
     "VLT-SEP-CM-OBRIEN": {
       "id": "838",
+      "syncToken": "0"
+    }
+  },
+  "refundReceipts": {
+    "VLT-OCT-REFUND": {
+      "id": "848",
       "syncToken": "0"
     }
   }

@@ -240,7 +240,7 @@ public final class AppState {
     public func qboWebURL(for finding: Finding) -> URL? {
         QBOWebLink.url(
             for: finding,
-            transactions: transactions + (historySnapshot?.transactions ?? []),
+            transactions: clientData.searchableTransactions,
             accounts: accounts.isEmpty ? (historySnapshot?.accounts ?? []) : accounts,
             isSandbox: environment != .production
         )
@@ -901,7 +901,9 @@ public final class AppState {
 
     /// Invoices for the nexus screen: the 24-month history, else this month.
     public var nexusRows: [NexusStateRow] {
-        let pool = (historySnapshot?.transactions ?? []) + (historySnapshot == nil ? transactions : [])
+        // Fresh sync + history, deduplicated (2026-10-02): history alone refreshes once a day,
+        // so an invoice entered since then (the batch-2 Nevada sale) was missing.
+        let pool = clientData.searchableTransactions
         return EconomicNexusScreen.rows(sales: pool, homeState: practiceProfile.state, taxAgencyNames: taxAgencies.map(\.displayName), asOf: AccountingDate(date: Date()))
     }
 
@@ -2339,7 +2341,7 @@ public final class AppState {
         BusinessDiagnosis.build(BusinessDiagnosis.Input(
             period: period, monthly: historySnapshot?.monthlyProfitAndLoss ?? [], currentProfitAndLoss: profitAndLossLines,
             balanceSheet: balanceSheetLines, agedReceivables: agedReceivablesLines, agedPayables: agedPayablesLines,
-            transactions: historySnapshot?.transactions ?? [], openFindings: findings.filter { $0.status == .open },
+            transactions: clientData.searchableTransactions, openFindings: findings.filter { $0.status == .open },
             tieOut: tieOut, forecast: thirteenWeekForecast))
     }
 

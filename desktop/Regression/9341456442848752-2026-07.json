@@ -1,5 +1,5 @@
 {
-  "asOf" : "2026-10-01",
+  "asOf" : "2026-11-01",
   "facts" : {
     "balanceSheetTotals" : {
       "Total Accounts Payable" : "$3,913.76",
@@ -28,10 +28,10 @@
     },
     "chartOfAccounts" : {
       "Accounting" : "$0.00",
-      "Accounts Payable (A\/P)" : "($7,093.60)",
-      "Accounts Receivable (A\/R)" : "$23,831.51",
+      "Accounts Payable (A\/P)" : "($5,993.60)",
+      "Accounts Receivable (A\/R)" : "$22,131.51",
       "Advertising" : "$0.00",
-      "Arizona Dept. of Revenue Payable" : "($34.58)",
+      "Arizona Dept. of Revenue Payable" : "($25.93)",
       "Ask My Accountant" : "$0.00",
       "Automobile" : "$0.00",
       "Bank Charges" : "$0.00",
@@ -39,7 +39,7 @@
       "Board of Equalization Payable" : "($370.94)",
       "Bookkeeper" : "$0.00",
       "Building Repairs" : "$0.00",
-      "Checking" : "$11,608.40",
+      "Checking" : "$9,154.75",
       "Commissions & fees" : "$0.00",
       "Computer Repairs" : "$0.00",
       "Cost of Goods Sold" : "$0.00",
@@ -61,14 +61,14 @@
       "Insurance" : "$0.00",
       "Interest Earned" : "$0.00",
       "Interest Paid" : "$0.00",
-      "Inventory Asset" : "$1,236.25",
+      "Inventory Asset" : "$1,276.25",
       "Job Expenses" : "$0.00",
       "Job Materials" : "$0.00",
       "Labor" : "$0.00",
       "Landscaping Services" : "$0.00",
       "Lawyer" : "$0.00",
       "Legal & Professional Fees" : "$0.00",
-      "Loan Payable" : "($4,000.00)",
+      "Loan Payable" : "($3,150.00)",
       "Maintenance and Repair" : "$0.00",
       "Maintenance and Repairs" : "$0.00",
       "Mastercard" : "($1,222.70)",
@@ -93,7 +93,7 @@
       "Rent or Lease" : "$0.00",
       "Retained Earnings" : "$0.00",
       "Sales of Product Income" : "$0.00",
-      "Savings" : "$800.00",
+      "Savings" : "$3,300.00",
       "Services" : "$0.00",
       "Sprinklers and Drip Systems" : "$0.00",
       "Stationery & Printing" : "$0.00",
@@ -217,7 +217,7 @@
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 66 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00"
     },
     {
       "amount" : "$400.00",
@@ -227,7 +227,7 @@
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 66 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00"
     },
     {
       "amount" : "$312.50",

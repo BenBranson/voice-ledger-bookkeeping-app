@@ -2,29 +2,28 @@
   "asOf" : "2026-11-01",
   "facts" : {
     "balanceSheetTotals" : {
-      "Total Accounts Payable" : "$3,687.43",
-      "Total Accounts Receivable" : "$15,283.03",
-      "TOTAL ASSETS" : "$48,371.04",
-      "Total Bank Accounts" : "$13,839.24",
-      "Total Credit Cards" : "$1,243.19",
-      "Total Current Assets" : "$34,876.04",
-      "Total Current Liabilities" : "$9,301.56",
-      "Total Equity" : "$21,269.95",
+      "Total Accounts Payable" : "$5,993.60",
+      "Total Accounts Receivable" : "$22,131.51",
+      "TOTAL ASSETS" : "$51,722.01",
+      "Total Bank Accounts" : "$9,161.73",
+      "Total Credit Cards" : "$1,222.70",
+      "Total Current Assets" : "$38,227.01",
+      "Total Current Liabilities" : "$10,763.17",
+      "Total Equity" : "$23,698.06",
       "Total Fixed Assets" : "$13,495.00",
-      "Total Liabilities" : "$27,101.09",
-      "TOTAL LIABILITIES AND EQUITY" : "$48,371.04",
-      "Total Long-Term Liabilities" : "$17,799.53",
-      "Total Other Current Assets" : "$5,753.77",
-      "Total Other Current Liabilities" : "$4,370.94",
+      "Total Liabilities" : "$28,023.95",
+      "TOTAL LIABILITIES AND EQUITY" : "$51,722.01",
+      "Total Long-Term Liabilities" : "$17,260.78",
+      "Total Other Current Assets" : "$6,933.77",
+      "Total Other Current Liabilities" : "$3,546.87",
       "Total Truck" : "$13,495.00"
     },
-    "cashBalance" : "$13,839.24",
+    "cashBalance" : "$9,161.73",
     "cashFlowTotals" : {
-      "Cash at end of period" : "$16,701.76",
-      "Net cash increase for period" : "$3,390.32",
-      "Net cash provided by financing activities" : "($2,645.41)",
-      "Net cash provided by operating activities" : "$6,035.73",
-      "Total Adjustments to reconcile Net Income to Net Cash provided by operations:" : "$2,393.64"
+      "Cash at end of period" : "$12,524.25",
+      "Net cash increase for period" : "$46.35",
+      "Net cash provided by operating activities" : "$46.35",
+      "Total Adjustments to reconcile Net Income to Net Cash provided by operations:" : "($298.65)"
     },
     "chartOfAccounts" : {
       "Accounting" : "$0.00",
@@ -118,45 +117,47 @@
       "Workers Compensation" : "$0.00"
     },
     "diagnosis" : {
-      "Opportunities.collect" : "Largest: Freeman Sporting Goods $2,732.11, Paulsen Medical Supplies $954.75, Geeta Kalapatapu $629.10",
-      "Strengths.growth" : "Revenue +74%: $44,913.90 in Jun '26 – Aug '26 vs. the same months a year earlier ($25,768.27)",
-      "Strengths.margin" : "12-month net margin 27.6% ($42,432.23 kept from $153,817.40 of revenue)",
+      "Opportunities.collect" : "Largest: Freeman Sporting Goods $2,732.11, Video Games by Dan $1,123.32, Cool Cars $1,000.00",
+      "Opportunities.trim-Fuel" : "Bringing it back to its earlier level saves about $420.13 a month",
+      "Opportunities.trim-Job Materials (other)" : "Bringing it back to its earlier level saves about $514.21 a month",
+      "Strengths.margin" : "12-month net margin 25.1% ($36,287.17 kept from $144,414.64 of revenue)",
       "Strengths.ties" : "All 11 tie-out checks agree to the cent",
-      "Weaknesses.findings" : "10 open findings touching $19,110.89",
+      "Weaknesses.findings" : "9 open findings touching $17,185.52",
+      "Weaknesses.growth" : "Revenue −23%: $29,561.40 in Aug '26 – Oct '26 vs. the same months a year earlier ($38,481.64)",
       "Weaknesses.late-ap" : "$2,790.67 of vendor bills are over 60 days past due",
-      "Weaknesses.late-ar" : "46% of what customers owe is over 60 days late ($7,451.13 of $16,083.03)"
+      "Weaknesses.late-ar" : "41% of what customers owe is over 60 days late ($9,574.45 of $23,181.51)",
+      "Weaknesses.rise-Fuel" : "$3,600.88 in Aug '26 – Oct '26, up 54% from $2,340.49",
+      "Weaknesses.rise-Job Materials (other)" : "$5,247.69 in Aug '26 – Oct '26, up 42% from $3,705.06"
     },
-    "diagnosis.whereMoneyGoes" : "Cost of Labor $34,440.43 31.0% | Rent or Lease $15,300.00 13.8% | Plants and Soil $11,011.77 9.9% | Job Materials (other) $10,729.91 9.7% | Fuel $8,953.29 8.1% | Insurance $4,861.23 4.4% | Everything else $25,683.54 23.1%",
-    "exposure.allOpen" : "$19,110.89",
-    "exposure.balanceSheetIntegrity" : "$14,835.52",
-    "exposure.cleanupAssessment" : "$18,110.89",
-    "netIncome" : "$3,642.09",
-    "netIncomePrior" : "$1,845.15",
-    "openFindingCount" : 10,
-    "payablesTotal" : "$3,687.43",
+    "diagnosis.whereMoneyGoes" : "Cost of Labor $29,632.39 27.5% | Rent or Lease $14,100.00 13.1% | Job Materials (other) $13,220.94 12.3% | Fuel $10,550.42 9.8% | Plants and Soil $9,796.74 9.1% | Insurance $4,476.23 4.2% | Everything else $25,925.75 24.1%",
+    "exposure.allOpen" : "$17,185.52",
+    "exposure.balanceSheetIntegrity" : "$14,035.52",
+    "exposure.cleanupAssessment" : "$17,185.52",
+    "netIncome" : "$345.00",
+    "netIncomePrior" : "$2,483.11",
+    "openFindingCount" : 9,
+    "payablesTotal" : "$5,993.60",
     "profitAndLossTotals" : {
-      "Gross Profit" : "$12,633.92",
-      "Net Income" : "$3,642.09",
-      "Net Operating Income" : "$3,756.68",
-      "Net Other Income" : "($114.59)",
-      "Total Automobile" : "$780.15",
-      "Total Expenses" : "$8,877.24",
-      "Total Income" : "$12,633.92",
-      "Total Job Expenses" : "$5,213.85",
-      "Total Job Materials" : "$3,060.57",
-      "Total Labor" : "$3,643.77",
-      "Total Landscaping Services" : "$9,580.03",
-      "Total Other Expenses" : "$114.59",
-      "Total Utilities" : "$375.09"
+      "Gross Profit" : "$1,445.00",
+      "Net Income" : "$345.00",
+      "Net Operating Income" : "$1,095.00",
+      "Net Other Income" : "($750.00)",
+      "Total Cost of Goods Sold" : "($40.00)",
+      "Total Expenses" : "$350.00",
+      "Total Income" : "$1,405.00",
+      "Total Job Expenses" : "($100.00)",
+      "Total Labor" : "$1,500.00",
+      "Total Landscaping Services" : "$1,500.00",
+      "Total Other Expenses" : "$750.00"
     },
     "receivables" : {
-      "credits" : "($800.00)",
-      "net" : "$15,283.03",
-      "over60" : "$7,451.13",
-      "owed" : "$16,083.03"
+      "credits" : "($1,050.00)",
+      "net" : "$22,131.51",
+      "over60" : "$9,574.45",
+      "owed" : "$23,181.51"
     },
-    "revenue" : "$12,633.92",
-    "revenuePrior" : "$16,019.16",
+    "revenue" : "$1,405.00",
+    "revenuePrior" : "$15,522.48",
     "tieOut" : {
       "ap-open" : "ties",
       "ap-rows" : "ties",
@@ -170,8 +171,8 @@
       "pl-to-bs" : "ties",
       "tb-balances" : "ties"
     },
-    "transactionCount" : 45,
-    "workingCapital" : "$25,574.48"
+    "transactionCount" : 6,
+    "workingCapital" : "$27,463.84"
   },
   "findings" : [
     {
@@ -205,6 +206,16 @@
       "title" : "VL Spike Suspense has a USD 875.00 balance — unidentified items in suspense"
     },
     {
+      "amount" : "$450.00",
+      "confidence" : "medium",
+      "evidence" : [
+        "842"
+      ],
+      "rule" : "VL-CC-PAYMENT-001",
+      "severity" : "high",
+      "title" : "Credit card payment coded to Office Expenses — USD 450.00"
+    },
+    {
       "amount" : "$0.00",
       "confidence" : "high",
       "evidence" : [
@@ -216,67 +227,47 @@
       "title" : "Possible duplicate vendor — VL SPIKE GULF COAST HARDWARE, LLC, VL Spike Gulf Coast Hardware"
     },
     {
-      "amount" : "$1,000.00",
-      "confidence" : "high",
-      "evidence" : [
-        "214"
-      ],
-      "rule" : "VL-MISSING-PAYEE-001",
-      "severity" : "high",
-      "title" : "Expense with no vendor — USD 1000.00"
-    },
-    {
-      "amount" : "$9,247.50",
+      "amount" : "$8,447.50",
       "confidence" : "high",
       "evidence" : [
         "34"
       ],
       "rule" : "VL-OBE-BALANCE-001",
       "severity" : "high",
-      "title" : "Opening Balance Equity carries a nonzero balance — USD 9247.50"
+      "title" : "Opening Balance Equity carries a nonzero balance — USD 8447.50"
     },
     {
-      "amount" : "$1,537.14",
+      "amount" : "$2,000.00",
       "confidence" : "medium",
       "evidence" : [
-        "453"
+        "841"
       ],
-      "rule" : "VL-PAYROLL-LUMP-001",
+      "rule" : "VL-RELATIONSHIP-003",
       "severity" : "high",
-      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1537.14"
+      "title" : "Looks like a bank transfer coded as a purchase — USD 2000.00"
     },
     {
-      "amount" : "$1,560.02",
+      "amount" : "$600.00",
       "confidence" : "medium",
       "evidence" : [
-        "452"
+        "839"
       ],
-      "rule" : "VL-PAYROLL-LUMP-001",
+      "rule" : "VL-RELATIONSHIP-005",
       "severity" : "high",
-      "title" : "Payroll payment to Gusto Payroll coded to a single line — USD 1560.02"
+      "title" : "Loan payment to VLT First Basin Bank coded to a single line — USD 600.00"
     },
     {
-      "amount" : "$76.33",
-      "confidence" : "low",
+      "amount" : "$100.00",
+      "confidence" : "high",
       "evidence" : [
-        "465"
+        "845"
       ],
-      "rule" : "VL-VEND-PRICE-001",
+      "rule" : "VL-VENDCREDIT-UNAPPLIED-001",
       "severity" : "high",
-      "title" : "Ellis Equipment Rental charged 25% more than last period"
-    },
-    {
-      "amount" : "$101.88",
-      "confidence" : "low",
-      "evidence" : [
-        "461"
-      ],
-      "rule" : "VL-VEND-PRICE-001",
-      "severity" : "high",
-      "title" : "Hicks Hardware charged 90% more than last period"
+      "title" : "Unapplied vendor credit after 31 days — VLT Permian Pipe & Supply, USD 100.00"
     }
   ],
-  "period" : "2026-08",
+  "period" : "2026-10",
   "realmId" : "9341456442848752",
   "rulesCannotEvaluate" : {
     "VL-CLOSED-PERIOD-DRIFT-001" : "partialCoverage(reason: \"No period lock has been set. Set one on the Scope & Period Lock page to enable this check.\")",
@@ -292,7 +283,6 @@
     "VL-BS-UNDEP-001",
     "VL-CAT-MISCODE-001",
     "VL-CAT-UNCAT-001",
-    "VL-CC-PAYMENT-001",
     "VL-DUP-BILL-001",
     "VL-DUP-EXP-001",
     "VL-DUP-EXP-002",
@@ -301,12 +291,12 @@
     "VL-DUP-PAY-001",
     "VL-FEE-AVOIDABLE-001",
     "VL-FORCED-RECON-001",
+    "VL-MISSING-PAYEE-001",
+    "VL-PAYROLL-LUMP-001",
     "VL-PERSONAL-001",
-    "VL-RELATIONSHIP-003",
-    "VL-RELATIONSHIP-005",
     "VL-REPORT-TIE-001",
     "VL-TRANSPOSITION-001",
     "VL-VEND-ANOMALY-001",
-    "VL-VENDCREDIT-UNAPPLIED-001"
+    "VL-VEND-PRICE-001"
   ]
 }

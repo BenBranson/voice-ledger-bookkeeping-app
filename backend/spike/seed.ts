@@ -113,6 +113,17 @@ interface SeedInventoryItem {
   assetAccount: string;
 }
 
+/** Added 2026-10-02 (batch 2): a refund paid back to a customer from a bank account. */
+interface SeedRefundReceipt {
+  case: string;
+  customer: string;
+  fromAccount: string;
+  date: string;
+  note: string;
+  taxCode?: string;
+  lines: { itemName: string; amountMinorUnits: number; qty?: number; unitPriceMinorUnits?: number; taxable?: boolean }[];
+}
+
 /** Added 2026-10-02: a customer credit memo (left unapplied unless QBO applies it). */
 interface SeedCreditMemo {
   case: string;
@@ -159,6 +170,7 @@ interface SeedFile {
   newCustomers?: SeedNewCustomer[];
   inventoryItems?: SeedInventoryItem[];
   creditMemos?: SeedCreditMemo[];
+  refundReceipts?: SeedRefundReceipt[];
   requiresBaseline?: boolean;
   accounts?: SeedAccount[];
   vendors?: SeedVendor[];
@@ -187,6 +199,7 @@ interface Manifest {
   billPayments?: Record<string, { id: string; syncToken: string }>;
   transfers?: Record<string, { id: string; syncToken: string }>;
   creditMemos?: Record<string, { id: string; syncToken: string }>;
+  refundReceipts?: Record<string, { id: string; syncToken: string }>;
   /** Added 2026-10-02: what each seed file CREATED, in creation order, so `teardown <seed>` removes exactly that and nothing else. */
   owned?: Record<string, { entity: string; id: string; key: string }[]>;
 }
@@ -679,6 +692,34 @@ async function ensureCreditMemo(client: QboRawClient, manifest: Manifest, spec: 
   process.stdout.write(`  [created] ${spec.case} -> CreditMemo ${memo.Id}\n`);
 }
 
+async function ensureRefundReceipt(client: QboRawClient, manifest: Manifest, spec: SeedRefundReceipt): Promise<void> {
+  manifest.refundReceipts ??= {};
+  if (manifest.refundReceipts[spec.note]) { process.stdout.write(`  [skip, already seeded] ${spec.case}\n`); return; }
+  const customerId = await ensureCustomer(client, manifest, { displayName: spec.customer });
+  const fromId = manifest.accounts[spec.fromAccount];
+  if (!fromId) throw new Error(`Refund "${spec.case}" account "${spec.fromAccount}" not seeded`);
+  const lines = [];
+  for (const line of spec.lines) {
+    const detail: any = { ItemRef: { value: await ensureItem(client, manifest, line.itemName) } };
+    if (line.qty !== undefined && line.unitPriceMinorUnits !== undefined) { detail.Qty = line.qty; detail.UnitPrice = line.unitPriceMinorUnits / 100; }
+    if (line.taxable) detail.TaxCodeRef = { value: "TAX" };
+    lines.push({ Amount: line.amountMinorUnits / 100, DetailType: "SalesItemLineDetail", SalesItemLineDetail: detail });
+  }
+  const body: any = { CustomerRef: { value: customerId }, DepositToAccountRef: { value: fromId }, TxnDate: spec.date, PrivateNote: spec.note, Line: lines };
+  if (spec.taxCode) {
+    const tc = await client.query(`select Id from TaxCode where Name = '${escapeQboStringLiteral(spec.taxCode)}'`);
+    const tcId = (tc.body as any)?.QueryResponse?.TaxCode?.[0]?.Id;
+    if (!tcId) throw new Error(`Tax code "${spec.taxCode}" not found`);
+    body.TxnTaxDetail = { TxnTaxCodeRef: { value: tcId } };
+  }
+  const created = await createOnce(client, "refundreceipt", body);
+  if (created.status !== 200) throw new Error(`RefundReceipt create failed for "${spec.case}": HTTP ${created.status} ${JSON.stringify(created.body)}`);
+  const refund = (created.body as any).RefundReceipt;
+  manifest.refundReceipts[spec.note] = { id: refund.Id, syncToken: refund.SyncToken };
+  own(manifest, "RefundReceipt", refund.Id, spec.note);
+  process.stdout.write(`  [created] ${spec.case} -> RefundReceipt ${refund.Id}\n`);
+}
+
 async function apply(seedName: string): Promise<void> {
   const client = new QboRawClient();
   const manifest = loadManifest();
@@ -744,6 +785,10 @@ async function apply(seedName: string): Promise<void> {
     await ensureCreditMemo(client, manifest, memo);
     saveManifest(manifest);
   }
+  for (const refund of seed.refundReceipts ?? []) {
+    await ensureRefundReceipt(client, manifest, refund);
+    saveManifest(manifest);
+  }
 
   process.stdout.write(`Done. Manifest at ${MANIFEST_PATH}\n`);
 }
@@ -784,7 +829,7 @@ async function teardown(seedName: string): Promise<void> {
   }
   const maps: Record<string, keyof Manifest> = {
     Purchase: "purchases", Bill: "bills", Invoice: "invoices", Payment: "payments", VendorCredit: "vendorCredits",
-    BillPayment: "billPayments", Transfer: "transfers", CreditMemo: "creditMemos",
+    BillPayment: "billPayments", Transfer: "transfers", CreditMemo: "creditMemos", RefundReceipt: "refundReceipts",
     Customer: "customers", Vendor: "vendors", Item: "items", Account: "accounts"
   };
   const names = new Set(["Customer", "Vendor", "Item", "Account"]);

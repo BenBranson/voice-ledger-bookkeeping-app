@@ -1,0 +1,45 @@
+{
+  "description": "2026-10-02 scenario batch 2, all dated October 2026 (the in-progress month, so the July-September baselines are untouched): loans, transfers, a card payment, a refund with tax and inventory, payments against batch-1 documents, a vendor credit, an out-of-state customer. Each item states the check it plants and the expected result. Tear down with: seed.ts teardown scenarios-oct-2026",
+  "accounts": [
+    { "name": "Checking", "accountType": "Bank" },
+    { "name": "Savings", "accountType": "Bank" },
+    { "name": "Interest Paid", "accountType": "Other Expense" },
+    { "name": "Loan Payable", "accountType": "Other Current Liability" },
+    { "name": "Office Expenses", "accountType": "Expense" },
+    { "name": "Job Materials", "accountType": "Expense" }
+  ],
+  "vendors": [
+    { "displayName": "VLT First Basin Bank" },
+    { "displayName": "VLT Chase Card Services" },
+    { "displayName": "VLT Permian Pipe & Supply" }
+  ],
+  "newCustomers": [
+    { "displayName": "VLT Silver State Supply", "city": "Las Vegas", "state": "NV" }
+  ],
+  "purchases": [
+    { "case": "loan payment coded entirely to interest (expect VL-RELATIONSHIP-005)", "vendor": "VLT First Basin Bank", "account": "Checking", "expenseAccount": "Interest Paid", "amountMinorUnits": 60000, "date": "2026-10-01", "note": "VLT-OCT-LOAN-LUMP", "memo": "loan payment - October" },
+    { "case": "loan payment split principal + interest (control: no finding)", "vendor": "VLT First Basin Bank", "account": "Checking", "expenseAccount": "Interest Paid", "amountMinorUnits": 100000, "date": "2026-10-01", "note": "VLT-OCT-LOAN-SPLIT",
+      "lines": [ { "account": "Loan Payable", "amountMinorUnits": 85000, "memo": "loan payment principal" }, { "account": "Interest Paid", "amountMinorUnits": 15000, "memo": "loan payment interest" } ] },
+    { "case": "transfer to savings entered as an expense (expect VL-RELATIONSHIP-003)", "vendor": "VLT First Basin Bank", "account": "Checking", "expenseAccount": "Savings", "amountMinorUnits": 200000, "date": "2026-10-02", "note": "VLT-OCT-XFER-AS-EXPENSE" },
+    { "case": "credit card payment coded to an expense (expect VL-CC-PAYMENT-001)", "vendor": "VLT Chase Card Services", "account": "Checking", "expenseAccount": "Office Expenses", "amountMinorUnits": 45000, "date": "2026-10-02", "note": "VLT-OCT-CC-AS-EXPENSE" }
+  ],
+  "transfers": [
+    { "case": "real transfer Checking to Savings (control: no finding)", "from": "Checking", "to": "Savings", "amountMinorUnits": 50000, "date": "2026-10-01", "note": "VLT-OCT-XFER-REAL" }
+  ],
+  "vendorCredits": [
+    { "case": "unapplied vendor credit (expect VL-VENDCREDIT-UNAPPLIED-001 once 30+ days old; A/P credit $100)", "vendor": "VLT Permian Pipe & Supply", "expenseAccount": "Job Materials", "amountMinorUnits": 10000, "date": "2026-10-01", "note": "VLT-OCT-VCREDIT" }
+  ],
+  "payments": [
+    { "case": "customer pays the Midland Yard invoice, deposited to Checking (expect Gulf Coast $1,850.00)", "customer": "VLT Midland Yard", "amountMinorUnits": 320000, "date": "2026-10-01", "note": "VLT-OCT-PAY-MIDLAND", "invoiceNote": "VLT-SEP-INV-MIDLAND", "depositTo": "Checking" }
+  ],
+  "billPayments": [
+    { "case": "partial payment of the Permian bill (expect Permian $2,570.00 before the $100 credit)", "vendor": "VLT Permian Pipe & Supply", "billNote": "VLT-SEP-BILL-PIPE", "bankAccount": "Checking", "amountMinorUnits": 100000, "date": "2026-10-02", "note": "VLT-OCT-BILLPAY-PIPE" }
+  ],
+  "invoices": [
+    { "case": "out-of-state (NV) non-taxable sale (expect customerState NV)", "customer": "VLT Silver State Supply", "itemName": "Installation", "amountMinorUnits": 150000, "date": "2026-10-01", "dueDate": "2026-10-31", "note": "VLT-OCT-INV-NV" }
+  ],
+  "refundReceipts": [
+    { "case": "refund 1 Valve Kit + Tucson tax (expect revenue -$95, COGS -$40, tax -$8.65, $103.65 out of Checking)", "customer": "VLT Desert Rose Cafe", "fromAccount": "Checking", "date": "2026-10-02", "note": "VLT-OCT-REFUND", "taxCode": "Tucson",
+      "lines": [ { "itemName": "VLT Valve Kit", "amountMinorUnits": 9500, "qty": 1, "unitPriceMinorUnits": 9500, "taxable": true } ] }
+  ]
+}

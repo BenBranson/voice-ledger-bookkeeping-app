@@ -2,9 +2,9 @@
 import "dotenv/config";
 import { QboRawClient } from "./qboRawClient.js";
 const c = new QboRawClient();
-const inv: any = (await c.get("invoice/834")).body.Invoice;
+const inv: any = ((await c.get("invoice/834")).body as any).Invoice;
 console.log("Invoice 834 total", inv.TotalAmt, "tax", inv.TxnTaxDetail?.TotalTax, "balance", inv.Balance);
-const cm: any = (await c.get("creditmemo/838")).body.CreditMemo;
+const cm: any = ((await c.get("creditmemo/838")).body as any).CreditMemo;
 console.log("CreditMemo 838 total", cm.TotalAmt, "remaining credit", cm.RemainingCredit, "balance", cm.Balance);
 function rows(r: any, depth = 0, out: string[] = []) {
   for (const row of r?.Row ?? []) {
