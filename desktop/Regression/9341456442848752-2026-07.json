@@ -213,21 +213,21 @@
       "amount" : "$400.00",
       "confidence" : "high",
       "evidence" : [
-        "223"
+        "222"
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00 (QuickBooks payment 222)"
     },
     {
       "amount" : "$400.00",
       "confidence" : "high",
       "evidence" : [
-        "222"
+        "223"
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00"
+      "title" : "Payment still in Undeposited Funds after 97 days — Cool Cars, USD 400.00 (QuickBooks payment 223)"
     },
     {
       "amount" : "$312.50",

@@ -218,7 +218,7 @@
       ],
       "rule" : "VL-BS-UNDEP-001",
       "severity" : "high",
-      "title" : "Payment still in Undeposited Funds after 36 days — VLT Gulf Coast Builders, USD 500.00"
+      "title" : "Payment still in Undeposited Funds after 36 days — VLT Gulf Coast Builders, USD 500.00 (QuickBooks payment 837)"
     },
     {
       "amount" : "$129.99",
