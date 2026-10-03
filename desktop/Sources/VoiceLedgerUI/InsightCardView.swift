@@ -17,7 +17,7 @@ public struct InsightCardView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(card.subtitle).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                     if let headline = card.headline {
-                        Text(headline).font(VLTypography.metricLarge()).foregroundStyle(VLColor.cyan)
+                        Text(ClientText.minusSigns(headline)).font(VLTypography.metricLarge()).foregroundStyle(VLColor.cyan)
                     }
                 }
                 Spacer()
@@ -50,7 +50,7 @@ public struct InsightCardView: View {
                                     }
                                 }
                                 Spacer()
-                                Text(row.amountText).font(VLTypography.tabularNumeric()).foregroundStyle(row.warn ? .orange : VLColor.textPrimary)
+                                Text(ClientText.minusSigns(row.amountText)).font(VLTypography.tabularNumeric()).foregroundStyle(row.warn ? .orange : VLColor.textPrimary)
                                 if let target = row.link { QBOLinkButton(qboLinks.url(for: target), compact: true).frame(width: 22) }
                             }
                             .padding(.vertical, 2)

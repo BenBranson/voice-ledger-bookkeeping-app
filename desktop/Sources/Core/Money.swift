@@ -98,4 +98,12 @@ extension Money {
         let body = "\(symbol)\(whole)\(grouped).\(String(format: "%02d", absUnits % 100))"
         return minorUnits < 0 ? "(\(body))" : body
     }
+
+    /// Dashboard and chart format: `-$1,263.76` (owner, 2026-10-03: brackets
+    /// read as a typo outside the formal statements, which keep
+    /// `accountingDescription`).
+    public var signedDescription: String {
+        let text = accountingDescription
+        return minorUnits < 0 ? "-" + text.dropFirst().dropLast() : text
+    }
 }

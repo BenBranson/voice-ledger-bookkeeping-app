@@ -1611,3 +1611,8 @@ Follow-up (same day, checked against the owner's downloaded v1.85 PDFs): every f
 ## 2026-10-03 — v1.86: the app's waterfall chart is gone too
 
 Owner: the app's waterfall was "hard to understand and read" (same reason it left the PDF in v1.83). `SalesToProfitCard` / `SalesToProfitList` (VoiceLedgerUI) replace `WaterfallCard` on the Dashboard and the Profit & Loss page, and `ProfitAndLossWaterfallChart` in the voice "income vs expenses" popup (`ChartRequest.incomeVsExpenses` now carries a `MoneyStepList`). Rows come from Core `ChartData.moneySteps` (built on the unchanged `ChartData.waterfall` data): same names as the PDF list, "+"/"-" signs (never brackets), bars sized against the largest row, and a computed "Out of every $1 in sales, 16¢ was left over as profit." Do not bring a floating-bar waterfall back to client- or owner-facing screens.
+
+## 2026-10-03 — v1.87: app Dashboard and charts match the PDF
+
+- Minus signs, not brackets, on the Dashboard, KPI tiles, chart cards, insight cards and every ECharts label/tooltip (`Money.signedDescription`, `ClientText.minusSigns`, JS `signed()` in vl-charts.js). The formal statement pages (Balance Sheet, P&L, Trial Balance, General Ledger) deliberately keep accounting brackets — CPA convention, same split as the PDF.
+- Owner's Draw is neutral slate (Swift `ChartPalette.neutral`, JS `theme.muted`), not error red; overdrafts and negative equity stay red.

@@ -35,6 +35,10 @@ struct MonthlyReportIntegrityTests {
         #expect(ClientText.polish("Notes Payable — USD 25000.00") == "Notes Payable — $25,000.00")
         #expect(ClientText.polish("balance of -USD 3293.02") == "balance of ($3,293.02)")
         #expect(ClientText.polish("dated 2026-7-31 and 2026-07-26") == "dated Jul 31, 2026 and Jul 26, 2026")
+        // Dashboard/chart format: minus signs, never brackets.
+        #expect(ClientText.minusSigns("Negative ($30,047.50), net $53,335.66") == "Negative -$30,047.50, net $53,335.66")
+        #expect(Money(minorUnits: -329_302, currency: .usd).signedDescription == "-$3,293.02")
+        #expect(Money(minorUnits: 329_302, currency: .usd).signedDescription == "$3,293.02")
     }
 
     @Test("A finding that just disappeared is not work and not 'corrected and verified'")

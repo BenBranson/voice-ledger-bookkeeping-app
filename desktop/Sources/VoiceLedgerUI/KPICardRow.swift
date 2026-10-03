@@ -1,4 +1,5 @@
 import SwiftUI
+import Core
 import DesignSystem
 
 /// A row of small metric cards for the Balance Sheet/P&L visual layer —
@@ -123,7 +124,7 @@ public struct KPICardRow: View {
                             .foregroundStyle(VLColor.textMuted)
                     }
                 }
-                Text(card.value)
+                Text(ClientText.minusSigns(card.value))
                     .font(VLTypography.metricMedium())
                     .foregroundStyle(card.isAvailable ? VLColor.cyan : VLColor.textMuted)
                 if let trend = card.trend {

@@ -47,7 +47,9 @@ public enum ChartPalette {
     static let dark: [UInt32] = [0x29D3F2, 0x2788D9, 0x32C7A3, 0xA67CF5, 0x67E8F9, 0xF2B84B, 0x5B8DEF, 0x7FD1AE, 0xC79BF2, 0x8FA8C8]
     static let negative: UInt32 = 0xF06C8B
     static let other: UInt32 = 0x5F7390
-    static let negativeCategories: Set<String> = ["overdraft", "contra", "creditBalance", "debitBalance", "negativeEquity", "deficit", "netLoss", "draw"]
+    /// Owner draws are normally negative: neutral slate like the JS `theme.muted`, not error red.
+    static let neutral: UInt32 = 0x9FB2C8
+    static let negativeCategories: Set<String> = ["overdraft", "contra", "creditBalance", "debitBalance", "negativeEquity", "deficit", "netLoss"]
 
     static func hash(_ text: String) -> UInt32 {
         var h: UInt32 = 2_166_136_261
@@ -61,6 +63,7 @@ public enum ChartPalette {
     public static func color(for item: ChartItem) -> Color {
         let hex: UInt32
         if item.category == "other" { hex = other }
+        else if item.category == "draw" { hex = neutral }
         else if negativeCategories.contains(item.category) { hex = negative }
         else { hex = dark[Int(hash(item.id) % UInt32(dark.count))] }
         return Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)

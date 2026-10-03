@@ -355,7 +355,7 @@ public struct ClientDashboardView: View {
                                 Text(verbatim: "\(finding.priorityScore)%")
                                     .font(VLTypography.caption())
                                     .foregroundStyle(StatusMapping.priorityStatus(finding.priorityScore).color)
-                                Text(finding.dollarExposure.accountingDescription)
+                                Text(finding.dollarExposure.signedDescription)
                                     .font(VLTypography.tabularNumericEmphasis())
                                     .foregroundStyle(VLColor.textSecondary)
                             }
@@ -454,7 +454,7 @@ public struct ClientDashboardView: View {
         if let receivables {
             cards.append(KPICardRow.CardData(
                 label: "Accounts Receivable",
-                value: receivables.totalAmount?.accountingDescription ?? "Not available",
+                value: receivables.totalAmount?.signedDescription ?? "Not available",
                 isAvailable: receivables.totalAmount != nil,
                 detail: receivables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedReceivables) }
@@ -468,7 +468,7 @@ public struct ClientDashboardView: View {
         if let payables {
             cards.append(KPICardRow.CardData(
                 label: "Accounts Payable",
-                value: payables.totalAmount?.accountingDescription ?? "Not available",
+                value: payables.totalAmount?.signedDescription ?? "Not available",
                 isAvailable: payables.totalAmount != nil,
                 detail: payables.percentOverdue.map { String(format: "%.0f%% overdue", $0) },
                 onTap: { onNavigateToReport(.agedPayables) }
@@ -509,7 +509,7 @@ public struct ClientDashboardView: View {
                             Text("IN \(horizon.days) DAYS")
                                 .font(VLTypography.caption())
                                 .foregroundStyle(VLColor.textMuted)
-                            Text(horizon.projectedEndingCash?.accountingDescription ?? "Not available")
+                            Text(horizon.projectedEndingCash?.signedDescription ?? "Not available")
                                 .font(VLTypography.metricMedium())
                                 .foregroundStyle(horizon.projectedEndingCash != nil ? VLColor.cyan : VLColor.textMuted)
                         }
@@ -562,7 +562,7 @@ public struct ClientDashboardView: View {
 
     private func kpiCard(label: String, money: Money?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
         guard let money else { return KPICardRow.CardData(label: label, value: "Not available", isAvailable: false) }
-        return KPICardRow.CardData(label: label, value: money.accountingDescription, trend: trend, onTap: onTap)
+        return KPICardRow.CardData(label: label, value: money.signedDescription, trend: trend, onTap: onTap)
     }
 
     private func kpiCard(label: String, ratio: Double?, trend: KPICardRow.Trend? = nil, onTap: (() -> Void)? = nil) -> KPICardRow.CardData {
@@ -656,9 +656,9 @@ struct TieOutPanel: View {
                 Text(c.title).font(VLTypography.label()).foregroundStyle(VLColor.textPrimary)
                 switch c.status {
                 case .ties:
-                    Text("\(c.right?.accountingDescription ?? "") · \(c.compares)").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
+                    Text("\(c.right?.signedDescription ?? "") · \(c.compares)").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                 case .doesNotTie(let d):
-                    Text("Off by \(d.accountingDescription): \(c.leftLabel) \(c.left?.accountingDescription ?? "—") vs \(c.rightLabel) \(c.right?.accountingDescription ?? "—")")
+                    Text("Off by \(d.signedDescription): \(c.leftLabel) \(c.left?.signedDescription ?? "—") vs \(c.rightLabel) \(c.right?.signedDescription ?? "—")")
                         .font(VLTypography.caption()).foregroundStyle(VLStatus.urgent.color)
                 case .notChecked(let why):
                     Text(why).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)

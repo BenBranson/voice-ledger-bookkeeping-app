@@ -61,6 +61,11 @@
 
   const NEGATIVE_CATEGORIES = { overdraft: 1, contra: 1, creditBalance: 1, debitBalance: 1, negativeEquity: 1, deficit: 1, netLoss: 1 };
 
+  /** Charts show negatives as "-$4,264.76", never accounting brackets (owner, 2026-10-03). */
+  function signed(text) {
+    return String(text == null ? "" : text).replace(/\((\$[\d,.]+[KkMm]?)\)/g, "-$1");
+  }
+
   function esc(value) {
     return String(value == null ? "" : value)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -165,7 +170,7 @@
     return Object.assign(base(theme, opts.reducedMotion), {
       tooltip: tooltip(theme, function (p) {
         const it = items[p.dataIndex];
-        return "<b>" + esc(it.label) + "</b><br/>" + esc(it.valueText) +
+        return "<b>" + esc(it.label) + "</b><br/>" + esc(signed(it.valueText)) +
           (it.share != null ? " · " + (it.share * 100).toFixed(1) + "% of positive balances" : "");
       }),
       title: {
@@ -215,7 +220,7 @@
       grid: { left: 8, right: 64, top: 8, bottom: 8, containLabel: true },
       tooltip: tooltip(theme, function (p) {
         const it = sorted[p.dataIndex];
-        return "<b>" + esc(it.label) + "</b><br/>" + esc(it.valueText) + (it.note ? "<br/><i>" + esc(it.note) + "</i>" : "");
+        return "<b>" + esc(it.label) + "</b><br/>" + esc(signed(it.valueText)) + (it.note ? "<br/><i>" + esc(it.note) + "</i>" : "");
       }),
       xAxis: valueAxis(theme, paddedExtent(sorted.map(function (it) { return it.value; }))),
       yAxis: categoryAxis(theme, sorted.map(function (it) { return truncate(it.label, 30); }), { axisLine: { show: false } }),
@@ -227,7 +232,7 @@
             id: it.id,
             value: it.value,
             itemStyle: { color: colorFor(it, theme), borderRadius: it.value < 0 ? [3, 0, 0, 3] : [0, 3, 3, 0], opacity: opts.selectedId && it.id !== opts.selectedId ? 0.35 : 1 },
-            label: { show: true, position: it.value < 0 ? "left" : "right", formatter: it.valueText, color: theme.text, fontSize: 10 }
+            label: { show: true, position: it.value < 0 ? "left" : "right", formatter: signed(it.valueText), color: theme.text, fontSize: 10 }
           };
         }),
         markLine: { silent: true, symbol: "none", lineStyle: { color: theme.zero, width: 1 }, label: { show: false }, data: [{ xAxis: 0 }] }
@@ -246,7 +251,7 @@
       tooltip: tooltip(theme, function (p) {
         const s = steps[p.dataIndex];
         const kind = s.kind === "total" ? "Total" : (s.kind === "decrease" ? "Deduction" : "Addition");
-        return "<b>" + esc(s.label) + "</b><br/>" + kind + ": " + esc(s.valueText);
+        return "<b>" + esc(s.label) + "</b><br/>" + kind + ": " + esc(signed(s.valueText));
       }),
       xAxis: categoryAxis(theme, steps.map(function (s) { return s.label; }), { axisLabel: { color: theme.muted, fontFamily: theme.font, interval: 0, width: 90, overflow: "break" } }),
       yAxis: valueAxis(theme, { scale: false }),
@@ -270,7 +275,7 @@
           }, {
             type: "text",
             style: {
-              text: step.valueText,
+              text: signed(step.valueText),
               x: top[0],
               y: to >= from ? top[1] - 4 : bottom[1] + 4,
               align: "center",
@@ -308,7 +313,7 @@
       grid: { left: 8, right: 84, top: 4, bottom: 4, containLabel: true },
       tooltip: tooltip(theme, function (p) {
         const it = items[p.dataIndex];
-        return "<b>" + esc(it.label) + "</b><br/>" + esc(it.valueText) +
+        return "<b>" + esc(it.label) + "</b><br/>" + esc(signed(it.valueText)) +
           (it.share != null ? " · " + (it.share * 100).toFixed(1) + "% of expenses" : "");
       }),
       xAxis: valueAxis(theme, Object.assign({ show: false }, paddedExtent(items.map(function (it) { return it.value; })))),
@@ -321,7 +326,7 @@
             id: it.id,
             value: it.value,
             itemStyle: { color: colorFor(it, theme), borderRadius: [0, 4, 4, 0], opacity: opts.selectedId && it.id !== opts.selectedId ? 0.35 : 1 },
-            label: { show: true, position: "right", formatter: it.valueText, color: theme.text, fontSize: 10, fontWeight: 600 }
+            label: { show: true, position: "right", formatter: signed(it.valueText), color: theme.text, fontSize: 10, fontWeight: 600 }
           };
         })
       }]
@@ -403,7 +408,7 @@
         barMaxWidth: 34,
         data: b.map(function (x, i) {
           return { value: x.value, itemStyle: { color: x.category === "overdraft" ? theme.negative : x.category === "credit" ? theme.other : theme.positive, borderRadius: [2, 2, 0, 0] },
-                   label: { show: true, position: "top", formatter: x.valueText, color: theme.text, fontSize: 10 } };
+                   label: { show: true, position: "top", formatter: signed(x.valueText), color: theme.text, fontSize: 10 } };
         })
       }]
     });
@@ -412,7 +417,7 @@
   function money(v) {
     if (v == null) return "No data";
     const abs = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return v < 0 ? "($" + abs + ")" : "$" + abs;
+    return v < 0 ? "-$" + abs : "$" + abs;
   }
 
   function shortMonth(label) {
@@ -436,10 +441,10 @@
     return Object.assign(base(theme, opts.reducedMotion), {
       tooltip: tooltip(theme, function (p) {
         if (p.dataType === "edge") {
-          return esc(byId[p.data.source].label) + " → " + esc(byId[p.data.target].label) + "<br/><b>" + esc(p.data.valueText) + "</b>";
+          return esc(byId[p.data.source].label) + " → " + esc(byId[p.data.target].label) + "<br/><b>" + esc(signed(p.data.valueText)) + "</b>";
         }
         const n = byId[p.data.id];
-        return "<b>" + esc(n.label) + "</b><br/>" + esc(n.valueText);
+        return "<b>" + esc(n.label) + "</b><br/>" + esc(signed(n.valueText));
       }),
       series: [{
         type: "sankey",
@@ -451,7 +456,7 @@
         emphasis: { focus: theme.interactive ? "adjacency" : "none" },
         label: {
           color: theme.text, fontFamily: theme.font, fontSize: theme.interactive ? 11 : 10,
-          formatter: function (p) { const n = byId[p.data.id]; return n ? n.label + "  " + n.valueText : ""; }
+          formatter: function (p) { const n = byId[p.data.id]; return n ? n.label + "  " + signed(n.valueText) : ""; }
         },
         lineStyle: { opacity: theme.interactive ? 0.35 : 0.4, curveness: 0.5 },
         data: data.nodes.map(function (n) {
@@ -460,7 +465,7 @@
         }),
         links: data.links.map(function (l) {
           // Each band takes the color of its non-hub end.
-          return { source: l.source, target: l.target, value: l.value, valueText: l.valueText,
+          return { source: l.source, target: l.target, value: l.value, valueText: signed(l.valueText),
                    lineStyle: { color: l.target === "hub" ? "source" : "target" } };
         })
       }]
@@ -564,20 +569,20 @@
   function expenseTreemap(data, theme, opts) {
     opts = opts || {};
     function map(n) {
-      return { id: n.id, name: n.label, value: n.value, valueText: n.valueText,
+      return { id: n.id, name: n.label, value: n.value, valueText: signed(n.valueText),
                itemStyle: { color: colorFor({ id: n.id, category: "expense" }, theme) },
                children: n.children && n.children.length ? n.children.map(map) : undefined };
     }
     return Object.assign(base(theme, opts.reducedMotion), {
       tooltip: tooltip(theme, function (p) {
         const path = (p.treePathInfo || []).slice(1).map(function (x) { return esc(x.name); }).join(" › ");
-        return "<b>" + path + "</b><br/>" + esc(p.data.valueText || "");
+        return "<b>" + path + "</b><br/>" + esc(signed(p.data.valueText) || "");
       }),
       series: [{
         type: "treemap", roam: false, nodeClick: false, breadcrumb: { show: false },
         left: 4, right: 4, top: 4, bottom: 4, leafDepth: 2,
         label: { show: true, color: theme.name === "print" ? "#FFFFFF" : "#07111F", fontFamily: theme.font, fontSize: 11, fontWeight: 600,
-                 formatter: function (p) { return p.name + "\n" + (p.data.valueText || ""); } },
+                 formatter: function (p) { return p.name + "\n" + (signed(p.data.valueText) || ""); } },
         upperLabel: { show: true, height: 18, color: theme.text, fontFamily: theme.font, fontSize: 10, fontWeight: 600 },
         itemStyle: { borderColor: theme.interactive ? "#07111F" : "#FFFFFF", borderWidth: 1, gapWidth: 1 },
         levels: [{ itemStyle: { borderWidth: 0, gapWidth: 3 } }, { itemStyle: { gapWidth: 1 }, upperLabel: { show: true } }, { colorSaturation: [0.35, 0.6] }],

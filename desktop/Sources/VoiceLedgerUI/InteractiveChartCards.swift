@@ -65,8 +65,8 @@ private struct LegendRow: View {
                 if let share = item.share {
                     Text(String(format: "%.1f%%", share * 100)).foregroundStyle(VLColor.textMuted).fixedSize()
                 }
-                Text(item.valueText)
-                    .foregroundStyle(item.value < 0 ? Color(red: 0.94, green: 0.42, blue: 0.55) : VLColor.textPrimary)
+                Text(ClientText.minusSigns(item.valueText))
+                    .foregroundStyle(item.value < 0 && item.category != "draw" ? Color(red: 0.94, green: 0.42, blue: 0.55) : VLColor.textPrimary)
                     .fixedSize()
             }
             .font(VLTypography.caption())
@@ -99,7 +99,7 @@ private struct AccountDetail: View {
             }
             Text(item.label).font(VLTypography.cardTitle()).foregroundStyle(VLColor.textPrimary)
             HStack(spacing: VLSpacing.sm) {
-                Text(item.valueText).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
+                Text(ClientText.minusSigns(item.valueText)).font(VLTypography.tabularNumericEmphasis()).foregroundStyle(VLColor.textPrimary)
                 if let share = item.share, let shareLabel {
                     Text(String(format: "%.1f%% of %@", share * 100, shareLabel)).font(VLTypography.caption()).foregroundStyle(VLColor.textMuted)
                 }
@@ -129,7 +129,7 @@ private struct AccountDetail: View {
                             Text(row.transactionType ?? "").frame(width: 110, alignment: .leading)
                             Text(row.name ?? row.memo ?? "").lineLimit(1)
                             Spacer()
-                            Text(row.amount?.accountingDescription ?? "")
+                            Text(row.amount?.signedDescription ?? "")
                         }
                         .font(VLTypography.caption())
                         .foregroundStyle(VLColor.textSecondary)
@@ -228,7 +228,7 @@ public struct BalanceBreakdownCard: View {
                 .frame(height: CGFloat(max(150, 24 * allItems.count + 34)))
             Picker("Account", selection: $selectedID) {
                 Text("Choose an account…").tag(String?.none)
-                ForEach(allItems) { Text("\($0.label) — \($0.valueText)").tag(String?.some($0.id)) }
+                ForEach(allItems) { Text("\($0.label) — \(ClientText.minusSigns($0.valueText))").tag(String?.some($0.id)) }
             }
             .labelsHidden()
             .fixedSize()
@@ -251,7 +251,7 @@ public struct BalanceBreakdownCard: View {
     private func totalPill(_ label: String, _ value: String, emphasize: Bool = false) -> some View {
         HStack(spacing: 4) {
             Text(label).foregroundStyle(VLColor.textMuted)
-            Text(value).fontWeight(emphasize ? .semibold : .regular).foregroundStyle(VLColor.textPrimary)
+            Text(ClientText.minusSigns(value)).fontWeight(emphasize ? .semibold : .regular).foregroundStyle(VLColor.textPrimary)
         }
         .font(VLTypography.caption())
         .monospacedDigit()
@@ -358,11 +358,11 @@ public struct ExpenseCategoriesCard: View {
             VStack(alignment: .leading, spacing: VLSpacing.sm) {
                 Eyebrow(text: "Top expense categories")
                 if let r = data, !r.items.isEmpty, ChartAssets.directory != nil {
-                    let summary = r.items.map { "\($0.label) \($0.valueText)" }.joined(separator: "; ")
+                    let summary = r.items.map { "\($0.label) \(ClientText.minusSigns($0.valueText))" }.joined(separator: "; ")
                     EChartView(kind: "rankedBars", data: r, allowedIDs: Set(r.items.map(\.id)), selectedID: selectedID, summary: summary) { selectedID = $0 }
                         .frame(height: CGFloat(max(120, 30 * r.items.count + 10)))
                     HStack {
-                        Text("Total operating expenses \(r.totalText)").foregroundStyle(VLColor.textSecondary)
+                        Text("Total operating expenses \(ClientText.minusSigns(r.totalText))").foregroundStyle(VLColor.textSecondary)
                         Spacer()
                         Text(r.reconciles ? "Ties to QuickBooks" : "QuickBooks reports \(r.reportedTotalText ?? "no total")")
                             .foregroundStyle(r.reconciles ? VLColor.textMuted : .orange)
@@ -454,7 +454,7 @@ public struct TrendCard: View {
     }
 
     private func money(_ value: Double?) -> String {
-        value.map { Money(minorUnits: Int64(($0 * 100).rounded()), currency: .usd).accountingDescription } ?? "no data"
+        value.map { Money(minorUnits: Int64(($0 * 100).rounded()), currency: .usd).signedDescription } ?? "no data"
     }
 }
 
@@ -478,11 +478,11 @@ public struct MoneyFlowCard: View {
                 Eyebrow(text: "Where the money went")
                 if let f = data, ChartAssets.directory != nil {
                     EChartView(kind: "moneyFlow", data: f, allowedIDs: Set(selectable.map(\.id)), selectedID: selectedID,
-                               summary: "Money flow: " + selectable.map { "\($0.label) \($0.valueText)" }.joined(separator: "; ")) { selectedID = $0 }
+                               summary: "Money flow: " + selectable.map { "\($0.label) \(ClientText.minusSigns($0.valueText))" }.joined(separator: "; ")) { selectedID = $0 }
                         .frame(height: CGFloat(max(260, 30 * selectable.count)))
                     Picker("Flow", selection: $selectedID) {
                         Text("Choose an item…").tag(String?.none)
-                        ForEach(selectable, id: \.id) { Text("\($0.label) — \($0.valueText)").tag(String?.some($0.id)) }
+                        ForEach(selectable, id: \.id) { Text("\($0.label) — \(ClientText.minusSigns($0.valueText))").tag(String?.some($0.id)) }
                     }
                     .labelsHidden()
                     .fixedSize()
@@ -576,14 +576,14 @@ public struct PostingCalendarCard: View {
                                     Text(txn.entityKind.rawValue).frame(width: 90, alignment: .leading)
                                     Text(txn.vendorName ?? "—").lineLimit(1)
                                     Spacer()
-                                    Text(txn.totalAmount.accountingDescription)
+                                    Text(txn.totalAmount.signedDescription)
                                 }
                             }
                             ForEach(deposits, id: \.id) { deposit in
                                 HStack {
                                     Text("Deposit").frame(width: 90, alignment: .leading)
                                     Spacer()
-                                    Text(deposit.totalAmount?.accountingDescription ?? "")
+                                    Text(deposit.totalAmount?.signedDescription ?? "")
                                 }
                             }
                         }
@@ -624,20 +624,20 @@ public struct ExpenseTreemapCard: View {
                 HStack {
                     Eyebrow(text: "Expenses by account")
                     Spacer()
-                    if let data { Text("Total \(data.totalText)").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted) }
+                    if let data { Text("Total \(ClientText.minusSigns(data.totalText))").font(VLTypography.caption()).foregroundStyle(VLColor.textMuted) }
                 }
                 if let t = data, ChartAssets.directory != nil {
                     EChartView(kind: "expenseTreemap", data: t, allowedIDs: Set(flat.map(\.id)), selectedID: selectedID,
-                               summary: "Expenses by account: " + t.nodes.map { "\($0.label) \($0.valueText)" }.joined(separator: "; ")) { selectedID = $0 }
+                               summary: "Expenses by account: " + t.nodes.map { "\($0.label) \(ClientText.minusSigns($0.valueText))" }.joined(separator: "; ")) { selectedID = $0 }
                         .frame(height: 300)
                     Picker("Account", selection: $selectedID) {
                         Text("Choose an account…").tag(String?.none)
-                        ForEach(flat, id: \.id) { Text("\($0.label) — \($0.valueText)").tag(String?.some($0.id)) }
+                        ForEach(flat, id: \.id) { Text("\($0.label) — \(ClientText.minusSigns($0.valueText))").tag(String?.some($0.id)) }
                     }
                     .labelsHidden()
                     .fixedSize()
                     if !t.credits.isEmpty {
-                        Text("Credits not shown as area: " + t.credits.map { "\($0.label) \($0.valueText)" }.joined(separator: ", "))
+                        Text("Credits not shown as area: " + t.credits.map { "\($0.label) \(ClientText.minusSigns($0.valueText))" }.joined(separator: ", "))
                             .font(VLTypography.caption()).foregroundStyle(.orange)
                     }
                     if let id = selectedID, let node = flat.first(where: { $0.id == id }) {

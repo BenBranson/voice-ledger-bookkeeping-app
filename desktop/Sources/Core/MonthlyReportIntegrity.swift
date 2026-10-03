@@ -10,6 +10,14 @@ import Foundation
 // MARK: - Client-facing text
 
 public enum ClientText {
+    private static let bracketed = try! NSRegularExpression(pattern: #"\((\$[\d,.]+[KkMm]?)\)"#)
+
+    /// "($3,293.02)" → "-$3,293.02" inside already-formatted text, for the
+    /// Dashboard and charts. Same rule as the report renderer's `signed()`.
+    public static func minusSigns(_ text: String) -> String {
+        bracketed.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "-$1")
+    }
+
     private static let money = try! NSRegularExpression(pattern: #"(-?)USD (-?)(\d+)\.(\d{2})"#)
     private static let date = try! NSRegularExpression(pattern: #"\b(\d{4})-(\d{1,2})-(\d{1,2})\b"#)
     private static let shortMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
