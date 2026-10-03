@@ -1587,3 +1587,4 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - The duplicate bridge table was removed; its note is kept.
   - Negatives show as "-$X" everywhere except Appendix D, which keeps brackets (`sv()`, and `table(..., {brackets:true})`). Chart SVGs are converted in `render.mjs` `minusSigns()`.
   - The dual-axis revenue/expenses/margin chart was replaced by plain side-by-side bars ("Money in vs money out").
+- Owner decision (2026-10-03): KEEP the "Every dollar in, every dollar out" money-flow chart (Sankey) in the report. Do not replace it.
