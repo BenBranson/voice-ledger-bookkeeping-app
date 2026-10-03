@@ -1545,3 +1545,8 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - Tests: `test/oauthDiscovery.test.ts`.
 - **The three blanks are now answered "Yes."** Only the owner's Submit is left.
 - **Optional cleanup:** the sandbox company may still have a grant from the old "Branson Bookkeeping" app. It's harmless.
+- **2026-10-03: the owner SUBMITTED the Voice Ledger app-assessment questionnaire.** It can no longer be edited. Next steps:
+  1. Wait for Intuit's review emails or questions.
+  2. Once production keys unlock: add `/connected` to the production redirect URIs.
+  3. The owner pastes the production keys into `QBO_PRODUCTION_CLIENT_ID` and `QBO_PRODUCTION_CLIENT_SECRET` using the clipboard method.
+  4. Set `ALLOW_PRODUCTION=true` only when the first signed client is ready. That client connects in Read-Only Mode.
