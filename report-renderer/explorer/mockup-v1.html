@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Explorer</title>
+<style>
+:root{--navy:#1B2A4A;--teal:#1F8A8A;--teal-soft:#E3F2F2;--gold:#C9A227;--gold-soft:#FAF3DC;--amber:#9A6B00;--red:#B23A48;--red-soft:#F8E6E8;--ink:#1B2A4A;--muted:#5B6880;--line:#DDE3EB;--soft:#F4F7FA;--card:#FFFFFF;--bg:#EEF2F6}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#E8EEF6;--muted:#A3B0C2;--line:#2A3A55;--soft:#16233A;--card:#111C2F;--bg:#0A1322;--teal-soft:#123334;--gold-soft:#332B12;--amber:#E2B23E;--red-soft:#3A1A20}}
+:root[data-theme="dark"]{--ink:#E8EEF6;--muted:#A3B0C2;--line:#2A3A55;--soft:#16233A;--card:#111C2F;--bg:#0A1322;--teal-soft:#123334;--gold-soft:#332B12;--amber:#E2B23E;--red-soft:#3A1A20}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 48px}
+header{background:var(--navy);color:#fff;border-bottom:3px solid var(--teal)}
+header .wrap{padding-top:22px;padding-bottom:22px;display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.firm{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7CC4C4;font-weight:600}
+h1{margin:4px 0 2px;font-size:26px}
+.sub{color:#B9C4D6;font-size:13px}
+.badge{background:var(--gold);color:#1B2A4A;font-weight:700;font-size:11px;letter-spacing:1px;padding:5px 10px;border-radius:999px}
+nav{display:flex;gap:6px;margin:18px 0 10px;flex-wrap:wrap}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;border-radius:10px;font:inherit;font-weight:600}
+nav button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+nav button:disabled{opacity:.55}
+nav small{display:block;font-weight:500;font-size:11px;opacity:.85}
+.keyrow{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:0 0 16px}
+.keyrow b{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{font-size:18px;margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 14px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.kpi .l{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .v{font-size:24px;font-weight:700;margin-top:2px}
+.grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 6px;border-radius:5px;vertical-align:middle;margin-left:6px;white-space:nowrap}
+.tag.books{background:var(--teal-soft);color:var(--teal)}
+.tag.calc{background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.tag.you{background:var(--gold-soft);color:var(--amber)}
+.tag.missing{background:var(--red-soft);color:var(--red)}
+.tag.assumed{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
+.tag.pending{background:transparent;color:var(--amber);border:1px dashed var(--amber)}
+.tag.reviewed{background:var(--teal);color:#fff}
+.bar{cursor:pointer}.bar:hover{opacity:.8}
+.detail{background:var(--soft);border-radius:10px;padding:12px 14px;font-size:14px}
+.detail b{font-size:16px}
+.rows .r{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;padding:7px 6px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:6px}
+.rows .r:last-child{border-bottom:none}
+.rows .t{height:8px;background:var(--soft);border-radius:99px;margin-top:4px;overflow:hidden}
+.rows .f{height:100%;background:var(--gold);border-radius:99px}
+.rows .r.sel{background:var(--soft)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+label{font-size:13px;color:var(--muted);font-weight:600}
+select,input[type=number],input[type=date]{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+input[type=range]{width:100%;accent-color:var(--teal)}
+.ctl{margin-bottom:12px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl .val{font-weight:700;font-variant-numeric:tabular-nums}
+.answer{border-left:5px solid var(--teal);background:var(--teal-soft);border-radius:10px;padding:14px 16px;margin:10px 0}
+.answer.close{border-color:var(--amber);background:var(--gold-soft)}
+.answer.below{border-color:var(--red);background:var(--red-soft)}
+.answer .state{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.answer .big{font-size:22px;font-weight:700}
+.limits{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14.5px;margin-top:10px}
+.limits h4{margin:0 0 4px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.limits ul{margin:4px 0 0;padding-left:18px}
+.limits li{margin:2px 0}
+.limits .warnline{color:var(--red);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn.navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.loud{box-shadow:0 0 0 3px var(--red-soft);background:var(--red);border-color:var(--red);color:#fff}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.lines{display:grid;gap:8px}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;width:100%}
+.sw .pill{width:42px;height:24px;border-radius:99px;background:var(--teal);position:relative;flex:none}
+.sw .pill::after{content:"";position:absolute;top:3px;left:21px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+.sw.off{opacity:.6}.sw.off .pill{background:var(--line)}.sw.off .pill::after{left:3px}.sw.off .nm{text-decoration:line-through}
+.mix{display:grid;grid-template-columns:1fr 120px;gap:6px 12px;align-items:center;font-size:13.5px;margin:8px 0}
+.mix select{padding:5px 8px}
+details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:8px}
+summary{cursor:pointer;font-weight:700;font-size:13.5px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* Selected plan */
+.plan{position:sticky;top:8px;z-index:5;background:var(--card);border:2px solid var(--teal);border-radius:14px;padding:14px 16px;margin-bottom:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.plan .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{background:var(--teal-soft);color:var(--ink);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.chip button{border:none;background:var(--card);color:var(--muted);border-radius:99px;width:22px;height:22px;cursor:pointer;font-weight:700}
+.plan .res{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.plan .res div{background:var(--soft);border-radius:10px;padding:8px 12px}
+.plan .res .l{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.plan .res .v{font-size:19px;font-weight:700}
+.empty{color:var(--muted);font-size:14px}
+footer{font-size:12.5px;color:var(--muted);margin-top:8px}
+.mock{font-size:12px;color:var(--muted);text-align:center;margin-top:24px}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.plan .res{grid-template-columns:1fr}.plan{position:static}}
+@media print{.plan{position:static;box-shadow:none}nav,.btns,.btn,input[type=range]{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div>
+    <div class="firm">Benjamin Branson Bookkeeping</div>
+    <h1>September 2026 Business Explorer</h1>
+    <div class="sub">Sandbox Company US 1c1b · Numbers from your books as of September 30, 2026</div>
+  </div>
+  <span class="badge">MOCKUP · SANDBOX DATA</span>
+</div></header>
+
+<div class="wrap">
+<nav>
+  <button class="on">Can I afford this?<small>Version 1</small></button>
+  <button disabled>Where are we vulnerable?<small>Coming in Version 2</small></button>
+  <button disabled>What worked?<small>Coming in Version 3</small></button>
+</nav>
+
+<div class="keyrow">
+  <span><b>Where a number comes from:</b> <span class="tag books">Books</span> <span class="tag calc">Calculated</span> <span class="tag you">You choose</span> <span class="tag assumed">Assumed</span> <span class="tag missing">Missing</span></span>
+  <span><b>Checked by Ben?</b> <span class="tag reviewed">Reviewed</span> <span class="tag pending">Pending review</span></span>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">Sales</div><div class="v">$15,522.48</div></div>
+  <div class="kpi"><div class="l">Total costs</div><div class="v">$13,039.37</div></div>
+  <div class="kpi"><div class="l">Profit</div><div class="v" style="color:var(--teal)">$2,483.11</div></div>
+  <div class="kpi"><div class="l">Cash in bank</div><div class="v">$9,115.38</div></div>
+</div>
+<p class="lead" style="margin-top:-6px">September's numbers are <span class="tag pending">Pending review</span>: the month-end close isn't signed off yet (0 of 8 steps). They change to <span class="tag reviewed">Reviewed</span> once it is.</p>
+
+<!-- Your selected plan -->
+<div class="plan" id="plan">
+  <div class="top">
+    <h2 style="margin:0">Your selected plan</h2>
+    <div class="btns" style="margin:0">
+      <button class="btn" id="clearPlan">Clear</button>
+      <button class="btn primary" id="savePlan">Save this plan</button>
+      <button class="btn" onclick="window.print()">Print</button>
+      <a class="btn navy" id="ctaPlan" href="#">Discuss with Ben →</a>
+    </div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="res" id="planRes"></div>
+  <div id="planLimits"></div>
+</div>
+
+<!-- 1. Explore -->
+<div class="card">
+  <h2>Your last 13 months <span class="tag books">Books</span> <span class="tag pending">Pending review</span></h2>
+  <p class="lead">Tap any month to see it next to September.</p>
+  <div class="legend"><span><span class="swatch" style="background:var(--teal)"></span>Sales</span><span><span class="swatch" style="background:var(--gold)"></span>Total costs</span></div>
+  <div id="trend"></div>
+  <div class="detail" id="monthDetail"></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Where the money went <span class="tag books">Books</span></h2>
+    <p class="lead">Tap a cost to see what it takes out of every $1 of sales.</p>
+    <div class="rows" id="costs"></div>
+  </div>
+  <div class="card">
+    <h2>What this cost means</h2>
+    <div class="detail" id="costDetail">Tap a cost on the left.</div>
+    <h2 style="margin-top:18px;font-size:16px">How each cost behaves <span class="tag assumed">Assumed</span></h2>
+    <p class="lead" style="margin-bottom:4px">How much of each cost goes up or down with the number of jobs. Every answer on this page uses these settings.</p>
+    <div class="limits" style="margin:6px 0"><b>Starting assumptions — confirm with Ben.</b> <span id="mixStatus"></span></div>
+    <details><summary>Change cost behavior (advanced)</summary><div class="mix" id="mix"></div>
+    <div class="empty">0% = stays the same no matter how much work (rent). 100% = rises with every job (materials). In between = partly both, e.g. a salaried foreman plus hourly crew.</div></details>
+  </div>
+</div>
+
+<!-- 2. Questions -->
+<div class="card">
+  <h2>Ask a question</h2>
+  <p class="lead">Pick a question, move the sliders, then add it to your plan to see it together with everything else.</p>
+  <div class="grid2">
+    <div>
+      <div class="ctl"><label for="q">Question</label>
+        <select id="q">
+          <option value="profit">How much would I need to sell to make $X profit a month?</option>
+          <option value="hire">Can I afford a new hire?</option>
+          <option value="supplier">What price raise covers a supplier increase?</option>
+          <option value="price">What if I raise prices and lose some jobs?</option>
+        </select>
+      </div>
+      <div id="qInputs"></div>
+    </div>
+    <div>
+      <div class="answer" id="qAnswer"></div>
+      <div id="qChart"></div>
+      <div id="qLimits"></div>
+      <div class="btns"><button class="btn primary" id="addQ">Add to my plan</button><a class="btn" id="ctaQ" href="#">Discuss with Ben →</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Lose a line -->
+<div class="card">
+  <h2>What if you lost a line of work? <span class="tag books">Books</span></h2>
+  <p class="lead">Switch a service off to see whether the rest still pays the bills. This is a separate test; it isn't added to your plan.</p>
+  <div class="grid2">
+    <div class="lines" id="lines"></div>
+    <div>
+      <div class="answer" id="lineAnswer"></div>
+      <div id="lineChart"></div>
+      <div class="limits"><h4>Limits of this answer</h4><ul>
+        <li>Uses your <b>average</b> cost rate: every $1 of lost sales also removes about <b id="avgVar"></b> of costs that grow with jobs. Losing installation work may save different costs than losing maintenance work.</li>
+        <li>A test of losing your biggest <b>customers</b> comes once customer sales are pulled from QuickBooks. <span class="tag missing">Missing</span></li></ul></div>
+      <div class="btns"><a class="btn" id="ctaL" href="#">Discuss with Ben →</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Cash -->
+<div class="card">
+  <h2>Your cash over the next 13 weeks</h2>
+  <p class="lead">Profit isn't cash. This uses your selected plan plus the settings below.</p>
+  <div class="grid2">
+    <div>
+      <div class="ctl"><div class="row"><label>Keep at least this much in the bank <span class="tag you">You choose</span></label><span class="val" id="reserveV"></span></div><input type="range" id="reserve" min="0" max="10000" step="500" value="3000"></div>
+      <div class="ctl"><div class="row"><label>Customers pay later than usual by <span class="tag you">You choose</span></label><span class="val" id="lagV"></span></div><input type="range" id="lag" min="0" max="6" step="1" value="0"></div>
+      <div class="ctl"><div class="row"><label>Buy equipment for <span class="tag you">You choose</span></label><span class="val" id="equipV"></span></div><input type="range" id="equip" min="0" max="20000" step="500" value="0"></div>
+      <div class="ctl"><div class="row"><label>…in week</label><span class="val" id="equipWkV"></span></div><input type="range" id="equipWk" min="1" max="13" step="1" value="4"></div>
+      <button class="sw off" id="old"><span class="nm">Count the $7,451.13 that's 91+ days old as coming in (weeks 6–9)</span><span class="pill"></span></button>
+      <div class="btns"><button class="btn primary" id="addCash">Add these to my plan</button></div>
+    </div>
+    <div>
+      <div class="limits" id="draftNote" style="display:none;border-style:dashed;margin-top:0"><b>Preview — these settings aren't in your plan yet.</b> The chart shows them; your plan and anything you save don't, until you press "Add these to my plan".</div>
+      <div class="answer" id="cashAnswer"></div>
+      <div class="legend"><span><span class="swatch" style="background:var(--teal)"></span>Estimated cash at end of week</span><span><span class="swatch" style="background:var(--red)"></span>Your minimum</span></div>
+      <div id="cashChart"></div>
+      <div class="btns"><a class="btn" id="ctaC" href="#">Discuss with Ben →</a></div>
+    </div>
+  </div>
+  <div class="limits"><h4>Where these numbers come from</h4><ul>
+    <li>Starting cash $9,115.38, what customers owe by age, and vendor bills by age <span class="tag books">Books</span>.</li>
+    <li><b>When</b> that money moves is assumed, not taken from the books: current invoices collected weeks 1–4, 1–30 days weeks 2–5, 31–60 days weeks 4–8; overdue vendor bills paid week 1, current bills weeks 2–3 <span class="tag assumed">Assumed</span>.</li>
+    <li>New sales and costs at September's pace, spread evenly by week <span class="tag calc">Calculated</span>; new sales collected 4 weeks after the work <span class="tag assumed">Assumed</span>. September's $1,368.41 of labor is inside the weekly cost estimate.</li>
+    <li class="warnline">Payroll dates and loan payments <span class="tag missing">Missing</span>. When real payroll dates are added, they replace the even labor estimate (never both). Loan principal is cash going out even though it isn't an expense, so it will be added separately.</li></ul></div>
+</div>
+
+<footer>Every figure comes from your QuickBooks books for September 2026, calculated the same way as your monthly report, or from a setting you chose (marked). Results show what happens <i>if</i> the stated assumptions hold. They are not forecasts or promises. Calculation version explorer-1.0. Questions: benjamin@benjaminbransonbookkeeping.com · 432-231-3049</footer>
+<div class="mock">Mockup for review. The real file is generated by Voice Ledger from each month's sealed report data and works offline.</div>
+</div>
+
+<script>
+const CALC_VERSION="explorer-1.0", REPORT_DATE="2026-09-30", CLIENT="Sandbox Company US 1c1b";
+const MONTHS=[["Sep '25",13248.56,9573.23],["Oct '25",13081.68,7783.84],["Nov '25",9891.25,7179.55],["Dec '25",10820.92,7503.57],["Jan '26",15231.30,13075.57],["Feb '26",8589.08,6476.34],["Mar '26",10787.53,7596.32],["Apr '26",13524.94,8967.89],["May '26",13728.24,10041.27],["Jun '26",16260.82,10021.75],["Jul '26",16019.16,14174.01],["Aug '26",12633.92,8991.83],["Sep '26",15522.48,13039.37]];
+const SALES=15522.48, PROFIT=2483.11, TOTAL=13039.37, CASH=9115.38, WEEKS_PER_MONTH=4.33;
+// [name, amount, share that grows with jobs (0–1), is material]
+const COSTS=[["Job Materials (other)",4326.93,1,true],["Fuel",2820.73,.75,false],["Other (10 categories)",2013.53,.25,false],["Cost of Labor",1368.41,.75,false],["Rent or Lease",1200,0,false],["Plants and Soil",588.52,1,true],["Advertising",450,0,false],["Cost of goods sold",160,1,true],["Other expenses (interest, fees)",111.25,0,false]];
+const LINES=[["Maintenance and Repair",3255.46],["Installation",3200],["Landscaping Services",2704.99],["Design income",2519.74],["Plants and Soil",1364.66],["Pest Control Services",1347.63],["Services",750],["Sales of Product Income",380]];
+// Amounts from the books; the week windows are ASSUMED timing (labelled on the page).
+const AR=[["Current",12107.06,1,4],["1–30 days",3200,2,5],["31–60 days",2123.32,4,8]], AR_OLD=["91+ days",7451.13,6,9];
+const AP=[["Overdue (31+ days)",2790.67+2316,1,1],["Current",1986.93,2,3]];
+const NEW_SALES_COLLECTED_AFTER_WEEKS=4;
+const REVIEW_STATUS="pending", SNAPSHOT_REF="monthly-reports/2026-09/2026-10-03T205003Z-770db84978d4/snapshot.json";
+const MIX_CONFIRMED={by:null,at:null};
+const MAIL="mailto:benjamin@benjaminbransonbookkeeping.com?subject=";
+const $=id=>document.getElementById(id);
+const fmt=(v,dec=2)=>(v<0?"-":"")+"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const variable=()=>COSTS.reduce((s,c)=>s+c[1]*c[2],0);
+const fixed=()=>TOTAL-variable();
+const materials=()=>COSTS.reduce((s,c)=>s+(c[3]?c[1]:0),0);
+const keep=()=>1-variable()/SALES;
+const CAPACITY="Staffing and equipment capacity have not been assessed. More work may need more crew, trucks or hours.";
+
+// ---------- Plan model: every change the owner adds, combined in one calculation ----------
+const plan={priceUp:0,loseJobs:0,hireCost:0,hireBrings:0,supplierPct:0,payLate:0,equip:0,equipWk:4,oldAR:false,target:null};
+function monthly(p){
+  const j=1-p.loseJobs/100, ratio=variable()/SALES;
+  const sales=SALES*(1+p.priceUp/100)*j+p.hireBrings;
+  // Supplier increase applies to ALL modeled material use: existing work and the
+  // hire's added work (same material mix per sales dollar as September).
+  const materialUse=materials()*j+p.hireBrings*materials()/SALES;
+  const costs=variable()*j+p.hireBrings*ratio+materialUse*(p.supplierPct/100)+fixed()+p.hireCost;
+  return{sales,costs,profit:sales-costs};
+}
+function cash(p,reserve){
+  const m=monthly(p),wkSales=m.sales/WEEKS_PER_MONTH,wkCosts=m.costs/WEEKS_PER_MONTH,inn=Array(14).fill(0),out=Array(14).fill(0),lag=p.payLate;
+  const spread=(arr,amt,a,b)=>{for(let w=a;w<=b;w++)if(w>=1&&w<=13)arr[w]+=amt/(b-a+1)};
+  AR.forEach(([,amt,a,b])=>spread(inn,amt,a+lag,b+lag));
+  if(p.oldAR)spread(inn,AR_OLD[1],AR_OLD[2]+lag,AR_OLD[3]+lag);
+  for(let w=1+NEW_SALES_COLLECTED_AFTER_WEEKS+lag;w<=13;w++)inn[w]+=wkSales;
+  AP.forEach(([,amt,a,b])=>spread(out,amt,a,b));
+  for(let w=1;w<=13;w++)out[w]+=wkCosts;
+  if(p.equip)out[p.equipWk]+=p.equip;
+  let bal=CASH,low=Infinity,lowWk=0,first=0;const pts=[];
+  for(let w=1;w<=13;w++){bal+=inn[w]-out[w];pts.push(bal);if(bal<low){low=bal;lowWk=w}if(!first&&bal<reserve)first=w}
+  const room=low-reserve;
+  const state=low<0?"below":room<0?"below":room<Math.max(1000,reserve*.25)?"close":"ok";
+  return{pts,low,lowWk,first,room,state};
+}
+const STATE_LABEL={ok:"Above your minimum",close:"Close to your minimum",below:"Below your minimum"};
+function cashText(c,reserve){
+  const head=c.low<0?`Cash goes negative: lowest about ${fmt(c.low,0)} in week ${c.lowWk}`:`Estimated lowest cash: ${fmt(c.low,0)} in week ${c.lowWk}`;
+  const body=c.room>=0?`That's ${fmt(c.room,0)} above your ${fmt(reserve,0)} minimum.`:`That's ${fmt(-c.room,0)} below your ${fmt(reserve,0)} minimum, starting in week ${c.first}.`;
+  return{head,body:body+" <b>Payroll timing and loan payments still need confirmation.</b>"};
+}
+
+// ---------- Bars ----------
+function bars(el,pairs,{h=220,colors=["--teal","--gold"],onClick,sel,neg=false,line}={}){
+  const w=Math.max(el.clientWidth,300),pad=40,bottom=26,n=pairs.length,keys=pairs[0].vals.length;
+  const vals=pairs.flatMap(p=>p.vals).concat(line!=null?[line]:[]),max=Math.max(...vals,1),min=neg?Math.min(0,...vals):0;
+  const y=v=>8+(h-bottom-8)*(max-v)/(max-min),gw=(w-pad)/n,bw=Math.min(26,(gw-8)/keys);
+  const tick=v=>Math.abs(v)>=1000?(v<0?"-":"")+"$"+Math.round(Math.abs(v)/1000)+"K":fmt(v,0);
+  let s=`<svg width="${w}" height="${h}" role="img">`;
+  [0,.5,1].forEach(t=>{const v=min+(max-min)*t;s+=`<line x1="${pad}" x2="${w}" y1="${y(v)}" y2="${y(v)}" stroke="${css("--line")}"/><text x="${pad-4}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="${css("--muted")}">${tick(v)}</text>`});
+  pairs.forEach((p,i)=>{const x0=pad+i*gw+(gw-bw*keys)/2;
+    if(sel===i)s+=`<rect x="${pad+i*gw+2}" y="2" width="${gw-4}" height="${h-bottom}" rx="6" fill="${css("--soft")}"/>`;
+    p.vals.forEach((v,k)=>{const top=Math.min(y(v),y(0)),ht=Math.max(2,Math.abs(y(v)-y(0)));
+      s+=`<rect class="bar" data-i="${i}" x="${x0+k*bw}" y="${top}" width="${bw-2}" height="${ht}" rx="3" fill="${v<0?css("--red"):css(p.colors?.[k]||colors[k])}"><title>${p.label}: ${fmt(v)}</title></rect>`});
+    s+=`<text x="${pad+i*gw+gw/2}" y="${h-8}" text-anchor="middle" font-size="10" fill="${css("--muted")}">${p.label}</text>`});
+  if(line!=null)s+=`<line x1="${pad}" x2="${w}" y1="${y(line)}" y2="${y(line)}" stroke="${css("--red")}" stroke-dasharray="5 4" stroke-width="2"/>`;
+  el.innerHTML=s+"</svg>";
+  if(onClick)el.querySelectorAll(".bar").forEach(b=>b.onclick=()=>onClick(+b.dataset.i));
+}
+const limits=(items)=>`<div class="limits"><h4>Limits of this answer</h4><ul>${items.map(i=>`<li${i.warn?' class="warnline"':""}>${i.t}</li>`).join("")}</ul></div>`;
+
+// ---------- 1. Trend + costs ----------
+// The sentence follows the actual direction of each number, never a template.
+function explain(dS,dC,dP,l){
+  const sales=dS>0?"higher":dS<0?"lower":"the same", costs=dC>0?"higher":dC<0?"lower":"the same";
+  const left=dP>0?"more":dP<0?"less":"the same amount";
+  let why="";
+  if(dS>0&&dC>0)why=dP<0?" Costs rose more than sales.":" Sales rose more than costs.";
+  else if(dS<0&&dC>0)why=" Lower sales and higher costs both cut into profit.";
+  else if(dS>0&&dC<=0)why=" Higher sales and steady or lower costs both helped.";
+  else if(dS<0&&dC<0)why=dP<0?" Sales fell more than costs.":" Costs fell more than sales.";
+  return `In September, sales were ${sales} and costs were ${costs} than in ${l}, so ${left} was left over.${why}`;
+}
+let selMonth=11;
+function drawTrend(){
+  bars($("trend"),MONTHS.map(m=>({label:m[0],vals:[m[1],m[2]]})),{sel:selMonth,onClick:i=>{selMonth=i;drawTrend()}});
+  const [l,s,c]=MONTHS[selMonth],[,S,C]=MONTHS[12],p=s-c,P=S-C,d=(a,b)=>`${a>=b?"▲":"▼"} ${fmt(Math.abs(a-b))}`;
+  $("monthDetail").innerHTML=selMonth===12?`<b>Sep '26</b>: sales ${fmt(S)}, costs ${fmt(C)}, profit ${fmt(P)} (${Math.round(P/S*100)}¢ of every $1). Tap another month to compare.`
+   :`<b>Sep '26 vs ${l}</b> · Sales ${fmt(S)} vs ${fmt(s)} (${d(S,s)}) · Costs ${fmt(C)} vs ${fmt(c)} (${d(C,c)}) · Profit ${fmt(P)} vs ${fmt(p)} (${d(P,p)}). ${explain(S-s,C-c,P-p,l)}`;
+}
+let selCost=-1;
+function drawCosts(){
+  const max=COSTS[0][1];
+  $("costs").innerHTML=COSTS.map((c,i)=>`<div class="r${i===selCost?" sel":""}" data-i="${i}" tabindex="0"><div>${c[0]}<div class="t"><div class="f" style="width:${c[1]/max*100}%"></div></div></div><div class="num">-${fmt(c[1])}</div></div>`).join("");
+  $("costs").querySelectorAll(".r").forEach(r=>r.onclick=()=>{selCost=+r.dataset.i;drawCosts()});
+  if(selCost<0)return;
+  const [n,v,share]=COSTS[selCost],cents=Math.round(v/SALES*100),cut=v*.1;
+  $("costDetail").innerHTML=`<b>${n}</b><br>${fmt(v)} in September, about <b>${cents}¢ of every $1</b> of sales. Set to ${Math.round(share*100)}% "grows with jobs".<br><br>Cutting it 10% would add <b>${fmt(cut)}</b> a month (${fmt(cut*12,0)} a year), if sales stay the same.`;
+}
+function drawMix(){
+  $("mix").innerHTML=COSTS.map((c,i)=>`<span>${c[0]}</span><select data-i="${i}">${[0,.25,.5,.75,1].map(v=>`<option value="${v}"${v===c[2]?" selected":""}>${v*100}% with jobs</option>`).join("")}</select>`).join("");
+  $("mix").querySelectorAll("select").forEach(s=>s.onchange=()=>{COSTS[+s.dataset.i][2]=+s.value;all()});
+  $("mixStatus").innerHTML=MIX_CONFIRMED.by?`Confirmed by ${MIX_CONFIRMED.by} on ${MIX_CONFIRMED.at}.`:`<span class="tag pending">Not yet confirmed</span> These percentages are placeholders until Ben checks how your fuel, labor and other costs actually behave.`;
+}
+
+// ---------- 2. Questions ----------
+const vals={};
+const Q={
+  profit:{inputs:[["goal","Monthly profit I want",4000,0,30000,250,"$"]],add:"Set as my target",solve:v=>{
+    const need=(v.goal+fixed())/keep(),extra=need-SALES,big=extra/SALES>.25;
+    return{state:extra>0&&big?"close":"ok",label:extra>0?"Needs more sales":"Already there",big:extra>0?`Sell about ${fmt(need,0)} a month`:`September already gets there`,
+      text:extra>0?`That's ${fmt(extra,0)} more than September (+${Math.round(extra/SALES*100)}%). Each extra $1 of sales keeps about ${(keep()*100).toFixed(0)}¢ after costs that grow with jobs.`:`September's sales already reach that profit.`,
+      chart:[{label:"September",vals:[SALES]},{label:"Needed",vals:[need],colors:["--gold"]}],
+      limits:[{t:`Uses your cost settings: ${fmt(fixed(),0)} a month stays the same; the rest grows with jobs.`},...(big?[{t:CAPACITY,warn:true}]:[])],
+      apply:()=>{plan.target=v.goal}}}},
+  hire:{inputs:[["cost","Monthly cost of the hire (pay + payroll taxes)",4000,0,15000,250,"$"],["brings","Extra sales they'd bring in a month",6000,0,40000,250,"$"]],add:"Add the hire to my plan",solve:v=>{
+    const gain=v.brings*keep()-v.cost,need=v.cost/keep();
+    return{state:PROFIT+gain<0?"below":gain<0?"close":"ok",label:gain>=0?"Pays for itself":"Costs more than it brings",big:gain>=0?`About ${fmt(gain,0)} a month better off`:`About ${fmt(-gain,0)} a month short`,
+      text:`To pay for itself, the hire needs to bring in about <b>${fmt(need,0)}</b> of extra sales a month. Profit would go from ${fmt(PROFIT,0)} to ${fmt(PROFIT+gain,0)}.`,
+      chart:[{label:"Profit now",vals:[PROFIT]},{label:"With hire",vals:[PROFIT+gain],colors:["--gold"]}],
+      limits:[{t:`Your guesses: the hire costs ${fmt(v.cost,0)} and brings ${fmt(v.brings,0)} a month.`},{t:"New hires often take a few months to reach full speed, so early months may look worse."}],
+      apply:()=>{plan.hireCost=v.cost;plan.hireBrings=v.brings}}}},
+  supplier:{inputs:[["pct","Supplier price increase on materials",10,0,50,1,"%"]],add:"Add the increase to my plan",solve:v=>{
+    const hit=materials()*v.pct/100,raise=hit/SALES*100;
+    return{state:PROFIT-hit<0?"below":"close",label:"Price raise needed",big:`Raise prices about ${raise.toFixed(1)}%`,
+      text:`A ${v.pct}% increase on materials (${fmt(materials())} in September) costs about <b>${fmt(hit)}</b> a month. Raising prices ${raise.toFixed(1)}% covers it.`,
+      chart:[{label:"Profit now",vals:[PROFIT]},{label:"After increase",vals:[PROFIT-hit],colors:["--gold"]}],
+      limits:[{t:"Materials here = Job Materials, Plants and Soil, and cost of goods sold. Fuel isn't included."},{t:"Assumes the same number of jobs after the price change."}],
+      apply:()=>{plan.supplierPct=v.pct}}}},
+  price:{inputs:[["up","Raise prices by",10,0,30,1,"%"],["lose","Lose this share of jobs",5,0,40,1,"%"]],add:"Add to my plan",solve:v=>{
+    const m=monthly({...plan,priceUp:v.up,loseJobs:v.lose,hireCost:0,hireBrings:0,supplierPct:0}),d=m.profit-PROFIT;
+    let maxLose=0;for(let L=0;L<=90;L+=.5){if(monthly({priceUp:v.up,loseJobs:L,hireCost:0,hireBrings:0,supplierPct:0}).profit>=PROFIT)maxLose=L}
+    return{state:m.profit<0?"below":d<0?"close":"ok",label:d>=0?"Profit goes up":"Profit goes down",big:`Profit ${d>=0?"up":"down"} ${fmt(Math.abs(d),0)} a month`,
+      text:`New monthly profit about <b>${fmt(m.profit,0)}</b>. With a ${v.up}% raise you could lose up to about <b>${maxLose}%</b> of jobs before profit drops below September's.`,
+      chart:[{label:"Profit now",vals:[PROFIT]},{label:"After change",vals:[m.profit],colors:["--gold"]}],
+      limits:[{t:`Your guesses: prices up ${v.up}%, ${v.lose}% fewer jobs.`},{t:"Fewer jobs also means less of the costs that grow with jobs (per your cost settings)."}],
+      apply:()=>{plan.priceUp=v.up;plan.loseJobs=v.lose}}}}
+};
+function drawQ(){
+  const q=Q[$("q").value];
+  $("qInputs").innerHTML=q.inputs.map(([k,l,d,mn,mx,st])=>{if(vals[k]==null)vals[k]=d;return`<div class="ctl"><div class="row"><label>${l} <span class="tag you">You choose</span></label><span class="val" id="${k}V"></span></div><input type="range" id="${k}" min="${mn}" max="${mx}" step="${st}" value="${vals[k]}"></div>`}).join("");
+  q.inputs.forEach(([k,,,,,,u])=>{const el=$(k),show=()=>{$(k+"V").textContent=u==="%"?el.value+"%":fmt(+el.value,0)};el.oninput=()=>{vals[k]=+el.value;show();answerQ()};show()});
+  $("addQ").textContent=q.add;
+  answerQ();
+}
+function answerQ(){
+  const r=Q[$("q").value].solve(vals);
+  $("qAnswer").className="answer "+r.state;
+  $("qAnswer").innerHTML=`<div class="state">${r.label}</div><div class="big">${r.big}</div>${r.text}`;
+  bars($("qChart"),r.chart,{h:160,neg:true});
+  $("qLimits").innerHTML=limits(r.limits);
+  $("ctaQ").className="btn"+(r.state==="below"?" loud":"");
+  $("ctaQ").href=MAIL+encodeURIComponent("Explorer question: "+$("q").selectedOptions[0].text);
+}
+$("q").onchange=drawQ;
+$("addQ").onclick=()=>{Q[$("q").value].solve(vals).apply();drawPlan();drawCash()};
+
+// ---------- 3. Lines ----------
+const lineOn=LINES.map(()=>true);
+function drawLines(){
+  $("lines").innerHTML=LINES.map((l,i)=>`<button class="sw${lineOn[i]?"":" off"}" data-i="${i}" aria-pressed="${lineOn[i]}"><span class="nm">${l[0]}</span><span style="display:flex;gap:10px;align-items:center"><b>${fmt(l[1])}</b><span class="pill"></span></span></button>`).join("");
+  $("lines").querySelectorAll(".sw").forEach(t=>t.onclick=()=>{lineOn[+t.dataset.i]=!lineOn[+t.dataset.i];drawLines()});
+  $("avgVar").textContent=Math.round(variable()/SALES*100)+"¢";
+  const lost=LINES.reduce((s,l,i)=>s+(lineOn[i]?0:l[1]),0),s2=SALES-lost,p2=s2-variable()*(s2/SALES)-fixed();
+  const state=p2<0?"below":lost>0?"close":"ok";
+  $("lineAnswer").className="answer "+state;
+  $("lineAnswer").innerHTML=lost===0?`<div class="state">All lines on</div><div class="big">Profit ${fmt(PROFIT)}</div>Switch a line of work off to see what changes.`
+    :`<div class="state">${p2<0?"Doesn't cover fixed costs":"Still profitable"}</div><div class="big">Profit about ${fmt(p2,0)} a month</div>Losing ${fmt(lost,0)} of sales (${Math.round(lost/SALES*100)}%) ${p2<0?"means the rest no longer covers your fixed costs.":`keeps the business profitable, but takes ${Math.round((PROFIT-p2)/PROFIT*100)}% of your profit with it.`}`;
+  bars($("lineChart"),[{label:"Profit now",vals:[PROFIT]},{label:"Without it",vals:[p2],colors:["--gold"]}],{h:150,neg:true});
+  $("ctaL").href=MAIL+encodeURIComponent("Explorer: what if we lost a line of work");
+}
+
+// ---------- 4. Cash ----------
+const cashUI={payLate:0,equip:0,equipWk:4,oldAR:false};
+function drawCash(){
+  const reserve=+$("reserve").value;
+  Object.assign(cashUI,{payLate:+$("lag").value,equip:+$("equip").value,equipWk:+$("equipWk").value});
+  $("reserveV").textContent=fmt(reserve,0);$("lagV").textContent=cashUI.payLate?cashUI.payLate+" week"+(cashUI.payLate>1?"s":""):"on time";
+  $("equipV").textContent=cashUI.equip?fmt(cashUI.equip,0):"nothing";$("equipWkV").textContent="week "+cashUI.equipWk;
+  $("old").className="sw"+(cashUI.oldAR?"":" off");
+  const draft=["payLate","equip","equipWk","oldAR"].some(k=>cashUI[k]!==plan[k]&&!(k==="equipWk"&&!cashUI.equip&&!plan.equip));
+  $("draftNote").style.display=draft?"block":"none";
+  const c=cash({...plan,...cashUI},reserve),t=cashText(c,reserve);
+  $("cashAnswer").className="answer "+c.state;
+  $("cashAnswer").innerHTML=`<div class="state">${draft?"Preview · ":""}${STATE_LABEL[c.state]} · Estimate</div><div class="big">${t.head}</div>${t.body}`;
+  bars($("cashChart"),c.pts.map((v,i)=>({label:"W"+(i+1),vals:[v]})),{h:200,neg:true,line:reserve});
+  $("ctaC").className="btn"+(c.state==="below"?" loud":"");
+  $("ctaC").href=MAIL+encodeURIComponent("Explorer: cash over the next 13 weeks");
+  drawPlan();
+}
+["reserve","lag","equip","equipWk"].forEach(id=>$(id).oninput=drawCash);
+$("old").onclick=()=>{cashUI.oldAR=!cashUI.oldAR;drawCash()};
+// Removing or clearing plan changes resets the cash controls, so the chart,
+// the plan panel and a saved file always describe the same plan.
+function syncCashControls(){
+  Object.assign(cashUI,{payLate:plan.payLate,equip:plan.equip,equipWk:plan.equipWk,oldAR:plan.oldAR});
+  $("lag").value=plan.payLate;$("equip").value=plan.equip;$("equipWk").value=plan.equipWk;
+}
+$("addCash").onclick=()=>{Object.assign(plan,cashUI);drawPlan();drawCash()};
+
+// ---------- Plan panel ----------
+const CHIPS=[
+  ["priceUp",p=>p.priceUp||p.loseJobs?`Prices +${p.priceUp}%, ${p.loseJobs}% fewer jobs`:null,p=>{p.priceUp=0;p.loseJobs=0}],
+  ["hire",p=>p.hireCost?`New hire ${fmt(p.hireCost,0)}/mo, brings ${fmt(p.hireBrings,0)}/mo`:null,p=>{p.hireCost=0;p.hireBrings=0}],
+  ["supplier",p=>p.supplierPct?`Materials +${p.supplierPct}%`:null,p=>{p.supplierPct=0}],
+  ["late",p=>p.payLate?`Customers pay ${p.payLate} wk late`:null,p=>{p.payLate=0}],
+  ["equip",p=>p.equip?`Equipment ${fmt(p.equip,0)} in week ${p.equipWk}`:null,p=>{p.equip=0}],
+  ["old",p=>p.oldAR?`Counting the 91+ day invoices`:null,p=>{p.oldAR=false}],
+  ["target",p=>p.target!=null?`Target: ${fmt(p.target,0)} profit/mo`:null,p=>{p.target=null}]];
+function drawPlan(){
+  const active=CHIPS.map(([k,f,clear])=>[k,f(plan),clear]).filter(c=>c[1]);
+  $("chips").innerHTML=active.length?active.map(([k,t])=>`<span class="chip">${t}<button data-k="${k}" aria-label="Remove">×</button></span>`).join(""):`<span class="empty">Nothing added yet. Use "Add to my plan" below; changes add up here so you can see them together.</span>`;
+  $("chips").querySelectorAll("button").forEach(b=>b.onclick=()=>{CHIPS.find(c=>c[0]===b.dataset.k)[2](plan);syncCashControls();drawPlan();drawCash()});
+  const reserve=+$("reserve").value,m=monthly(plan),c=cash(plan,reserve);
+  const tgt=plan.target!=null?(m.profit>=plan.target?`<span style="color:var(--teal)">meets your ${fmt(plan.target,0)} target</span>`:`<span style="color:var(--red)">${fmt(plan.target-m.profit,0)} short of target</span>`):"";
+  $("planRes").innerHTML=`<div><div class="l">Monthly profit</div><div class="v">${fmt(m.profit,0)}</div><span class="empty">vs ${fmt(PROFIT,0)} now ${tgt}</span></div>
+   <div><div class="l">Monthly sales</div><div class="v">${fmt(m.sales,0)}</div><span class="empty">vs ${fmt(SALES,0)} now</span></div>
+   <div><div class="l">Lowest cash, 13 weeks</div><div class="v" style="color:${c.state==="below"?"var(--red)":c.state==="close"?"var(--amber)":"inherit"}">${fmt(c.low,0)}</div><span class="empty">${STATE_LABEL[c.state].toLowerCase()} · estimate</span></div>`;
+  const lim=[{t:"Cash is an estimate: payroll dates and loan payments are <b>missing</b>, and collection and payment timing is <b>assumed</b>."}];
+  if(!MIX_CONFIRMED.by)lim.push({t:"Cost behavior percentages are starting assumptions, not yet confirmed with Ben."});
+  if(m.sales>SALES*1.25)lim.push({t:CAPACITY,warn:true});
+  $("planLimits").innerHTML=limits(lim);
+  $("ctaPlan").href=MAIL+encodeURIComponent("Explorer: my selected plan");
+}
+$("clearPlan").onclick=()=>{Object.assign(plan,{priceUp:0,loseJobs:0,hireCost:0,hireBrings:0,supplierPct:0,payLate:0,equip:0,equipWk:4,oldAR:false,target:null});syncCashControls();drawPlan();drawCash()};
+$("savePlan").onclick=()=>{
+  const review=new Date(Date.now()+30*864e5).toISOString().slice(0,10),reserve=+$("reserve").value,m=monthly(plan),c=cash(plan,reserve);
+  const record={kind:"voice-ledger-explorer-plan",calculationVersion:CALC_VERSION,client:CLIENT,reportDate:REPORT_DATE,savedAt:new Date().toISOString(),reviewDate:review,
+    changes:{...plan},cashSettings:{minimumCash:reserve},costBehavior:COSTS.map(([n,a,s])=>({cost:n,septemberAmount:a,shareThatGrowsWithJobs:s})),
+    resultsAtSave:{monthlyProfit:+m.profit.toFixed(2),monthlySales:+m.sales.toFixed(2),lowestCash13Weeks:+c.low.toFixed(2),cashState:c.state},
+    costBehaviorConfirmed:MIX_CONFIRMED,
+    baseline:{snapshotRef:SNAPSHOT_REF,reviewStatus:REVIEW_STATUS,startingCash:CASH,monthlySales:SALES,monthlyTotalCosts:TOTAL,monthlyProfit:PROFIT,weeksPerMonth:WEEKS_PER_MONTH,
+      customersOwe:AR.concat([AR_OLD]).map(([age,amount,fromWeek,toWeek])=>({age,amount,assumedCollectionWeeks:[fromWeek,toWeek]})),
+      vendorBills:AP.map(([age,amount,fromWeek,toWeek])=>({age,amount,assumedPaymentWeeks:[fromWeek,toWeek]})),
+      newSalesCollectedAfterWeeks:NEW_SALES_COLLECTED_AFTER_WEEKS,materialsPerMonth:+materials().toFixed(2)},
+    missing:["payroll dates","loan payments"],note:"What-if result under the stated assumptions; not a forecast."};
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:"application/json"}));
+  a.download=`Plan ${REPORT_DATE.slice(0,7)} saved ${new Date().toISOString().slice(0,10)}.json`;a.click();
+  alert("Saved. Email this file to Ben so it's on record for your next review ("+review+").");
+};
+
+function all(){drawTrend();drawCosts();drawMix();drawQ();drawLines();drawCash()}
+all();window.addEventListener("resize",()=>{drawTrend();answerQ();drawLines();drawCash()});
+</script>
+</body>
+</html>
