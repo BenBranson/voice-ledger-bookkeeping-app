@@ -41,6 +41,8 @@ try {
 if (report.schemaVersion !== 1) fail(`Unsupported snapshot schema ${report.schemaVersion}.`, "Update the renderer to match the app version.");
 
 progress("charts");
+// "($4,264.76)" -> "-$4,264.76" inside chart text (owner request 2026-10-03).
+function minusSigns(svgText) { return svgText.replace(/\((\$[\d,.]+[KkMm]?)\)/g, "-$1"); }
 const theme = VL.themes.print;
 function svg(builder, data, width, height) {
   if (!data) return null;
@@ -60,6 +62,7 @@ try {
   charts = {
     trendMixed: report.trend ? svg("trendMixed", report.trend, 720, 210) : null,
     trendArea: report.trend ? svg("trendArea", report.trend, 720, 190) : null,
+    trendBars: report.trend ? svg("trendRevenueExpenses", report.trend, 720, 200) : null,
     sparklines: report.sparklines ? svg("sparklines", report.sparklines, 720, 30 * report.sparklines.rows.length + 8) : null,
     moneyFlow: report.moneyFlow ? svg("moneyFlow", report.moneyFlow, 720, 290) : null,
     trendNetIncome: report.trend ? svg("trendNetIncome", report.trend, 720, 140) : null,
@@ -70,6 +73,7 @@ try {
     assets: svg("breakdownDiverging", report.assets, 720, breakdownHeight(report.assets)),
     liabilities: svg("breakdownDiverging", report.liabilitiesAndEquity, 720, breakdownHeight(report.liabilitiesAndEquity))
   };
+  for (const k of Object.keys(charts)) if (charts[k]) charts[k] = minusSigns(charts[k]);
 } catch (e) {
   fail("Chart rendering failed.", `A chart could not be drawn (${e.message}). The snapshot is kept for diagnosis.`);
 }

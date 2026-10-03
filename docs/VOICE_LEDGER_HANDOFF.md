@@ -1582,3 +1582,8 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   - Profitability now flows instead of forcing a page break, which removed a near-empty page.
 - **Test:** `test/render.test.mjs` "cover: hero, change chips and trend area".
 - **Still open:** a partial month is compared with a full prior month (see the earlier entry). The cover now warns about it, but the comparisons themselves aren't fixed.
+- **v1.83 (same day), owner: "readable to a 5th grader, understandable in seconds":**
+  - The waterfall chart is gone. In its place is `moneySteps()`, an HTML "From sales to profit" list: every line has an explicit +/-, bars start at zero, and the last line is "= Money left over (profit)" or "Money lost this month". A credit-side cost line (e.g. COGS of +$40) gets a one-line explanation.
+  - The duplicate bridge table was removed; its note is kept.
+  - Negatives show as "-$X" everywhere except Appendix D, which keeps brackets (`sv()`, and `table(..., {brackets:true})`). Chart SVGs are converted in `render.mjs` `minusSigns()`.
+  - The dual-axis revenue/expenses/margin chart was replaced by plain side-by-side bars ("Money in vs money out").

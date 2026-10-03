@@ -10,7 +10,10 @@ const svgImg = (svg, alt) => svg
   ? `<img class="chart" alt="${esc(alt)}" src="data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}">`
   : "";
 
-const neg = (text) => /^\(/.test(String(text)) ? " neg" : "";
+const neg = (text) => /^\(|^-\$/.test(String(text)) ? " neg" : "";
+// Client-facing pages show negatives as "-$4,264.76" (owner, 2026-10-03). Only the
+// financial statements in Appendix D keep accountants' brackets.
+const sv = (text) => String(text ?? "").replace(/^\((.*)\)$/, "-$1");
 
 
 const triangle = (up, color) => `<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="${up ? "M5 1 L9.5 9 L0.5 9 Z" : "M0.5 1 L9.5 1 L5 9 Z"}" fill="${color}"/></svg>`;
@@ -25,10 +28,34 @@ function changeChip(text, higherIsBetter) {
   return `<span class="chip ${cls}">${zero ? "" : triangle(!down, cls === "good" ? "#135E5E" : "#B23A48")}${esc(amount.replace(/[()+]/g, ""))}</span><span>${esc(m[2])}</span>`;
 }
 
+// "From sales to profit" (owner, 2026-10-03): replaces the floating waterfall, which a
+// non-accountant can't read. One row per step with an explicit + or -, bars all start
+// at zero, and the last row is what's left. Amounts and order come from the snapshot.
+const STEP_NAMES = { revenue: "Money in (sales)", cogs: "Cost of goods sold", expenses: "Costs of running the business", "other-expenses": "Other costs (interest, fees)", adjustment: "Bookkeeping adjustment (under review)" };
+function moneySteps(w, note) {
+  const steps = w.steps;
+  const amount = (s) => Math.abs(s.to - s.from);
+  const max = Math.max(...steps.map(amount), 1);
+  const last = steps.at(-1);
+  const lossLeft = last.to < 0;
+  const row = (s, i) => {
+    const total = s.kind === "total", isFirst = i === 0, isLast = i === steps.length - 1;
+    const sign = isLast ? (lossLeft ? "-" : "") : isFirst ? "+" : s.kind === "increase" ? "+" : "-";
+    const value = sign + String(s.valueText).replace(/^\(|\)$/g, "").replace(/^[+-]/, "");
+    const name = isLast ? (lossLeft ? "Money lost this month" : "Money left over (profit)") : (STEP_NAMES[s.id] ?? s.label);
+    const cls = isLast ? (lossLeft ? "loss" : "left") : isFirst ? "in" : s.kind === "increase" ? "in" : "out";
+    const hint = !isFirst && !isLast && s.kind === "increase" ? `<div class="hint">Credits were bigger than costs here, so this line added money.</div>` : "";
+    return `<div class="ms ${cls}${isLast ? " end" : ""}"><div class="nm">${isLast ? "= " : ""}${esc(name)}${hint}</div><div class="tr"><div class="fl" style="width:${(100 * amount(s) / max).toFixed(1)}%"></div></div><div class="vl">${esc(value)}</div></div>`;
+  };
+  return `<div class="keep"><h3>From sales to profit</h3><div class="steps">${steps.map(row).join("")}</div>
+  <div class="caption">${w.reconciles ? "Each line is a QuickBooks total, and they add up exactly to the result." : esc(w.note)}${note ? ` ${esc(note)}` : ""}</div></div>`;
+}
+
 function table(columns, rows, opts = {}) {
   const head = columns.map((c, i) => `<th class="${i === 0 ? "" : "num"}">${esc(c)}</th>`).join("");
+  const fmt = opts.brackets ? (c) => c : sv;
   const body = rows.map((r) => `<tr class="${r.total ? "total" : ""}">${r.cells.map((c, i) =>
-    `<td class="${i === 0 ? `lbl d${Math.min(r.depth ?? 0, 4)}` : `num${neg(c)}`}">${esc(c)}</td>`).join("")}</tr>`).join("");
+    `<td class="${i === 0 ? `lbl d${Math.min(r.depth ?? 0, 4)}` : `num${neg(c)}`}">${esc(i === 0 ? c : fmt(c))}</td>`).join("")}</tr>`).join("");
   return `<table class="${opts.className ?? ""}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
@@ -190,6 +217,21 @@ ol.tk li:before{content:counter(tk);position:absolute;left:0;top:3pt;width:14pt;
 .prow .no{flex:0 0 14pt;height:14pt;border-radius:7pt;background:var(--navy);color:#fff;font-size:7.5pt;font-weight:700;text-align:center;line-height:14pt}
 .prow .act{flex:1}.prow .act b{font-weight:600}.prow .act div{font-size:7.8pt;color:var(--muted)}
 .prow .who{flex:0 0 70pt;font-size:8pt;color:var(--muted)}.prow .when{flex:0 0 96pt;font-size:8pt;color:var(--muted)}.prow .imp{flex:0 0 120pt;font-size:8pt}
+
+.steps{margin:4pt 0 4pt;border:1pt solid var(--line);border-radius:8pt;padding:4pt 10pt}
+.ms{display:flex;align-items:center;gap:10pt;padding:6pt 0;border-bottom:0.6pt solid var(--line)}
+.ms:last-child{border-bottom:none}
+.ms .nm{flex:0 0 190pt;font-size:9.4pt}
+.ms .hint{font-size:7.4pt;color:var(--muted)}
+.ms .tr{flex:1;height:9pt;background:var(--soft);border-radius:4pt}
+.ms .fl{height:9pt;border-radius:4pt}
+.ms .vl{flex:0 0 78pt;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;font-size:10pt}
+.ms.in .fl{background:var(--teal)}.ms.in .vl{color:#135E5E}
+.ms.out .fl{background:var(--neg)}.ms.out .vl{color:var(--neg)}
+.ms.end{border-top:1.2pt solid var(--navy);margin-top:2pt}
+.ms.end .nm{font-weight:700}.ms.end .vl{font-size:11pt}
+.ms.left .fl{background:var(--navy)}.ms.left .vl{color:var(--navy)}
+.ms.loss .fl{background:var(--neg)}.ms.loss .vl{color:var(--neg)}
 /* refreshed look carried through every section */
 h2{border-bottom:0.8pt solid var(--line)}
 h2 .num{display:inline-block;background:var(--navy);color:#fff;border-radius:999pt;padding:0 6pt;font-size:8.5pt;line-height:13pt;vertical-align:1.5pt;margin-right:7pt}
@@ -273,14 +315,14 @@ export function renderHTML(report, charts, fontDir) {
     if (margin == null && !m.isPartialMonth) return "";
     return `<div class="hero-r">${margin != null ? `<div class="v">${esc(margin)}% profit margin</div><div class="s">Net income as a share of revenue.</div>` : ""}${m.isPartialMonth ? `<div class="s">Month in progress: figures run through ${esc(m.balanceDateLabel.replace("Balances as of ", ""))}, so they will grow before the month closes.</div>` : ""}</div>`;
   };
-  const stat = (k) => k ? `<div class="stat"><div class="lbl">${esc(k.label)}</div><div class="v${k.isNegative ? " neg" : ""}">${esc(k.valueText)}</div><div class="c">${changeChip(k.comparisonText, hib(k.id))}</div></div>` : "";
+  const stat = (k) => k ? `<div class="stat"><div class="lbl">${esc(k.label)}</div><div class="v${k.isNegative ? " neg" : ""}">${esc(sv(k.valueText))}</div><div class="c">${changeChip(k.comparisonText, hib(k.id))}</div></div>` : "";
   sections.push(`
 <div class="band"><div><div class="firm">${esc(m.firmName)}</div>
 <div class="title">${esc(m.periodLabel)} Financial Report</div>
 <div class="sub">${esc(m.clientName)} · ${m.isPartialMonth ? "Month in progress · " : ""}${esc(m.balanceDateLabel)}</div></div>
 ${flag ? `<span class="badge">${m.isSample ? "SAMPLE DATA" : "SANDBOX DATA"}</span>` : ""}</div>
 <div class="metaline">Prepared by <b>${esc(report.preparedBy || m.firmName)}</b> · Generated <b>${esc(m.generatedAtLabel)}</b> · Accounting basis <b>${esc(m.accountingBasis)}</b>${flag ? ` · ${esc(flag)}` : ""}</div>
-${net ? `<div class="hero"><div class="hero-l"><div class="lbl">${esc(net.label)}</div><div class="big${net.isNegative ? " neg" : ""}">${esc(net.valueText)}</div><div class="cmp">${changeChip(net.comparisonText, hib("net"))}</div></div>
+${net ? `<div class="hero"><div class="hero-l"><div class="lbl">${esc(net.label)}</div><div class="big${net.isNegative ? " neg" : ""}">${esc(sv(net.valueText))}</div><div class="cmp">${changeChip(net.comparisonText, hib("net"))}</div></div>
 ${bridge0 ? `<div class="hero-r"><div class="s">Before the ${esc(bridge0.adjustmentsText)} bookkeeping adjustment</div><div class="v">${esc(bridge0.beforeAdjustmentsText)} operating result</div><div class="s">The adjustment is under review, not day-to-day spending.</div></div>`
   : heroAside()}</div>` : ""}
 <div class="stats">${stat(kpi.revenue)}${stat(kpi.expenses)}${stat(kpi.cash)}</div>
@@ -296,7 +338,7 @@ ${report.healthChecks?.length ? `<div class="strip">${report.healthChecks.map((h
   sections.push(`<div class="page">${h2("Health, spending and priorities")}
 <div class="panels">
 ${report.healthChecks?.length ? `<div class="panel"><h3>Business health check</h3>${report.healthChecks.map((h) => `<div class="hrow"><div class="top"><span class="n">${esc(h.area)}</span><span class="tagp ${esc(h.statusKind)}">${esc(h.status)}</span></div><div class="d">${esc(h.detail)}</div></div>`).join("")}</div>` : ""}
-${spendItems.length ? `<div class="panel"><h3>Where the money went</h3>${spendItems.map((i) => `<div class="bar"><div class="top"><span>${esc(i.label)}</span><b>${esc(i.valueText)}</b></div><div class="track"><div class="fill${i.category === "other" ? " other" : ""}" style="width:${(100 * Math.abs(i.value) / spendMax).toFixed(1)}%"></div></div></div>`).join("")}<p class="small muted">Operating expenses ${esc(report.expenses.totalText)}; full detail in Where the money went.</p></div>` : ""}
+${spendItems.length ? `<div class="panel"><h3>Where the money went</h3>${spendItems.map((i) => `<div class="bar"><div class="top"><span>${esc(i.label)}</span><b>${esc(sv(i.valueText))}</b></div><div class="track"><div class="fill${i.category === "other" ? " other" : ""}" style="width:${(100 * Math.abs(i.value) / spendMax).toFixed(1)}%"></div></div></div>`).join("")}<p class="small muted">Operating expenses ${esc(report.expenses.totalText)}; full detail in Where the money went.</p></div>` : ""}
 </div>
 <h3>Top priorities before next close</h3>
 ${prio.length ? prio.map((p, i) => `<div class="prow"><div class="no">${i + 1}</div><div class="act"><b>${esc(p.action)}</b><div>${esc(p.why)}</div></div><div class="who">${esc(p.owner)}</div><div class="when">${esc(p.timing)}</div><div class="imp">${esc(p.impact ?? "")}</div></div>`).join("") : `<p class="muted">No priority actions this month.</p>`}
@@ -311,9 +353,10 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
   // 3 — Profitability: reported vs before adjustments
   const perf = [];
   const bridge = report.performanceBridge;
-  if (bridge) perf.push(`<h3>Operating result vs reported result</h3><div class="keep">${table(["", "Amount"], bridge.rows.map((r) => ({ total: r.isTotal, cells: [r.label, r.valueText] })), { className: "bridge" })}${bridge.note ? `<p class="small muted">${esc(bridge.note)}</p>` : ""}</div>`);
-  if (charts.waterfall) perf.push(`<figure class="keep"><h3>How revenue became ${esc(report.waterfall.steps.at(-1).label.toLowerCase())}</h3>${svgImg(charts.waterfall, "Revenue to net income bridge")}<div class="caption">${report.waterfall.reconciles ? "Each step uses QuickBooks' own section totals and ties exactly to reported net income." : esc(report.waterfall.note)}</div></figure>`);
-  if (charts.trendMixed) perf.push(`<figure class="keep"><h3>Revenue, expenses and profit margin by month</h3>${svgImg(charts.trendMixed, "Revenue and expenses by month with profit margin")}<div class="caption">Bars use the left axis; the margin line (net income as a share of revenue) uses the right. Months without revenue have no margin. ${esc(report.trend?.note ?? "")}</div></figure>`);
+  // The bridge table repeated the "From sales to profit" list line for line; only its note stays.
+  if (bridge?.note && !report.waterfall?.steps?.length) perf.push(`<p class="small muted">${esc(bridge.note)}</p>`);
+  if (report.waterfall?.steps?.length) perf.push(moneySteps(report.waterfall, bridge?.note));
+  if (charts.trendBars) perf.push(`<figure class="keep"><h3>Money in vs money out, month by month</h3>${svgImg(charts.trendBars, "Revenue and expenses by month")}<div class="caption">Teal is money in (sales); gold is money out (costs). When gold is taller than teal, that month lost money. ${esc(report.trend?.note ?? "")}</div></figure>`);
   if (report.monthOverMonth.length) perf.push(`<h3>Compared with last month</h3>${comparisonTable(report.monthOverMonth, "Last month")}`);
   if (report.ytd?.length) perf.push(`<div class="keep"><h3>Year to date</h3><p class="small muted">${esc(report.ytdLabel)}</p>${table(["", "This month", "Year to date"], report.ytd.map((r) => ({ total: r.isTotal, cells: [r.label, r.currentText, r.priorText] })))}</div>`);
   if (report.yearOverYear) perf.push(`<h3>Compared with the same month last year</h3>${comparisonTable(report.yearOverYear, "Last year")}`);
@@ -358,7 +401,7 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
     ${items.length ? groups.map(([kind, title, blurb, tagClass]) => {
       const list = items.filter((i) => i.kind === kind);
       if (!list.length) return "";
-      return `<h3>${esc(title)} (${list.length})</h3><p class="small muted">${esc(blurb)}</p><ul class="findings">${list.map((f) => `<li><span class="amt">${esc(f.amountText)}</span>
+      return `<h3>${esc(title)} (${list.length})</h3><p class="small muted">${esc(blurb)}</p><ul class="findings">${list.map((f) => `<li><span class="amt">${esc(sv(f.amountText))}</span>
         <span class="tag ${tagClass}">${esc(f.tag)}</span><span class="t">${esc(f.title)}</span>
         ${f.detail ? `<div class="small muted">${esc(f.detail)}</div>` : ""}
         ${f.related?.length ? `<div class="small"><b>Same amount, likely the same problem:</b> ${esc(f.related.join("; "))}</div>` : ""}
@@ -372,9 +415,9 @@ ${report.autoClearedCount ? `<p class="small muted">${esc(report.autoClearedCoun
 
   const cmp = report.comparativeProfitAndLoss ?? [];
   sections.push(`<div class="page">${h2a("D", "Financial statements")}
-    ${cmp.length ? `<h3>Profit &amp; Loss — ${esc(m.periodLabel)} compared with last month</h3>${table(["Account", "This month", "Last month"], cmp.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.currentText, r.priorText] })))}` : ""}
-    ${report.balanceSheetTable.length ? `<h3>Balance Sheet — ${esc(m.balanceDateLabel.replace("Balances as of ", ""))}</h3>${table(["Account", "Balance"], report.balanceSheetTable.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.valueText] })))}` : ""}
-    ${report.cashFlowStatement?.length ? `<h3>Statement of Cash Flows — ${esc(m.periodLabel)}</h3>${table(["", "Amount"], report.cashFlowStatement.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.valueText] })))}` : ""}
+    ${cmp.length ? `<h3>Profit &amp; Loss — ${esc(m.periodLabel)} compared with last month</h3>${table(["Account", "This month", "Last month"], cmp.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.currentText, r.priorText] })), { brackets: true })}` : ""}
+    ${report.balanceSheetTable.length ? `<h3>Balance Sheet — ${esc(m.balanceDateLabel.replace("Balances as of ", ""))}</h3>${table(["Account", "Balance"], report.balanceSheetTable.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.valueText] })), { brackets: true })}` : ""}
+    ${report.cashFlowStatement?.length ? `<h3>Statement of Cash Flows — ${esc(m.periodLabel)}</h3>${table(["", "Amount"], report.cashFlowStatement.map((r) => ({ depth: r.depth, total: r.isTotal, cells: [r.label, r.valueText] })), { brackets: true })}` : ""}
     <p class="small muted">Report snapshot ${esc(m.snapshotID.slice(0, 16))} · prepared with Voice Ledger from read-only QuickBooks Online data.</p></div>`);
 
   let sectionNumber = 0;
