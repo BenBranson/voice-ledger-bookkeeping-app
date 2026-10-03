@@ -1527,3 +1527,21 @@ A SWOT read of the client, code-computed from stated thresholds. Every item carr
   2. Auth Q5, "uses the Intuit discovery document": `auth/oauth.ts` hard-codes the endpoints.
   3. Error Q2, "captures `intuit_tid`": `qbo/client.ts` doesn't read the header.
 - **Still to do in Intuit settings:** add `https://benjaminbransonbookkeeping.com/connected` to the production Redirect URIs before switching to production.
+- **Update, same day: questionnaire complete (draft, not submitted). Voice Ledger is now the only app.**
+  - The backend's sandbox keys had come from a **different** Intuit app: "Branson Bookkeeping" in workspace "Bookkeeping APP". The production application is filed under "Voice Ledger" in workspace "Local".
+  - Owner chose Voice Ledger as the single app. The owner pasted its Development Client ID and Secret into `backend/.env` through clipboard commands, so the values never passed through chat.
+  - The old `.env` is backed up at `backend/data/backups/env-branson-app.backup`, which git ignores.
+  - `QBO_REDIRECT_URI` is now `https://benjaminbransonbookkeeping.com/connected`.
+  - Voice Ledger's dev redirect list now also has `http://localhost:3000/oauth/callback`.
+  - Production redirect URIs stay locked until approval. Add `/connected` there then.
+- **Live sandbox test with Voice Ledger keys, through the website:**
+  - **Connect:** Intuit sent the browser to `/connected`, which forwarded to the helper. Tokens saved and `readCompanyInfo` returned 200.
+  - **Disconnect:** `POST /realms/:id/disconnect` returned `revokedAtIntuit: true`, and the next read got 401.
+  - **Reconnect:** the owner clicked Connect on Intuit's "Connecting Voice Ledger to Sandbox Company US 1c1b" screen. Reads returned 200 again.
+  - After relaunching, the app synced with 39 successful operations and 0 failures.
+- **Code:**
+  - `auth/oauth.ts` reads its endpoints from Intuit's discovery document. Results are cached for 24 hours and must be https URLs on `*.intuit.com`. If the document can't be read, it falls back to the documented values and logs `oauth_discovery_failed`.
+  - `qbo/client.ts` logs `intuitTid` on every QBO response, and it was confirmed in `backend.log`.
+  - Tests: `test/oauthDiscovery.test.ts`.
+- **The three blanks are now answered "Yes."** Only the owner's Submit is left.
+- **Optional cleanup:** the sandbox company may still have a grant from the old "Branson Bookkeeping" app. It's harmless.

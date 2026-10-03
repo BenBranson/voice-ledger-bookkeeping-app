@@ -12,9 +12,82 @@
 import type { QBOCredentials } from "../config.js";
 import { logEvent } from "../logging/logger.js";
 
-const AUTHORIZATION_BASE_URL = "https://appcenter.intuit.com/connect/oauth2";
-const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
-const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
+// Intuit's discovery documents are the source of truth for the OAuth endpoints
+// (Intuit app assessment, Authorization Q5). Checked live 2026-10-03: both
+// documents list exactly the fallback values below.
+const DISCOVERY_URLS: Record<QBOCredentials["environment"], string> = {
+  sandbox: "https://developer.api.intuit.com/.well-known/openid_sandbox_configuration",
+  production: "https://developer.api.intuit.com/.well-known/openid_configuration"
+};
+const DISCOVERY_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface OAuthEndpoints {
+  readonly authorizationEndpoint: string;
+  readonly tokenEndpoint: string;
+  readonly revocationEndpoint: string;
+}
+
+/** Used only when the discovery document can't be fetched or fails validation. */
+export const FALLBACK_OAUTH_ENDPOINTS: OAuthEndpoints = {
+  authorizationEndpoint: "https://appcenter.intuit.com/connect/oauth2",
+  tokenEndpoint: "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+  revocationEndpoint: "https://developer.api.intuit.com/v2/oauth2/tokens/revoke"
+};
+
+const discoveryCache = new Map<string, { endpoints: OAuthEndpoints; fetchedAt: number }>();
+
+/** An endpoint is accepted only if it is https on an intuit.com host. */
+function isIntuitHttpsUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (url.hostname === "intuit.com" || url.hostname.endsWith(".intuit.com"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reads the OAuth endpoints from Intuit's discovery document for this
+ * environment, cached for 24 hours. Falls back to the documented endpoints
+ * (and logs it) rather than blocking a connection if Intuit's document is
+ * unreachable or malformed.
+ */
+export async function resolveOAuthEndpoints(
+  environment: QBOCredentials["environment"],
+  fetcher: typeof fetch = fetch,
+  now: number = Date.now()
+): Promise<OAuthEndpoints> {
+  const cached = discoveryCache.get(environment);
+  if (cached && now - cached.fetchedAt < DISCOVERY_TTL_MS) return cached.endpoints;
+  try {
+    const response = await fetcher(DISCOVERY_URLS[environment], {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000)
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const doc = (await response.json()) as Record<string, unknown>;
+    const { authorization_endpoint, token_endpoint, revocation_endpoint } = doc;
+    if (!isIntuitHttpsUrl(authorization_endpoint) || !isIntuitHttpsUrl(token_endpoint) || !isIntuitHttpsUrl(revocation_endpoint)) {
+      throw new Error("DiscoveryDocumentInvalid");
+    }
+    const endpoints = {
+      authorizationEndpoint: authorization_endpoint,
+      tokenEndpoint: token_endpoint,
+      revocationEndpoint: revocation_endpoint
+    };
+    discoveryCache.set(environment, { endpoints, fetchedAt: now });
+    return endpoints;
+  } catch (error) {
+    logEvent("oauth_discovery_failed", { outcome: "fault", error: error instanceof Error ? error.message : "UnknownError" });
+    return FALLBACK_OAUTH_ENDPOINTS;
+  }
+}
+
+/** Test hook: forget cached discovery results. */
+export function clearOAuthDiscoveryCache(): void {
+  discoveryCache.clear();
+}
 
 // The only scope QBO's accounting API offers. It grants read AND write
 // together — there is no read-only scope. Self-enforcement (the operation
@@ -29,8 +102,9 @@ export interface TokenResponse {
   readonly refreshTokenExpiresInSeconds: number;
 }
 
-export function buildAuthorizationUrl(credentials: QBOCredentials, state: string): string {
-  const url = new URL(AUTHORIZATION_BASE_URL);
+export async function buildAuthorizationUrl(credentials: QBOCredentials, state: string): Promise<string> {
+  const { authorizationEndpoint } = await resolveOAuthEndpoints(credentials.environment);
+  const url = new URL(authorizationEndpoint);
   url.searchParams.set("client_id", credentials.clientId);
   url.searchParams.set("redirect_uri", credentials.redirectUri);
   url.searchParams.set("response_type", "code");
@@ -47,7 +121,8 @@ async function postTokenRequest(
   credentials: QBOCredentials,
   body: URLSearchParams
 ): Promise<TokenResponse> {
-  const response = await fetch(TOKEN_URL, {
+  const { tokenEndpoint } = await resolveOAuthEndpoints(credentials.environment);
+  const response = await fetch(tokenEndpoint, {
     method: "POST",
     headers: {
       Authorization: basicAuthHeader(credentials.clientId, credentials.clientSecret),
@@ -121,7 +196,8 @@ export async function refreshAccessToken(
 
 /** Revoking the refresh token ends the app's whole grant for that company. */
 export async function revokeToken(credentials: QBOCredentials, refreshToken: string): Promise<void> {
-  const response = await fetch(REVOKE_URL, {
+  const { revocationEndpoint } = await resolveOAuthEndpoints(credentials.environment);
+  const response = await fetch(revocationEndpoint, {
     method: "POST",
     headers: {
       Authorization: basicAuthHeader(credentials.clientId, credentials.clientSecret),

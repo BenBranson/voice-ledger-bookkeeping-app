@@ -46,9 +46,9 @@ export function oauthRoutes(
 ): Router {
   const router = Router();
 
-  router.get("/oauth/authorize", (_req, res) => {
+  router.get("/oauth/authorize", async (_req, res) => {
     const state = issueState();
-    res.redirect(buildAuthorizationUrl(credentials, state));
+    res.redirect(await buildAuthorizationUrl(credentials, state));
   });
 
   router.get("/oauth/callback", async (req, res) => {

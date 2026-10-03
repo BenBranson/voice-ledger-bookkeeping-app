@@ -94,11 +94,11 @@ export class QBOClient {
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
-      logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs });
+      logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs, intuitTid: intuitTid(response) });
       throw new QBOApiError(`QBO returned HTTP ${response.status} for ${path}`, response.status, realmId);
     }
 
-    logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion });
+    logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion, intuitTid: intuitTid(response) });
     return response.json();
   }
 
@@ -135,11 +135,11 @@ export class QBOClient {
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
-      logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs });
+      logEvent("operation_failed", { realmId, httpStatus: response.status, latencyMs, intuitTid: intuitTid(response) });
       throw new QBOApiError(`QBO returned HTTP ${response.status} for ${path}`, response.status, realmId);
     }
 
-    logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion });
+    logEvent("operation_succeeded", { realmId, httpStatus: response.status, latencyMs, minorVersion: this.credentials.minorVersion, intuitTid: intuitTid(response) });
     return response.json();
   }
 
@@ -193,4 +193,9 @@ export class QBOClient {
     }
     this.activeRequests.set(realmId, (this.activeRequests.get(realmId) ?? 1) - 1);
   }
+}
+
+/** Intuit's transaction id for a response, logged so Intuit support can trace a call. */
+export function intuitTid(response: Response): string | undefined {
+  return response.headers.get("intuit_tid") ?? undefined;
 }

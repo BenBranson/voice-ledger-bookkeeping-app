@@ -35,7 +35,8 @@ export type LogEvent =
   | "ask_ai_disabled"
   | "ask_ai_not_configured"
   | "ai_settings_changed"
-  | "connection_disconnected";
+  | "connection_disconnected"
+  | "oauth_discovery_failed";
 
 /**
  * Every field a log line is EVER allowed to carry. Adding a field here is a
@@ -65,6 +66,9 @@ export interface LogFields {
   /// just which tier, so an operator can see spend-relevant requests in the
   /// log without this becoming a place provider/model details leak.
   readonly tier?: "primary" | "secondary";
+  /// Intuit's per-response transaction id (`intuit_tid` header). Intuit
+  /// support asks for it when troubleshooting a call; it carries no data.
+  readonly intuitTid?: string | undefined;
 }
 
 export interface LogLine extends LogFields {
